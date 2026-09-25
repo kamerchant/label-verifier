@@ -14,5 +14,5 @@ databases:
   - name: label-qc-db
     databaseName: qc_db
     user: qc_user
-    plan: starter
+    plan: basic-1gb # Updated from legacy 'starter'
     region: frankfurt
