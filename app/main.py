@@ -21,7 +21,6 @@ if not os.path.exists(STATIC_DIR):
     os.makedirs(STATIC_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-# Explicit fallback route for the logo image
 @app.get("/static/logo.jpg")
 @app.get("/logo.jpg")
 async def get_logo():
@@ -285,9 +284,10 @@ def get_master_jobs_report(status_filter: str = "ALL", admin: dict = Depends(req
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            # Fixed: Only count non-deleted codes so deleted jobs correctly show 0 active codes
             sql = """
                 SELECT j.run_id, j.job_card_id, j.description, j.status,
-                       COUNT(c.code_value) as total,
+                       COUNT(CASE WHEN c.status != 'DELETED' THEN c.code_value END) as total,
                        COUNT(CASE WHEN c.status = 'CONSUMED' THEN 1 END) as consumed,
                        j.created_at,
                        j.deleted_by,
@@ -375,21 +375,11 @@ async def create_job(
                     SELECT j.job_card_id, c.code_value, j.status 
                     FROM codes c
                     JOIN job_cards j ON c.run_id = j.run_id
-                    WHERE c.code_value = ANY(%s)
+                    WHERE c.code_value = ANY(%s) AND j.status = 'DELETED'
                     LIMIT 20
                 """, (sample_codes,))
                 matches = cur.fetchall()
-
-                active_matches = [m for m in matches if m[2] != 'DELETED']
-                deleted_job_matches = [m for m in matches if m[2] == 'DELETED']
-
-                if active_matches:
-                    conflicting_jc = active_matches[0][0]
-                    sample_dup = active_matches[0][1]
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Upload rejected: Duplicate codes detected! Code '{sample_dup}' already exists in open/completed Job Card '{conflicting_jc}'."
-                    )
+                deleted_job_matches = matches
 
                 if deleted_job_matches and not override_deleted_warning:
                     sample_dup = deleted_job_matches[0][1]
