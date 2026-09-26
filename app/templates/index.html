@@ -10,18 +10,20 @@
         .flash-fail { background-color: #b91c1c !important; color: white !important; }
         .flash-warn { background-color: #c2410c !important; color: white !important; }
         
-        /* Option A: Professional Clean Factory Audit Report for Paper/PDF */
+        /* Clean Factory Print Layout: Pure White Background Across All Containers */
         @media print {
             body * {
                 visibility: hidden;
             }
             #report-modal, #report-modal * {
                 visibility: visible;
+                background-color: transparent !important;
             }
+            /* Outer modal backdrop and inner container reset */
             #report-modal {
-                position: absolute;
-                left: 0;
-                top: 0;
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
                 width: 100% !important;
                 max-width: 100% !important;
                 background: #ffffff !important;
@@ -31,27 +33,44 @@
                 padding: 0 !important;
                 margin: 0 !important;
             }
+            #report-modal > div {
+                background: #ffffff !important;
+                border: none !important;
+                box-shadow: none !important;
+                max-width: 100% !important;
+                width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
             .no-print, button {
                 display: none !important;
             }
+            /* Header section styling */
+            #report-header-box {
+                background: #ffffff !important;
+                border-bottom: 2px solid #0f172a !important;
+                padding-bottom: 8px !important;
+                margin-bottom: 12px !important;
+            }
             #report-job-id {
-                font-size: 18pt !important;
+                font-size: 20pt !important;
                 color: #0f172a !important;
                 font-weight: 800 !important;
-                border-bottom: 2px solid #0f172a !important;
-                padding-bottom: 4px !important;
-                margin-bottom: 6px !important;
+                background: #ffffff !important;
+                margin-bottom: 2px !important;
             }
             #report-desc {
                 font-size: 11pt !important;
                 color: #334155 !important;
-                margin-bottom: 12px !important;
+                background: #ffffff !important;
             }
+            /* Stat summary tiles */
             #report-stats {
                 display: grid !important;
                 grid-template-columns: repeat(4, 1fr) !important;
                 gap: 8px !important;
                 margin-bottom: 16px !important;
+                background: #ffffff !important;
             }
             #report-stats div {
                 background: #f8fafc !important;
@@ -65,14 +84,17 @@
             #report-stats span {
                 color: #0f172a !important;
             }
+            /* Table container and rows */
             #report-log-table {
                 max-height: none !important;
                 overflow: visible !important;
                 border: 1px solid #cbd5e1 !important;
+                background: #ffffff !important;
             }
             table {
                 width: 100% !important;
                 border-collapse: collapse !important;
+                background: #ffffff !important;
             }
             thead {
                 display: table-header-group !important;
@@ -97,6 +119,7 @@
             }
             tr {
                 page-break-inside: avoid !important;
+                background: #ffffff !important;
             }
         }
     </style>
@@ -257,10 +280,10 @@
         </div>
     </div>
 
-    <!-- QC Report Modal (Print Friendly Option A) -->
+    <!-- QC Report Modal -->
     <div id="report-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
         <div class="bg-slate-800 p-6 rounded-lg max-w-4xl w-full border border-slate-600 shadow-2xl flex flex-col max-h-[90vh]">
-            <div class="flex justify-between items-start mb-3 border-b border-slate-700 pb-3">
+            <div id="report-header-box" class="flex justify-between items-start mb-3 border-b border-slate-700 pb-3">
                 <div>
                     <h3 id="report-job-id" class="text-lg font-bold">Job Card Report</h3>
                     <p id="report-desc" class="text-xs text-slate-400"></p>
