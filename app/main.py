@@ -284,7 +284,6 @@ def get_master_jobs_report(status_filter: str = "ALL", admin: dict = Depends(req
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # Fixed: Only count non-deleted codes so deleted jobs correctly show 0 active codes
             sql = """
                 SELECT j.run_id, j.job_card_id, j.description, j.status,
                        COUNT(CASE WHEN c.status != 'DELETED' THEN c.code_value END) as total,
@@ -629,7 +628,6 @@ def verify_code(
                 )
                 conn.commit()
 
-            # Check for code across all non-deleted runs in the system
             cur.execute("""
                 SELECT c.run_id, j.job_card_id, c.status, c.code_value 
                 FROM codes c
@@ -638,7 +636,6 @@ def verify_code(
             """, (scanned,))
             rows = cur.fetchall()
 
-            # 1. Code does not exist anywhere in system
             if not rows:
                 msg = "Code Does Not Exist"
                 log_scan("UNKNOWN", msg)
@@ -649,7 +646,6 @@ def verify_code(
 
             matched_current = next((r for r in rows if r[0] == active_run_id), None)
 
-            # 2. Code exists in another job card
             if not matched_current:
                 owning_jobs = ", ".join(list(set([r[1] for r in rows])))
                 msg = f"Code Belongs to Another Job Card: {owning_jobs}"
@@ -661,7 +657,6 @@ def verify_code(
 
             run_id, owning_jc, status, exact_code = matched_current
 
-            # 3. Code was already verified earlier
             if status == "CONSUMED":
                 msg = f"Code {exact_code} was verified earlier!"
                 log_scan("DUPLICATE", msg)
