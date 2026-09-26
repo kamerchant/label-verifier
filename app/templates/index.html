@@ -110,7 +110,6 @@
             scrollbar-width: none;
         }
 
-        /* Hide brand box on screen modal view */
         .print-brand-box {
             display: none;
         }
@@ -293,7 +292,6 @@
                 <p id="header-job-desc" class="text-xs sm:text-sm text-slate-400 mt-1 truncate">Search active production jobs using the search field.</p>
             </div>
 
-            <!-- Job Search Bar and Adjacent Action Buttons Group -->
             <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full lg:w-auto shrink-0">
                 <div class="relative flex-1 sm:w-72 shrink-0">
                     <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Search active jobs..." 
@@ -409,6 +407,15 @@
             Press <kbd class="bg-[#1e2029] text-slate-300 px-1.5 py-0.5 rounded font-mono">Enter</kbd> to submit
         </div>
     </footer>
+
+    <!-- Custom Alert Modal (Replaces standard browser popups with "Please Verify!") -->
+    <div id="custom-alert-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
+        <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/30 shadow-2xl text-center">
+            <h3 class="text-base font-bold mb-1 text-white">Please Verify!</h3>
+            <p id="custom-alert-msg" class="text-xs text-slate-300 mb-5 leading-relaxed"></p>
+            <button type="button" onclick="closeCustomAlert()" class="linear-button-primary w-full py-2.5 rounded text-sm font-semibold min-h-[40px]">OK</button>
+        </div>
+    </div>
 
     <!-- Modals -->
     <div id="login-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
@@ -704,7 +711,7 @@
                     <tbody id="lifecycle-log-rows" class="divide-y divide-white/[0.04] font-mono text-xs"></tbody>
                 </table>
             </div>
-            <div class="print-timestamp-footer" id="print-timestamp-audit"></div>
+            <div id="print-timestamp-audit" class="print-timestamp-footer"></div>
         </div>
     </div>
 
@@ -720,6 +727,17 @@
         let recentScans = [];
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Custom Alert Helper (Replaces standard browser popups with "Please Verify!")
+        function showCustomAlert(message) {
+            document.getElementById('custom-alert-msg').innerText = message;
+            document.getElementById('custom-alert-modal').classList.remove('hidden');
+        }
+
+        function closeCustomAlert() {
+            document.getElementById('custom-alert-modal').classList.add('hidden');
+            resetInput();
+        }
 
         function playTone(type) {
             if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -790,7 +808,7 @@
                 checkSession();
             } else {
                 const err = await res.json();
-                alert(err.detail || "Authentication failed");
+                showCustomAlert(err.detail || "Authentication failed");
             }
         }
 
@@ -802,14 +820,14 @@
 
             const res = await fetch('/api/auth/change-password', { method: 'POST', body });
             if (res.ok) {
-                alert("Password updated successfully!");
+                showCustomAlert("Password updated successfully!");
                 document.getElementById('pw-modal').classList.add('hidden');
                 document.getElementById('pw-current').value = "";
                 document.getElementById('pw-new').value = "";
                 checkSession();
             } else {
                 const err = await res.json();
-                alert(err.detail || "Password change failed");
+                showCustomAlert(err.detail || "Password change failed");
             }
         }
 
@@ -914,15 +932,15 @@
                 if (!confirm(`Mark Job Card ${activeJobId} completed?`)) return;
                 const res = await fetch(`/api/jobs/${activeJobId}/complete`, { method: 'POST' });
                 if (res.ok) {
-                    alert(`Job Card ${activeJobId} completed.`);
+                    showCustomAlert(`Job Card ${activeJobId} completed.`);
                     selectJob(activeJobId, escape(activeJobDesc), 'COMPLETED', 0, 0);
                 } else {
                     const err = await res.json();
-                    alert(err.detail || "Action failed");
+                    showCustomAlert(err.detail || "Action failed");
                 }
             } else {
                 if (currentUser.role !== 'admin') {
-                    alert("Only Administrator can reactivate and unblock a completed job.");
+                    showCustomAlert("Only Administrator can reactivate and unblock a completed job.");
                     return;
                 }
                 triggerAuthModal(
@@ -959,21 +977,21 @@
                 const res = await fetch(`/api/jobs/${pendingAction.target}/unblock`, { method: 'POST', body });
                 if (res.ok) {
                     closeAuthModal();
-                    alert(`Job Card ${pendingAction.target} reactivated successfully.`);
+                    showCustomAlert(`Job Card ${pendingAction.target} reactivated successfully.`);
                     selectJob(activeJobId, escape(activeJobDesc), 'ACTIVE', 0, 0);
                 } else {
                     const err = await res.json();
-                    alert(err.detail || "Authorization failed.");
+                    showCustomAlert(err.detail || "Authorization failed.");
                 }
             } else if (pendingAction.type === 'DELETE_USER') {
                 const res = await fetch(`/api/users/${pendingAction.target}/delete`, { method: 'POST', body });
                 if (res.ok) {
                     closeAuthModal();
-                    alert(`User ${pendingAction.target} removed.`);
+                    showCustomAlert(`User ${pendingAction.target} removed.`);
                     openUserModal();
                 } else {
                     const err = await res.json();
-                    alert(err.detail || "User deletion failed.");
+                    showCustomAlert(err.detail || "User deletion failed.");
                 }
             }
         }
@@ -1021,7 +1039,7 @@
             if (res.ok) {
                 const deletedName = targetDeleteJobId;
                 closeJobDeleteModal();
-                alert(`Job Card '${deletedName}' moved to deleted status.`);
+                showCustomAlert(`Job Card '${deletedName}' moved to deleted status.`);
                 
                 if (activeJobId === deletedName) {
                     activeJobId = null;
@@ -1055,7 +1073,7 @@
                 loadMasterJobs(currentMasterTab);
             } else {
                 const err = await res.json();
-                alert(err.detail || "Deletion failed.");
+                showCustomAlert(err.detail || "Deletion failed.");
             }
         }
 
@@ -1067,7 +1085,7 @@
         function promptBulkComplete() {
             const selected = Array.from(document.querySelectorAll('.job-select-checkbox:checked')).map(cb => cb.value);
             if (selected.length === 0) {
-                alert("Please select at least one job card to complete.");
+                showCustomAlert("Please select at least one job card to complete.");
                 return;
             }
             document.getElementById('bulk-complete-subtitle').innerText = 
@@ -1096,14 +1114,14 @@
 
             if (res.ok) {
                 closeBulkCompleteModal();
-                alert("Selected jobs completed successfully.");
+                showCustomAlert("Selected jobs completed successfully.");
                 if (activeJobId && selected.includes(activeJobId)) {
                     selectJob(activeJobId, escape(activeJobDesc), 'COMPLETED', 0, 0);
                 }
                 loadMasterJobs(currentMasterTab);
             } else {
                 const err = await res.json();
-                alert(err.detail || "Bulk completion failed.");
+                showCustomAlert(err.detail || "Bulk completion failed.");
             }
         }
 
@@ -1194,7 +1212,7 @@
             const code = input.value.trim();
             if (!code) return;
             if (!activeJobId) {
-                alert("Please select an active Job Card from the search bar first.");
+                showCustomAlert("Please select an active Job Card from the search bar first.");
                 input.value = "";
                 return;
             }
@@ -1284,13 +1302,13 @@
             }
 
             if (res.ok) {
-                alert(`Job Card ${data.job_card_id} created with ${data.total_extracted.toLocaleString()} serial codes.`);
+                showCustomAlert(`Job Card ${data.job_card_id} created with ${data.total_extracted.toLocaleString()} serial codes.`);
                 toggleModal('upload-modal');
                 document.getElementById('deleted-dup-warning-modal').classList.add('hidden');
                 document.getElementById('create-job-form').reset();
                 selectJob(data.job_card_id, escape(document.getElementById('new-job-desc').value.trim()), 'ACTIVE', 0, data.total_extracted);
             } else {
-                alert(data.detail || "Failed to create job");
+                showCustomAlert(data.detail || "Failed to create job");
             }
 
             btn.disabled = false;
@@ -1427,7 +1445,7 @@
                 if (username === currentUser.username) checkSession();
                 openUserModal();
             } else {
-                alert("Failed to update user authorization.");
+                showCustomAlert("Failed to update user authorization.");
             }
         }
 
@@ -1445,7 +1463,7 @@
                 openUserModal();
             } else {
                 const err = await res.json();
-                alert(err.detail || "Failed to create user");
+                showCustomAlert(err.detail || "Failed to create user");
             }
         }
 
