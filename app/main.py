@@ -328,14 +328,14 @@ async def create_job(
     try:
         with conn.cursor() as cur:
             # 1. Enforce unique job_card_id among currently active or completed runs
-            cur.execute("SELECT job_card_id FROM job_cards WHERE job_card_id = %s AND status != 'DELETED'", (job_card_id,))
+            cur.execute("SELECT run_id FROM job_cards WHERE job_card_id = %s AND status != 'DELETED'", (job_card_id,))
             if cur.fetchone():
                 raise HTTPException(status_code=400, detail=f"Active Job Card '{job_card_id}' already exists.")
 
             utf8_reader = codecs.iterdecode(file.file, "utf-8", errors="ignore")
             csv_reader = csv.reader(utf8_reader, delimiter=",", skipinitialspace=True)
 
-            csv_buffer = io.StringIO()
+            raw_codes = []
             seen_in_batch = set()
             sample_codes = []
 
@@ -351,21 +351,20 @@ async def create_job(
 
                     if item not in seen_in_batch:
                         seen_in_batch.add(item)
-                        csv_buffer.write(f"{job_card_id}\t{item}\tPENDING\n")
-                        
+                        raw_codes.append(item)
                         if len(sample_codes) < 100:
                             sample_codes.append(item)
 
             if not seen_in_batch:
                 raise HTTPException(status_code=400, detail="No valid codes found in the file.")
 
-            # 2. Check for duplicate codes across ALL database records
+            # 2. Duplicate pre-check across non-deleted vs deleted records
             deleted_job_matches = []
             if sample_codes:
                 cur.execute("""
-                    SELECT c.job_card_id, c.code_value, j.status 
+                    SELECT j.job_card_id, c.code_value, j.status 
                     FROM codes c
-                    JOIN job_cards j ON c.job_card_id = j.job_card_id
+                    JOIN job_cards j ON (c.run_id = j.run_id OR (c.run_id IS NULL AND c.job_card_id = j.job_card_id))
                     WHERE c.code_value = ANY(%s)
                     LIMIT 20
                 """, (sample_codes,))
@@ -374,7 +373,7 @@ async def create_job(
                 active_matches = [m for m in matches if m[2] != 'DELETED']
                 deleted_job_matches = [m for m in matches if m[2] == 'DELETED']
 
-                # HARD BLOCK: Reject immediately if matched against active or completed jobs
+                # HARD BLOCK: Matched an ACTIVE or COMPLETED job
                 if active_matches:
                     conflicting_jc = active_matches[0][0]
                     sample_dup = active_matches[0][1]
@@ -383,7 +382,7 @@ async def create_job(
                         detail=f"Upload rejected: Duplicate codes detected! Code '{sample_dup}' already exists in active/completed Job Card '{conflicting_jc}'."
                     )
 
-                # SOFT WARNING: If only matches DELETED jobs and user hasn't confirmed yet
+                # SOFT WARNING: Matched DELETED jobs, prompt user to confirm
                 if deleted_job_matches and not override_deleted_warning:
                     sample_dup = deleted_job_matches[0][1]
                     conflicting_jc = deleted_job_matches[0][0]
@@ -394,24 +393,32 @@ async def create_job(
                         "deleted_job_card": conflicting_jc
                     })
 
-            # 3. Insert Job Card & bulk ingest
-            cur.execute(
-                "INSERT INTO job_cards (job_card_id, description, status) VALUES (%s, %s, 'ACTIVE') RETURNING run_id",
-                (job_card_id, description)
-            )
+            # 3. Insert Job Card and retrieve generated run_id
+            cur.execute("""
+                INSERT INTO job_cards (job_card_id, description, status) 
+                VALUES (%s, %s, 'ACTIVE') 
+                RETURNING run_id
+            """, (job_card_id, description))
+            run_id = cur.fetchone()[0]
 
+            # 4. Bulk ingest codes tied to this run_id
+            csv_buffer = io.StringIO()
+            for code in raw_codes:
+                csv_buffer.write(f"{run_id}\t{job_card_id}\t{code}\tPENDING\n")
             csv_buffer.seek(0)
-            cur.copy_from(csv_buffer, 'codes', columns=('job_card_id', 'code_value', 'status'))
 
+            cur.copy_from(csv_buffer, 'codes', columns=('run_id', 'job_card_id', 'code_value', 'status'))
+
+            # 5. Lifecycle Log
             lifecycle_reason = "Initial batch ingestion"
             if deleted_job_matches and override_deleted_warning:
                 conflicting_jc = deleted_job_matches[0][0]
                 lifecycle_reason = f"Reused codes from deleted Job Card '{conflicting_jc}'"
 
-            cur.execute(
-                "INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) VALUES (%s, %s, %s, %s)",
-                (job_card_id, "CREATED", uploader["username"], lifecycle_reason)
-            )
+            cur.execute("""
+                INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) 
+                VALUES (%s, %s, %s, %s)
+            """, (job_card_id, "CREATED", uploader["username"], lifecycle_reason))
 
             conn.commit()
             return {"status": "success", "job_card_id": job_card_id, "total_extracted": len(seen_in_batch)}
@@ -515,7 +522,7 @@ def unblock_job(
     finally:
         release_connection(conn)
 
-# Lifecycle Audit Trail Endpoint
+# Lifecycle Audit Trail Endpoint (Guarantees Creation Date & Event are Displayed)
 @app.get("/api/jobs/{job_card_id}/lifecycle-logs")
 def get_lifecycle_logs(job_card_id: str, user: dict = Depends(get_current_user)):
     conn = get_connection()
