@@ -292,15 +292,15 @@
                 <p id="header-job-desc" class="text-xs sm:text-sm text-slate-400 mt-1 truncate">Search active production jobs using the search field.</p>
             </div>
 
-            <!-- Job Search Bar and Adjacent Action Buttons Group -->
+            <!-- Job Search Bar and Adjacent Action Buttons Group (Optimized for Android/Mobile) -->
             <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full lg:w-auto shrink-0">
-                <div class="relative flex-1 sm:w-72 shrink-0">
+                <div class="relative w-full sm:w-72 flex-1 sm:flex-initial shrink-0">
                     <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Search active jobs..." 
                            class="linear-input w-full px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm font-mono rounded placeholder-slate-500 shadow-inner min-h-[44px]">
                     <div id="job-list" class="absolute left-0 right-0 top-full mt-1.5 linear-card rounded shadow-2xl max-h-64 overflow-y-auto z-30 hidden"></div>
                 </div>
 
-                <div class="flex items-center gap-1.5 shrink-0">
+                <div class="flex items-center gap-1.5 shrink-0 w-full sm:w-auto justify-end">
                     <button id="report-btn" onclick="openReportModal()" disabled 
                             class="linear-button-secondary text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[44px] font-medium shadow-sm whitespace-nowrap">
                         QC Report
@@ -1279,7 +1279,6 @@
                 heading.innerText = "VALIDATED";
                 detail.innerText = msg;
                 
-                // Refresh KPI counts immediately upon successful verification
                 incrementVerifiedKPI();
             } else {
                 playTone('FAIL');
@@ -1296,7 +1295,6 @@
             renderStreamTable();
         }
 
-        // Helper to instantly update verified & pending counters on successful scan
         function incrementVerifiedKPI() {
             const consumedElem = document.getElementById('kpi-consumed');
             const pendingElem = document.getElementById('kpi-pending');
