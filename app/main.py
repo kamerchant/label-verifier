@@ -604,7 +604,7 @@ def get_lifecycle_logs(job_card_id: str, user: dict = Depends(get_current_user))
     finally:
         release_connection(conn)
 
-# Strict Verification with Detailed Error Reporting & Audit Persistence
+# Strict Verification with Detailed Error Reporting & Cross-Job Card Checks
 @app.post("/api/verify")
 def verify_code(
     job_card_id: str = Form(...), 
@@ -650,7 +650,7 @@ def verify_code(
 
             # 1. Code does not exist anywhere in system
             if not rows:
-                msg = "Code does not exist. Check if the code is from another job card."
+                msg = "Code Does Not Exist"
                 log_scan("UNKNOWN", msg)
                 return JSONResponse(status_code=200, content={
                     "result": "UNKNOWN", 
@@ -662,7 +662,7 @@ def verify_code(
             # 2. Code exists in another job card
             if not matched_current:
                 owning_jobs = ", ".join(list(set([r[1] for r in rows])))
-                msg = f"Code not from this job card and from another job card number: {owning_jobs}"
+                msg = f"Code Belongs to Another Job Card: {owning_jobs}"
                 log_scan("MISMATCH", msg)
                 return JSONResponse(status_code=200, content={
                     "result": "MISMATCH", 

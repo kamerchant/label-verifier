@@ -338,7 +338,7 @@
                     </thead>
                     <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] font-mono text-xs sm:text-sm">
                         <tr>
-                            <td colspan="5" class="px-3 sm:px-5 py-8 sm:py-12 text-center text-slate-500 font-sans italic">No scan events recorded for this session</td>
+                            <td colspan="5" class="px-3 sm:px-5 py-6 sm:py-8 text-center text-slate-500 font-sans italic">No scan events recorded for this session</td>
                         </tr>
                     </tbody>
                 </table>
@@ -788,10 +788,10 @@
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = id;
             document.getElementById('active-title-card').innerText = `Job Card: ${id}`;
-            document.getElementById('header-job-desc').innerText = activeJobDesc || 'Batch serialization active & ready for verification stream.';
+            document.getElementById('header-job-desc').innerText = activeJobDesc || 'Job Loaded and Ready for Verification';
 
             // Dynamic header prompt update when job is selected
-            document.getElementById('status-heading').innerText = "Enter Code Below";
+            document.getElementById('status-heading').innerText = "Job Loaded and Ready for Verification";
             document.getElementById('status-detail').innerText = "";
             document.getElementById('status-last-code').classList.add('hidden');
             document.getElementById('status-badge').classList.add('hidden');
