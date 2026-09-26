@@ -10,23 +10,94 @@
         .flash-fail { background-color: #b91c1c !important; color: white !important; }
         .flash-warn { background-color: #c2410c !important; color: white !important; }
         
+        /* Option A: Professional Clean Factory Audit Report for Paper/PDF */
         @media print {
-            body * { visibility: hidden; }
-            #report-modal, #report-modal * { visibility: visible; }
+            body * {
+                visibility: hidden;
+            }
+            #report-modal, #report-modal * {
+                visibility: visible;
+            }
             #report-modal {
                 position: absolute;
                 left: 0;
                 top: 0;
-                width: 100%;
-                background: white !important;
-                color: black !important;
-                padding: 0;
-                border: none;
+                width: 100% !important;
+                max-width: 100% !important;
+                background: #ffffff !important;
+                color: #0f172a !important;
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
             }
-            .no-print { display: none !important; }
-            #report-log-table { max-height: none !important; overflow: visible !important; }
-            th, td { border: 1px solid #ddd !important; color: black !important; padding: 6px !important; }
-            #report-stats div { border: 1px solid #333 !important; color: black !important; background: #f8f8f8 !important; }
+            .no-print, button {
+                display: none !important;
+            }
+            #report-job-id {
+                font-size: 18pt !important;
+                color: #0f172a !important;
+                font-weight: 800 !important;
+                border-bottom: 2px solid #0f172a !important;
+                padding-bottom: 4px !important;
+                margin-bottom: 6px !important;
+            }
+            #report-desc {
+                font-size: 11pt !important;
+                color: #334155 !important;
+                margin-bottom: 12px !important;
+            }
+            #report-stats {
+                display: grid !important;
+                grid-template-columns: repeat(4, 1fr) !important;
+                gap: 8px !important;
+                margin-bottom: 16px !important;
+            }
+            #report-stats div {
+                background: #f8fafc !important;
+                border: 1px solid #94a3b8 !important;
+                padding: 8px !important;
+                border-radius: 4px !important;
+                color: #0f172a !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            #report-stats span {
+                color: #0f172a !important;
+            }
+            #report-log-table {
+                max-height: none !important;
+                overflow: visible !important;
+                border: 1px solid #cbd5e1 !important;
+            }
+            table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+            }
+            thead {
+                display: table-header-group !important;
+                background-color: #f1f5f9 !important;
+            }
+            th {
+                background-color: #f1f5f9 !important;
+                color: #0f172a !important;
+                font-weight: 700 !important;
+                border: 1px solid #94a3b8 !important;
+                padding: 8px !important;
+                font-size: 9pt !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            td {
+                color: #0f172a !important;
+                border: 1px solid #cbd5e1 !important;
+                padding: 6px 8px !important;
+                font-size: 8.5pt !important;
+                background: #ffffff !important;
+            }
+            tr {
+                page-break-inside: avoid !important;
+            }
         }
     </style>
 </head>
@@ -186,7 +257,7 @@
         </div>
     </div>
 
-    <!-- QC Report Modal (Print Friendly) -->
+    <!-- QC Report Modal (Print Friendly Option A) -->
     <div id="report-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
         <div class="bg-slate-800 p-6 rounded-lg max-w-4xl w-full border border-slate-600 shadow-2xl flex flex-col max-h-[90vh]">
             <div class="flex justify-between items-start mb-3 border-b border-slate-700 pb-3">
@@ -265,7 +336,6 @@
                     document.getElementById('btn-users').classList.remove('hidden');
                 }
 
-                // Enforce first login password change
                 if (data.must_change_password) {
                     forcePasswordChange();
                 }
