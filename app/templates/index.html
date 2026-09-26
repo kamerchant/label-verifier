@@ -579,7 +579,7 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <button onclick="promptBulkComplete()" class="linear-button-primary px-3 py-1.5 text-xs rounded font-medium">Complete Selected Jobs</button>
-                    <button onclick="toggleModal('master-jobs-modal')" class="linear-button-secondary px-3.5 py-1.5 text-xs rounded font-medium">Close</button>
+                    <button onclick="toggleModal('master-jobs-modal')" class="linear-button-secondary px-3 py-1.5 text-xs rounded font-medium">Close</button>
                 </div>
             </div>
 
@@ -1278,6 +1278,9 @@
                 badge.innerText = "PASS";
                 heading.innerText = "VALIDATED";
                 detail.innerText = msg;
+                
+                // Refresh KPI counts immediately upon successful verification
+                incrementVerifiedKPI();
             } else {
                 playTone('FAIL');
                 card.className = "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-red";
@@ -1291,6 +1294,21 @@
             recentScans.unshift({ code, result, time: now, user: currentUser.username });
             if (recentScans.length > 10) recentScans.pop();
             renderStreamTable();
+        }
+
+        // Helper to instantly update verified & pending counters on successful scan
+        function incrementVerifiedKPI() {
+            const consumedElem = document.getElementById('kpi-consumed');
+            const pendingElem = document.getElementById('kpi-pending');
+            
+            let consumed = parseInt(consumedElem.innerText.replace(/,/g, '')) || 0;
+            let pending = parseInt(pendingElem.innerText.replace(/,/g, '')) || 0;
+
+            consumed += 1;
+            pending = Math.max(0, pending - 1);
+
+            consumedElem.innerText = consumed.toLocaleString();
+            pendingElem.innerText = pending.toLocaleString();
         }
 
         function renderStreamTable() {
