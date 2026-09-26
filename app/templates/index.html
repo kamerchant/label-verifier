@@ -93,7 +93,6 @@
             background: linear-gradient(90deg, rgba(255, 165, 2, 0.1) 0%, #161821 100%);
         }
 
-        /* Hide horizontal scrollbar on mobile toolbar */
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
@@ -210,9 +209,8 @@
 </head>
 <body class="min-h-screen flex flex-col justify-between selection:bg-[#5e6ad2] selection:text-white">
 
-    <!-- Top Command Navigation Bar (Mobile wrap & scroll friendly) -->
+    <!-- Top Command Navigation Bar -->
     <header class="border-b border-white/[0.08] bg-[#0d0e11]/95 backdrop-blur-md px-3 sm:px-6 py-3 flex flex-wrap items-center justify-between text-sm sticky top-0 z-40 gap-2">
-        <!-- Top Left Corner: Logo Image & CCL Pakistan VDV Title -->
         <div class="flex items-center gap-2 sm:gap-3 shrink-0">
             <div class="bg-white px-2 py-1 rounded shadow-sm flex items-center justify-center shrink-0">
                 <img src="/static/logo.jpg" alt="CCL Logo" class="h-6 sm:h-8 w-auto max-w-[90px] sm:max-w-[120px] object-contain block" onerror="this.onerror=null; this.src='/logo.jpg';">
@@ -220,10 +218,9 @@
             <span class="font-extrabold text-white text-base sm:text-xl tracking-wide whitespace-nowrap">CCL Pakistan VDV</span>
         </div>
 
-        <!-- Global Navigation Controls (Horizontally scrollable on narrow mobile screens) -->
         <div class="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar w-full sm:w-auto py-1 sm:py-0">
             <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-3 py-1.5 rounded text-xs sm:text-sm font-semibold whitespace-nowrap min-h-[38px] flex items-center">Create Job</button>
-            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center">All Jobs</button>
+            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center">View All Jobs</button>
             <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center">User Admin</button>
             <button onclick="toggleModal('pw-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center">Change Password</button>
             <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-3 py-1.5 rounded text-xs sm:text-sm font-medium transition-colors whitespace-nowrap min-h-[38px] flex items-center">Logout</button>
@@ -238,7 +235,6 @@
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
                     <h1 id="active-title-card" class="text-xl sm:text-3xl font-extrabold tracking-tight text-white font-mono truncate">Job Card: None</h1>
-                    <span id="status-chip" class="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-slate-800 text-slate-400 border border-slate-700 shrink-0">STANDBY</span>
                 </div>
                 <p id="header-job-desc" class="text-xs sm:text-sm text-slate-400 mt-1 truncate">Search active production jobs using the search field.</p>
             </div>
@@ -251,8 +247,8 @@
             </div>
         </div>
 
-        <!-- Metric Figures (Linear Monospace Counters: 2-col on mobile, 5-col on desktop) -->
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3">
+        <!-- Metric Figures (3-column streamlined layout: Blocked and Completion Rate removed) -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
             <div class="linear-card p-3 sm:p-4 rounded">
                 <span class="text-xs text-slate-400 block font-medium">Total Pool</span>
                 <span id="kpi-total" class="text-xl sm:text-3xl font-bold font-mono text-white mt-1 block">0</span>
@@ -264,21 +260,9 @@
                 <span class="text-[11px] sm:text-xs text-slate-500 mt-1 block truncate">Consumed serials</span>
             </div>
             <div class="linear-card p-3 sm:p-4 rounded">
-                <span class="text-xs text-amber-400 block font-medium">Pending Queue</span>
+                <span class="text-xs text-amber-400 block font-medium">Remaining Codes</span>
                 <span id="kpi-pending" class="text-xl sm:text-3xl font-bold font-mono text-slate-300 mt-1 block">0</span>
                 <span class="text-[11px] sm:text-xs text-slate-500 mt-1 block truncate">Remaining in feed</span>
-            </div>
-            <div class="linear-card p-3 sm:p-4 rounded">
-                <span class="text-xs text-slate-400 block font-medium">Blocked</span>
-                <span id="kpi-blocked" class="text-xl sm:text-3xl font-bold font-mono text-slate-300 mt-1 block">0</span>
-                <span class="text-[11px] sm:text-xs text-slate-500 mt-1 block truncate">Quarantined units</span>
-            </div>
-            <div class="linear-card p-3 sm:p-4 rounded col-span-2 md:col-span-1">
-                <span class="text-xs text-slate-400 block font-medium">Completion Rate</span>
-                <span id="counter" class="text-xl sm:text-3xl font-bold font-mono text-[#5e6ad2] mt-1 block">0 / 0</span>
-                <div class="w-full bg-white/[0.08] h-2 rounded-full mt-2 sm:mt-2.5 overflow-hidden">
-                    <div id="progress-bar-fill" class="bg-[#5e6ad2] h-full transition-all duration-200" style="width: 0%"></div>
-                </div>
             </div>
         </div>
 
@@ -287,16 +271,16 @@
             
             <!-- Result Notice Bar -->
             <div id="status-card" class="linear-subcard px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-2 sm:gap-3 state-ready">
-                <div class="flex items-center gap-2.5 sm:gap-3">
+                <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
                     <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-[#5e6ad2] shrink-0"></span>
-                    <div>
+                    <div class="min-w-0 flex-1">
                         <span id="status-heading" class="text-sm sm:text-base font-bold text-slate-100 font-mono tracking-wide leading-snug block">To Verify Code, Select the Job ID and Enter Code Below</span>
-                        <span id="status-detail" class="text-xs sm:text-sm text-slate-400 block sm:inline"></span>
+                        <span id="status-detail" class="text-xs sm:text-sm text-slate-400 block"></span>
                     </div>
                 </div>
                 <div class="flex items-center gap-2 sm:gap-3 self-end md:self-auto shrink-0 mt-1 md:mt-0">
-                    <span id="status-last-code" class="text-xs sm:text-base font-mono text-slate-400 max-w-[140px] sm:max-w-none truncate">READY</span>
-                    <span id="status-badge" class="px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs font-mono font-bold bg-[#1a1c24] text-slate-300">STANDBY</span>
+                    <span id="status-last-code" class="text-xs sm:text-base font-mono text-slate-400 max-w-[180px] sm:max-w-none truncate hidden"></span>
+                    <span id="status-badge" class="px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs font-mono font-bold hidden"></span>
                 </div>
             </div>
 
@@ -312,32 +296,21 @@
             </form>
         </div>
 
-        <!-- Real-Time Stream Table -->
-        <div class="linear-card rounded overflow-hidden flex-1 flex flex-col">
-            <div class="px-3.5 sm:px-5 py-3 sm:py-4 border-b border-white/[0.08] flex flex-wrap items-center justify-between gap-2 sm:gap-3 text-sm">
+        <!-- Real-Time Stream Table Container -->
+        <div class="linear-card rounded overflow-hidden flex flex-col">
+            <div class="px-3.5 sm:px-5 py-3 sm:py-4 border-b border-white/[0.08] flex items-center justify-between text-sm">
                 <div class="flex items-center gap-2 sm:gap-3 font-semibold text-slate-200">
                     <span class="text-sm sm:text-lg">Live Verification Stream</span>
                     <span class="text-slate-600 hidden sm:inline">|</span>
                     <span class="text-xs text-slate-400 font-mono font-normal hidden sm:inline">Recent scans recorded this session</span>
                 </div>
-                <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                    <button id="report-btn" onclick="openReportModal()" disabled class="linear-button-secondary text-xs px-2.5 sm:px-3.5 py-1.5 rounded disabled:opacity-30 min-h-[36px]">
-                        QC Report
-                    </button>
-                    <button id="lifecycle-btn" onclick="openLifecycleModal()" disabled class="linear-button-secondary text-xs px-2.5 sm:px-3.5 py-1.5 rounded disabled:opacity-30 min-h-[36px]">
-                        Lifecycle Audit
-                    </button>
-                    <button id="job-toggle-btn" onclick="handleJobStatusToggle()" disabled class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs px-2.5 sm:px-3.5 py-1.5 rounded disabled:opacity-30 transition-colors min-h-[36px]">
-                        Complete Job
-                    </button>
-                </div>
             </div>
 
             <!-- Horizontally scrollable on small mobile displays -->
-            <div class="overflow-x-auto flex-1">
+            <div class="overflow-x-auto flex-1 max-h-72 overflow-y-auto">
                 <table class="w-full text-left text-xs sm:text-sm whitespace-nowrap sm:whitespace-normal">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-[11px] sm:text-xs text-slate-400 font-semibold bg-[#161821]">
+                        <tr class="border-b border-white/[0.08] text-[11px] sm:text-xs text-slate-400 font-semibold bg-[#161821] sticky top-0 z-10">
                             <th class="px-3 sm:px-5 py-2.5 sm:py-3 w-16">Seq</th>
                             <th class="px-3 sm:px-5 py-2.5 sm:py-3">Payload Value</th>
                             <th class="px-3 sm:px-5 py-2.5 sm:py-3">Evaluation</th>
@@ -352,6 +325,19 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+
+        <!-- Action Buttons Relocated to Bottom of Screen, Below Verification Stream Table -->
+        <div class="flex flex-wrap items-center justify-end gap-2.5 pt-1 pb-4">
+            <button id="report-btn" onclick="openReportModal()" disabled class="linear-button-secondary text-xs sm:text-sm px-4 py-2 rounded disabled:opacity-30 min-h-[42px] font-medium shadow-sm">
+                QC Report
+            </button>
+            <button id="lifecycle-btn" onclick="openLifecycleModal()" disabled class="linear-button-secondary text-xs sm:text-sm px-4 py-2 rounded disabled:opacity-30 min-h-[42px] font-medium shadow-sm">
+                Lifecycle Audit
+            </button>
+            <button id="job-toggle-btn" onclick="handleJobStatusToggle()" disabled class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs sm:text-sm px-4 py-2 rounded disabled:opacity-30 transition-colors min-h-[42px] font-semibold shadow-sm">
+                Complete Job
+            </button>
         </div>
 
     </main>
@@ -393,7 +379,7 @@
         </div>
     </div>
 
-    <!-- Password Confirmation Modal (Unblocking, User Deletions) -->
+    <!-- Password Confirmation Modal -->
     <div id="auth-confirm-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[70]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-amber-500/25 shadow-2xl">
             <h3 id="auth-confirm-title" class="text-base font-bold mb-1 text-amber-400">Admin Authorization Required</h3>
@@ -411,7 +397,7 @@
         </div>
     </div>
 
-    <!-- Soft Delete Modal (Reason + Password) -->
+    <!-- Soft Delete Modal -->
     <div id="job-delete-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[70]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full border border-red-500/25 shadow-2xl">
             <div class="flex justify-between items-center mb-2">
@@ -437,7 +423,7 @@
         </div>
     </div>
 
-    <!-- Warning Confirmation Modal: Codes Exist in Deleted Job -->
+    <!-- Warning Confirmation Modal -->
     <div id="deleted-dup-warning-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[70]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full border border-amber-500/30 shadow-2xl">
             <h3 class="text-base font-bold mb-1 text-amber-400">Warning: Reused Serial Codes Detected</h3>
@@ -497,7 +483,7 @@
         </div>
     </div>
 
-    <!-- Admin Master Jobs Report Modal with Real-Time Search & Status Toggles -->
+    <!-- Admin Master Jobs Report Modal -->
     <div id="master-jobs-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
         <div class="linear-card p-4 sm:p-6 rounded-lg max-w-5xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="flex justify-between items-center mb-3 border-b border-white/[0.08] pb-3">
@@ -508,7 +494,6 @@
                 <button onclick="toggleModal('master-jobs-modal')" class="linear-button-secondary px-3 py-1.5 text-xs rounded font-medium min-h-[36px]">Close</button>
             </div>
 
-            <!-- Toolbar: Status Filter Buttons + Search Input -->
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-2.5 mb-3">
                 <div class="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 md:pb-0">
                     <button onclick="filterMasterJobs('ALL')" id="filter-tab-all" class="linear-button-primary px-3 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[36px]">All Jobs</button>
@@ -516,14 +501,12 @@
                     <button onclick="filterMasterJobs('COMPLETED')" id="filter-tab-completed" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[36px]">Completed Only</button>
                     <button onclick="filterMasterJobs('DELETED')" id="filter-tab-deleted" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[36px]">Deleted Only</button>
                 </div>
-                <!-- Search bar for All Jobs modal -->
                 <div class="relative w-full md:w-72">
                     <input type="text" id="master-job-search" oninput="renderMasterJobsTable()" placeholder="Search in all jobs..." 
                            class="linear-input w-full px-3 py-1.5 text-xs font-mono rounded placeholder-slate-500 min-h-[38px]">
                 </div>
             </div>
 
-            <!-- Jobs Table -->
             <div class="flex-1 overflow-y-auto border border-white/[0.08] rounded">
                 <table class="w-full text-left text-xs sm:text-sm whitespace-nowrap sm:whitespace-normal">
                     <thead>
@@ -802,36 +785,28 @@
             document.getElementById('active-title-card').innerText = `Job Card: ${id}`;
             document.getElementById('header-job-desc').innerText = activeJobDesc || 'Batch serialization active & ready for verification stream.';
 
-            const chip = document.getElementById('status-chip');
-            if (status === 'ACTIVE') {
-                chip.innerText = "IN RUN";
-                chip.className = "px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold linear-badge-pass";
-            } else {
-                chip.innerText = "COMPLETED";
-                chip.className = "px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold linear-badge-fail";
-            }
+            // Dynamic header prompt update when job is selected
+            document.getElementById('status-heading').innerText = "Enter Code Below";
+            document.getElementById('status-detail').innerText = "";
+            document.getElementById('status-last-code').classList.add('hidden');
+            document.getElementById('status-badge').classList.add('hidden');
 
             document.getElementById('report-btn').disabled = false;
             document.getElementById('lifecycle-btn').disabled = false;
-            document.getElementById('counter').innerText = `${consumed.toLocaleString()} / ${total.toLocaleString()}`;
 
             const pending = Math.max(0, total - consumed);
             document.getElementById('kpi-total').innerText = total.toLocaleString();
             document.getElementById('kpi-consumed').innerText = consumed.toLocaleString();
             document.getElementById('kpi-pending').innerText = pending.toLocaleString();
-            document.getElementById('kpi-blocked').innerText = "0";
-
-            const percent = total > 0 ? (consumed / total * 100).toFixed(1) : 0;
-            document.getElementById('progress-bar-fill').style.width = `${percent}%`;
 
             const toggleBtn = document.getElementById('job-toggle-btn');
             if (status === 'ACTIVE') {
                 toggleBtn.innerText = "Complete Job";
-                toggleBtn.className = "bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs px-2.5 sm:px-3.5 py-1.5 rounded transition-colors min-h-[36px]";
+                toggleBtn.className = "bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs sm:text-sm px-4 py-2 rounded transition-colors min-h-[42px] font-semibold shadow-sm";
                 toggleBtn.disabled = false;
             } else {
                 toggleBtn.innerText = "Reactivate (Admin)";
-                toggleBtn.className = "linear-button-secondary text-amber-400 text-xs px-2.5 sm:px-3.5 py-1.5 rounded min-h-[36px]";
+                toggleBtn.className = "linear-button-secondary text-amber-400 text-xs sm:text-sm px-4 py-2 rounded min-h-[42px] font-medium shadow-sm";
                 toggleBtn.disabled = (currentUser.role !== 'admin');
             }
 
@@ -960,6 +935,20 @@
                     activeJobId = null;
                     document.getElementById('active-title-card').innerText = "Job Card: None";
                     document.getElementById('header-job-desc').innerText = "Search active production jobs using the search field.";
+                    
+                    // Reset banner back to default initial prompt
+                    document.getElementById('status-heading').innerText = "To Verify Code, Select the Job ID and Enter Code Below";
+                    document.getElementById('status-detail').innerText = "";
+                    document.getElementById('status-last-code').innerText = "";
+                    document.getElementById('status-last-code').classList.add('hidden');
+                    document.getElementById('status-badge').classList.add('hidden');
+                    document.getElementById('status-card').className = "linear-subcard px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-2 sm:gap-3 state-ready";
+                    document.getElementById('status-dot').className = "w-2.5 h-2.5 rounded-full bg-[#5e6ad2] shrink-0";
+
+                    document.getElementById('kpi-total').innerText = "0";
+                    document.getElementById('kpi-consumed').innerText = "0";
+                    document.getElementById('kpi-pending').innerText = "0";
+
                     document.getElementById('job-toggle-btn').disabled = true;
                     document.getElementById('lifecycle-btn').disabled = true;
                     document.getElementById('report-btn').disabled = true;
@@ -1081,6 +1070,8 @@
             const codeDisplay = document.getElementById('status-last-code');
 
             codeDisplay.innerText = code;
+            codeDisplay.classList.remove('hidden');
+            badge.classList.remove('hidden');
 
             if (result === 'PASS') {
                 playTone('PASS');
@@ -1198,7 +1189,7 @@
             stats.innerHTML = `
                 <div class="linear-card p-2 sm:p-3 rounded"><span class="text-slate-400 block text-[11px] sm:text-xs font-mono uppercase">TOTAL POOL</span><span class="font-bold text-sm sm:text-base text-white font-mono">${data.total_codes.toLocaleString()}</span></div>
                 <div class="linear-card p-2 sm:p-3 rounded"><span class="text-[#2ed573] block text-[11px] sm:text-xs font-mono uppercase">VERIFIED</span><span class="font-bold text-sm sm:text-base text-[#2ed573] font-mono">${data.consumed_codes.toLocaleString()}</span></div>
-                <div class="linear-card p-2 sm:p-3 rounded"><span class="text-amber-400 block text-[11px] sm:text-xs font-mono uppercase">PENDING</span><span class="font-bold text-sm sm:text-base text-amber-400 font-mono">${data.pending_codes.toLocaleString()}</span></div>
+                <div class="linear-card p-2 sm:p-3 rounded"><span class="text-amber-400 block text-[11px] sm:text-xs font-mono uppercase">REMAINING CODES</span><span class="font-bold text-sm sm:text-base text-amber-400 font-mono">${data.pending_codes.toLocaleString()}</span></div>
                 <div class="linear-card p-2 sm:p-3 rounded"><span class="text-red-400 block text-[11px] sm:text-xs font-mono uppercase">BLOCKED</span><span class="font-bold text-sm sm:text-base text-red-400 font-mono">${data.blocked_codes.toLocaleString()}</span></div>
             `;
 
