@@ -292,6 +292,7 @@
                 <p id="header-job-desc" class="text-xs sm:text-sm text-slate-400 mt-1 truncate">Search active production jobs using the search field.</p>
             </div>
 
+            <!-- Job Search Bar and Adjacent Action Buttons Group -->
             <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full lg:w-auto shrink-0">
                 <div class="relative flex-1 sm:w-72 shrink-0">
                     <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Search active jobs..." 
@@ -408,9 +409,9 @@
         </div>
     </footer>
 
-    <!-- Custom Alert Modal (Replaces standard browser popups with "Please Verify!") -->
+    <!-- Custom Alert Modal ("Please Verify!") -->
     <div id="custom-alert-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
-        <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/30 shadow-2xl text-center">
+        <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/35 shadow-2xl text-center">
             <h3 class="text-base font-bold mb-1 text-white">Please Verify!</h3>
             <p id="custom-alert-msg" class="text-xs text-slate-300 mb-5 leading-relaxed"></p>
             <button type="button" onclick="closeCustomAlert()" class="linear-button-primary w-full py-2.5 rounded text-sm font-semibold min-h-[40px]">OK</button>
@@ -728,7 +729,7 @@
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        // Custom Alert Helper (Replaces standard browser popups with "Please Verify!")
+        // Custom Alert Helper ("Please Verify!")
         function showCustomAlert(message) {
             document.getElementById('custom-alert-msg').innerText = message;
             document.getElementById('custom-alert-modal').classList.remove('hidden');
