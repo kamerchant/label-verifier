@@ -218,7 +218,7 @@
     </div>
 
     <!-- Password Confirmation Modal (Unblock, Delete User) -->
-    <div id="auth-confirm-modal" class="fixed inset-0 bg-black/85 flex items-center justify-center hidden p-4 z-50">
+    <div id="auth-confirm-modal" class="fixed inset-0 bg-black/85 flex items-center justify-center hidden p-4 z-[70]">
         <div class="bg-slate-800 p-6 rounded-lg max-w-sm w-full border border-slate-600 shadow-2xl">
             <h3 id="auth-confirm-title" class="text-lg font-bold mb-1 text-amber-400">Admin Authorization Required</h3>
             <p id="auth-confirm-subtitle" class="text-xs text-slate-400 mb-4">Please enter your administrator password to proceed.</p>
@@ -235,31 +235,34 @@
         </div>
     </div>
 
-    <!-- Job Deletion Modal (Reason + Password) -->
-    <div id="job-delete-modal" class="fixed inset-0 bg-black/85 flex items-center justify-center hidden p-4 z-50">
-        <div class="bg-slate-800 p-6 rounded-lg max-w-md w-full border border-red-700 shadow-2xl">
-            <h3 class="text-lg font-bold mb-1 text-red-400">Soft Delete Job Card</h3>
-            <p id="job-delete-subtitle" class="text-xs text-slate-300 mb-4">The job will be moved to deleted status and hidden from operators. The job ID can be reused later.</p>
+    <!-- Job Deletion Modal (High z-index to appear ABOVE All Jobs Report) -->
+    <div id="job-delete-modal" class="fixed inset-0 bg-black/90 flex items-center justify-center hidden p-4 z-[70]">
+        <div class="bg-slate-800 p-6 rounded-lg max-w-md w-full border border-red-600 shadow-2xl">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-lg font-bold text-red-400">Delete Job Card</h3>
+                <button type="button" onclick="closeJobDeleteModal()" class="text-slate-400 hover:text-white text-sm">✕</button>
+            </div>
+            <p id="job-delete-subtitle" class="text-xs text-slate-300 mb-4 leading-relaxed"></p>
             <form onsubmit="submitJobDelete(event)" class="space-y-3">
                 <div>
                     <label class="block text-xs font-semibold mb-1 text-slate-300">Reason for Deletion *</label>
-                    <textarea id="job-delete-reason" required rows="2" placeholder="e.g. Cancelled by customer / Incorrect codes uploaded / Plate defect" 
+                    <textarea id="job-delete-reason" required rows="2" placeholder="e.g. Order canceled / Plate error / Wrong serial range" 
                               class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-500"></textarea>
                 </div>
                 <div>
                     <label class="block text-xs font-semibold mb-1 text-slate-300">Admin Password *</label>
-                    <input type="password" id="job-delete-pass" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white">
+                    <input type="password" id="job-delete-pass" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white focus:outline-none focus:border-red-500">
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="toggleModal('job-delete-modal')" class="px-4 py-2 bg-slate-700 rounded text-xs">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-red-700 hover:bg-red-600 rounded text-xs font-semibold text-white">Delete Job Card</button>
+                    <button type="button" onclick="closeJobDeleteModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-xs">Cancel</button>
+                    <button type="submit" id="btn-confirm-delete" class="px-4 py-2 bg-red-700 hover:bg-red-600 rounded text-xs font-semibold text-white">Delete Job Card</button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Warning Confirmation Modal: Codes Exist in Deleted Job -->
-    <div id="deleted-dup-warning-modal" class="fixed inset-0 bg-black/85 flex items-center justify-center hidden p-4 z-50">
+    <div id="deleted-dup-warning-modal" class="fixed inset-0 bg-black/85 flex items-center justify-center hidden p-4 z-[70]">
         <div class="bg-slate-800 p-6 rounded-lg max-w-md w-full border border-amber-600 shadow-2xl">
             <h3 class="text-lg font-bold mb-1 text-amber-400">Warning: Reused Code Detected</h3>
             <p id="deleted-dup-warning-msg" class="text-xs text-slate-300 mb-5 leading-relaxed"></p>
@@ -318,7 +321,7 @@
         </div>
     </div>
 
-    <!-- Admin Master Jobs Report Modal with Status Toggles -->
+    <!-- Admin Master Jobs Report Modal (z-50) -->
     <div id="master-jobs-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
         <div class="bg-slate-800 p-6 rounded-lg max-w-5xl w-full border border-slate-600 shadow-2xl flex flex-col max-h-[90vh]">
             <div class="flex justify-between items-center mb-3 border-b border-slate-700 pb-3">
@@ -329,7 +332,7 @@
                 <button onclick="toggleModal('master-jobs-modal')" class="px-3 py-1 bg-slate-700 rounded text-xs">Close</button>
             </div>
 
-            <!-- 4 Filter Tabs -->
+            <!-- Filter Tabs -->
             <div class="flex gap-2 mb-3">
                 <button onclick="filterMasterJobs('ALL')" id="filter-tab-all" class="px-3 py-1 bg-blue-600 text-white rounded text-xs font-semibold">All Jobs</button>
                 <button onclick="filterMasterJobs('ACTIVE')" id="filter-tab-active" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs font-semibold">Active Only</button>
@@ -463,6 +466,7 @@
         let activeJobStatus = null;
         let pendingAction = null;
         let targetDeleteJobId = null;
+        let currentMasterTab = 'ALL';
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -704,18 +708,31 @@
             }
         }
 
-        // --- Soft Delete with Reason & Password ---
+        // --- Soft Delete Workflow with Guaranteed Modal Stacking ---
         function requestJobDelete(jobCardId) {
             targetDeleteJobId = jobCardId;
-            document.getElementById('job-delete-subtitle').innerText = `Provide a reason and your password to move Job Card '${jobCardId}' to deleted status.`;
+            document.getElementById('job-delete-subtitle').innerText = 
+                `Provide a reason and your admin password to move Job Card '${jobCardId}' to deleted status.`;
             document.getElementById('job-delete-reason').value = "";
             document.getElementById('job-delete-pass').value = "";
             document.getElementById('job-delete-modal').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('job-delete-reason').focus();
+            }, 50);
+        }
+
+        function closeJobDeleteModal() {
+            targetDeleteJobId = null;
+            document.getElementById('job-delete-modal').classList.add('hidden');
         }
 
         async function submitJobDelete(e) {
             e.preventDefault();
             if (!targetDeleteJobId) return;
+
+            const btn = document.getElementById('btn-confirm-delete');
+            btn.disabled = true;
+            btn.innerText = "Deleting...";
 
             const reason = document.getElementById('job-delete-reason').value.trim();
             const password = document.getElementById('job-delete-pass').value;
@@ -729,11 +746,15 @@
                 body: body
             });
 
+            btn.disabled = false;
+            btn.innerText = "Delete Job Card";
+
             if (res.ok) {
-                document.getElementById('job-delete-modal').classList.add('hidden');
-                alert(`Job Card '${targetDeleteJobId}' moved to deleted status.`);
+                const deletedName = targetDeleteJobId;
+                closeJobDeleteModal();
+                alert(`Job Card '${deletedName}' moved to deleted status.`);
                 
-                if (activeJobId === targetDeleteJobId) {
+                if (activeJobId === deletedName) {
                     activeJobId = null;
                     document.getElementById('active-badge').innerText = "No Job Selected";
                     document.getElementById('active-badge').className = "px-3 py-1 bg-yellow-600 rounded text-xs uppercase font-bold tracking-wide";
@@ -742,9 +763,8 @@
                     document.getElementById('report-btn').disabled = true;
                 }
 
-                targetDeleteJobId = null;
                 handleJobSearch();
-                loadMasterJobs('ALL');
+                loadMasterJobs(currentMasterTab);
             } else {
                 const err = await res.json();
                 alert(err.detail || "Deletion failed.");
@@ -753,11 +773,12 @@
 
         // --- Admin Master Jobs Report ---
         async function openMasterJobsModal() {
-            toggleModal('master-jobs-modal');
+            document.getElementById('master-jobs-modal').classList.remove('hidden');
             loadMasterJobs('ALL');
         }
 
         async function loadMasterJobs(filterType) {
+            currentMasterTab = filterType;
             ['all', 'active', 'completed', 'deleted'].forEach(t => {
                 const btn = document.getElementById(`filter-tab-${t}`);
                 if (t === filterType.toLowerCase()) {
@@ -890,7 +911,6 @@
             const res = await fetch('/api/jobs/create', { method: 'POST', body });
             const data = await res.json();
 
-            // Intercept soft warning for codes in deleted jobs
             if (res.status === 409 && data.status === "deleted_duplicate_warning") {
                 document.getElementById('deleted-dup-warning-msg').innerText = 
                     `Code '${data.code}' exists in deleted Job Card '${data.deleted_job_card}'. Would you like to continue creating this job anyway?`;
@@ -963,7 +983,10 @@
             const data = await res.json();
 
             document.getElementById('lifecycle-job-id').innerText = `Lifecycle Audit Log: Job Card ${data.job_card_id} (${data.status})`;
-            document.getElementById('lifecycle-desc').innerText = data.description || "No description provided";
+            
+            const descText = data.description ? `Job: ${data.description}` : 'No description provided';
+            const createdText = data.created_at ? ` | Created on: ${data.created_at}` : '';
+            document.getElementById('lifecycle-desc').innerText = `${descText}${createdText}`;
 
             const tbody = document.getElementById('lifecycle-log-rows');
             if (data.logs.length === 0) {
@@ -974,7 +997,7 @@
                     let colorClass = "text-slate-300";
                     if (log.action === 'CREATED') {
                         label = "Job Created";
-                        colorClass = "text-blue-400";
+                        colorClass = "text-blue-400 font-bold";
                     } else if (log.action === 'REACTIVATED_AND_UNBLOCKED') {
                         label = "Reactivated & Unblocked";
                         colorClass = "text-amber-400";
@@ -983,7 +1006,7 @@
                         colorClass = "text-rose-400";
                     } else if (log.action === 'DELETED') {
                         label = "Soft Deleted";
-                        colorClass = "text-red-500";
+                        colorClass = "text-red-500 font-bold";
                     }
 
                     return `

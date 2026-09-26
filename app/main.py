@@ -515,16 +515,24 @@ def unblock_job(
     finally:
         release_connection(conn)
 
-# Lifecycle Audit Trail
+# Lifecycle Audit Trail Endpoint
 @app.get("/api/jobs/{job_card_id}/lifecycle-logs")
 def get_lifecycle_logs(job_card_id: str, user: dict = Depends(get_current_user)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT description, status, deletion_reason, deleted_by, deleted_at FROM job_cards WHERE job_card_id = %s ORDER BY created_at DESC LIMIT 1", (job_card_id,))
+            cur.execute("""
+                SELECT description, status, deletion_reason, deleted_by, deleted_at, created_at 
+                FROM job_cards 
+                WHERE job_card_id = %s 
+                ORDER BY created_at DESC 
+                LIMIT 1
+            """, (job_card_id,))
             job = cur.fetchone()
             if not job:
                 raise HTTPException(status_code=404, detail="Job Card not found")
+
+            job_desc, job_status, del_reason, del_by, del_at, created_at = job
 
             cur.execute("""
                 SELECT action, performed_by, reason, timestamp 
@@ -532,20 +540,33 @@ def get_lifecycle_logs(job_card_id: str, user: dict = Depends(get_current_user))
                 WHERE job_card_id = %s 
                 ORDER BY timestamp ASC
             """, (job_card_id,))
+            rows = cur.fetchall()
+
             logs = [{
                 "action": r[0],
                 "user": r[1],
                 "reason": r[2] or "",
-                "time": r[3].strftime("%Y-%m-%d %H:%M:%S")
-            } for r in cur.fetchall()]
+                "time": r[3].strftime("%Y-%m-%d %H:%M:%S") if r[3] else ""
+            } for r in rows]
+
+            # Prepend creation timestamp if legacy job was created before explicit CREATED logging
+            has_created = any(log["action"] == "CREATED" for log in logs)
+            if not has_created and created_at:
+                logs.insert(0, {
+                    "action": "CREATED",
+                    "user": "System / Admin",
+                    "reason": "Job created and batch ingested",
+                    "time": created_at.strftime("%Y-%m-%d %H:%M:%S")
+                })
 
             return {
                 "job_card_id": job_card_id,
-                "description": job[0] or "",
-                "status": job[1],
-                "deletion_reason": job[2] or "",
-                "deleted_by": job[3] or "",
-                "deleted_at": job[4].strftime("%Y-%m-%d %H:%M:%S") if job[4] else "",
+                "description": job_desc or "",
+                "status": job_status,
+                "created_at": created_at.strftime("%Y-%m-%d %H:%M:%S") if created_at else "",
+                "deletion_reason": del_reason or "",
+                "deleted_by": del_by or "",
+                "deleted_at": del_at.strftime("%Y-%m-%d %H:%M:%S") if del_at else "",
                 "logs": logs
             }
     finally:
