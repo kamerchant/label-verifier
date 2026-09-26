@@ -1,254 +1,27 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Print Label QC Verifier</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .flash-pass { background-color: #15803d !important; color: white !important; }
-        .flash-fail { background-color: #b91c1c !important; color: white !important; }
-        .flash-warn { background-color: #c2410c !important; color: white !important; }
-    </style>
-</head>
-<body class="bg-slate-900 text-slate-100 min-h-screen p-4 flex flex-col items-center">
-
-    <header class="w-full max-w-4xl flex justify-between items-center py-4 border-b border-slate-700 mb-6">
-        <h1 class="text-2xl font-bold tracking-wider">VARIABLE DATA QC VERIFIER</h1>
-        <div class="flex items-center gap-3">
-            <span id="active-badge" class="px-3 py-1 bg-yellow-600 rounded text-xs uppercase font-bold tracking-wide">No Job Selected</span>
-            <button onclick="toggleUploadModal()" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm font-semibold">Upload Batch</button>
-        </div>
-    </header>
-
-    <main class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Job Cards Side Panel -->
-        <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
-            <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Job Cards</h2>
-            <div id="job-list" class="space-y-2 overflow-y-auto max-h-96">Loading...</div>
-        </div>
-
-        <!-- Shopfloor Scanner Area -->
-        <div class="md:col-span-2 flex flex-col gap-4">
-            <div id="status-card" class="bg-slate-800 p-8 rounded-lg border border-slate-700 flex flex-col items-center justify-center min-h-[260px] text-center transition-colors duration-200">
-                <span id="status-badge" class="text-xs font-bold px-3 py-1 rounded bg-slate-700 mb-3 tracking-widest uppercase">READY</span>
-                <h2 id="status-heading" class="text-4xl font-extrabold mb-2">SCAN LABEL</h2>
-                <p id="status-detail" class="text-slate-400 font-mono text-base">Select a job card and scan a barcode to verify</p>
+<!-- Upload Modal -->
+<div id="upload-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
+    <div class="bg-slate-800 p-6 rounded-lg max-w-md w-full border border-slate-600 shadow-2xl">
+        <h3 class="text-lg font-bold mb-4">Upload New Batch Data</h3>
+        <form id="upload-form" onsubmit="uploadJob(event)" class="space-y-4">
+            <div>
+                <label class="block text-xs font-semibold mb-1 text-slate-300">Job Card #</label>
+                <input type="text" id="new-job-id" required placeholder="e.g. JC-2026-99" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white">
             </div>
-
-            <!-- Auto-focused Barcode Input -->
-            <form id="scan-form" onsubmit="handleScan(event)" class="w-full">
-                <input type="text" id="barcode-input" placeholder="Scanner input active..." autofocus autocomplete="off"
-                    class="w-full bg-slate-950 border-2 border-blue-500 rounded p-4 text-center text-xl font-mono focus:outline-none focus:border-green-400 shadow-inner">
-            </form>
-
-            <div class="flex justify-between items-center bg-slate-800 p-4 rounded-lg border border-slate-700">
-                <button id="end-job-btn" onclick="completeJob()" disabled class="px-4 py-2 bg-red-800 hover:bg-red-700 disabled:opacity-30 rounded font-semibold text-sm">
-                    Complete Job & Block Remaining
-                </button>
-                <div class="text-right">
-                    <span class="text-xs text-slate-400 block uppercase">Active Job Progress</span>
-                    <span id="counter" class="text-lg font-bold font-mono">0 / 0</span>
-                </div>
+            <div>
+                <label class="block text-xs font-semibold mb-1 text-slate-300">Target Rows (extracts all columns)</label>
+                <input type="text" id="target-rows" required placeholder="e.g. 1, 3, 5 or 1-50, 60 or odd" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white">
+                <p class="text-[11px] text-slate-400 mt-1">
+                    Enter rows separated by commas (e.g. <code>1, 3, 5</code>) or type <code>odd</code> to pull all columns on every odd row.
+                </p>
             </div>
-        </div>
-    </main>
-
-    <!-- Upload Modal -->
-    <div id="upload-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
-        <div class="bg-slate-800 p-6 rounded-lg max-w-md w-full border border-slate-600 shadow-2xl">
-            <h3 class="text-lg font-bold mb-4">Upload New Batch Data</h3>
-            <form id="upload-form" onsubmit="uploadJob(event)" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold mb-1 text-slate-300">Job Card #</label>
-                    <input type="text" id="new-job-id" required placeholder="e.g. JC-2026-99" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold mb-1 text-slate-300">Target Rows (1-based range)</label>
-                    <input type="text" id="target-rows" required placeholder="e.g. 2-500000 or 6-100000" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white">
-                    <p class="text-[11px] text-slate-400 mt-1">Specify row ranges to extract (e.g. skip header by entering <code>2-500000</code>).</p>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold mb-1 text-slate-300">CSV or TXT File</label>
-                    <input type="file" id="new-job-file" accept=".csv,.txt" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-slate-300">
-                </div>
-                <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="toggleUploadModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm">Cancel</button>
-                    <button type="submit" id="upload-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm font-semibold">Upload</button>
-                </div>
-            </form>
-        </div>
+            <div>
+                <label class="block text-xs font-semibold mb-1 text-slate-300">CSV or TXT File</label>
+                <input type="file" id="new-job-file" accept=".csv,.txt" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-slate-300">
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="toggleUploadModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm">Cancel</button>
+                <button type="submit" id="upload-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm font-semibold">Upload</button>
+            </div>
+        </form>
     </div>
-
-    <script>
-        let activeJobId = null;
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-        function playTone(type) {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            if (type === 'PASS') {
-                osc.frequency.setValueAtTime(1046.5, audioCtx.currentTime); // High C
-                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
-                osc.start();
-                osc.stop(audioCtx.currentTime + 0.15);
-            } else {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-                osc.frequency.linearRampToValueAtTime(220, audioCtx.currentTime + 0.4);
-                gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
-                osc.start();
-                osc.stop(audioCtx.currentTime + 0.4);
-            }
-        }
-
-        async function fetchJobs() {
-            const res = await fetch('/api/jobs');
-            const jobs = await res.json();
-            const list = document.getElementById('job-list');
-            list.innerHTML = jobs.map(j => `
-                <div onclick="selectJob('${j.id}', '${j.status}', ${j.consumed}, ${j.total})" 
-                     class="p-3 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded cursor-pointer ${activeJobId === j.id ? 'border-blue-400 bg-slate-700' : ''}">
-                    <div class="flex justify-between items-center">
-                        <span class="font-bold font-mono text-sm">${j.id}</span>
-                        <span class="text-xs px-2 py-0.5 rounded ${j.status === 'ACTIVE' ? 'bg-green-800' : 'bg-red-800'}">${j.status}</span>
-                    </div>
-                    <div class="text-xs text-slate-400 mt-1">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()} verified</div>
-                </div>
-            `).join('');
-        }
-
-        function selectJob(id, status, consumed, total) {
-            activeJobId = id;
-            document.getElementById('active-badge').innerText = id;
-            document.getElementById('active-badge').className = "px-3 py-1 bg-green-600 rounded text-xs uppercase font-bold tracking-wide";
-            document.getElementById('end-job-btn').disabled = (status !== 'ACTIVE');
-            document.getElementById('counter').innerText = `${consumed.toLocaleString()} / ${total.toLocaleString()}`;
-            fetchJobs();
-            resetInput();
-        }
-
-        async function handleScan(e) {
-            e.preventDefault();
-            const input = document.getElementById('barcode-input');
-            const code = input.value.trim();
-            if (!code) return;
-            if (!activeJobId) {
-                alert("Please select a Job Card first.");
-                input.value = "";
-                return;
-            }
-
-            const body = new FormData();
-            body.append("job_card_id", activeJobId);
-            body.append("code", code);
-
-            const res = await fetch('/api/verify', { method: 'POST', body });
-            const data = await res.json();
-            renderResult(data.result, data.message, code);
-            input.value = "";
-            fetchJobs();
-        }
-
-        function renderResult(result, msg, code) {
-            const card = document.getElementById('status-card');
-            const heading = document.getElementById('status-heading');
-            const detail = document.getElementById('status-detail');
-            const badge = document.getElementById('status-badge');
-
-            card.className = "p-8 rounded-lg border border-slate-700 flex flex-col items-center justify-center min-h-[260px] text-center transition-colors duration-200";
-
-            if (result === 'PASS') {
-                playTone('PASS');
-                card.classList.add('flash-pass');
-                badge.innerText = "PASS";
-                heading.innerText = "VERIFIED";
-                detail.innerText = `Code: ${code}`;
-            } else if (result === 'DUPLICATE' || result === 'BLOCKED') {
-                playTone('FAIL');
-                card.classList.add('flash-fail');
-                badge.innerText = "DUPLICATE / BLOCKED";
-                heading.innerText = "STOP PRESS";
-                detail.innerText = msg;
-            } else if (result === 'MISMATCH') {
-                playTone('FAIL');
-                card.classList.add('flash-fail');
-                badge.innerText = "WRONG JOB";
-                heading.innerText = "WRONG BATCH";
-                detail.innerText = msg;
-            } else {
-                playTone('FAIL');
-                card.classList.add('flash-warn');
-                badge.innerText = "UNKNOWN";
-                heading.innerText = "INVALID CODE";
-                detail.innerText = msg;
-            }
-        }
-
-        async function completeJob() {
-            if (!activeJobId || !confirm(`Mark ${activeJobId} completed and block remaining unprinted codes?`)) return;
-            await fetch(`/api/jobs/${activeJobId}/complete`, { method: 'POST' });
-            fetchJobs();
-            resetInput();
-        }
-
-        function toggleUploadModal() {
-            document.getElementById('upload-modal').classList.toggle('hidden');
-        }
-
-        async function uploadJob(e) {
-            e.preventDefault();
-            const btn = document.getElementById('upload-btn');
-            btn.disabled = true;
-            btn.innerText = "Extracting & Uploading...";
-
-            const body = new FormData();
-            body.append("job_card_id", document.getElementById('new-job-id').value.trim());
-            body.append("rows", document.getElementById('target-rows').value.trim());
-            body.append("file", document.getElementById('new-job-file').files[0]);
-
-            try {
-                const res = await fetch('/api/jobs/create', { 
-                    method: 'POST', 
-                    body: body 
-                });
-
-                if (res.ok) {
-                    const data = await res.json();
-                    alert(`Success! Imported ${data.total_extracted.toLocaleString()} unique codes for Job Card: ${data.job_card_id}`);
-                    toggleUploadModal();
-                    fetchJobs();
-                    e.target.reset();
-                } else {
-                    const err = await res.json();
-                    alert(`Error: ${err.detail || "Upload failed. Please check the file."}`);
-                }
-            } catch (networkError) {
-                alert("Network error: Could not reach the server. Check your connection.");
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "Upload";
-            }
-        }
-
-        function resetInput() {
-            const input = document.getElementById('barcode-input');
-            input.focus();
-        }
-
-        document.addEventListener('click', (e) => {
-            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
-                resetInput();
-            }
-        });
-
-        fetchJobs();
-    </script>
-</body>
-</html>
+</div>
