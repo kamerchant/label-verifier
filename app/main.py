@@ -4,21 +4,28 @@ import csv
 import codecs
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Response, Depends
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from app.database import init_db, get_connection, release_connection, hash_password, verify_password
 
-app = FastAPI(title="Label QC Verifier")
+app = FastAPI(title="CCL Pakistan VDV")
 
 SECRET_KEY = os.environ.get("SESSION_SECRET", "super-secret-press-floor-key-change-in-prod")
 signer = URLSafeTimedSerializer(SECRET_KEY)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 HTML_PATH = os.path.join(BASE_DIR, "templates", "index.html")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+
+if not os.path.exists(STATIC_DIR):
+    os.makedirs(STATIC_DIR, exist_ok=True)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 @app.on_event("startup")
 def startup():
     init_db()
 
+# --- Auth Helpers ---
 def get_current_user(request: Request):
     token = request.cookies.get("qc_session")
     if not token:
@@ -38,7 +45,54 @@ def require_admin(user: dict = Depends(get_current_user)):
 async def index():
     return FileResponse(HTML_PATH, media_type="text/html")
 
-# --- Auth Endpoints ---
+# Reset maintenance route
+@app.get("/reset-db")
+def reset_database():
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                DROP TABLE IF EXISTS codes CASCADE;
+                DROP TABLE IF EXISTS job_cards CASCADE;
+                DROP TABLE IF EXISTS job_lifecycle_logs CASCADE;
+
+                CREATE TABLE job_cards (
+                    job_card_id TEXT PRIMARY KEY,
+                    description TEXT,
+                    client_name TEXT,
+                    status VARCHAR(20) DEFAULT 'ACTIVE',
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE codes (
+                    job_card_id TEXT REFERENCES job_cards(job_card_id) ON DELETE CASCADE,
+                    code_value TEXT NOT NULL,
+                    status VARCHAR(20) DEFAULT 'PENDING',
+                    scanned_at TIMESTAMP WITH TIME ZONE NULL,
+                    PRIMARY KEY (job_card_id, code_value)
+                );
+
+                CREATE TABLE job_lifecycle_logs (
+                    id BIGSERIAL PRIMARY KEY,
+                    job_card_id TEXT NOT NULL,
+                    action VARCHAR(50) NOT NULL,
+                    performed_by TEXT NOT NULL,
+                    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE INDEX idx_codes_value ON codes (code_value);
+                CREATE INDEX idx_codes_status ON codes (status);
+                CREATE INDEX idx_lifecycle_jc ON job_lifecycle_logs (job_card_id);
+            """)
+            conn.commit()
+            return {"status": "success", "message": "Database tables recreated successfully!"}
+    except Exception as e:
+        conn.rollback()
+        return {"status": "error", "message": str(e)}
+    finally:
+        release_connection(conn)
+
+# --- Authentication Endpoints ---
 @app.post("/api/auth/login")
 def login(response: Response, username: str = Form(...), password: str = Form(...)):
     username = username.strip().lower()
@@ -113,7 +167,10 @@ def change_password(
                 raise HTTPException(status_code=400, detail="Current password is incorrect")
 
             new_hash = hash_password(new_password)
-            cur.execute("UPDATE users SET password_hash = %s, must_change_password = FALSE WHERE username = %s", (new_hash, user["username"]))
+            cur.execute(
+                "UPDATE users SET password_hash = %s, must_change_password = FALSE WHERE username = %s",
+                (new_hash, user["username"])
+            )
             conn.commit()
             return {"status": "success", "message": "Password updated successfully"}
     finally:
@@ -238,7 +295,6 @@ async def create_job(
                     if item.lower() in ["code", "url", "qr", "qrcode", "serial", "barcode", "data", "id", "link"]:
                         continue
 
-                    # Exact value inserted (no synthetic URL extraction)
                     if item not in seen_in_batch:
                         seen_in_batch.add(item)
                         csv_buffer.write(f"{job_card_id}\t{item}\tPENDING\n")
@@ -259,15 +315,84 @@ async def create_job(
     finally:
         release_connection(conn)
 
+# Complete & Block: Executable by QC Incharge and Admin; logged in lifecycle audit
 @app.post("/api/jobs/{job_card_id}/complete")
-def complete_job(job_card_id: str, admin: dict = Depends(require_admin)):
+def complete_job(job_card_id: str, user: dict = Depends(get_current_user)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute("UPDATE job_cards SET status = 'COMPLETED' WHERE job_card_id = %s", (job_card_id,))
             cur.execute("UPDATE codes SET status = 'BLOCKED' WHERE job_card_id = %s AND status = 'PENDING'", (job_card_id,))
+            
+            # Log the action
+            cur.execute(
+                "INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by) VALUES (%s, %s, %s)",
+                (job_card_id, "COMPLETED_AND_BLOCKED", user["username"])
+            )
             conn.commit()
             return {"status": "success"}
+    finally:
+        release_connection(conn)
+
+# Reactivate & Unblock: Admin ONLY + Mandatory Password Re-verification
+@app.post("/api/jobs/{job_card_id}/unblock")
+def unblock_job(
+    job_card_id: str,
+    admin_password: str = Form(...),
+    admin: dict = Depends(require_admin)
+):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            # Verify admin password
+            cur.execute("SELECT password_hash FROM users WHERE username = %s", (admin["username"],))
+            row = cur.fetchone()
+            if not row or not verify_password(admin_password, row[0]):
+                raise HTTPException(status_code=403, detail="Invalid admin password. Unblocking denied.")
+
+            # Reactivate job and restore blocked codes to pending
+            cur.execute("UPDATE job_cards SET status = 'ACTIVE' WHERE job_card_id = %s", (job_card_id,))
+            cur.execute("UPDATE codes SET status = 'PENDING' WHERE job_card_id = %s AND status = 'BLOCKED'", (job_card_id,))
+
+            # Log the action
+            cur.execute(
+                "INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by) VALUES (%s, %s, %s)",
+                (job_card_id, "REACTIVATED_AND_UNBLOCKED", admin["username"])
+            )
+            conn.commit()
+            return {"status": "success"}
+    finally:
+        release_connection(conn)
+
+# --- Lifecycle Audit Trail Endpoint ---
+@app.get("/api/jobs/{job_card_id}/lifecycle-logs")
+def get_lifecycle_logs(job_card_id: str, user: dict = Depends(get_current_user)):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT description, status FROM job_cards WHERE job_card_id = %s", (job_card_id,))
+            job = cur.fetchone()
+            if not job:
+                raise HTTPException(status_code=404, detail="Job Card not found")
+
+            cur.execute("""
+                SELECT action, performed_by, timestamp 
+                FROM job_lifecycle_logs 
+                WHERE job_card_id = %s 
+                ORDER BY timestamp DESC
+            """, (job_card_id,))
+            logs = [{
+                "action": r[0],
+                "user": r[1],
+                "time": r[2].strftime("%Y-%m-%d %H:%M:%S")
+            } for r in cur.fetchall()]
+
+            return {
+                "job_card_id": job_card_id,
+                "description": job[0] or "",
+                "status": job[1],
+                "logs": logs
+            }
     finally:
         release_connection(conn)
 
@@ -285,7 +410,6 @@ def verify_code(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # Strict exact match lookup
             cur.execute("""
                 SELECT job_card_id, status, code_value 
                 FROM codes 

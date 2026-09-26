@@ -28,7 +28,7 @@ def init_db():
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # Users table with first-login password enforcement
+            # Users table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     username TEXT PRIMARY KEY,
@@ -41,7 +41,7 @@ def init_db():
                 UPDATE users SET role = 'QC Incharge' WHERE role = 'operator';
             """)
 
-            # Job Cards with description
+            # Job Cards
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS job_cards (
                     job_card_id TEXT PRIMARY KEY,
@@ -53,7 +53,7 @@ def init_db():
                 ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS description TEXT;
             """)
 
-            # Codes table (Strict exact matching)
+            # Codes table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS codes (
                     job_card_id TEXT REFERENCES job_cards(job_card_id) ON DELETE CASCADE,
@@ -66,7 +66,7 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_codes_status ON codes (status);
             """)
 
-            # Scan logs
+            # Scan logs (barcode audit trail)
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS scan_logs (
                     id BIGSERIAL PRIMARY KEY,
@@ -80,7 +80,20 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_scan_logs_time ON scan_logs (scanned_at DESC);
             """)
 
-            # Provision default admin if empty
+            # Lifecycle logs (completion and unblocking audit trail)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS job_lifecycle_logs (
+                    id BIGSERIAL PRIMARY KEY,
+                    job_card_id TEXT NOT NULL,
+                    action VARCHAR(50) NOT NULL,
+                    performed_by TEXT NOT NULL,
+                    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE INDEX IF NOT EXISTS idx_lifecycle_jc ON job_lifecycle_logs (job_card_id);
+                CREATE INDEX IF NOT EXISTS idx_lifecycle_time ON job_lifecycle_logs (timestamp DESC);
+            """)
+
+            # Default admin seeding
             cur.execute("SELECT COUNT(*) FROM users;")
             if cur.fetchone()[0] == 0:
                 admin_hash = hash_password("admin123")

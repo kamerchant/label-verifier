@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Print Label QC Verifier</title>
+    <title>CCL Pakistan VDV</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .flash-pass { background-color: #15803d !important; color: white !important; }
@@ -13,14 +13,14 @@
         /* Clean Factory Print Layout: Pure White Background Across All Containers */
         @media print {
             body * {
-                visibility: hidden;
+                visibility: hidden !important;
             }
-            #report-modal, #report-modal * {
-                visibility: visible;
+            /* Printable Report or Printable Lifecycle Modal */
+            .printable-modal, .printable-modal * {
+                visibility: visible !important;
                 background-color: transparent !important;
             }
-            /* Outer modal backdrop and inner container reset */
-            #report-modal {
+            .printable-modal {
                 position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
@@ -33,7 +33,7 @@
                 padding: 0 !important;
                 margin: 0 !important;
             }
-            #report-modal > div {
+            .printable-modal > div {
                 background: #ffffff !important;
                 border: none !important;
                 box-shadow: none !important;
@@ -45,26 +45,24 @@
             .no-print, button {
                 display: none !important;
             }
-            /* Header section styling */
-            #report-header-box {
+            .report-header-box {
                 background: #ffffff !important;
                 border-bottom: 2px solid #0f172a !important;
                 padding-bottom: 8px !important;
                 margin-bottom: 12px !important;
             }
-            #report-job-id {
-                font-size: 20pt !important;
+            .print-title {
+                font-size: 18pt !important;
                 color: #0f172a !important;
                 font-weight: 800 !important;
                 background: #ffffff !important;
                 margin-bottom: 2px !important;
             }
-            #report-desc {
+            .print-subtitle {
                 font-size: 11pt !important;
                 color: #334155 !important;
                 background: #ffffff !important;
             }
-            /* Stat summary tiles */
             #report-stats {
                 display: grid !important;
                 grid-template-columns: repeat(4, 1fr) !important;
@@ -81,11 +79,7 @@
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
-            #report-stats span {
-                color: #0f172a !important;
-            }
-            /* Table container and rows */
-            #report-log-table {
+            .print-table-container {
                 max-height: none !important;
                 overflow: visible !important;
                 border: 1px solid #cbd5e1 !important;
@@ -126,12 +120,18 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 flex flex-col items-center">
 
-    <!-- Top Navigation -->
+    <!-- Top Navigation Header -->
     <header class="w-full max-w-5xl flex justify-between items-center py-4 border-b border-slate-700 mb-6">
-        <div>
-            <h1 class="text-2xl font-bold tracking-wider">VARIABLE DATA QC VERIFIER</h1>
-            <p id="user-display" class="text-xs text-slate-400 mt-0.5">Checking login...</p>
+        <div class="flex items-center gap-4">
+            <div class="bg-white p-1.5 rounded shadow-sm flex items-center justify-center">
+                <img src="/static/logo.jpg" alt="CCL Logo" class="h-10 w-auto object-contain">
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold tracking-wider text-white">CCL Pakistan VDV</h1>
+                <p id="user-display" class="text-xs text-slate-400 mt-0.5">Checking login...</p>
+            </div>
         </div>
+
         <div class="flex items-center gap-2">
             <span id="active-badge" class="px-3 py-1 bg-yellow-600 rounded text-xs uppercase font-bold tracking-wide">No Job Selected</span>
             <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs font-semibold">Upload Batch</button>
@@ -162,7 +162,7 @@
             <div id="status-card" class="bg-slate-800 p-8 rounded-lg border border-slate-700 flex flex-col items-center justify-center min-h-[260px] text-center transition-colors duration-200">
                 <span id="status-badge" class="text-xs font-bold px-3 py-1 rounded bg-slate-700 mb-3 tracking-widest uppercase">READY</span>
                 <h2 id="status-heading" class="text-4xl font-extrabold mb-2">SCAN LABEL</h2>
-                <p id="status-detail" class="text-slate-400 font-mono text-base">Select a job card and scan a barcode to verify</p>
+                <p id="status-detail" class="text-slate-400 font-mono text-base">Select a job card and enter or scan a code to verify</p>
                 <p id="status-job-desc" class="text-xs text-slate-500 mt-2 italic"></p>
             </div>
 
@@ -174,8 +174,11 @@
 
             <div class="flex flex-wrap justify-between items-center bg-slate-800 p-4 rounded-lg border border-slate-700 gap-2">
                 <div class="flex gap-2">
-                    <button id="end-job-btn" onclick="completeJob()" disabled class="px-3 py-2 bg-red-800 hover:bg-red-700 disabled:opacity-30 rounded font-semibold text-xs">
+                    <button id="job-toggle-btn" onclick="handleJobStatusToggle()" disabled class="px-3 py-2 bg-red-800 hover:bg-red-700 disabled:opacity-30 rounded font-semibold text-xs transition-colors">
                         Complete & Block Job
+                    </button>
+                    <button id="lifecycle-btn" onclick="openLifecycleModal()" disabled class="px-3 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-30 rounded font-semibold text-xs">
+                        Lifecycle Log
                     </button>
                     <button id="report-btn" onclick="openReportModal()" disabled class="px-3 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-30 rounded font-semibold text-xs">
                         View QC Report
@@ -192,7 +195,12 @@
     <!-- Login Modal -->
     <div id="login-modal" class="fixed inset-0 bg-slate-950 flex items-center justify-center p-4 z-50">
         <div class="bg-slate-800 p-8 rounded-lg max-w-sm w-full border border-slate-700 shadow-2xl">
-            <h2 class="text-xl font-bold text-center mb-1">QC System Login</h2>
+            <div class="flex justify-center mb-4">
+                <div class="bg-white p-2 rounded">
+                    <img src="/static/logo.jpg" alt="CCL Logo" class="h-10 w-auto object-contain">
+                </div>
+            </div>
+            <h2 class="text-xl font-bold text-center mb-1">CCL Pakistan VDV</h2>
             <p class="text-xs text-slate-400 text-center mb-6">Enter credentials to begin verification</p>
             <form onsubmit="handleLogin(event)" class="space-y-4">
                 <div>
@@ -204,6 +212,24 @@
                     <input type="password" id="login-pass" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white">
                 </div>
                 <button type="submit" class="w-full py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm font-semibold">Sign In</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Password Prompt Modal for Unblocking -->
+    <div id="unblock-confirm-modal" class="fixed inset-0 bg-black/85 flex items-center justify-center hidden p-4 z-50">
+        <div class="bg-slate-800 p-6 rounded-lg max-w-sm w-full border border-slate-600 shadow-2xl">
+            <h3 class="text-lg font-bold mb-1 text-amber-400">Admin Authorization Required</h3>
+            <p class="text-xs text-slate-400 mb-4">Reactivating this job card will unblock remaining barcodes. Please re-enter your administrator password to confirm.</p>
+            <form onsubmit="submitAdminUnblock(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold mb-1 text-slate-300">Admin Password</label>
+                    <input type="password" id="unblock-admin-pass" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="toggleModal('unblock-confirm-modal')" class="px-4 py-2 bg-slate-700 rounded text-xs">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded text-xs font-semibold text-white">Authorize & Unblock</button>
+                </div>
             </form>
         </div>
     </div>
@@ -281,12 +307,12 @@
     </div>
 
     <!-- QC Report Modal -->
-    <div id="report-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
+    <div id="report-modal" class="printable-modal fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
         <div class="bg-slate-800 p-6 rounded-lg max-w-4xl w-full border border-slate-600 shadow-2xl flex flex-col max-h-[90vh]">
-            <div id="report-header-box" class="flex justify-between items-start mb-3 border-b border-slate-700 pb-3">
+            <div class="report-header-box flex justify-between items-start mb-3 border-b border-slate-700 pb-3">
                 <div>
-                    <h3 id="report-job-id" class="text-lg font-bold">Job Card Report</h3>
-                    <p id="report-desc" class="text-xs text-slate-400"></p>
+                    <h3 id="report-job-id" class="print-title text-lg font-bold">Job Card Report</h3>
+                    <p id="report-desc" class="print-subtitle text-xs text-slate-400"></p>
                 </div>
                 <div class="flex gap-2 no-print">
                     <button onclick="window.print()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 rounded text-xs font-semibold">Print Report</button>
@@ -295,11 +321,9 @@
                 </div>
             </div>
 
-            <!-- Stats Bar -->
             <div id="report-stats" class="grid grid-cols-4 gap-2 mb-4 text-center"></div>
 
-            <!-- Scan Log Table -->
-            <div id="report-log-table" class="flex-1 overflow-y-auto border border-slate-700 rounded">
+            <div class="print-table-container flex-1 overflow-y-auto border border-slate-700 rounded">
                 <table class="w-full text-left text-xs">
                     <thead class="bg-slate-900 text-slate-400 sticky top-0">
                         <tr>
@@ -315,10 +339,40 @@
         </div>
     </div>
 
+    <!-- Job Lifecycle Audit Trail Modal -->
+    <div id="lifecycle-modal" class="printable-modal fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
+        <div class="bg-slate-800 p-6 rounded-lg max-w-2xl w-full border border-slate-600 shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="report-header-box flex justify-between items-start mb-3 border-b border-slate-700 pb-3">
+                <div>
+                    <h3 id="lifecycle-job-id" class="print-title text-lg font-bold">Job Lifecycle Audit Log</h3>
+                    <p id="lifecycle-desc" class="print-subtitle text-xs text-slate-400"></p>
+                </div>
+                <div class="flex gap-2 no-print">
+                    <button onclick="window.print()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 rounded text-xs font-semibold">Print Log</button>
+                    <button onclick="toggleModal('lifecycle-modal')" class="px-2 py-1 bg-slate-700 rounded text-xs">Close</button>
+                </div>
+            </div>
+
+            <div class="print-table-container flex-1 overflow-y-auto border border-slate-700 rounded">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-900 text-slate-400 sticky top-0">
+                        <tr>
+                            <th class="p-2">Timestamp</th>
+                            <th class="p-2">Authorized User</th>
+                            <th class="p-2">Action Performed</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lifecycle-log-rows" class="divide-y divide-slate-700"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentUser = null;
         let activeJobId = null;
         let activeJobDesc = "";
+        let activeJobStatus = null;
         let allJobs = [];
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -455,14 +509,109 @@
         function selectJob(id, descEncoded, status, consumed, total) {
             activeJobId = id;
             activeJobDesc = unescape(descEncoded);
+            activeJobStatus = status;
+
             document.getElementById('active-badge').innerText = id;
             document.getElementById('active-badge').className = "px-3 py-1 bg-green-600 rounded text-xs uppercase font-bold tracking-wide";
-            document.getElementById('end-job-btn').disabled = (status !== 'ACTIVE' || currentUser.role !== 'admin');
             document.getElementById('report-btn').disabled = false;
+            document.getElementById('lifecycle-btn').disabled = false;
             document.getElementById('counter').innerText = `${consumed.toLocaleString()} / ${total.toLocaleString()}`;
             document.getElementById('status-job-desc').innerText = activeJobDesc ? `Job: ${activeJobDesc}` : '';
+
+            const toggleBtn = document.getElementById('job-toggle-btn');
+            if (status === 'ACTIVE') {
+                toggleBtn.innerText = "Complete & Block Job";
+                toggleBtn.className = "px-3 py-2 bg-red-800 hover:bg-red-700 text-white rounded font-semibold text-xs transition-colors";
+                toggleBtn.disabled = false;
+                toggleBtn.title = "Complete this job and block remaining unconsumed codes";
+            } else {
+                toggleBtn.innerText = "Reactivate & Unblock Job";
+                toggleBtn.className = "px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded font-semibold text-xs transition-colors";
+                if (currentUser.role === 'admin') {
+                    toggleBtn.disabled = false;
+                    toggleBtn.title = "Admin: Reactivate this job (password required)";
+                } else {
+                    toggleBtn.disabled = true;
+                    toggleBtn.title = "Only Admin can unblock or reactivate a completed job";
+                }
+            }
+
             filterJobs();
             resetInput();
+        }
+
+        async function handleJobStatusToggle() {
+            if (!activeJobId) return;
+
+            if (activeJobStatus === 'ACTIVE') {
+                if (!confirm(`Mark ${activeJobId} completed and block remaining unprinted codes?`)) return;
+                const res = await fetch(`/api/jobs/${activeJobId}/complete`, { method: 'POST' });
+                if (res.ok) {
+                    await fetchJobs();
+                    const updated = allJobs.find(j => j.id === activeJobId);
+                    if (updated) selectJob(updated.id, escape(updated.description), updated.status, updated.consumed, updated.total);
+                } else {
+                    const err = await res.json();
+                    alert(err.detail || "Action failed");
+                }
+            } else {
+                // Unblock requested -> trigger Admin Password confirmation modal
+                if (currentUser.role !== 'admin') {
+                    alert("Only Administrator can reactivate and unblock a completed job.");
+                    return;
+                }
+                document.getElementById('unblock-admin-pass').value = "";
+                toggleModal('unblock-confirm-modal');
+            }
+        }
+
+        async function submitAdminUnblock(e) {
+            e.preventDefault();
+            const password = document.getElementById('unblock-admin-pass').value;
+
+            const body = new FormData();
+            body.append("admin_password", password);
+
+            const res = await fetch(`/api/jobs/${activeJobId}/unblock`, { method: 'POST', body });
+            if (res.ok) {
+                toggleModal('unblock-confirm-modal');
+                alert(`Job Card ${activeJobId} reactivated and unblocked successfully.`);
+                await fetchJobs();
+                const updated = allJobs.find(j => j.id === activeJobId);
+                if (updated) selectJob(updated.id, escape(updated.description), updated.status, updated.consumed, updated.total);
+            } else {
+                const err = await res.json();
+                alert(err.detail || "Unblocking authorization failed.");
+            }
+        }
+
+        async function openLifecycleModal() {
+            if (!activeJobId) return;
+            const res = await fetch(`/api/jobs/${activeJobId}/lifecycle-logs`);
+            const data = await res.json();
+
+            document.getElementById('lifecycle-job-id').innerText = `Lifecycle Audit Log: ${data.job_card_id} (${data.status})`;
+            document.getElementById('lifecycle-desc').innerText = data.description || "No description provided";
+
+            const tbody = document.getElementById('lifecycle-log-rows');
+            if (data.logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="p-3 text-center text-slate-500 italic">No lifecycle state changes recorded</td></tr>`;
+            } else {
+                tbody.innerHTML = data.logs.map(log => {
+                    const isUnblock = log.action === 'REACTIVATED_AND_UNBLOCKED';
+                    return `
+                        <tr class="hover:bg-slate-700/50">
+                            <td class="p-2 font-mono text-[11px] text-slate-400">${log.time}</td>
+                            <td class="p-2 font-bold">${log.user}</td>
+                            <td class="p-2 font-semibold ${isUnblock ? 'text-amber-400' : 'text-rose-400'}">
+                                ${isUnblock ? 'Reactivated & Unblocked' : 'Completed & Blocked'}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            toggleModal('lifecycle-modal');
         }
 
         async function handleScan(e) {
@@ -520,13 +669,6 @@
                 heading.innerText = "INVALID CODE";
                 detail.innerText = msg;
             }
-        }
-
-        async function completeJob() {
-            if (!activeJobId || !confirm(`Mark ${activeJobId} completed and block remaining unprinted codes?`)) return;
-            await fetch(`/api/jobs/${activeJobId}/complete`, { method: 'POST' });
-            fetchJobs();
-            resetInput();
         }
 
         async function uploadJob(e) {
