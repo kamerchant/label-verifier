@@ -28,14 +28,17 @@ def init_db():
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # Users table
+            # Users table with first-login password enforcement
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     username TEXT PRIMARY KEY,
                     password_hash TEXT NOT NULL,
-                    role VARCHAR(20) DEFAULT 'operator',
+                    role VARCHAR(50) DEFAULT 'QC Incharge',
+                    must_change_password BOOLEAN DEFAULT TRUE,
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 );
+                ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT TRUE;
+                UPDATE users SET role = 'QC Incharge' WHERE role = 'operator';
             """)
 
             # Job Cards with description
@@ -50,22 +53,20 @@ def init_db():
                 ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS description TEXT;
             """)
 
-            # Codes table
+            # Codes table (Strict exact matching)
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS codes (
                     job_card_id TEXT REFERENCES job_cards(job_card_id) ON DELETE CASCADE,
                     code_value TEXT NOT NULL,
-                    short_code TEXT NOT NULL,
                     status VARCHAR(20) DEFAULT 'PENDING',
                     scanned_at TIMESTAMP WITH TIME ZONE NULL,
                     PRIMARY KEY (job_card_id, code_value)
                 );
                 CREATE INDEX IF NOT EXISTS idx_codes_value ON codes (code_value);
-                CREATE INDEX IF NOT EXISTS idx_codes_short ON codes (short_code);
                 CREATE INDEX IF NOT EXISTS idx_codes_status ON codes (status);
             """)
 
-            # Scan logs table for detailed QC reporting
+            # Scan logs
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS scan_logs (
                     id BIGSERIAL PRIMARY KEY,
@@ -79,18 +80,18 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_scan_logs_time ON scan_logs (scanned_at DESC);
             """)
 
-            # Seed default admin if no users exist
+            # Provision default admin if empty
             cur.execute("SELECT COUNT(*) FROM users;")
             if cur.fetchone()[0] == 0:
                 admin_hash = hash_password("admin123")
                 cur.execute(
-                    "INSERT INTO users (username, password_hash, role) VALUES (%s, %s, %s)",
-                    ("admin", admin_hash, "admin")
+                    "INSERT INTO users (username, password_hash, role, must_change_password) VALUES (%s, %s, %s, %s)",
+                    ("admin", admin_hash, "admin", True)
                 )
 
             conn.commit()
     except Exception as e:
         conn.rollback()
-        print(f"Database init warning: {e}")
+        print(f"Database init notice: {e}")
     finally:
         release_connection(conn)

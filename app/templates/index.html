@@ -9,6 +9,25 @@
         .flash-pass { background-color: #15803d !important; color: white !important; }
         .flash-fail { background-color: #b91c1c !important; color: white !important; }
         .flash-warn { background-color: #c2410c !important; color: white !important; }
+        
+        @media print {
+            body * { visibility: hidden; }
+            #report-modal, #report-modal * { visibility: visible; }
+            #report-modal {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white !important;
+                color: black !important;
+                padding: 0;
+                border: none;
+            }
+            .no-print { display: none !important; }
+            #report-log-table { max-height: none !important; overflow: visible !important; }
+            th, td { border: 1px solid #ddd !important; color: black !important; padding: 6px !important; }
+            #report-stats div { border: 1px solid #333 !important; color: black !important; background: #f8f8f8 !important; }
+        }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 flex flex-col items-center">
@@ -19,11 +38,12 @@
             <h1 class="text-2xl font-bold tracking-wider">VARIABLE DATA QC VERIFIER</h1>
             <p id="user-display" class="text-xs text-slate-400 mt-0.5">Checking login...</p>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
             <span id="active-badge" class="px-3 py-1 bg-yellow-600 rounded text-xs uppercase font-bold tracking-wide">No Job Selected</span>
             <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs font-semibold">Upload Batch</button>
             <button id="btn-users" onclick="openUserModal()" class="hidden px-3 py-1 bg-purple-700 hover:bg-purple-800 rounded text-xs font-semibold">User Admin</button>
-            <button onclick="logout()" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs font-semibold">Logout</button>
+            <button onclick="toggleModal('pw-modal')" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs font-semibold">Change Password</button>
+            <button onclick="logout()" class="px-3 py-1 bg-rose-800 hover:bg-rose-700 rounded text-xs font-semibold">Logout</button>
         </div>
     </header>
 
@@ -35,7 +55,6 @@
                 <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Job Cards</h2>
             </div>
             
-            <!-- Real-time Filter -->
             <div class="mb-3">
                 <input type="text" id="job-search" oninput="filterJobs()" placeholder="Search jobs or descriptions..." 
                        class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500">
@@ -76,11 +95,11 @@
         </div>
     </main>
 
-    <!-- Login Modal (Full screen overlay if not logged in) -->
+    <!-- Login Modal -->
     <div id="login-modal" class="fixed inset-0 bg-slate-950 flex items-center justify-center p-4 z-50">
         <div class="bg-slate-800 p-8 rounded-lg max-w-sm w-full border border-slate-700 shadow-2xl">
             <h2 class="text-xl font-bold text-center mb-1">QC System Login</h2>
-            <p class="text-xs text-slate-400 text-center mb-6">Enter credentials to access scanning</p>
+            <p class="text-xs text-slate-400 text-center mb-6">Enter credentials to begin verification</p>
             <form onsubmit="handleLogin(event)" class="space-y-4">
                 <div>
                     <label class="block text-xs font-semibold mb-1 text-slate-300">Username</label>
@@ -91,6 +110,28 @@
                     <input type="password" id="login-pass" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white">
                 </div>
                 <button type="submit" class="w-full py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm font-semibold">Sign In</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Password Change Modal -->
+    <div id="pw-modal" class="fixed inset-0 bg-black/85 flex items-center justify-center hidden p-4 z-50">
+        <div class="bg-slate-800 p-6 rounded-lg max-w-sm w-full border border-slate-600 shadow-2xl">
+            <h3 id="pw-title" class="text-lg font-bold mb-1">Change Password</h3>
+            <p id="pw-subtitle" class="text-xs text-slate-400 mb-4">Update your password to continue</p>
+            <form onsubmit="handleChangePassword(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold mb-1 text-slate-300">Current Password</label>
+                    <input type="password" id="pw-current" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1 text-slate-300">New Password (min 6 chars)</label>
+                    <input type="password" id="pw-new" required minlength="6" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" id="pw-cancel-btn" onclick="toggleModal('pw-modal')" class="px-4 py-2 bg-slate-700 rounded text-xs">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-xs font-semibold">Save Password</button>
+                </div>
             </form>
         </div>
     </div>
@@ -111,6 +152,7 @@
                 <div>
                     <label class="block text-xs font-semibold mb-1 text-slate-300">Batch File (CSV / TXT) *</label>
                     <input type="file" id="new-job-file" accept=".csv,.txt" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-slate-300">
+                    <p class="text-[11px] text-slate-400 mt-1">Codes will be strictly matched against the uploaded values.</p>
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" onclick="toggleModal('upload-modal')" class="px-4 py-2 bg-slate-700 rounded text-xs">Cancel</button>
@@ -128,13 +170,12 @@
                 <button onclick="toggleModal('user-modal')" class="text-slate-400 hover:text-white">✕</button>
             </div>
             
-            <!-- Create User Form -->
             <form onsubmit="createUser(event)" class="bg-slate-900 p-3 rounded mb-4 grid grid-cols-3 gap-2">
                 <input type="text" id="new-user-name" placeholder="Username" required class="bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
                 <input type="password" id="new-user-pass" placeholder="Password (min 6)" required class="bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
                 <div class="flex gap-1">
                     <select id="new-user-role" class="bg-slate-800 border border-slate-700 rounded p-1 text-xs text-white">
-                        <option value="operator">Operator</option>
+                        <option value="QC Incharge">QC Incharge</option>
                         <option value="admin">Admin</option>
                     </select>
                     <button type="submit" class="bg-purple-600 hover:bg-purple-500 px-2 py-1 rounded text-xs font-bold flex-1">Add</button>
@@ -145,15 +186,16 @@
         </div>
     </div>
 
-    <!-- QC Report Modal -->
+    <!-- QC Report Modal (Print Friendly) -->
     <div id="report-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
-        <div class="bg-slate-800 p-6 rounded-lg max-w-3xl w-full border border-slate-600 shadow-2xl flex flex-col max-h-[85vh]">
+        <div class="bg-slate-800 p-6 rounded-lg max-w-4xl w-full border border-slate-600 shadow-2xl flex flex-col max-h-[90vh]">
             <div class="flex justify-between items-start mb-3 border-b border-slate-700 pb-3">
                 <div>
                     <h3 id="report-job-id" class="text-lg font-bold">Job Card Report</h3>
                     <p id="report-desc" class="text-xs text-slate-400"></p>
                 </div>
-                <div class="flex gap-2">
+                <div class="flex gap-2 no-print">
+                    <button onclick="window.print()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 rounded text-xs font-semibold">Print Report</button>
                     <button id="download-csv-btn" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 rounded text-xs font-semibold">Download CSV</button>
                     <button onclick="toggleModal('report-modal')" class="px-2 py-1 bg-slate-700 rounded text-xs">Close</button>
                 </div>
@@ -163,7 +205,7 @@
             <div id="report-stats" class="grid grid-cols-4 gap-2 mb-4 text-center"></div>
 
             <!-- Scan Log Table -->
-            <div class="flex-1 overflow-y-auto border border-slate-700 rounded">
+            <div id="report-log-table" class="flex-1 overflow-y-auto border border-slate-700 rounded">
                 <table class="w-full text-left text-xs">
                     <thead class="bg-slate-900 text-slate-400 sticky top-0">
                         <tr>
@@ -210,7 +252,6 @@
             }
         }
 
-        // --- Auth & Session ---
         async function checkSession() {
             const res = await fetch('/api/auth/me');
             const data = await res.json();
@@ -223,10 +264,23 @@
                     document.getElementById('btn-upload').classList.remove('hidden');
                     document.getElementById('btn-users').classList.remove('hidden');
                 }
+
+                // Enforce first login password change
+                if (data.must_change_password) {
+                    forcePasswordChange();
+                }
+
                 fetchJobs();
             } else {
                 document.getElementById('login-modal').classList.remove('hidden');
             }
+        }
+
+        function forcePasswordChange() {
+            document.getElementById('pw-title').innerText = "First Login Password Change Required";
+            document.getElementById('pw-subtitle').innerText = "For security, you must update your password before proceeding.";
+            document.getElementById('pw-cancel-btn').classList.add('hidden');
+            document.getElementById('pw-modal').classList.remove('hidden');
         }
 
         async function handleLogin(e) {
@@ -244,12 +298,30 @@
             }
         }
 
+        async function handleChangePassword(e) {
+            e.preventDefault();
+            const body = new FormData();
+            body.append("old_password", document.getElementById('pw-current').value);
+            body.append("new_password", document.getElementById('pw-new').value);
+
+            const res = await fetch('/api/auth/change-password', { method: 'POST', body });
+            if (res.ok) {
+                alert("Password changed successfully!");
+                document.getElementById('pw-modal').classList.add('hidden');
+                document.getElementById('pw-current').value = "";
+                document.getElementById('pw-new').value = "";
+                checkSession();
+            } else {
+                const err = await res.json();
+                alert(err.detail || "Password change failed");
+            }
+        }
+
         async function logout() {
             await fetch('/api/auth/logout', { method: 'POST' });
             location.reload();
         }
 
-        // --- Job List & Selection ---
         async function fetchJobs() {
             const res = await fetch('/api/jobs');
             if (res.status === 401) return checkSession();
@@ -300,7 +372,6 @@
             resetInput();
         }
 
-        // --- Scanning & Feedback ---
         async function handleScan(e) {
             e.preventDefault();
             const input = document.getElementById('barcode-input');
@@ -391,7 +462,6 @@
             btn.innerText = "Upload";
         }
 
-        // --- QC Reports View ---
         async function openReportModal() {
             if (!activeJobId) return;
             const res = await fetch(`/api/reports/${activeJobId}`);
@@ -428,7 +498,6 @@
             toggleModal('report-modal');
         }
 
-        // --- User Admin ---
         async function openUserModal() {
             toggleModal('user-modal');
             const res = await fetch('/api/users');
@@ -439,6 +508,7 @@
                     <div>
                         <span class="font-bold">${u.username}</span>
                         <span class="text-[10px] uppercase ml-2 px-1 rounded ${u.role === 'admin' ? 'bg-purple-900 text-purple-200' : 'bg-slate-700 text-slate-300'}">${u.role}</span>
+                        ${u.must_change_password ? '<span class="text-[9px] text-yellow-400 ml-1">(Must change PW)</span>' : ''}
                     </div>
                     ${u.username !== currentUser.username ? `
                         <button onclick="deleteUser('${u.username}')" class="text-red-400 hover:text-red-300">Delete</button>

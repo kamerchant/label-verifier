@@ -2,7 +2,6 @@ import io
 import os
 import csv
 import codecs
-from urllib.parse import urlparse, parse_qs
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Response, Depends
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
@@ -20,14 +19,13 @@ HTML_PATH = os.path.join(BASE_DIR, "templates", "index.html")
 def startup():
     init_db()
 
-# --- Auth Helpers ---
 def get_current_user(request: Request):
     token = request.cookies.get("qc_session")
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
-        data = signer.loads(token, max_age=86400 * 7) # 7 days
-        return data  # {"username": ..., "role": ...}
+        data = signer.loads(token, max_age=86400 * 7)
+        return data
     except (BadSignature, SignatureExpired):
         raise HTTPException(status_code=401, detail="Session expired or invalid")
 
@@ -40,14 +38,14 @@ def require_admin(user: dict = Depends(get_current_user)):
 async def index():
     return FileResponse(HTML_PATH, media_type="text/html")
 
-# --- Authentication API ---
+# --- Auth Endpoints ---
 @app.post("/api/auth/login")
 def login(response: Response, username: str = Form(...), password: str = Form(...)):
     username = username.strip().lower()
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT password_hash, role FROM users WHERE username = %s", (username,))
+            cur.execute("SELECT password_hash, role, must_change_password FROM users WHERE username = %s", (username,))
             user = cur.fetchone()
             if not user or not verify_password(password, user[0]):
                 raise HTTPException(status_code=400, detail="Invalid username or password")
@@ -61,7 +59,12 @@ def login(response: Response, username: str = Form(...), password: str = Form(..
                 samesite="lax",
                 secure=False
             )
-            return {"status": "success", "username": username, "role": user[1]}
+            return {
+                "status": "success",
+                "username": username,
+                "role": user[1],
+                "must_change_password": user[2]
+            }
     finally:
         release_connection(conn)
 
@@ -74,9 +77,47 @@ def logout(response: Response):
 def get_me(request: Request):
     try:
         user = get_current_user(request)
-        return {"authenticated": True, "username": user["username"], "role": user["role"]}
+        conn = get_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT must_change_password FROM users WHERE username = %s", (user["username"],))
+                row = cur.fetchone()
+                must_change = row[0] if row else False
+        finally:
+            release_connection(conn)
+
+        return {
+            "authenticated": True,
+            "username": user["username"],
+            "role": user["role"],
+            "must_change_password": must_change
+        }
     except HTTPException:
         return {"authenticated": False}
+
+@app.post("/api/auth/change-password")
+def change_password(
+    old_password: str = Form(...),
+    new_password: str = Form(...),
+    user: dict = Depends(get_current_user)
+):
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT password_hash FROM users WHERE username = %s", (user["username"],))
+            row = cur.fetchone()
+            if not row or not verify_password(old_password, row[0]):
+                raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+            new_hash = hash_password(new_password)
+            cur.execute("UPDATE users SET password_hash = %s, must_change_password = FALSE WHERE username = %s", (new_hash, user["username"]))
+            conn.commit()
+            return {"status": "success", "message": "Password updated successfully"}
+    finally:
+        release_connection(conn)
 
 # --- User Management (Admin only) ---
 @app.get("/api/users")
@@ -84,9 +125,14 @@ def list_users(admin: dict = Depends(require_admin)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT username, role, created_at FROM users ORDER BY created_at ASC")
+            cur.execute("SELECT username, role, must_change_password, created_at FROM users ORDER BY created_at ASC")
             rows = cur.fetchall()
-            return [{"username": r[0], "role": r[1], "created_at": r[2].strftime("%Y-%m-%d %H:%M")} for r in rows]
+            return [{
+                "username": r[0],
+                "role": r[1],
+                "must_change_password": r[2],
+                "created_at": r[3].strftime("%Y-%m-%d %H:%M")
+            } for r in rows]
     finally:
         release_connection(conn)
 
@@ -94,7 +140,7 @@ def list_users(admin: dict = Depends(require_admin)):
 def create_user(
     username: str = Form(...),
     password: str = Form(...),
-    role: str = Form("operator"),
+    role: str = Form("QC Incharge"),
     admin: dict = Depends(require_admin)
 ):
     username = username.strip().lower()
@@ -109,7 +155,10 @@ def create_user(
                 raise HTTPException(status_code=400, detail="User already exists")
 
             pw_hash = hash_password(password)
-            cur.execute("INSERT INTO users (username, password_hash, role) VALUES (%s, %s, %s)", (username, pw_hash, role))
+            cur.execute(
+                "INSERT INTO users (username, password_hash, role, must_change_password) VALUES (%s, %s, %s, TRUE)",
+                (username, pw_hash, role)
+            )
             conn.commit()
             return {"status": "success"}
     finally:
@@ -154,31 +203,6 @@ def get_jobs(user: dict = Depends(get_current_user)):
     finally:
         release_connection(conn)
 
-def extract_tokens_from_cell(cell_value: str):
-    item = cell_value.strip().strip('"').strip("'").replace('\r', '').replace('\n', '').replace('\t', '')
-    if not item:
-        return None, None
-
-    lower_item = item.lower()
-    if lower_item in ["code", "url", "qr", "qrcode", "serial", "barcode", "data", "id", "link"]:
-        return None, None
-
-    if "://" in item or item.startswith("www."):
-        full_url = item
-        parsed = urlparse(item if "://" in item else "http://" + item)
-        qs = parse_qs(parsed.query)
-        extracted = None
-        for key in ['c', 'code', 'id', 's', 'serial', 'token', 'v']:
-            if key in qs and qs[key]:
-                extracted = qs[key][0]
-                break
-        if not extracted:
-            slugs = [s for s in parsed.path.rstrip("/").split("/") if s]
-            extracted = slugs[-1] if slugs else item
-        return full_url, extracted.strip().upper()
-    else:
-        return item, item.strip().upper()
-
 @app.post("/api/jobs/create")
 async def create_job(
     job_card_id: str = Form(...),
@@ -208,18 +232,22 @@ async def create_job(
                 if not row:
                     continue
                 for cell in row:
-                    full_val, short_val = extract_tokens_from_cell(cell)
-                    if not full_val or not short_val:
+                    item = cell.strip().strip('"').strip("'").replace('\r', '').replace('\n', '').replace('\t', '')
+                    if not item:
                         continue
-                    if short_val not in seen_in_batch:
-                        seen_in_batch.add(short_val)
-                        csv_buffer.write(f"{job_card_id}\t{full_val}\t{short_val}\tPENDING\n")
+                    if item.lower() in ["code", "url", "qr", "qrcode", "serial", "barcode", "data", "id", "link"]:
+                        continue
+
+                    # Exact value inserted (no synthetic URL extraction)
+                    if item not in seen_in_batch:
+                        seen_in_batch.add(item)
+                        csv_buffer.write(f"{job_card_id}\t{item}\tPENDING\n")
 
             if not seen_in_batch:
                 raise HTTPException(status_code=400, detail="No valid codes found in the file.")
 
             csv_buffer.seek(0)
-            cur.copy_from(csv_buffer, 'codes', columns=('job_card_id', 'code_value', 'short_code', 'status'))
+            cur.copy_from(csv_buffer, 'codes', columns=('job_card_id', 'code_value', 'status'))
             conn.commit()
             return {"status": "success", "job_card_id": job_card_id, "total_extracted": len(seen_in_batch)}
     except HTTPException:
@@ -243,7 +271,7 @@ def complete_job(job_card_id: str, admin: dict = Depends(require_admin)):
     finally:
         release_connection(conn)
 
-# --- Verification Logic with User Logging ---
+# --- Strict Verification Engine ---
 @app.post("/api/verify")
 def verify_code(
     job_card_id: str = Form(...), 
@@ -254,26 +282,21 @@ def verify_code(
     scanned = code.strip().replace('\r', '').replace('\n', '')
     operator = user["username"]
 
-    _, short_scanned = extract_tokens_from_cell(scanned)
-    if not short_scanned:
-        short_scanned = scanned.upper()
-
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            # Strict exact match lookup
             cur.execute("""
-                SELECT job_card_id, status, short_code, code_value 
+                SELECT job_card_id, status, code_value 
                 FROM codes 
-                WHERE code_value = %s OR short_code = %s
-            """, (scanned, short_scanned))
+                WHERE code_value = %s
+            """, (scanned,))
             rows = cur.fetchall()
-
-            display_code = short_scanned
 
             def log_scan(res):
                 cur.execute(
                     "INSERT INTO scan_logs (job_card_id, code_scanned, result, scanned_by) VALUES (%s, %s, %s, %s)",
-                    (job_card_id, display_code, res, operator)
+                    (job_card_id, scanned, res, operator)
                 )
                 conn.commit()
 
@@ -281,7 +304,7 @@ def verify_code(
                 log_scan("UNKNOWN")
                 return JSONResponse(status_code=200, content={
                     "result": "UNKNOWN", 
-                    "message": f"Code '{display_code}' does not exist in any batch."
+                    "message": f"Code '{scanned}' does not exist in any batch."
                 })
 
             matched_current = next((r for r in rows if r[0] == job_card_id), None)
@@ -294,31 +317,30 @@ def verify_code(
                     "message": f"Code belongs to Job Card: {owning_jobs}"
                 })
 
-            owning_jc, status, found_short, found_full = matched_current
-            final_label = found_short if found_short else display_code
+            owning_jc, status, exact_code = matched_current
 
             if status == "CONSUMED":
                 log_scan("DUPLICATE")
                 return JSONResponse(status_code=200, content={
                     "result": "DUPLICATE", 
-                    "message": f"Code '{final_label}' already printed & consumed!"
+                    "message": f"Code '{exact_code}' was already printed & consumed!"
                 })
             elif status == "BLOCKED":
                 log_scan("BLOCKED")
                 return JSONResponse(status_code=200, content={
                     "result": "BLOCKED", 
-                    "message": f"Code '{final_label}' belongs to completed/blocked job '{owning_jc}'!"
+                    "message": f"Code belongs to completed/blocked job '{owning_jc}'!"
                 })
             elif status == "PENDING":
                 cur.execute("""
                     UPDATE codes 
                     SET status = 'CONSUMED', scanned_at = NOW() 
-                    WHERE job_card_id = %s AND (code_value = %s OR short_code = %s)
-                """, (job_card_id, scanned, short_scanned))
+                    WHERE job_card_id = %s AND code_value = %s
+                """, (job_card_id, scanned))
                 log_scan("PASS")
                 return JSONResponse(status_code=200, content={
                     "result": "PASS", 
-                    "message": f"Code: {final_label}"
+                    "message": f"Verified: {exact_code}"
                 })
     finally:
         release_connection(conn)
@@ -329,13 +351,11 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # Job details
             cur.execute("SELECT job_card_id, description, status, created_at FROM job_cards WHERE job_card_id = %s", (job_card_id,))
             job = cur.fetchone()
             if not job:
                 raise HTTPException(status_code=404, detail="Job Card not found")
 
-            # Totals
             cur.execute("""
                 SELECT 
                     COUNT(*),
@@ -346,7 +366,6 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
             """, (job_card_id,))
             totals = cur.fetchone()
 
-            # Breakdown of scan results
             cur.execute("""
                 SELECT result, COUNT(*) 
                 FROM scan_logs 
@@ -355,7 +374,6 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
             """, (job_card_id,))
             results_breakdown = {r[0]: r[1] for r in cur.fetchall()}
 
-            # Recent scan logs (last 500)
             cur.execute("""
                 SELECT code_scanned, result, scanned_by, scanned_at 
                 FROM scan_logs 
