@@ -110,7 +110,7 @@
             scrollbar-width: none;
         }
 
-        /* Robust A4 Print Styles */
+        /* Strict A4 Print Styles with 5mm Left & Right Padding Edges */
         @media print {
             @page {
                 size: A4 portrait;
@@ -129,7 +129,7 @@
                 width: 100% !important;
                 background: #ffffff !important;
                 color: #0f172a !important;
-                padding: 0 !important;
+                padding: 0 5mm !important; /* Forces exact 5mm margin from left and right edges */
                 margin: 0 !important;
                 display: block !important;
                 box-shadow: none !important;
@@ -242,7 +242,7 @@
             }
             .print-timestamp-footer {
                 display: block !important;
-                margin-top: 20mm !important;
+                margin-top: 15mm !important;
                 padding-top: 8px !important;
                 font-size: 8pt !important;
                 color: #64748b !important;
@@ -288,6 +288,7 @@
                 <p id="header-job-desc" class="text-xs sm:text-sm text-slate-400 mt-1 truncate">Search active production jobs using the search field.</p>
             </div>
 
+            <!-- Job Search Bar and Adjacent Action Buttons Group -->
             <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full lg:w-auto shrink-0">
                 <div class="relative flex-1 sm:w-72 shrink-0">
                     <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Search active jobs..." 
