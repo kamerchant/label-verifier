@@ -21,6 +21,19 @@ if not os.path.exists(STATIC_DIR):
     os.makedirs(STATIC_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
+# Explicit fallback route for the logo image
+@app.get("/static/logo.jpg")
+@app.get("/logo.jpg")
+async def get_logo():
+    logo_path = os.path.join(STATIC_DIR, "logo.jpg")
+    if os.path.exists(logo_path):
+        return FileResponse(logo_path, media_type="image/jpeg")
+    # Check parent directory fallback if placed in root
+    parent_logo = os.path.join(os.path.dirname(BASE_DIR), "static", "logo.jpg")
+    if os.path.exists(parent_logo):
+        return FileResponse(parent_logo, media_type="image/jpeg")
+    raise HTTPException(status_code=404, detail="Logo not found")
+
 @app.on_event("startup")
 def startup():
     init_db()
@@ -230,7 +243,7 @@ def delete_user_with_auth(
         release_connection(conn)
 
 # --- Job Search & Management ---
-# Main screen search: ONLY returns jobs with status = 'ACTIVE' (closed & deleted jobs are excluded)
+# Main screen search: Strictly filters for ACTIVE jobs
 @app.get("/api/jobs")
 def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
     conn = get_connection()
@@ -269,7 +282,7 @@ def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
     finally:
         release_connection(conn)
 
-# All Jobs Master Report (Admin view: queries all jobs with status filtering)
+# All Jobs Master Report
 @app.get("/api/admin/master-jobs")
 def get_master_jobs_report(status_filter: str = "ALL", admin: dict = Depends(require_admin)):
     conn = get_connection()
@@ -330,7 +343,6 @@ async def create_job(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # 1. Reject if an active or completed job already exists with this ID
             cur.execute("SELECT run_id FROM job_cards WHERE job_card_id = %s AND status != 'DELETED'", (job_card_id,))
             if cur.fetchone():
                 raise HTTPException(status_code=400, detail=f"Active/Open Job Card '{job_card_id}' already exists.")
@@ -361,7 +373,6 @@ async def create_job(
             if not seen_in_batch:
                 raise HTTPException(status_code=400, detail="No valid codes found in the file.")
 
-            # 2. Duplicate Pre-check
             deleted_job_matches = []
             if sample_codes:
                 cur.execute("""
@@ -376,7 +387,6 @@ async def create_job(
                 active_matches = [m for m in matches if m[2] != 'DELETED']
                 deleted_job_matches = [m for m in matches if m[2] == 'DELETED']
 
-                # HARD BLOCK: Matched an ACTIVE or COMPLETED job
                 if active_matches:
                     conflicting_jc = active_matches[0][0]
                     sample_dup = active_matches[0][1]
@@ -385,7 +395,6 @@ async def create_job(
                         detail=f"Upload rejected: Duplicate codes detected! Code '{sample_dup}' already exists in open/completed Job Card '{conflicting_jc}'."
                     )
 
-                # SOFT WARNING: Code exists in a DELETED job
                 if deleted_job_matches and not override_deleted_warning:
                     sample_dup = deleted_job_matches[0][1]
                     conflicting_jc = deleted_job_matches[0][0]
@@ -396,7 +405,6 @@ async def create_job(
                         "deleted_job_card": conflicting_jc
                     })
 
-            # 3. Create new Job Card and obtain run_id
             cur.execute("""
                 INSERT INTO job_cards (job_card_id, description, status) 
                 VALUES (%s, %s, 'ACTIVE') 
@@ -404,7 +412,6 @@ async def create_job(
             """, (job_card_id, description))
             run_id = cur.fetchone()[0]
 
-            # 4. Ingest codes strictly bound to run_id
             csv_buffer = io.StringIO()
             for code in raw_codes:
                 csv_buffer.write(f"{run_id}\t{job_card_id}\t{code}\tPENDING\n")
@@ -412,7 +419,6 @@ async def create_job(
 
             cur.copy_from(csv_buffer, 'codes', columns=('run_id', 'job_card_id', 'code_value', 'status'))
 
-            # 5. Lifecycle Log
             lifecycle_reason = "Initial batch ingestion"
             if deleted_job_matches and override_deleted_warning:
                 conflicting_jc = deleted_job_matches[0][0]
@@ -434,7 +440,7 @@ async def create_job(
     finally:
         release_connection(conn)
 
-# Soft Deletion: Quarantines all codes under this run as DELETED
+# Soft Deletion
 @app.post("/api/jobs/{job_card_id}/delete")
 def soft_delete_job(
     job_card_id: str,
@@ -469,7 +475,6 @@ def soft_delete_job(
             
             run_id = updated[0]
 
-            # Mark all codes in this specific run as DELETED
             cur.execute("UPDATE codes SET status = 'DELETED' WHERE run_id = %s", (run_id,))
 
             cur.execute("""
@@ -603,7 +608,7 @@ def get_lifecycle_logs(job_card_id: str, user: dict = Depends(get_current_user))
     finally:
         release_connection(conn)
 
-# Strict Verification: Completely ignores deleted jobs & deleted codes
+# Strict Verification
 @app.post("/api/verify")
 def verify_code(
     job_card_id: str = Form(...), 
@@ -617,7 +622,6 @@ def verify_code(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # 1. Fetch active run_id
             cur.execute("""
                 SELECT run_id, status 
                 FROM job_cards 
@@ -639,7 +643,6 @@ def verify_code(
                 )
                 conn.commit()
 
-            # 2. Check for scanned code across active & completed jobs
             cur.execute("""
                 SELECT c.run_id, j.job_card_id, c.status, c.code_value 
                 FROM codes c
@@ -657,7 +660,6 @@ def verify_code(
 
             matched_current = next((r for r in rows if r[0] == active_run_id), None)
 
-            # Code belongs to a different active/completed job
             if not matched_current:
                 owning_jobs = ", ".join(list(set([r[1] for r in rows])))
                 log_scan("MISMATCH")
@@ -694,7 +696,7 @@ def verify_code(
     finally:
         release_connection(conn)
 
-# QC Reports: strictly bound to the active/latest run
+# QC Reports
 @app.get("/api/reports/{job_card_id}")
 def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
     conn = get_connection()

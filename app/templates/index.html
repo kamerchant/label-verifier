@@ -8,14 +8,14 @@
     <style>
         /* Base typography scaled up by 2 font sizes across all elements */
         html {
-            font-size: 16px;
+            font-size: 18px; /* High-visibility industrial scale */
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", sans-serif;
             background-color: #0d0e11; /* Linear Matte Void */
             color: #d0d6e0;
             letter-spacing: -0.01em;
-            font-size: 1rem; /* 16px default instead of 12-14px */
+            font-size: 1rem;
         }
         .linear-card {
             background-color: #12141a;
@@ -196,23 +196,22 @@
 <body class="min-h-screen flex flex-col justify-between selection:bg-[#5e6ad2] selection:text-white">
 
     <!-- Top Command Navigation Bar -->
-    <header class="border-b border-white/[0.08] bg-[#0d0e11]/95 backdrop-blur-md px-6 py-3.5 flex flex-wrap items-center justify-between text-sm sticky top-0 z-40 gap-3">
+    <header class="border-b border-white/[0.08] bg-[#0d0e11]/95 backdrop-blur-md px-6 py-4 flex flex-wrap items-center justify-between text-sm sticky top-0 z-40 gap-3">
+        <!-- Top Left Corner: Logo Image & CCL Pakistan VDV Title -->
         <div class="flex items-center gap-3">
-            <div class="w-6 h-6 rounded bg-[#5e6ad2] flex items-center justify-center font-bold text-white text-xs shadow-sm">
-                C
+            <div class="bg-white px-2.5 py-1 rounded shadow-sm flex items-center justify-center shrink-0">
+                <img src="/static/logo.jpg" alt="CCL Logo" class="h-8 w-auto max-w-[120px] object-contain block" onerror="this.onerror=null; this.src='/logo.jpg';">
             </div>
-            <!-- Prominent branding without 'Serialization Stream' -->
-            <span class="font-bold text-slate-100 text-lg tracking-wide">CCL Pakistan VDV</span>
+            <span class="font-extrabold text-white text-xl tracking-wide">CCL Pakistan VDV</span>
         </div>
 
-        <!-- Global Status Badge & Actions -->
+        <!-- Global Navigation Controls -->
         <div class="flex items-center gap-2.5">
-            <span id="active-badge" class="px-2.5 py-1 rounded text-xs font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/25">NO JOB SELECTED</span>
-            <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-3 py-1.5 rounded text-sm font-semibold">Create New Job</button>
-            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-sm font-medium">All Jobs</button>
-            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-sm font-medium">Users</button>
-            <button onclick="toggleModal('pw-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-sm font-medium">Password</button>
-            <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-3 py-1.5 rounded text-sm font-medium transition-colors">Logout</button>
+            <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-3.5 py-1.5 rounded text-sm font-semibold">Create New Job</button>
+            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-3.5 py-1.5 rounded text-sm font-medium">All Jobs</button>
+            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-3.5 py-1.5 rounded text-sm font-medium">Users</button>
+            <button onclick="toggleModal('pw-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-sm font-medium">Password</button>
+            <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-3.5 py-1.5 rounded text-sm font-medium transition-colors">Logout</button>
         </div>
     </header>
 
@@ -223,8 +222,8 @@
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div class="flex-1 max-w-xl">
                 <div class="flex items-center gap-3">
-                    <h1 id="active-title-card" class="text-2xl font-bold tracking-tight text-white font-mono">Job Card: None</h1>
-                    <span id="status-chip" class="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-slate-800 text-slate-400 border border-slate-700">STANDBY</span>
+                    <h1 id="active-title-card" class="text-3xl font-extrabold tracking-tight text-white font-mono">Job Card: None</h1>
+                    <span id="status-chip" class="px-3 py-1 rounded-full text-xs font-mono font-semibold bg-slate-800 text-slate-400 border border-slate-700">STANDBY</span>
                 </div>
                 <p id="header-job-desc" class="text-sm text-slate-400 mt-1 truncate">Search active production jobs using the search field.</p>
             </div>
@@ -232,7 +231,7 @@
             <!-- Instant Search Input: Strictly searches ACTIVE jobs -->
             <div class="relative w-full md:w-80">
                 <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Search active jobs..." 
-                       class="linear-input w-full px-3.5 py-2 text-sm font-mono rounded placeholder-slate-500 shadow-inner">
+                       class="linear-input w-full px-4 py-2.5 text-sm font-mono rounded placeholder-slate-500 shadow-inner">
                 <div id="job-list" class="absolute left-0 right-0 top-full mt-1.5 linear-card rounded shadow-2xl max-h-64 overflow-y-auto z-30 hidden"></div>
             </div>
         </div>
@@ -241,28 +240,28 @@
         <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
             <div class="linear-card p-4 rounded">
                 <span class="text-xs text-slate-400 block font-medium">Total Pool</span>
-                <span id="kpi-total" class="text-2xl font-bold font-mono text-white mt-1 block">0</span>
+                <span id="kpi-total" class="text-3xl font-bold font-mono text-white mt-1 block">0</span>
                 <span class="text-xs text-slate-500 mt-1 block">Assigned batch pool</span>
             </div>
             <div class="linear-card p-4 rounded">
                 <span class="text-xs text-[#2ed573] block font-medium">Verified (Pass)</span>
-                <span id="kpi-consumed" class="text-2xl font-bold font-mono text-[#2ed573] mt-1 block">0</span>
+                <span id="kpi-consumed" class="text-3xl font-bold font-mono text-[#2ed573] mt-1 block">0</span>
                 <span class="text-xs text-slate-500 mt-1 block">Consumed serials</span>
             </div>
             <div class="linear-card p-4 rounded">
                 <span class="text-xs text-amber-400 block font-medium">Pending Queue</span>
-                <span id="kpi-pending" class="text-2xl font-bold font-mono text-slate-300 mt-1 block">0</span>
+                <span id="kpi-pending" class="text-3xl font-bold font-mono text-slate-300 mt-1 block">0</span>
                 <span class="text-xs text-slate-500 mt-1 block">Remaining in feed</span>
             </div>
             <div class="linear-card p-4 rounded">
                 <span class="text-xs text-slate-400 block font-medium">Blocked</span>
-                <span id="kpi-blocked" class="text-2xl font-bold font-mono text-slate-300 mt-1 block">0</span>
+                <span id="kpi-blocked" class="text-3xl font-bold font-mono text-slate-300 mt-1 block">0</span>
                 <span class="text-xs text-slate-500 mt-1 block">Quarantined units</span>
             </div>
             <div class="linear-card p-4 rounded col-span-2 md:col-span-1">
                 <span class="text-xs text-slate-400 block font-medium">Completion Rate</span>
-                <span id="counter" class="text-2xl font-bold font-mono text-[#5e6ad2] mt-1 block">0 / 0</span>
-                <div class="w-full bg-white/[0.08] h-1.5 rounded-full mt-2 overflow-hidden">
+                <span id="counter" class="text-3xl font-bold font-mono text-[#5e6ad2] mt-1 block">0 / 0</span>
+                <div class="w-full bg-white/[0.08] h-2 rounded-full mt-2.5 overflow-hidden">
                     <div id="progress-bar-fill" class="bg-[#5e6ad2] h-full transition-all duration-200" style="width: 0%"></div>
                 </div>
             </div>
@@ -274,14 +273,14 @@
             <!-- Result Notice Bar -->
             <div id="status-card" class="linear-subcard px-5 py-4 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-3 state-ready">
                 <div class="flex items-center gap-3">
-                    <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-[#5e6ad2]"></span>
+                    <span id="status-dot" class="w-3 h-3 rounded-full bg-[#5e6ad2]"></span>
                     <div>
-                        <span id="status-heading" class="text-sm font-bold text-slate-100 font-mono tracking-wide">VERIFY CODE</span>
+                        <span id="status-heading" class="text-base font-bold text-slate-100 font-mono tracking-wide">VERIFY CODE</span>
                         <span id="status-detail" class="text-sm text-slate-400 ml-2">&middot; Select an active job card and scan serialized barcodes</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-3">
-                    <span id="status-last-code" class="text-sm font-mono text-slate-400">READY</span>
+                    <span id="status-last-code" class="text-base font-mono text-slate-400">READY</span>
                     <span id="status-badge" class="px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#1a1c24] text-slate-300">STANDBY</span>
                 </div>
             </div>
@@ -290,10 +289,10 @@
             <form id="scan-form" onsubmit="handleScan(event)" class="flex gap-2">
                 <div class="relative flex-1">
                     <input type="text" id="barcode-input" placeholder="Scanner input active -- scan serialized barcode..." autofocus autocomplete="off"
-                           class="linear-input w-full px-4 py-3 text-base md:text-lg font-mono rounded">
+                           class="linear-input w-full px-4 py-3 text-lg font-mono rounded">
                 </div>
-                <button type="submit" class="linear-button-primary px-6 py-3 rounded text-sm font-semibold font-mono">
-                    Verify (↵)
+                <button type="submit" class="linear-button-primary px-7 py-3 rounded text-base font-semibold font-mono">
+                    Verify
                 </button>
             </form>
         </div>
@@ -302,18 +301,18 @@
         <div class="linear-card rounded overflow-hidden flex-1 flex flex-col">
             <div class="px-5 py-4 border-b border-white/[0.08] flex flex-wrap items-center justify-between gap-3 text-sm">
                 <div class="flex items-center gap-3 font-semibold text-slate-200">
-                    <span class="text-base">Live Verification Stream</span>
+                    <span class="text-lg">Live Verification Stream</span>
                     <span class="text-slate-600">|</span>
                     <span class="text-xs text-slate-400 font-mono font-normal">Recent scans recorded this session</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button id="report-btn" onclick="openReportModal()" disabled class="linear-button-secondary text-xs px-3 py-1.5 rounded disabled:opacity-30">
+                    <button id="report-btn" onclick="openReportModal()" disabled class="linear-button-secondary text-xs px-3.5 py-1.5 rounded disabled:opacity-30">
                         QC Report
                     </button>
-                    <button id="lifecycle-btn" onclick="openLifecycleModal()" disabled class="linear-button-secondary text-xs px-3 py-1.5 rounded disabled:opacity-30">
+                    <button id="lifecycle-btn" onclick="openLifecycleModal()" disabled class="linear-button-secondary text-xs px-3.5 py-1.5 rounded disabled:opacity-30">
                         Lifecycle Audit
                     </button>
-                    <button id="job-toggle-btn" onclick="handleJobStatusToggle()" disabled class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs px-3 py-1.5 rounded disabled:opacity-30 transition-colors">
+                    <button id="job-toggle-btn" onclick="handleJobStatusToggle()" disabled class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs px-3.5 py-1.5 rounded disabled:opacity-30 transition-colors">
                         Complete Job
                     </button>
                 </div>
@@ -342,23 +341,25 @@
     </main>
 
     <!-- Footer Information Bar -->
-    <footer class="border-t border-white/[0.08] px-6 py-2.5 flex items-center justify-between text-xs text-slate-400">
+    <footer class="border-t border-white/[0.08] px-6 py-3 flex items-center justify-between text-xs text-slate-400">
         <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-[#2ed573]"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-[#2ed573]"></span>
             <span>Online</span>
             <span class="text-slate-600">&middot;</span>
             <span id="user-display">Checking session...</span>
         </div>
         <div class="font-mono text-slate-400">
-            Press <kbd class="bg-[#1e2029] text-slate-300 px-1.5 py-0.5 rounded font-mono text-xs">Enter</kbd> to submit
+            Press <kbd class="bg-[#1e2029] text-slate-300 px-2 py-0.5 rounded font-mono text-xs">Enter</kbd> to submit
         </div>
     </footer>
 
     <!-- Login Modal -->
     <div id="login-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <div class="linear-card p-6 rounded-lg max-w-sm w-full shadow-2xl">
-            <div class="flex items-center gap-2.5 mb-4">
-                <div class="w-6 h-6 rounded bg-[#5e6ad2] flex items-center justify-center font-bold text-white text-xs">C</div>
+            <div class="flex items-center gap-3 mb-4">
+                <div class="bg-white p-1 rounded shrink-0">
+                    <img src="/static/logo.jpg" alt="CCL Logo" class="h-6 w-auto object-contain block" onerror="this.onerror=null; this.src='/logo.jpg';">
+                </div>
                 <span class="font-bold text-white text-base">CCL Pakistan VDV</span>
             </div>
             <p class="text-xs text-slate-400 mb-4">Sign in to initialize serialization terminal</p>
@@ -785,9 +786,6 @@
             document.getElementById('active-title-card').innerText = `Job Card: ${id}`;
             document.getElementById('header-job-desc').innerText = activeJobDesc || 'Batch serialization active & ready for verification stream.';
 
-            document.getElementById('active-badge').innerText = `JOB CARD: ${id}`;
-            document.getElementById('active-badge').className = "px-2.5 py-1 rounded text-xs font-mono font-bold linear-badge-pass";
-            
             const chip = document.getElementById('status-chip');
             if (status === 'ACTIVE') {
                 chip.innerText = "IN RUN";
@@ -813,11 +811,11 @@
             const toggleBtn = document.getElementById('job-toggle-btn');
             if (status === 'ACTIVE') {
                 toggleBtn.innerText = "Complete Job";
-                toggleBtn.className = "bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs px-3 py-1.5 rounded transition-colors";
+                toggleBtn.className = "bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs px-3.5 py-1.5 rounded transition-colors";
                 toggleBtn.disabled = false;
             } else {
                 toggleBtn.innerText = "Reactivate (Admin)";
-                toggleBtn.className = "linear-button-secondary text-amber-400 text-xs px-3 py-1.5 rounded";
+                toggleBtn.className = "linear-button-secondary text-amber-400 text-xs px-3.5 py-1.5 rounded";
                 toggleBtn.disabled = (currentUser.role !== 'admin');
             }
 
@@ -828,7 +826,8 @@
             if (!activeJobId) return;
 
             if (activeJobStatus === 'ACTIVE') {
-                if (!confirm(`Mark Job Card ${activeJobId} completed and block remaining unprinted codes?`)) return;
+                // Confirmation text updated: removed "and block remaining unprinted codes"
+                if (!confirm(`Mark Job Card ${activeJobId} completed?`)) return;
                 const res = await fetch(`/api/jobs/${activeJobId}/complete`, { method: 'POST' });
                 if (res.ok) {
                     alert(`Job Card ${activeJobId} completed.`);
@@ -944,8 +943,6 @@
                 
                 if (activeJobId === deletedName) {
                     activeJobId = null;
-                    document.getElementById('active-badge').innerText = "NO JOB SELECTED";
-                    document.getElementById('active-badge').className = "px-2.5 py-1 rounded text-xs font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/25";
                     document.getElementById('active-title-card').innerText = "Job Card: None";
                     document.getElementById('header-job-desc').innerText = "Search active production jobs using the search field.";
                     document.getElementById('job-toggle-btn').disabled = true;
@@ -1104,7 +1101,6 @@
                 detail.innerText = `· ${msg}`;
             }
 
-            // Stream buffer
             const now = new Date().toLocaleTimeString();
             recentScans.unshift({ code, result, time: now, user: currentUser.username });
             if (recentScans.length > 10) recentScans.pop();
