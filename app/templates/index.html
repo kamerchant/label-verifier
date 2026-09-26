@@ -121,15 +121,9 @@
     <!-- Top Navigation Header -->
     <header class="w-full max-w-5xl flex justify-between items-center py-4 border-b border-slate-700 mb-6">
         <div class="flex items-center gap-4">
-            <div class="bg-white px-2.5 py-1.5 rounded shadow-sm flex items-center justify-center">
-                <svg class="h-9 w-auto" viewBox="0 0 480 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="400" cy="80" r="75" fill="#1d5fa8" />
-                    <path d="M 400 80 L 325 80 A 75 75 0 0 1 400 5 Z" fill="#ffffff" />
-                    <rect x="270" y="70" width="130" height="130" fill="#000000" />
-                    <path d="M 95 95 C 95 84 88 77 75 77 C 62 77 53 88 53 103 C 53 118 62 129 75 129 C 88 129 95 122 95 111 L 118 111 C 117 132 101 150 75 150 C 47 150 28 130 28 103 C 28 76 47 56 75 56 C 101 56 117 74 118 95 Z" fill="#000000"/>
-                    <path d="M 195 95 C 195 84 188 77 175 77 C 162 77 153 88 153 103 C 153 118 162 129 175 129 C 188 129 195 122 195 111 L 218 111 C 217 132 201 150 175 150 C 147 150 128 130 128 103 C 128 76 147 56 175 56 C 201 56 217 74 218 95 Z" fill="#000000"/>
-                    <path d="M 235 59 L 260 59 L 260 127 L 295 127 L 295 147 L 235 147 Z" fill="#000000"/>
-                </svg>
+            <!-- Undistorted Logo Container with Fixed Height & Auto Width -->
+            <div class="bg-white px-3 py-1.5 rounded shadow-sm flex items-center justify-center shrink-0">
+                <img src="/static/logo.jpg" alt="CCL Logo" class="h-10 w-auto max-w-[120px] object-contain block">
             </div>
             <div>
                 <h1 class="text-2xl font-bold tracking-wider text-white">CCL Pakistan VDV</h1>
@@ -200,16 +194,10 @@
     <!-- Login Modal -->
     <div id="login-modal" class="fixed inset-0 bg-slate-950 flex items-center justify-center p-4 z-50">
         <div class="bg-slate-800 p-8 rounded-lg max-w-sm w-full border border-slate-700 shadow-2xl">
+            <!-- Login Modal Logo with Correct Proportions -->
             <div class="flex justify-center mb-4">
-                <div class="bg-white px-3 py-2 rounded shadow-sm">
-                    <svg class="h-10 w-auto" viewBox="0 0 480 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="400" cy="80" r="75" fill="#1d5fa8" />
-                        <path d="M 400 80 L 325 80 A 75 75 0 0 1 400 5 Z" fill="#ffffff" />
-                        <rect x="270" y="70" width="130" height="130" fill="#000000" />
-                        <path d="M 95 95 C 95 84 88 77 75 77 C 62 77 53 88 53 103 C 53 118 62 129 75 129 C 88 129 95 122 95 111 L 118 111 C 117 132 101 150 75 150 C 47 150 28 130 28 103 C 28 76 47 56 75 56 C 101 56 117 74 118 95 Z" fill="#000000"/>
-                        <path d="M 195 95 C 195 84 188 77 175 77 C 162 77 153 88 153 103 C 153 118 162 129 175 129 C 188 129 195 122 195 111 L 218 111 C 217 132 201 150 175 150 C 147 150 128 130 128 103 C 128 76 147 56 175 56 C 201 56 217 74 218 95 Z" fill="#000000"/>
-                        <path d="M 235 59 L 260 59 L 260 127 L 295 127 L 295 147 L 235 147 Z" fill="#000000"/>
-                    </svg>
+                <div class="bg-white px-4 py-2 rounded shadow-sm flex items-center justify-center">
+                    <img src="/static/logo.jpg" alt="CCL Logo" class="h-12 w-auto max-w-[160px] object-contain block">
                 </div>
             </div>
             <h2 class="text-xl font-bold text-center mb-1">CCL Pakistan VDV</h2>
@@ -302,7 +290,6 @@
                 <button onclick="toggleModal('user-modal')" class="text-slate-400 hover:text-white">✕</button>
             </div>
             
-            <!-- Create User Form with Upload Permission Toggle -->
             <form onsubmit="createUser(event)" class="bg-slate-900 p-3 rounded mb-4 space-y-2">
                 <div class="grid grid-cols-3 gap-2">
                     <input type="text" id="new-user-name" placeholder="Username" required class="bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
@@ -321,7 +308,6 @@
                 </div>
             </form>
 
-            <!-- User List Table -->
             <div class="max-h-64 overflow-y-auto text-xs">
                 <div class="grid grid-cols-12 gap-2 p-2 font-bold text-slate-400 border-b border-slate-700">
                     <div class="col-span-4">User / Role</div>
@@ -435,12 +421,10 @@
                 document.getElementById('login-modal').classList.add('hidden');
                 document.getElementById('user-display').innerText = `Logged in as: ${data.username} (${data.role})`;
                 
-                // Show Admin Panel Button for Admin
                 if (data.role === 'admin') {
                     document.getElementById('btn-users').classList.remove('hidden');
                 }
 
-                // Show Upload Button ONLY if user has upload permission or is Admin
                 if (data.can_upload || data.role === 'admin') {
                     document.getElementById('btn-upload').classList.remove('hidden');
                 } else {
@@ -766,7 +750,6 @@
             toggleModal('report-modal');
         }
 
-        // --- User Admin with Upload Toggles ---
         async function openUserModal() {
             toggleModal('user-modal');
             const res = await fetch('/api/users');
@@ -780,7 +763,6 @@
                         ${u.must_change_password ? '<div class="text-[9px] text-yellow-400 mt-0.5">(Must change PW)</div>' : ''}
                     </div>
                     
-                    <!-- Can Upload Checkbox/Tick -->
                     <div class="col-span-5 flex items-center justify-center">
                         <label class="flex items-center gap-1.5 cursor-pointer">
                             <input type="checkbox" ${u.can_upload ? 'checked' : ''} 
@@ -811,7 +793,6 @@
             });
 
             if (res.ok) {
-                // If the user modified their own permission, refresh session state
                 if (username === currentUser.username) {
                     checkSession();
                 }
