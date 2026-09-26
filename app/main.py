@@ -48,7 +48,7 @@ def require_uploader(user: dict = Depends(get_current_user)):
             cur.execute("SELECT can_upload, role FROM users WHERE username = %s", (user["username"],))
             row = cur.fetchone()
             if not row or (not row[0] and row[1] != "admin"):
-                raise HTTPException(status_code=403, detail="You do not have permission to upload batch files.")
+                raise HTTPException(status_code=403, detail="You do not have permission to create jobs.")
             return user
     finally:
         release_connection(conn)
@@ -56,52 +56,6 @@ def require_uploader(user: dict = Depends(get_current_user)):
 @app.get("/")
 async def index():
     return FileResponse(HTML_PATH, media_type="text/html")
-
-@app.get("/reset-db")
-def reset_database():
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                DROP TABLE IF EXISTS codes CASCADE;
-                DROP TABLE IF EXISTS job_cards CASCADE;
-                DROP TABLE IF EXISTS job_lifecycle_logs CASCADE;
-
-                CREATE TABLE job_cards (
-                    job_card_id TEXT PRIMARY KEY,
-                    description TEXT,
-                    client_name TEXT,
-                    status VARCHAR(20) DEFAULT 'ACTIVE',
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                );
-
-                CREATE TABLE codes (
-                    job_card_id TEXT REFERENCES job_cards(job_card_id) ON DELETE CASCADE,
-                    code_value TEXT NOT NULL,
-                    status VARCHAR(20) DEFAULT 'PENDING',
-                    scanned_at TIMESTAMP WITH TIME ZONE NULL,
-                    PRIMARY KEY (job_card_id, code_value)
-                );
-
-                CREATE TABLE job_lifecycle_logs (
-                    id BIGSERIAL PRIMARY KEY,
-                    job_card_id TEXT NOT NULL,
-                    action VARCHAR(50) NOT NULL,
-                    performed_by TEXT NOT NULL,
-                    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                );
-
-                CREATE INDEX idx_codes_value ON codes (code_value);
-                CREATE INDEX idx_codes_status ON codes (status);
-                CREATE INDEX idx_lifecycle_jc ON job_lifecycle_logs (job_card_id);
-            """)
-            conn.commit()
-            return {"status": "success", "message": "Database tables recreated successfully!"}
-    except Exception as e:
-        conn.rollback()
-        return {"status": "error", "message": str(e)}
-    finally:
-        release_connection(conn)
 
 # --- Authentication Endpoints ---
 @app.post("/api/auth/login")
@@ -252,50 +206,119 @@ def toggle_user_upload(
     finally:
         release_connection(conn)
 
-@app.delete("/api/users/{username}")
-def delete_user(username: str, admin: dict = Depends(require_admin)):
+@app.post("/api/users/{username}/delete")
+def delete_user_with_auth(
+    username: str,
+    admin_password: str = Form(...),
+    admin: dict = Depends(require_admin)
+):
     if username == admin["username"]:
-        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+        raise HTTPException(status_code=400, detail="Cannot delete your own account.")
+
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            cur.execute("SELECT password_hash FROM users WHERE username = %s", (admin["username"],))
+            row = cur.fetchone()
+            if not row or not verify_password(admin_password, row[0]):
+                raise HTTPException(status_code=403, detail="Invalid admin password. User deletion aborted.")
+
             cur.execute("DELETE FROM users WHERE username = %s", (username,))
             conn.commit()
             return {"status": "success"}
     finally:
         release_connection(conn)
 
-# --- Job Management ---
+# --- Job Search & Management ---
 @app.get("/api/jobs")
-def get_jobs(user: dict = Depends(get_current_user)):
+def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("""
+            base_sql = """
                 SELECT j.job_card_id, j.description, j.status, 
                        COUNT(c.code_value) as total,
-                       COUNT(CASE WHEN c.status = 'CONSUMED' THEN 1 END) as consumed
+                       COUNT(CASE WHEN c.status = 'CONSUMED' THEN 1 END) as consumed,
+                       j.created_at
                 FROM job_cards j
                 LEFT JOIN codes c ON j.job_card_id = c.job_card_id
-                GROUP BY j.job_card_id, j.description, j.status, j.created_at
+                WHERE j.status != 'DELETED'
+            """
+            params = []
+            if query.strip():
+                base_sql += " AND (LOWER(j.job_card_id) LIKE %s OR LOWER(COALESCE(j.description, '')) LIKE %s)"
+                search_term = f"%{query.strip().lower()}%"
+                params.extend([search_term, search_term])
+
+            base_sql += """
+                GROUP BY j.run_id, j.job_card_id, j.description, j.status, j.created_at
                 ORDER BY j.created_at DESC
-            """)
+            """
+            cur.execute(base_sql, params)
             rows = cur.fetchall()
             return [{
                 "id": r[0],
                 "description": r[1] or "",
                 "status": r[2],
                 "total": r[3],
-                "consumed": r[4]
+                "consumed": r[4],
+                "created_at": r[5].strftime("%Y-%m-%d %H:%M") if r[5] else ""
             } for r in rows]
     finally:
         release_connection(conn)
 
+@app.get("/api/admin/master-jobs")
+def get_master_jobs_report(status_filter: str = "ALL", admin: dict = Depends(require_admin)):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            sql = """
+                SELECT j.run_id, j.job_card_id, j.description, j.status,
+                       COUNT(c.code_value) as total,
+                       COUNT(CASE WHEN c.status = 'CONSUMED' THEN 1 END) as consumed,
+                       j.created_at,
+                       j.deleted_by,
+                       j.deleted_at,
+                       j.deletion_reason
+                FROM job_cards j
+                LEFT JOIN codes c ON j.job_card_id = c.job_card_id
+            """
+            params = []
+            if status_filter == "ACTIVE":
+                sql += " WHERE j.status = 'ACTIVE'"
+            elif status_filter == "COMPLETED":
+                sql += " WHERE j.status = 'COMPLETED'"
+            elif status_filter == "DELETED":
+                sql += " WHERE j.status = 'DELETED'"
+
+            sql += """
+                GROUP BY j.run_id, j.job_card_id, j.description, j.status, j.created_at, j.deleted_by, j.deleted_at, j.deletion_reason
+                ORDER BY j.created_at DESC
+            """
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+            return [{
+                "run_id": r[0],
+                "job_card_id": r[1],
+                "description": r[2] or "",
+                "status": r[3],
+                "total": r[4],
+                "consumed": r[5],
+                "created_at": r[6].strftime("%Y-%m-%d %H:%M") if r[6] else "",
+                "deleted_by": r[7] or "",
+                "deleted_at": r[8].strftime("%Y-%m-%d %H:%M") if r[8] else "",
+                "deletion_reason": r[9] or ""
+            } for r in rows]
+    finally:
+        release_connection(conn)
+
+# --- Create Job with Soft/Hard Duplicate Handling ---
 @app.post("/api/jobs/create")
 async def create_job(
     job_card_id: str = Form(...),
     description: str = Form(""),
     file: UploadFile = File(...),
+    override_deleted_warning: bool = Form(False),
     uploader: dict = Depends(require_uploader)
 ):
     job_card_id = job_card_id.strip()
@@ -304,10 +327,10 @@ async def create_job(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # 1. Ensure Job Card ID is unique
-            cur.execute("SELECT job_card_id FROM job_cards WHERE job_card_id = %s", (job_card_id,))
+            # 1. Enforce unique job_card_id among currently active or completed runs
+            cur.execute("SELECT job_card_id FROM job_cards WHERE job_card_id = %s AND status != 'DELETED'", (job_card_id,))
             if cur.fetchone():
-                raise HTTPException(status_code=400, detail=f"Job Card '{job_card_id}' already exists.")
+                raise HTTPException(status_code=400, detail=f"Active Job Card '{job_card_id}' already exists.")
 
             utf8_reader = codecs.iterdecode(file.file, "utf-8", errors="ignore")
             csv_reader = csv.reader(utf8_reader, delimiter=",", skipinitialspace=True)
@@ -330,35 +353,66 @@ async def create_job(
                         seen_in_batch.add(item)
                         csv_buffer.write(f"{job_card_id}\t{item}\tPENDING\n")
                         
-                        # Collect first 100 codes for cross-batch duplicate check
                         if len(sample_codes) < 100:
                             sample_codes.append(item)
 
             if not seen_in_batch:
                 raise HTTPException(status_code=400, detail="No valid codes found in the file.")
 
-            # 2. Fast Indexed Pre-Check across existing records
+            # 2. Check for duplicate codes across ALL database records
+            deleted_job_matches = []
             if sample_codes:
                 cur.execute("""
-                    SELECT job_card_id, code_value 
-                    FROM codes 
-                    WHERE code_value = ANY(%s) 
-                    LIMIT 5
+                    SELECT c.job_card_id, c.code_value, j.status 
+                    FROM codes c
+                    JOIN job_cards j ON c.job_card_id = j.job_card_id
+                    WHERE c.code_value = ANY(%s)
+                    LIMIT 20
                 """, (sample_codes,))
-                existing_matches = cur.fetchall()
+                matches = cur.fetchall()
 
-                if existing_matches:
-                    conflicting_jc = existing_matches[0][0]
-                    sample_dup = existing_matches[0][1]
+                active_matches = [m for m in matches if m[2] != 'DELETED']
+                deleted_job_matches = [m for m in matches if m[2] == 'DELETED']
+
+                # HARD BLOCK: Reject immediately if matched against active or completed jobs
+                if active_matches:
+                    conflicting_jc = active_matches[0][0]
+                    sample_dup = active_matches[0][1]
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Upload rejected: Duplicate codes detected! Code '{sample_dup}' already exists in Job Card '{conflicting_jc}'."
+                        detail=f"Upload rejected: Duplicate codes detected! Code '{sample_dup}' already exists in active/completed Job Card '{conflicting_jc}'."
                     )
 
-            # 3. Create Job Card and bulk ingest via COPY
-            cur.execute("INSERT INTO job_cards (job_card_id, description) VALUES (%s, %s)", (job_card_id, description))
+                # SOFT WARNING: If only matches DELETED jobs and user hasn't confirmed yet
+                if deleted_job_matches and not override_deleted_warning:
+                    sample_dup = deleted_job_matches[0][1]
+                    conflicting_jc = deleted_job_matches[0][0]
+                    return JSONResponse(status_code=409, content={
+                        "status": "deleted_duplicate_warning",
+                        "message": f"Code '{sample_dup}' already exists in a deleted Job Card '{conflicting_jc}'. Do you want to proceed with creating this job?",
+                        "code": sample_dup,
+                        "deleted_job_card": conflicting_jc
+                    })
+
+            # 3. Insert Job Card & bulk ingest
+            cur.execute(
+                "INSERT INTO job_cards (job_card_id, description, status) VALUES (%s, %s, 'ACTIVE') RETURNING run_id",
+                (job_card_id, description)
+            )
+
             csv_buffer.seek(0)
             cur.copy_from(csv_buffer, 'codes', columns=('job_card_id', 'code_value', 'status'))
+
+            lifecycle_reason = "Initial batch ingestion"
+            if deleted_job_matches and override_deleted_warning:
+                conflicting_jc = deleted_job_matches[0][0]
+                lifecycle_reason = f"Reused codes from deleted Job Card '{conflicting_jc}'"
+
+            cur.execute(
+                "INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) VALUES (%s, %s, %s, %s)",
+                (job_card_id, "CREATED", uploader["username"], lifecycle_reason)
+            )
+
             conn.commit()
             return {"status": "success", "job_card_id": job_card_id, "total_extracted": len(seen_in_batch)}
     except HTTPException:
@@ -370,13 +424,59 @@ async def create_job(
     finally:
         release_connection(conn)
 
+# Soft Deletion
+@app.post("/api/jobs/{job_card_id}/delete")
+def soft_delete_job(
+    job_card_id: str,
+    admin_password: str = Form(...),
+    deletion_reason: str = Form(...),
+    admin: dict = Depends(require_admin)
+):
+    reason = deletion_reason.strip()
+    if not reason:
+        raise HTTPException(status_code=400, detail="A reason for deleting the job must be provided.")
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT password_hash FROM users WHERE username = %s", (admin["username"],))
+            row = cur.fetchone()
+            if not row or not verify_password(admin_password, row[0]):
+                raise HTTPException(status_code=403, detail="Invalid admin password. Deletion aborted.")
+
+            cur.execute("SELECT status FROM job_cards WHERE job_card_id = %s AND status != 'DELETED'", (job_card_id,))
+            job_row = cur.fetchone()
+            if not job_row:
+                raise HTTPException(status_code=404, detail="Job Card not found or already deleted.")
+
+            cur.execute("""
+                UPDATE job_cards 
+                SET status = 'DELETED', 
+                    deletion_reason = %s, 
+                    deleted_by = %s, 
+                    deleted_at = NOW() 
+                WHERE job_card_id = %s AND status != 'DELETED'
+            """, (reason, admin["username"], job_card_id))
+
+            cur.execute("UPDATE codes SET status = 'BLOCKED' WHERE job_card_id = %s AND status = 'PENDING'", (job_card_id,))
+
+            cur.execute("""
+                INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) 
+                VALUES (%s, 'DELETED', %s, %s)
+            """, (job_card_id, admin["username"], reason))
+
+            conn.commit()
+            return {"status": "success", "message": f"Job {job_card_id} moved to deleted status."}
+    finally:
+        release_connection(conn)
+
 # Complete & Block
 @app.post("/api/jobs/{job_card_id}/complete")
 def complete_job(job_card_id: str, user: dict = Depends(get_current_user)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("UPDATE job_cards SET status = 'COMPLETED' WHERE job_card_id = %s", (job_card_id,))
+            cur.execute("UPDATE job_cards SET status = 'COMPLETED' WHERE job_card_id = %s AND status = 'ACTIVE'", (job_card_id,))
             cur.execute("UPDATE codes SET status = 'BLOCKED' WHERE job_card_id = %s AND status = 'PENDING'", (job_card_id,))
             
             cur.execute(
@@ -403,7 +503,7 @@ def unblock_job(
             if not row or not verify_password(admin_password, row[0]):
                 raise HTTPException(status_code=403, detail="Invalid admin password. Unblocking denied.")
 
-            cur.execute("UPDATE job_cards SET status = 'ACTIVE' WHERE job_card_id = %s", (job_card_id,))
+            cur.execute("UPDATE job_cards SET status = 'ACTIVE' WHERE job_card_id = %s AND status = 'COMPLETED'", (job_card_id,))
             cur.execute("UPDATE codes SET status = 'PENDING' WHERE job_card_id = %s AND status = 'BLOCKED'", (job_card_id,))
 
             cur.execute(
@@ -421,27 +521,31 @@ def get_lifecycle_logs(job_card_id: str, user: dict = Depends(get_current_user))
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT description, status FROM job_cards WHERE job_card_id = %s", (job_card_id,))
+            cur.execute("SELECT description, status, deletion_reason, deleted_by, deleted_at FROM job_cards WHERE job_card_id = %s ORDER BY created_at DESC LIMIT 1", (job_card_id,))
             job = cur.fetchone()
             if not job:
                 raise HTTPException(status_code=404, detail="Job Card not found")
 
             cur.execute("""
-                SELECT action, performed_by, timestamp 
+                SELECT action, performed_by, reason, timestamp 
                 FROM job_lifecycle_logs 
                 WHERE job_card_id = %s 
-                ORDER BY timestamp DESC
+                ORDER BY timestamp ASC
             """, (job_card_id,))
             logs = [{
                 "action": r[0],
                 "user": r[1],
-                "time": r[2].strftime("%Y-%m-%d %H:%M:%S")
+                "reason": r[2] or "",
+                "time": r[3].strftime("%Y-%m-%d %H:%M:%S")
             } for r in cur.fetchall()]
 
             return {
                 "job_card_id": job_card_id,
                 "description": job[0] or "",
                 "status": job[1],
+                "deletion_reason": job[2] or "",
+                "deleted_by": job[3] or "",
+                "deleted_at": job[4].strftime("%Y-%m-%d %H:%M:%S") if job[4] else "",
                 "logs": logs
             }
     finally:
@@ -461,10 +565,19 @@ def verify_code(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            cur.execute("SELECT status FROM job_cards WHERE job_card_id = %s", (job_card_id,))
+            jc_check = cur.fetchone()
+            if not jc_check or jc_check[0] == 'DELETED':
+                return JSONResponse(status_code=200, content={
+                    "result": "BLOCKED",
+                    "message": f"Job Card '{job_card_id}' is deleted/inactive."
+                })
+
             cur.execute("""
-                SELECT job_card_id, status, code_value 
-                FROM codes 
-                WHERE code_value = %s
+                SELECT c.job_card_id, c.status, c.code_value 
+                FROM codes c
+                JOIN job_cards j ON c.job_card_id = j.job_card_id
+                WHERE j.status != 'DELETED' AND c.code_value = %s
             """, (scanned,))
             rows = cur.fetchall()
 
@@ -520,13 +633,13 @@ def verify_code(
     finally:
         release_connection(conn)
 
-# Reporting Endpoints
+# QC Reports
 @app.get("/api/reports/{job_card_id}")
 def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT job_card_id, description, status, created_at FROM job_cards WHERE job_card_id = %s", (job_card_id,))
+            cur.execute("SELECT job_card_id, description, status, created_at FROM job_cards WHERE job_card_id = %s ORDER BY created_at DESC LIMIT 1", (job_card_id,))
             job = cur.fetchone()
             if not job:
                 raise HTTPException(status_code=404, detail="Job Card not found")

@@ -121,7 +121,6 @@
     <!-- Top Navigation Header -->
     <header class="w-full max-w-5xl flex justify-between items-center py-4 border-b border-slate-700 mb-6">
         <div class="flex items-center gap-4">
-            <!-- Undistorted Logo Container with Fixed Height & Auto Width -->
             <div class="bg-white px-3 py-1.5 rounded shadow-sm flex items-center justify-center shrink-0">
                 <img src="/static/logo.jpg" alt="CCL Logo" class="h-10 w-auto max-w-[120px] object-contain block">
             </div>
@@ -133,7 +132,8 @@
 
         <div class="flex items-center gap-2">
             <span id="active-badge" class="px-3 py-1 bg-yellow-600 rounded text-xs uppercase font-bold tracking-wide">No Job Selected</span>
-            <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs font-semibold">Upload Batch</button>
+            <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs font-semibold">Create New Job</button>
+            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden px-3 py-1 bg-teal-700 hover:bg-teal-600 rounded text-xs font-semibold">All Jobs Report</button>
             <button id="btn-users" onclick="openUserModal()" class="hidden px-3 py-1 bg-purple-700 hover:bg-purple-800 rounded text-xs font-semibold">User Admin</button>
             <button onclick="toggleModal('pw-modal')" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs font-semibold">Change Password</button>
             <button onclick="logout()" class="px-3 py-1 bg-rose-800 hover:bg-rose-700 rounded text-xs font-semibold">Logout</button>
@@ -142,18 +142,20 @@
 
     <!-- Main Workspace -->
     <main class="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Job Cards Side Panel -->
+        <!-- Search-Driven Job Card Panel -->
         <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 flex flex-col">
             <div class="flex justify-between items-center mb-2">
-                <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Job Cards</h2>
+                <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Find Job Card</h2>
             </div>
             
             <div class="mb-3">
-                <input type="text" id="job-search" oninput="filterJobs()" placeholder="Search jobs or descriptions..." 
-                       class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500">
+                <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Type to search job card # or description..." 
+                       class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500">
             </div>
 
-            <div id="job-list" class="space-y-2 overflow-y-auto max-h-[440px] flex-1">Loading...</div>
+            <div id="job-list" class="space-y-2 overflow-y-auto max-h-[440px] flex-1">
+                <div class="text-xs text-slate-500 italic p-4 text-center">Type in the search box above to find and select a Job Card</div>
+            </div>
         </div>
 
         <!-- Shopfloor Scanner Area -->
@@ -194,7 +196,6 @@
     <!-- Login Modal -->
     <div id="login-modal" class="fixed inset-0 bg-slate-950 flex items-center justify-center p-4 z-50">
         <div class="bg-slate-800 p-8 rounded-lg max-w-sm w-full border border-slate-700 shadow-2xl">
-            <!-- Login Modal Logo with Correct Proportions -->
             <div class="flex justify-center mb-4">
                 <div class="bg-white px-4 py-2 rounded shadow-sm flex items-center justify-center">
                     <img src="/static/logo.jpg" alt="CCL Logo" class="h-12 w-auto max-w-[160px] object-contain block">
@@ -216,21 +217,56 @@
         </div>
     </div>
 
-    <!-- Admin Password Prompt Modal for Unblocking -->
-    <div id="unblock-confirm-modal" class="fixed inset-0 bg-black/85 flex items-center justify-center hidden p-4 z-50">
+    <!-- Password Confirmation Modal (Unblock, Delete User) -->
+    <div id="auth-confirm-modal" class="fixed inset-0 bg-black/85 flex items-center justify-center hidden p-4 z-50">
         <div class="bg-slate-800 p-6 rounded-lg max-w-sm w-full border border-slate-600 shadow-2xl">
-            <h3 class="text-lg font-bold mb-1 text-amber-400">Admin Authorization Required</h3>
-            <p class="text-xs text-slate-400 mb-4">Reactivating this job card will unblock remaining barcodes. Please re-enter your administrator password to confirm.</p>
-            <form onsubmit="submitAdminUnblock(event)" class="space-y-3">
+            <h3 id="auth-confirm-title" class="text-lg font-bold mb-1 text-amber-400">Admin Authorization Required</h3>
+            <p id="auth-confirm-subtitle" class="text-xs text-slate-400 mb-4">Please enter your administrator password to proceed.</p>
+            <form onsubmit="executeAuthorizedAction(event)" class="space-y-3">
                 <div>
                     <label class="block text-xs font-semibold mb-1 text-slate-300">Admin Password</label>
-                    <input type="password" id="unblock-admin-pass" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white">
+                    <input type="password" id="auth-admin-pass" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white">
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="toggleModal('unblock-confirm-modal')" class="px-4 py-2 bg-slate-700 rounded text-xs">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded text-xs font-semibold text-white">Authorize & Unblock</button>
+                    <button type="button" onclick="closeAuthModal()" class="px-4 py-2 bg-slate-700 rounded text-xs">Cancel</button>
+                    <button type="submit" id="auth-confirm-btn" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded text-xs font-semibold text-white">Confirm</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Job Deletion Modal (Reason + Password) -->
+    <div id="job-delete-modal" class="fixed inset-0 bg-black/85 flex items-center justify-center hidden p-4 z-50">
+        <div class="bg-slate-800 p-6 rounded-lg max-w-md w-full border border-red-700 shadow-2xl">
+            <h3 class="text-lg font-bold mb-1 text-red-400">Soft Delete Job Card</h3>
+            <p id="job-delete-subtitle" class="text-xs text-slate-300 mb-4">The job will be moved to deleted status and hidden from operators. The job ID can be reused later.</p>
+            <form onsubmit="submitJobDelete(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold mb-1 text-slate-300">Reason for Deletion *</label>
+                    <textarea id="job-delete-reason" required rows="2" placeholder="e.g. Cancelled by customer / Incorrect codes uploaded / Plate defect" 
+                              class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-500"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1 text-slate-300">Admin Password *</label>
+                    <input type="password" id="job-delete-pass" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="toggleModal('job-delete-modal')" class="px-4 py-2 bg-slate-700 rounded text-xs">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-red-700 hover:bg-red-600 rounded text-xs font-semibold text-white">Delete Job Card</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Warning Confirmation Modal: Codes Exist in Deleted Job -->
+    <div id="deleted-dup-warning-modal" class="fixed inset-0 bg-black/85 flex items-center justify-center hidden p-4 z-50">
+        <div class="bg-slate-800 p-6 rounded-lg max-w-md w-full border border-amber-600 shadow-2xl">
+            <h3 class="text-lg font-bold mb-1 text-amber-400">Warning: Reused Code Detected</h3>
+            <p id="deleted-dup-warning-msg" class="text-xs text-slate-300 mb-5 leading-relaxed"></p>
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="toggleModal('deleted-dup-warning-modal')" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-xs font-semibold">Cancel</button>
+                <button type="button" onclick="confirmOverrideAndCreate()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded text-xs font-bold text-white shadow">Proceed Anyway</button>
+            </div>
         </div>
     </div>
 
@@ -256,11 +292,11 @@
         </div>
     </div>
 
-    <!-- Upload Modal -->
+    <!-- Create New Job Modal -->
     <div id="upload-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
         <div class="bg-slate-800 p-6 rounded-lg max-w-md w-full border border-slate-600 shadow-2xl">
-            <h3 class="text-lg font-bold mb-4">Create Job Card & Upload Batch</h3>
-            <form onsubmit="uploadJob(event)" class="space-y-4">
+            <h3 class="text-lg font-bold mb-4">Create New Job & Ingest Codes</h3>
+            <form id="create-job-form" onsubmit="uploadJob(event, false)" class="space-y-4">
                 <div>
                     <label class="block text-xs font-semibold mb-1 text-slate-300">Job Card # *</label>
                     <input type="text" id="new-job-id" required placeholder="e.g. JC-2026-99" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm">
@@ -272,13 +308,51 @@
                 <div>
                     <label class="block text-xs font-semibold mb-1 text-slate-300">Batch File (CSV / TXT) *</label>
                     <input type="file" id="new-job-file" accept=".csv,.txt" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-slate-300">
-                    <p class="text-[11px] text-slate-400 mt-1">Codes will be strictly matched against the uploaded values.</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Codes will be checked against active and deleted jobs.</p>
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" onclick="toggleModal('upload-modal')" class="px-4 py-2 bg-slate-700 rounded text-xs">Cancel</button>
-                    <button type="submit" id="upload-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-xs font-semibold">Upload</button>
+                    <button type="submit" id="upload-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-xs font-semibold">Create Job</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Admin Master Jobs Report Modal with Status Toggles -->
+    <div id="master-jobs-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
+        <div class="bg-slate-800 p-6 rounded-lg max-w-5xl w-full border border-slate-600 shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center mb-3 border-b border-slate-700 pb-3">
+                <div>
+                    <h3 class="text-lg font-bold">All Jobs Status Report</h3>
+                    <p class="text-xs text-slate-400">View live status across active, completed, or deleted historical jobs.</p>
+                </div>
+                <button onclick="toggleModal('master-jobs-modal')" class="px-3 py-1 bg-slate-700 rounded text-xs">Close</button>
+            </div>
+
+            <!-- 4 Filter Tabs -->
+            <div class="flex gap-2 mb-3">
+                <button onclick="filterMasterJobs('ALL')" id="filter-tab-all" class="px-3 py-1 bg-blue-600 text-white rounded text-xs font-semibold">All Jobs</button>
+                <button onclick="filterMasterJobs('ACTIVE')" id="filter-tab-active" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs font-semibold">Active Only</button>
+                <button onclick="filterMasterJobs('COMPLETED')" id="filter-tab-completed" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs font-semibold">Completed Only</button>
+                <button onclick="filterMasterJobs('DELETED')" id="filter-tab-deleted" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs font-semibold">Deleted Only</button>
+            </div>
+
+            <!-- Jobs Table -->
+            <div class="flex-1 overflow-y-auto border border-slate-700 rounded">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-900 text-slate-400 sticky top-0">
+                        <tr>
+                            <th class="p-2">Job Card</th>
+                            <th class="p-2">Description / Deletion Reason</th>
+                            <th class="p-2">Created / Deleted Time</th>
+                            <th class="p-2 text-center">Status</th>
+                            <th class="p-2 text-right">Codes Verified</th>
+                            <th class="p-2 text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="master-jobs-rows" class="divide-y divide-slate-700"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -302,7 +376,7 @@
                 <div class="flex justify-between items-center pt-1 border-t border-slate-800">
                     <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
                         <input type="checkbox" id="new-user-can-upload" class="rounded bg-slate-800 border-slate-700 text-blue-600 focus:ring-0">
-                        <span>Allow uploading job cards & codes</span>
+                        <span>Allow creating new job cards</span>
                     </label>
                     <button type="submit" class="bg-purple-600 hover:bg-purple-500 px-4 py-1.5 rounded text-xs font-bold text-white">Create User</button>
                 </div>
@@ -311,7 +385,7 @@
             <div class="max-h-64 overflow-y-auto text-xs">
                 <div class="grid grid-cols-12 gap-2 p-2 font-bold text-slate-400 border-b border-slate-700">
                     <div class="col-span-4">User / Role</div>
-                    <div class="col-span-5 text-center">Can Upload Codes?</div>
+                    <div class="col-span-5 text-center">Can Create Jobs?</div>
                     <div class="col-span-3 text-right">Actions</div>
                 </div>
                 <div id="users-table" class="space-y-1 mt-1">Loading users...</div>
@@ -354,7 +428,7 @@
 
     <!-- Job Lifecycle Audit Trail Modal -->
     <div id="lifecycle-modal" class="printable-modal fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
-        <div class="bg-slate-800 p-6 rounded-lg max-w-2xl w-full border border-slate-600 shadow-2xl flex flex-col max-h-[85vh]">
+        <div class="bg-slate-800 p-6 rounded-lg max-w-3xl w-full border border-slate-600 shadow-2xl flex flex-col max-h-[85vh]">
             <div class="report-header-box flex justify-between items-start mb-3 border-b border-slate-700 pb-3">
                 <div>
                     <h3 id="lifecycle-job-id" class="print-title text-lg font-bold">Job Lifecycle Audit Log</h3>
@@ -372,7 +446,8 @@
                         <tr>
                             <th class="p-2">Timestamp</th>
                             <th class="p-2">Authorized User</th>
-                            <th class="p-2">Action Performed</th>
+                            <th class="p-2">Action</th>
+                            <th class="p-2">Reason / Details</th>
                         </tr>
                     </thead>
                     <tbody id="lifecycle-log-rows" class="divide-y divide-slate-700"></tbody>
@@ -386,7 +461,9 @@
         let activeJobId = null;
         let activeJobDesc = "";
         let activeJobStatus = null;
-        let allJobs = [];
+        let pendingAction = null;
+        let targetDeleteJobId = null;
+
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
         function playTone(type) {
@@ -423,6 +500,7 @@
                 
                 if (data.role === 'admin') {
                     document.getElementById('btn-users').classList.remove('hidden');
+                    document.getElementById('btn-all-jobs').classList.remove('hidden');
                 }
 
                 if (data.can_upload || data.role === 'admin') {
@@ -434,8 +512,6 @@
                 if (data.must_change_password) {
                     forcePasswordChange();
                 }
-
-                fetchJobs();
             } else {
                 document.getElementById('login-modal').classList.remove('hidden');
             }
@@ -487,34 +563,31 @@
             location.reload();
         }
 
-        async function fetchJobs() {
-            const res = await fetch('/api/jobs');
-            if (res.status === 401) return checkSession();
-            allJobs = await res.json();
-            renderJobList(allJobs);
-        }
-
-        function filterJobs() {
-            const query = document.getElementById('job-search').value.toLowerCase().trim();
-            const filtered = allJobs.filter(j => 
-                j.id.toLowerCase().includes(query) || 
-                j.description.toLowerCase().includes(query)
-            );
-            renderJobList(filtered);
-        }
-
-        function renderJobList(jobs) {
+        // --- Search-Driven Job Selection ---
+        async function handleJobSearch() {
+            const query = document.getElementById('job-search').value.trim();
             const list = document.getElementById('job-list');
-            if (jobs.length === 0) {
-                list.innerHTML = `<div class="text-xs text-slate-500 italic p-2 text-center">No job cards found</div>`;
+
+            if (!query) {
+                list.innerHTML = `<div class="text-xs text-slate-500 italic p-4 text-center">Type in the search box above to find and select a Job Card</div>`;
                 return;
             }
+
+            const res = await fetch(`/api/jobs?query=${encodeURIComponent(query)}`);
+            if (res.status === 401) return checkSession();
+            const jobs = await res.json();
+
+            if (jobs.length === 0) {
+                list.innerHTML = `<div class="text-xs text-slate-500 italic p-4 text-center">No active job cards match '${query}'</div>`;
+                return;
+            }
+
             list.innerHTML = jobs.map(j => `
                 <div onclick="selectJob('${j.id}', '${escape(j.description)}', '${j.status}', ${j.consumed}, ${j.total})" 
                      class="p-3 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded cursor-pointer ${activeJobId === j.id ? 'border-blue-400 bg-slate-700' : ''}">
                     <div class="flex justify-between items-start">
                         <div>
-                            <span class="font-bold font-mono text-sm block">${j.id}</span>
+                            <span class="font-bold font-mono text-sm block">Job Card: ${j.id}</span>
                             ${j.description ? `<span class="text-[11px] text-slate-300 block line-clamp-1">${j.description}</span>` : ''}
                         </div>
                         <span class="text-[10px] px-1.5 py-0.5 rounded ${j.status === 'ACTIVE' ? 'bg-green-800' : 'bg-red-800'}">${j.status}</span>
@@ -529,7 +602,7 @@
             activeJobDesc = unescape(descEncoded);
             activeJobStatus = status;
 
-            document.getElementById('active-badge').innerText = id;
+            document.getElementById('active-badge').innerText = `Job Card: ${id}`;
             document.getElementById('active-badge').className = "px-3 py-1 bg-green-600 rounded text-xs uppercase font-bold tracking-wide";
             document.getElementById('report-btn').disabled = false;
             document.getElementById('lifecycle-btn').disabled = false;
@@ -554,7 +627,6 @@
                 }
             }
 
-            filterJobs();
             resetInput();
         }
 
@@ -562,12 +634,12 @@
             if (!activeJobId) return;
 
             if (activeJobStatus === 'ACTIVE') {
-                if (!confirm(`Mark ${activeJobId} completed and block remaining unprinted codes?`)) return;
+                if (!confirm(`Mark Job Card ${activeJobId} completed and block remaining unprinted codes?`)) return;
                 const res = await fetch(`/api/jobs/${activeJobId}/complete`, { method: 'POST' });
                 if (res.ok) {
-                    await fetchJobs();
-                    const updated = allJobs.find(j => j.id === activeJobId);
-                    if (updated) selectJob(updated.id, escape(updated.description), updated.status, updated.consumed, updated.total);
+                    alert(`Job Card ${activeJobId} marked COMPLETED.`);
+                    handleJobSearch();
+                    selectJob(activeJobId, escape(activeJobDesc), 'COMPLETED', 0, 0);
                 } else {
                     const err = await res.json();
                     alert(err.detail || "Action failed");
@@ -577,67 +649,182 @@
                     alert("Only Administrator can reactivate and unblock a completed job.");
                     return;
                 }
-                document.getElementById('unblock-admin-pass').value = "";
-                toggleModal('unblock-confirm-modal');
+                triggerAuthModal(
+                    'UNBLOCK', 
+                    activeJobId, 
+                    'Admin Authorization: Reactivate Job', 
+                    `Enter administrator password to unblock Job Card ${activeJobId} and restore remaining codes.`
+                );
             }
         }
 
-        async function submitAdminUnblock(e) {
-            e.preventDefault();
-            const password = document.getElementById('unblock-admin-pass').value;
+        // --- Reusable Password Modal ---
+        function triggerAuthModal(actionType, target, title, subtitle) {
+            pendingAction = { type: actionType, target: target };
+            document.getElementById('auth-confirm-title').innerText = title;
+            document.getElementById('auth-confirm-subtitle').innerText = subtitle;
+            document.getElementById('auth-admin-pass').value = "";
+            document.getElementById('auth-confirm-modal').classList.remove('hidden');
+        }
 
+        function closeAuthModal() {
+            pendingAction = null;
+            document.getElementById('auth-confirm-modal').classList.add('hidden');
+        }
+
+        async function executeAuthorizedAction(e) {
+            e.preventDefault();
+            if (!pendingAction) return;
+
+            const password = document.getElementById('auth-admin-pass').value;
             const body = new FormData();
             body.append("admin_password", password);
 
-            const res = await fetch(`/api/jobs/${activeJobId}/unblock`, { method: 'POST', body });
+            if (pendingAction.type === 'UNBLOCK') {
+                const res = await fetch(`/api/jobs/${pendingAction.target}/unblock`, { method: 'POST', body });
+                if (res.ok) {
+                    closeAuthModal();
+                    alert(`Job Card ${pendingAction.target} reactivated successfully.`);
+                    handleJobSearch();
+                    selectJob(activeJobId, escape(activeJobDesc), 'ACTIVE', 0, 0);
+                } else {
+                    const err = await res.json();
+                    alert(err.detail || "Authorization failed.");
+                }
+            } else if (pendingAction.type === 'DELETE_USER') {
+                const res = await fetch(`/api/users/${pendingAction.target}/delete`, { method: 'POST', body });
+                if (res.ok) {
+                    closeAuthModal();
+                    alert(`User ${pendingAction.target} deleted successfully.`);
+                    openUserModal();
+                } else {
+                    const err = await res.json();
+                    alert(err.detail || "User deletion failed.");
+                }
+            }
+        }
+
+        // --- Soft Delete with Reason & Password ---
+        function requestJobDelete(jobCardId) {
+            targetDeleteJobId = jobCardId;
+            document.getElementById('job-delete-subtitle').innerText = `Provide a reason and your password to move Job Card '${jobCardId}' to deleted status.`;
+            document.getElementById('job-delete-reason').value = "";
+            document.getElementById('job-delete-pass').value = "";
+            document.getElementById('job-delete-modal').classList.remove('hidden');
+        }
+
+        async function submitJobDelete(e) {
+            e.preventDefault();
+            if (!targetDeleteJobId) return;
+
+            const reason = document.getElementById('job-delete-reason').value.trim();
+            const password = document.getElementById('job-delete-pass').value;
+
+            const body = new FormData();
+            body.append("deletion_reason", reason);
+            body.append("admin_password", password);
+
+            const res = await fetch(`/api/jobs/${targetDeleteJobId}/delete`, {
+                method: 'POST',
+                body: body
+            });
+
             if (res.ok) {
-                toggleModal('unblock-confirm-modal');
-                alert(`Job Card ${activeJobId} reactivated and unblocked successfully.`);
-                await fetchJobs();
-                const updated = allJobs.find(j => j.id === activeJobId);
-                if (updated) selectJob(updated.id, escape(updated.description), updated.status, updated.consumed, updated.total);
+                document.getElementById('job-delete-modal').classList.add('hidden');
+                alert(`Job Card '${targetDeleteJobId}' moved to deleted status.`);
+                
+                if (activeJobId === targetDeleteJobId) {
+                    activeJobId = null;
+                    document.getElementById('active-badge').innerText = "No Job Selected";
+                    document.getElementById('active-badge').className = "px-3 py-1 bg-yellow-600 rounded text-xs uppercase font-bold tracking-wide";
+                    document.getElementById('job-toggle-btn').disabled = true;
+                    document.getElementById('lifecycle-btn').disabled = true;
+                    document.getElementById('report-btn').disabled = true;
+                }
+
+                targetDeleteJobId = null;
+                handleJobSearch();
+                loadMasterJobs('ALL');
             } else {
                 const err = await res.json();
-                alert(err.detail || "Unblocking authorization failed.");
+                alert(err.detail || "Deletion failed.");
             }
         }
 
-        async function openLifecycleModal() {
-            if (!activeJobId) return;
-            const res = await fetch(`/api/jobs/${activeJobId}/lifecycle-logs`);
-            const data = await res.json();
-
-            document.getElementById('lifecycle-job-id').innerText = `Lifecycle Audit Log: ${data.job_card_id} (${data.status})`;
-            document.getElementById('lifecycle-desc').innerText = data.description || "No description provided";
-
-            const tbody = document.getElementById('lifecycle-log-rows');
-            if (data.logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" class="p-3 text-center text-slate-500 italic">No lifecycle state changes recorded</td></tr>`;
-            } else {
-                tbody.innerHTML = data.logs.map(log => {
-                    const isUnblock = log.action === 'REACTIVATED_AND_UNBLOCKED';
-                    return `
-                        <tr class="hover:bg-slate-700/50">
-                            <td class="p-2 font-mono text-[11px] text-slate-400">${log.time}</td>
-                            <td class="p-2 font-bold">${log.user}</td>
-                            <td class="p-2 font-semibold ${isUnblock ? 'text-amber-400' : 'text-rose-400'}">
-                                ${isUnblock ? 'Reactivated & Unblocked' : 'Completed & Blocked'}
-                            </td>
-                        </tr>
-                    `;
-                }).join('');
-            }
-
-            toggleModal('lifecycle-modal');
+        // --- Admin Master Jobs Report ---
+        async function openMasterJobsModal() {
+            toggleModal('master-jobs-modal');
+            loadMasterJobs('ALL');
         }
 
+        async function loadMasterJobs(filterType) {
+            ['all', 'active', 'completed', 'deleted'].forEach(t => {
+                const btn = document.getElementById(`filter-tab-${t}`);
+                if (t === filterType.toLowerCase()) {
+                    btn.className = "px-3 py-1 bg-blue-600 text-white rounded text-xs font-semibold";
+                } else {
+                    btn.className = "px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs font-semibold";
+                }
+            });
+
+            const res = await fetch(`/api/admin/master-jobs?status_filter=${filterType}`);
+            const jobs = await res.json();
+
+            const tbody = document.getElementById('master-jobs-rows');
+            if (jobs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-3 text-center text-slate-500 italic">No job cards found under '${filterType}'</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = jobs.map(j => {
+                let badgeClass = "bg-slate-700 text-slate-300";
+                if (j.status === 'ACTIVE') badgeClass = "bg-green-900 text-green-200";
+                else if (j.status === 'COMPLETED') badgeClass = "bg-blue-900 text-blue-200";
+                else if (j.status === 'DELETED') badgeClass = "bg-red-900 text-red-200";
+
+                const descDetail = j.status === 'DELETED' 
+                    ? `<span class="text-red-400 font-semibold block">Reason: ${j.deletion_reason}</span><span class="text-slate-400 block text-[11px]">Deleted by: ${j.deleted_by}</span>`
+                    : (j.description || '-');
+
+                const timeDetail = j.status === 'DELETED' 
+                    ? `<span class="text-slate-400 block font-mono text-[11px]">Created: ${j.created_at}</span><span class="text-red-300 block font-mono text-[11px]">Deleted: ${j.deleted_at}</span>`
+                    : `<span class="text-slate-400 block font-mono text-[11px]">${j.created_at}</span>`;
+
+                return `
+                    <tr class="hover:bg-slate-700/50">
+                        <td class="p-2 font-mono font-bold">${j.job_card_id}</td>
+                        <td class="p-2 max-w-[260px]">${descDetail}</td>
+                        <td class="p-2">${timeDetail}</td>
+                        <td class="p-2 text-center">
+                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeClass}">
+                                ${j.status}
+                            </span>
+                        </td>
+                        <td class="p-2 text-right font-mono text-xs">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
+                        <td class="p-2 text-center">
+                            ${j.status !== 'DELETED' ? `
+                                <button onclick="requestJobDelete('${j.job_card_id}')" class="px-2 py-1 bg-red-700/80 hover:bg-red-600 text-white rounded text-[10px] font-semibold">
+                                    Delete
+                                </button>
+                            ` : '<span class="text-slate-500 italic text-[11px]">Archived</span>'}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterMasterJobs(filterType) {
+            loadMasterJobs(filterType);
+        }
+
+        // --- Scanning Logic ---
         async function handleScan(e) {
             e.preventDefault();
             const input = document.getElementById('barcode-input');
             const code = input.value.trim();
             if (!code) return;
             if (!activeJobId) {
-                alert("Please select a Job Card first.");
+                alert("Please search and select a Job Card first.");
                 input.value = "";
                 return;
             }
@@ -650,7 +837,6 @@
             const data = await res.json();
             renderResult(data.result, data.message, code);
             input.value = "";
-            fetchJobs();
         }
 
         function renderResult(result, msg, code) {
@@ -688,38 +874,58 @@
             }
         }
 
-        async function uploadJob(e) {
-            e.preventDefault();
+        // --- Create New Job Submission with Warning Prompt Handling ---
+        async function uploadJob(e, overrideDeletedWarning = false) {
+            if (e) e.preventDefault();
             const btn = document.getElementById('upload-btn');
             btn.disabled = true;
-            btn.innerText = "Uploading...";
+            btn.innerText = "Processing...";
 
             const body = new FormData();
             body.append("job_card_id", document.getElementById('new-job-id').value.trim());
             body.append("description", document.getElementById('new-job-desc').value.trim());
             body.append("file", document.getElementById('new-job-file').files[0]);
+            body.append("override_deleted_warning", overrideDeletedWarning);
 
             const res = await fetch('/api/jobs/create', { method: 'POST', body });
-            if (res.ok) {
-                const data = await res.json();
-                alert(`Success! Imported ${data.total_extracted.toLocaleString()} codes for ${data.job_card_id}`);
-                toggleModal('upload-modal');
-                fetchJobs();
-                e.target.reset();
-            } else {
-                const err = await res.json();
-                alert(err.detail || "Upload failed");
+            const data = await res.json();
+
+            // Intercept soft warning for codes in deleted jobs
+            if (res.status === 409 && data.status === "deleted_duplicate_warning") {
+                document.getElementById('deleted-dup-warning-msg').innerText = 
+                    `Code '${data.code}' exists in deleted Job Card '${data.deleted_job_card}'. Would you like to continue creating this job anyway?`;
+                document.getElementById('deleted-dup-warning-modal').classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerText = "Create Job";
+                return;
             }
+
+            if (res.ok) {
+                alert(`Success! Created Job Card ${data.job_card_id} with ${data.total_extracted.toLocaleString()} codes.`);
+                toggleModal('upload-modal');
+                document.getElementById('deleted-dup-warning-modal').classList.add('hidden');
+                document.getElementById('job-search').value = data.job_card_id;
+                handleJobSearch();
+                document.getElementById('create-job-form').reset();
+            } else {
+                alert(data.detail || "Failed to create job");
+            }
+
             btn.disabled = false;
-            btn.innerText = "Upload";
+            btn.innerText = "Create Job";
         }
 
+        function confirmOverrideAndCreate() {
+            uploadJob(null, true);
+        }
+
+        // --- QC Report Modal ---
         async function openReportModal() {
             if (!activeJobId) return;
             const res = await fetch(`/api/reports/${activeJobId}`);
             const data = await res.json();
 
-            document.getElementById('report-job-id').innerText = `QC Report: ${data.job_card_id} (${data.status})`;
+            document.getElementById('report-job-id').innerText = `QC Report: Job Card ${data.job_card_id} (${data.status})`;
             document.getElementById('report-desc').innerText = data.description || "No description provided";
             document.getElementById('download-csv-btn').onclick = () => {
                 window.location.href = `/api/reports/${activeJobId}/csv`;
@@ -750,6 +956,51 @@
             toggleModal('report-modal');
         }
 
+        // --- Lifecycle Log Modal ---
+        async function openLifecycleModal() {
+            if (!activeJobId) return;
+            const res = await fetch(`/api/jobs/${activeJobId}/lifecycle-logs`);
+            const data = await res.json();
+
+            document.getElementById('lifecycle-job-id').innerText = `Lifecycle Audit Log: Job Card ${data.job_card_id} (${data.status})`;
+            document.getElementById('lifecycle-desc').innerText = data.description || "No description provided";
+
+            const tbody = document.getElementById('lifecycle-log-rows');
+            if (data.logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-500 italic">No lifecycle state changes recorded</td></tr>`;
+            } else {
+                tbody.innerHTML = data.logs.map(log => {
+                    let label = log.action;
+                    let colorClass = "text-slate-300";
+                    if (log.action === 'CREATED') {
+                        label = "Job Created";
+                        colorClass = "text-blue-400";
+                    } else if (log.action === 'REACTIVATED_AND_UNBLOCKED') {
+                        label = "Reactivated & Unblocked";
+                        colorClass = "text-amber-400";
+                    } else if (log.action === 'COMPLETED_AND_BLOCKED') {
+                        label = "Completed & Blocked";
+                        colorClass = "text-rose-400";
+                    } else if (log.action === 'DELETED') {
+                        label = "Soft Deleted";
+                        colorClass = "text-red-500";
+                    }
+
+                    return `
+                        <tr class="hover:bg-slate-700/50">
+                            <td class="p-2 font-mono text-[11px] text-slate-400">${log.time}</td>
+                            <td class="p-2 font-bold">${log.user}</td>
+                            <td class="p-2 font-semibold ${colorClass}">${label}</td>
+                            <td class="p-2 text-slate-300 text-xs">${log.reason || '-'}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            toggleModal('lifecycle-modal');
+        }
+
+        // --- User Admin ---
         async function openUserModal() {
             toggleModal('user-modal');
             const res = await fetch('/api/users');
@@ -776,7 +1027,7 @@
 
                     <div class="col-span-3 text-right">
                         ${u.username !== currentUser.username ? `
-                            <button onclick="deleteUser('${u.username}')" class="text-red-400 hover:text-red-300">Delete</button>
+                            <button onclick="requestUserDelete('${u.username}')" class="text-red-400 hover:text-red-300">Delete</button>
                         ` : '<span class="text-[10px] text-slate-500">You</span>'}
                     </div>
                 </div>
@@ -793,12 +1044,10 @@
             });
 
             if (res.ok) {
-                if (username === currentUser.username) {
-                    checkSession();
-                }
+                if (username === currentUser.username) checkSession();
                 openUserModal();
             } else {
-                alert("Failed to update upload permission.");
+                alert("Failed to update permissions.");
             }
         }
 
@@ -820,10 +1069,13 @@
             }
         }
 
-        async function deleteUser(username) {
-            if (!confirm(`Delete user ${username}?`)) return;
-            const res = await fetch(`/api/users/${username}`, { method: 'DELETE' });
-            if (res.ok) openUserModal();
+        function requestUserDelete(username) {
+            triggerAuthModal(
+                'DELETE_USER',
+                username,
+                'Authorize User Deletion',
+                `Are you sure you want to delete user '${username}'? Re-enter administrator password to confirm.`
+            );
         }
 
         function toggleModal(id) {
@@ -836,7 +1088,7 @@
         }
 
         document.addEventListener('click', (e) => {
-            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'SELECT') {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'SELECT' && e.target.tagName !== 'TEXTAREA') {
                 resetInput();
             }
         });
