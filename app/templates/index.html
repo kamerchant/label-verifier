@@ -418,6 +418,18 @@
         </div>
     </div>
 
+    <!-- Custom Confirm Modal ("Please Verify!") -->
+    <div id="custom-confirm-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
+        <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-amber-500/35 shadow-2xl text-center">
+            <h3 class="text-base font-bold mb-1 text-amber-400">Please Verify!</h3>
+            <p id="custom-confirm-msg" class="text-xs text-slate-300 mb-5 leading-relaxed"></p>
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="resolveCustomConfirm(false)" class="linear-button-secondary px-4 py-2 rounded text-xs font-medium min-h-[40px]">Cancel</button>
+                <button type="button" onclick="resolveCustomConfirm(true)" class="linear-button-primary px-4 py-2 rounded text-xs font-medium min-h-[40px]">Confirm</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modals -->
     <div id="login-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full shadow-2xl">
@@ -727,6 +739,8 @@
         let rawMasterJobs = [];
         let recentScans = [];
 
+        let confirmCallback = null;
+
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
         // Custom Alert Helper ("Please Verify!")
@@ -737,6 +751,25 @@
 
         function closeCustomAlert() {
             document.getElementById('custom-alert-modal').classList.add('hidden');
+            resetInput();
+        }
+
+        // Custom Confirm Helper (Replaces browser confirm popups with "Please Verify!")
+        function showCustomConfirm(message) {
+            return new Promise((resolve) => {
+                document.getElementById('custom-confirm-msg').innerText = message;
+                document.getElementById('custom-confirm-modal').classList.remove('hidden');
+                confirmCallback = resolve;
+            });
+        }
+
+        function resolveCustomConfirm(result) {
+            document.getElementById('custom-confirm-modal').classList.add('hidden');
+            if (confirmCallback) {
+                const cb = confirmCallback;
+                confirmCallback = null;
+                cb(result);
+            }
             resetInput();
         }
 
@@ -930,7 +963,8 @@
             if (!activeJobId) return;
 
             if (activeJobStatus === 'ACTIVE') {
-                if (!confirm(`Mark Job Card ${activeJobId} completed?`)) return;
+                const confirmed = await showCustomConfirm(`Mark Job Card ${activeJobId} completed?`);
+                if (!confirmed) return;
                 const res = await fetch(`/api/jobs/${activeJobId}/complete`, { method: 'POST' });
                 if (res.ok) {
                     showCustomAlert(`Job Card ${activeJobId} completed.`);
