@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CCL Pakistan VDV</title>
+    <title>CCL ME - PK - VDV</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Responsive base typography & iOS zoom prevention */
@@ -268,7 +268,7 @@
             <div class="bg-white px-2 py-1 rounded shadow-sm flex items-center justify-center shrink-0">
                 <img src="/static/logo.jpg" alt="CCL Logo" class="h-6 sm:h-8 w-auto max-w-[90px] sm:max-w-[120px] object-contain block" onerror="this.onerror=null; this.src='/logo.jpg';">
             </div>
-            <span class="font-extrabold text-white text-base sm:text-xl tracking-wide whitespace-nowrap">CCL Middle East – Pakistan</span>
+            <span class="font-extrabold text-white text-xs sm:text-lg tracking-wide whitespace-nowrap">CCL ME - PK - Variable Date Verification System</span>
         </div>
 
         <div class="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar w-full sm:w-auto py-1 sm:py-0">
@@ -437,7 +437,7 @@
                 <div class="bg-white p-1 rounded shrink-0">
                     <img src="/static/logo.jpg" alt="CCL Logo" class="h-6 w-auto object-contain block" onerror="this.onerror=null; this.src='/logo.jpg';">
                 </div>
-                <span class="font-bold text-white text-base">CCL Middle East – Pakistan</span>
+                <span class="font-bold text-white text-base">CCL ME - PK - VDV</span>
             </div>
             <p class="text-xs text-slate-400 mb-4">Sign in to initialize serialization terminal</p>
             <form onsubmit="handleLogin(event)" class="space-y-3.5">
@@ -743,7 +743,6 @@
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        // Custom Alert Helper ("Please Verify!")
         function showCustomAlert(message) {
             document.getElementById('custom-alert-msg').innerText = message;
             document.getElementById('custom-alert-modal').classList.remove('hidden');
@@ -754,7 +753,6 @@
             resetInput();
         }
 
-        // Custom Confirm Helper (Replaces browser confirm popups with "Please Verify!")
         function showCustomConfirm(message) {
             return new Promise((resolve) => {
                 document.getElementById('custom-confirm-msg').innerText = message;

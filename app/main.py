@@ -1,6 +1,7 @@
 import io
 import os
 import csv
+import json
 import codecs
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Response, Depends
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -8,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from app.database import init_db, get_connection, release_connection, hash_password, verify_password
 
-app = FastAPI(title="CCL Pakistan VDV")
+app = FastAPI(title="CCL ME - PK - VDV")
 
 SECRET_KEY = os.environ.get("SESSION_SECRET", "super-secret-press-floor-key-change-in-prod")
 signer = URLSafeTimedSerializer(SECRET_KEY)
@@ -321,6 +322,45 @@ def get_master_jobs_report(status_filter: str = "ALL", admin: dict = Depends(req
                 "deleted_at": r[8].strftime("%Y-%m-%d %H:%M") if r[8] else "",
                 "deletion_reason": r[9] or ""
             } for r in rows]
+    finally:
+        release_connection(conn)
+
+@app.post("/api/admin/jobs/bulk-complete")
+def bulk_complete_jobs(
+    job_card_ids: str = Form(...),
+    admin_password: str = Form(...),
+    admin: dict = Depends(require_admin)
+):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT password_hash FROM users WHERE username = %s", (admin["username"],))
+            row = cur.fetchone()
+            if not row or not verify_password(admin_password, row[0]):
+                raise HTTPException(status_code=403, detail="Invalid admin password. Bulk completion denied.")
+
+            jc_ids = json.loads(job_card_ids)
+            if not jc_ids:
+                raise HTTPException(status_code=400, detail="No jobs selected.")
+
+            for jc_id in jc_ids:
+                cur.execute("""
+                    UPDATE job_cards 
+                    SET status = 'COMPLETED' 
+                    WHERE job_card_id = %s AND status = 'ACTIVE'
+                    RETURNING run_id
+                """, (jc_id,))
+                jc_row = cur.fetchone()
+                if jc_row:
+                    run_id = jc_row[0]
+                    cur.execute("UPDATE codes SET status = 'BLOCKED' WHERE run_id = %s AND status = 'PENDING'", (run_id,))
+                    cur.execute(
+                        "INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by) VALUES (%s, %s, %s)",
+                        (jc_id, "COMPLETED_AND_BLOCKED_BULK", admin["username"])
+                    )
+
+            conn.commit()
+            return {"status": "success"}
     finally:
         release_connection(conn)
 
