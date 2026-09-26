@@ -291,7 +291,6 @@ def get_jobs(user: dict = Depends(get_current_user)):
     finally:
         release_connection(conn)
 
-# Ingestion guarded by require_uploader dependency
 @app.post("/api/jobs/create")
 async def create_job(
     job_card_id: str = Form(...),
@@ -305,17 +304,17 @@ async def create_job(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            # 1. Ensure Job Card ID is unique
             cur.execute("SELECT job_card_id FROM job_cards WHERE job_card_id = %s", (job_card_id,))
             if cur.fetchone():
                 raise HTTPException(status_code=400, detail=f"Job Card '{job_card_id}' already exists.")
-
-            cur.execute("INSERT INTO job_cards (job_card_id, description) VALUES (%s, %s)", (job_card_id, description))
 
             utf8_reader = codecs.iterdecode(file.file, "utf-8", errors="ignore")
             csv_reader = csv.reader(utf8_reader, delimiter=",", skipinitialspace=True)
 
             csv_buffer = io.StringIO()
             seen_in_batch = set()
+            sample_codes = []
 
             for row in csv_reader:
                 if not row:
@@ -330,10 +329,34 @@ async def create_job(
                     if item not in seen_in_batch:
                         seen_in_batch.add(item)
                         csv_buffer.write(f"{job_card_id}\t{item}\tPENDING\n")
+                        
+                        # Collect first 100 codes for cross-batch duplicate check
+                        if len(sample_codes) < 100:
+                            sample_codes.append(item)
 
             if not seen_in_batch:
                 raise HTTPException(status_code=400, detail="No valid codes found in the file.")
 
+            # 2. Fast Indexed Pre-Check across existing records
+            if sample_codes:
+                cur.execute("""
+                    SELECT job_card_id, code_value 
+                    FROM codes 
+                    WHERE code_value = ANY(%s) 
+                    LIMIT 5
+                """, (sample_codes,))
+                existing_matches = cur.fetchall()
+
+                if existing_matches:
+                    conflicting_jc = existing_matches[0][0]
+                    sample_dup = existing_matches[0][1]
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Upload rejected: Duplicate codes detected! Code '{sample_dup}' already exists in Job Card '{conflicting_jc}'."
+                    )
+
+            # 3. Create Job Card and bulk ingest via COPY
+            cur.execute("INSERT INTO job_cards (job_card_id, description) VALUES (%s, %s)", (job_card_id, description))
             csv_buffer.seek(0)
             cur.copy_from(csv_buffer, 'codes', columns=('job_card_id', 'code_value', 'status'))
             conn.commit()
