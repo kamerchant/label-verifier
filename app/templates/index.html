@@ -315,9 +315,9 @@
             </form>
         </div>
 
-        <!-- Real-Time Stream Table Container -->
-        <div class="linear-card rounded overflow-hidden flex flex-col">
-            <div class="px-3.5 sm:px-5 py-3 sm:py-4 border-b border-white/[0.08] flex items-center justify-between text-sm">
+        <!-- Real-Time Stream Table Container (Extended to bottom of screen) -->
+        <div class="linear-card rounded overflow-hidden flex-1 flex flex-col min-h-[350px]">
+            <div class="px-3.5 sm:px-5 py-3 sm:py-4 border-b border-white/[0.08] flex items-center justify-between text-sm shrink-0">
                 <div class="flex items-center gap-2 sm:gap-3 font-semibold text-slate-200">
                     <span class="text-sm sm:text-lg">Live Verification Stream</span>
                     <span class="text-slate-600 hidden sm:inline">|</span>
@@ -325,7 +325,7 @@
                 </div>
             </div>
 
-            <div class="overflow-x-auto flex-1 max-h-80 overflow-y-auto">
+            <div class="overflow-x-auto flex-1 overflow-y-auto">
                 <table class="w-full text-left text-xs sm:text-sm whitespace-nowrap sm:whitespace-normal">
                     <thead>
                         <tr class="border-b border-white/[0.08] text-[11px] sm:text-xs text-slate-400 font-semibold bg-[#161821] sticky top-0 z-10">
@@ -338,7 +338,7 @@
                     </thead>
                     <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] font-mono text-xs sm:text-sm">
                         <tr>
-                            <td colspan="5" class="px-3 sm:px-5 py-6 sm:py-8 text-center text-slate-500 font-sans italic">No scan events recorded for this session</td>
+                            <td colspan="5" class="px-3 sm:px-5 py-8 sm:py-12 text-center text-slate-500 font-sans italic">No scan events recorded for this session</td>
                         </tr>
                     </tbody>
                 </table>
