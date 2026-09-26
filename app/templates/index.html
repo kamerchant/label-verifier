@@ -861,12 +861,14 @@
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = id;
             document.getElementById('active-title-card').innerText = `Job Card: ${id}`;
-            document.getElementById('header-job-desc').innerText = activeJobDesc || 'Job Loaded and Ready for Verification';
+            
+            const promptDesc = activeJobDesc ? `${activeJobDesc} - Ready for Validation` : `Job Card ${id} - Ready for Validation`;
+            document.getElementById('header-job-desc').innerText = promptDesc;
 
             // Status bar turns yellow when job is selected
             const card = document.getElementById('status-card');
             card.className = "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-yellow";
-            document.getElementById('status-heading').innerText = "Job Loaded and Ready for Verification";
+            document.getElementById('status-heading').innerText = promptDesc;
             document.getElementById('status-detail').innerText = "";
             document.getElementById('status-last-code').classList.add('hidden');
             document.getElementById('status-badge').classList.add('hidden');
@@ -1027,7 +1029,6 @@
                     document.getElementById('active-title-card').innerText = "Job Card: None";
                     document.getElementById('header-job-desc').innerText = "Search active production jobs using the search field.";
                     
-                    // Reset banner back to default black state
                     const card = document.getElementById('status-card');
                     card.className = "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-black";
                     document.getElementById('status-heading').innerText = "To Verify Code, Select the Job ID and Enter Code Below";
