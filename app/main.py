@@ -242,7 +242,6 @@ def delete_user_with_auth(
         release_connection(conn)
 
 # --- Job Search & Management ---
-# Main screen search: Strictly queries ACTIVE jobs
 @app.get("/api/jobs")
 def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
     conn = get_connection()
@@ -281,7 +280,6 @@ def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
     finally:
         release_connection(conn)
 
-# All Jobs Master Report
 @app.get("/api/admin/master-jobs")
 def get_master_jobs_report(status_filter: str = "ALL", admin: dict = Depends(require_admin)):
     conn = get_connection()
@@ -327,7 +325,6 @@ def get_master_jobs_report(status_filter: str = "ALL", admin: dict = Depends(req
     finally:
         release_connection(conn)
 
-# --- Create Job with Run-Level Isolation ---
 @app.post("/api/jobs/create")
 async def create_job(
     job_card_id: str = Form(...),
@@ -607,7 +604,7 @@ def get_lifecycle_logs(job_card_id: str, user: dict = Depends(get_current_user))
     finally:
         release_connection(conn)
 
-# Strict Verification
+# Strict Verification with Detailed Error Reporting & Audit Persistence
 @app.post("/api/verify")
 def verify_code(
     job_card_id: str = Form(...), 
@@ -635,13 +632,14 @@ def verify_code(
 
             active_run_id, jc_status = active_jc
 
-            def log_scan(res):
+            def log_scan(res, msg):
                 cur.execute(
                     "INSERT INTO scan_logs (job_card_id, code_scanned, result, scanned_by) VALUES (%s, %s, %s, %s)",
                     (job_card_id, scanned, res, operator)
                 )
                 conn.commit()
 
+            # Check for code across all non-deleted runs in the system
             cur.execute("""
                 SELECT c.run_id, j.job_card_id, c.status, c.code_value 
                 FROM codes c
@@ -650,36 +648,43 @@ def verify_code(
             """, (scanned,))
             rows = cur.fetchall()
 
+            # 1. Code does not exist anywhere in system
             if not rows:
-                log_scan("UNKNOWN")
+                msg = "Code does not exist. Check if the code is from another job card."
+                log_scan("UNKNOWN", msg)
                 return JSONResponse(status_code=200, content={
                     "result": "UNKNOWN", 
-                    "message": f"Code '{scanned}' does not exist in any active job batch."
+                    "message": msg
                 })
 
             matched_current = next((r for r in rows if r[0] == active_run_id), None)
 
+            # 2. Code exists in another job card
             if not matched_current:
                 owning_jobs = ", ".join(list(set([r[1] for r in rows])))
-                log_scan("MISMATCH")
+                msg = f"Code not from this job card and from another job card number: {owning_jobs}"
+                log_scan("MISMATCH", msg)
                 return JSONResponse(status_code=200, content={
                     "result": "MISMATCH", 
-                    "message": f"Code belongs to Job Card: {owning_jobs}"
+                    "message": msg
                 })
 
             run_id, owning_jc, status, exact_code = matched_current
 
+            # 3. Code was already verified earlier
             if status == "CONSUMED":
-                log_scan("DUPLICATE")
+                msg = f"Code {exact_code} was verified earlier!"
+                log_scan("DUPLICATE", msg)
                 return JSONResponse(status_code=200, content={
                     "result": "DUPLICATE", 
-                    "message": f"Code '{exact_code}' was already printed & consumed!"
+                    "message": msg
                 })
             elif status == "BLOCKED":
-                log_scan("BLOCKED")
+                msg = f"Code belongs to completed/blocked job '{owning_jc}'!"
+                log_scan("BLOCKED", msg)
                 return JSONResponse(status_code=200, content={
                     "result": "BLOCKED", 
-                    "message": f"Code belongs to completed/blocked job '{owning_jc}'!"
+                    "message": msg
                 })
             elif status == "PENDING":
                 cur.execute("""
@@ -687,10 +692,11 @@ def verify_code(
                     SET status = 'CONSUMED', scanned_at = NOW() 
                     WHERE run_id = %s AND code_value = %s
                 """, (active_run_id, scanned))
-                log_scan("PASS")
+                msg = f"Verified: {exact_code}"
+                log_scan("PASS", msg)
                 return JSONResponse(status_code=200, content={
                     "result": "PASS", 
-                    "message": f"Verified: {exact_code}"
+                    "message": msg
                 })
     finally:
         release_connection(conn)
