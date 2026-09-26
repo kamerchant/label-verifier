@@ -230,6 +230,7 @@ def delete_user_with_auth(
         release_connection(conn)
 
 # --- Job Search & Management ---
+# Active jobs search (strictly joins codes by run_id so old deleted runs NEVER contaminate counts)
 @app.get("/api/jobs")
 def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
     conn = get_connection()
@@ -239,9 +240,10 @@ def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
                 SELECT j.job_card_id, j.description, j.status, 
                        COUNT(c.code_value) as total,
                        COUNT(CASE WHEN c.status = 'CONSUMED' THEN 1 END) as consumed,
-                       j.created_at
+                       j.created_at,
+                       j.run_id
                 FROM job_cards j
-                LEFT JOIN codes c ON j.job_card_id = c.job_card_id
+                LEFT JOIN codes c ON j.run_id = c.run_id AND c.status != 'DELETED'
                 WHERE j.status != 'DELETED'
             """
             params = []
@@ -281,7 +283,7 @@ def get_master_jobs_report(status_filter: str = "ALL", admin: dict = Depends(req
                        j.deleted_at,
                        j.deletion_reason
                 FROM job_cards j
-                LEFT JOIN codes c ON j.job_card_id = c.job_card_id
+                LEFT JOIN codes c ON j.run_id = c.run_id
             """
             params = []
             if status_filter == "ACTIVE":
@@ -312,7 +314,7 @@ def get_master_jobs_report(status_filter: str = "ALL", admin: dict = Depends(req
     finally:
         release_connection(conn)
 
-# --- Create Job with Soft/Hard Duplicate Handling ---
+# --- Create Job with Run-Level Isolation ---
 @app.post("/api/jobs/create")
 async def create_job(
     job_card_id: str = Form(...),
@@ -327,7 +329,7 @@ async def create_job(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # 1. Enforce unique job_card_id among currently active or completed runs
+            # 1. Reject if active/completed job exists with the same ID
             cur.execute("SELECT run_id FROM job_cards WHERE job_card_id = %s AND status != 'DELETED'", (job_card_id,))
             if cur.fetchone():
                 raise HTTPException(status_code=400, detail=f"Active Job Card '{job_card_id}' already exists.")
@@ -358,13 +360,13 @@ async def create_job(
             if not seen_in_batch:
                 raise HTTPException(status_code=400, detail="No valid codes found in the file.")
 
-            # 2. Duplicate pre-check across non-deleted vs deleted records
+            # 2. Duplicate Pre-check
             deleted_job_matches = []
             if sample_codes:
                 cur.execute("""
                     SELECT j.job_card_id, c.code_value, j.status 
                     FROM codes c
-                    JOIN job_cards j ON (c.run_id = j.run_id OR (c.run_id IS NULL AND c.job_card_id = j.job_card_id))
+                    JOIN job_cards j ON c.run_id = j.run_id
                     WHERE c.code_value = ANY(%s)
                     LIMIT 20
                 """, (sample_codes,))
@@ -373,7 +375,7 @@ async def create_job(
                 active_matches = [m for m in matches if m[2] != 'DELETED']
                 deleted_job_matches = [m for m in matches if m[2] == 'DELETED']
 
-                # HARD BLOCK: Matched an ACTIVE or COMPLETED job
+                # HARD BLOCK: Duplicate in ACTIVE or COMPLETED job
                 if active_matches:
                     conflicting_jc = active_matches[0][0]
                     sample_dup = active_matches[0][1]
@@ -382,7 +384,7 @@ async def create_job(
                         detail=f"Upload rejected: Duplicate codes detected! Code '{sample_dup}' already exists in active/completed Job Card '{conflicting_jc}'."
                     )
 
-                # SOFT WARNING: Matched DELETED jobs, prompt user to confirm
+                # SOFT WARNING: Code exists in a DELETED job
                 if deleted_job_matches and not override_deleted_warning:
                     sample_dup = deleted_job_matches[0][1]
                     conflicting_jc = deleted_job_matches[0][0]
@@ -393,7 +395,7 @@ async def create_job(
                         "deleted_job_card": conflicting_jc
                     })
 
-            # 3. Insert Job Card and retrieve generated run_id
+            # 3. Create new Job Card and obtain its run_id
             cur.execute("""
                 INSERT INTO job_cards (job_card_id, description, status) 
                 VALUES (%s, %s, 'ACTIVE') 
@@ -401,7 +403,7 @@ async def create_job(
             """, (job_card_id, description))
             run_id = cur.fetchone()[0]
 
-            # 4. Bulk ingest codes tied to this run_id
+            # 4. Ingest codes strictly bound to run_id
             csv_buffer = io.StringIO()
             for code in raw_codes:
                 csv_buffer.write(f"{run_id}\t{job_card_id}\t{code}\tPENDING\n")
@@ -409,7 +411,7 @@ async def create_job(
 
             cur.copy_from(csv_buffer, 'codes', columns=('run_id', 'job_card_id', 'code_value', 'status'))
 
-            # 5. Lifecycle Log
+            # 5. Record lifecycle log
             lifecycle_reason = "Initial batch ingestion"
             if deleted_job_matches and override_deleted_warning:
                 conflicting_jc = deleted_job_matches[0][0]
@@ -431,7 +433,7 @@ async def create_job(
     finally:
         release_connection(conn)
 
-# Soft Deletion
+# Soft Deletion: Quarantines all codes under this run as DELETED
 @app.post("/api/jobs/{job_card_id}/delete")
 def soft_delete_job(
     job_card_id: str,
@@ -451,11 +453,6 @@ def soft_delete_job(
             if not row or not verify_password(admin_password, row[0]):
                 raise HTTPException(status_code=403, detail="Invalid admin password. Deletion aborted.")
 
-            cur.execute("SELECT status FROM job_cards WHERE job_card_id = %s AND status != 'DELETED'", (job_card_id,))
-            job_row = cur.fetchone()
-            if not job_row:
-                raise HTTPException(status_code=404, detail="Job Card not found or already deleted.")
-
             cur.execute("""
                 UPDATE job_cards 
                 SET status = 'DELETED', 
@@ -463,9 +460,16 @@ def soft_delete_job(
                     deleted_by = %s, 
                     deleted_at = NOW() 
                 WHERE job_card_id = %s AND status != 'DELETED'
+                RETURNING run_id
             """, (reason, admin["username"], job_card_id))
+            updated = cur.fetchone()
+            if not updated:
+                raise HTTPException(status_code=404, detail="Active Job Card not found or already deleted.")
+            
+            run_id = updated[0]
 
-            cur.execute("UPDATE codes SET status = 'BLOCKED' WHERE job_card_id = %s AND status = 'PENDING'", (job_card_id,))
+            # Mark all codes in this specific run as DELETED so they never match in active jobs
+            cur.execute("UPDATE codes SET status = 'DELETED' WHERE run_id = %s", (run_id,))
 
             cur.execute("""
                 INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) 
@@ -483,8 +487,18 @@ def complete_job(job_card_id: str, user: dict = Depends(get_current_user)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("UPDATE job_cards SET status = 'COMPLETED' WHERE job_card_id = %s AND status = 'ACTIVE'", (job_card_id,))
-            cur.execute("UPDATE codes SET status = 'BLOCKED' WHERE job_card_id = %s AND status = 'PENDING'", (job_card_id,))
+            cur.execute("""
+                UPDATE job_cards 
+                SET status = 'COMPLETED' 
+                WHERE job_card_id = %s AND status = 'ACTIVE'
+                RETURNING run_id
+            """, (job_card_id,))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Active Job Card not found.")
+            
+            run_id = row[0]
+            cur.execute("UPDATE codes SET status = 'BLOCKED' WHERE run_id = %s AND status = 'PENDING'", (run_id,))
             
             cur.execute(
                 "INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by) VALUES (%s, %s, %s)",
@@ -510,8 +524,18 @@ def unblock_job(
             if not row or not verify_password(admin_password, row[0]):
                 raise HTTPException(status_code=403, detail="Invalid admin password. Unblocking denied.")
 
-            cur.execute("UPDATE job_cards SET status = 'ACTIVE' WHERE job_card_id = %s AND status = 'COMPLETED'", (job_card_id,))
-            cur.execute("UPDATE codes SET status = 'PENDING' WHERE job_card_id = %s AND status = 'BLOCKED'", (job_card_id,))
+            cur.execute("""
+                UPDATE job_cards 
+                SET status = 'ACTIVE' 
+                WHERE job_card_id = %s AND status = 'COMPLETED'
+                RETURNING run_id
+            """, (job_card_id,))
+            jc_row = cur.fetchone()
+            if not jc_row:
+                raise HTTPException(status_code=404, detail="Completed Job Card not found.")
+
+            run_id = jc_row[0]
+            cur.execute("UPDATE codes SET status = 'PENDING' WHERE run_id = %s AND status = 'BLOCKED'", (run_id,))
 
             cur.execute(
                 "INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by) VALUES (%s, %s, %s)",
@@ -522,7 +546,7 @@ def unblock_job(
     finally:
         release_connection(conn)
 
-# Lifecycle Audit Trail Endpoint (Guarantees Creation Date & Event are Displayed)
+# Lifecycle Audit Trail Endpoint
 @app.get("/api/jobs/{job_card_id}/lifecycle-logs")
 def get_lifecycle_logs(job_card_id: str, user: dict = Depends(get_current_user)):
     conn = get_connection()
@@ -556,7 +580,6 @@ def get_lifecycle_logs(job_card_id: str, user: dict = Depends(get_current_user))
                 "time": r[3].strftime("%Y-%m-%d %H:%M:%S") if r[3] else ""
             } for r in rows]
 
-            # Prepend creation timestamp if legacy job was created before explicit CREATED logging
             has_created = any(log["action"] == "CREATED" for log in logs)
             if not has_created and created_at:
                 logs.insert(0, {
@@ -579,7 +602,7 @@ def get_lifecycle_logs(job_card_id: str, user: dict = Depends(get_current_user))
     finally:
         release_connection(conn)
 
-# Strict Verification
+# Strict Verification: Completely ignores deleted jobs & deleted codes
 @app.post("/api/verify")
 def verify_code(
     job_card_id: str = Form(...), 
@@ -593,21 +616,20 @@ def verify_code(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT status FROM job_cards WHERE job_card_id = %s", (job_card_id,))
-            jc_check = cur.fetchone()
-            if not jc_check or jc_check[0] == 'DELETED':
+            # 1. Fetch active run_id
+            cur.execute("""
+                SELECT run_id, status 
+                FROM job_cards 
+                WHERE job_card_id = %s AND status != 'DELETED'
+            """, (job_card_id,))
+            active_jc = cur.fetchone()
+            if not active_jc:
                 return JSONResponse(status_code=200, content={
                     "result": "BLOCKED",
-                    "message": f"Job Card '{job_card_id}' is deleted/inactive."
+                    "message": f"Job Card '{job_card_id}' is deleted or does not exist."
                 })
 
-            cur.execute("""
-                SELECT c.job_card_id, c.status, c.code_value 
-                FROM codes c
-                JOIN job_cards j ON c.job_card_id = j.job_card_id
-                WHERE j.status != 'DELETED' AND c.code_value = %s
-            """, (scanned,))
-            rows = cur.fetchall()
+            active_run_id, jc_status = active_jc
 
             def log_scan(res):
                 cur.execute(
@@ -616,24 +638,34 @@ def verify_code(
                 )
                 conn.commit()
 
+            # 2. Check for scanned code across active & completed jobs (DELETED codes are completely excluded)
+            cur.execute("""
+                SELECT c.run_id, j.job_card_id, c.status, c.code_value 
+                FROM codes c
+                JOIN job_cards j ON c.run_id = j.run_id
+                WHERE j.status != 'DELETED' AND c.status != 'DELETED' AND c.code_value = %s
+            """, (scanned,))
+            rows = cur.fetchall()
+
             if not rows:
                 log_scan("UNKNOWN")
                 return JSONResponse(status_code=200, content={
                     "result": "UNKNOWN", 
-                    "message": f"Code '{scanned}' does not exist in any batch."
+                    "message": f"Code '{scanned}' does not exist in any active job batch."
                 })
 
-            matched_current = next((r for r in rows if r[0] == job_card_id), None)
+            matched_current = next((r for r in rows if r[0] == active_run_id), None)
 
+            # Code belongs to a different active/completed job
             if not matched_current:
-                owning_jobs = ", ".join(list(set([r[0] for r in rows])))
+                owning_jobs = ", ".join(list(set([r[1] for r in rows])))
                 log_scan("MISMATCH")
                 return JSONResponse(status_code=200, content={
                     "result": "MISMATCH", 
                     "message": f"Code belongs to Job Card: {owning_jobs}"
                 })
 
-            owning_jc, status, exact_code = matched_current
+            run_id, owning_jc, status, exact_code = matched_current
 
             if status == "CONSUMED":
                 log_scan("DUPLICATE")
@@ -651,8 +683,8 @@ def verify_code(
                 cur.execute("""
                     UPDATE codes 
                     SET status = 'CONSUMED', scanned_at = NOW() 
-                    WHERE job_card_id = %s AND code_value = %s
-                """, (job_card_id, scanned))
+                    WHERE run_id = %s AND code_value = %s
+                """, (active_run_id, scanned))
                 log_scan("PASS")
                 return JSONResponse(status_code=200, content={
                     "result": "PASS", 
@@ -661,16 +693,24 @@ def verify_code(
     finally:
         release_connection(conn)
 
-# QC Reports
+# QC Reports: strictly bound to the active/latest run
 @app.get("/api/reports/{job_card_id}")
 def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT job_card_id, description, status, created_at FROM job_cards WHERE job_card_id = %s ORDER BY created_at DESC LIMIT 1", (job_card_id,))
+            cur.execute("""
+                SELECT run_id, job_card_id, description, status, created_at 
+                FROM job_cards 
+                WHERE job_card_id = %s AND status != 'DELETED' 
+                ORDER BY created_at DESC 
+                LIMIT 1
+            """, (job_card_id,))
             job = cur.fetchone()
             if not job:
-                raise HTTPException(status_code=404, detail="Job Card not found")
+                raise HTTPException(status_code=404, detail="Active Job Card not found")
+
+            run_id, jc_id, jc_desc, jc_status, jc_created = job
 
             cur.execute("""
                 SELECT 
@@ -678,8 +718,8 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
                     COUNT(CASE WHEN status = 'CONSUMED' THEN 1 END),
                     COUNT(CASE WHEN status = 'BLOCKED' THEN 1 END),
                     COUNT(CASE WHEN status = 'PENDING' THEN 1 END)
-                FROM codes WHERE job_card_id = %s
-            """, (job_card_id,))
+                FROM codes WHERE run_id = %s
+            """, (run_id,))
             totals = cur.fetchone()
 
             cur.execute("""
@@ -687,7 +727,7 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
                 FROM scan_logs 
                 WHERE job_card_id = %s 
                 GROUP BY result
-            """, (job_card_id,))
+            """, (jc_id,))
             results_breakdown = {r[0]: r[1] for r in cur.fetchall()}
 
             cur.execute("""
@@ -696,7 +736,7 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
                 WHERE job_card_id = %s 
                 ORDER BY scanned_at DESC 
                 LIMIT 500
-            """, (job_card_id,))
+            """, (jc_id,))
             logs = [{
                 "code": r[0],
                 "result": r[1],
@@ -705,10 +745,10 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
             } for r in cur.fetchall()]
 
             return {
-                "job_card_id": job[0],
-                "description": job[1] or "",
-                "status": job[2],
-                "created_at": job[3].strftime("%Y-%m-%d %H:%M"),
+                "job_card_id": jc_id,
+                "description": jc_desc or "",
+                "status": jc_status,
+                "created_at": jc_created.strftime("%Y-%m-%d %H:%M"),
                 "total_codes": totals[0],
                 "consumed_codes": totals[1],
                 "blocked_codes": totals[2],

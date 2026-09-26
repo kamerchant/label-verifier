@@ -41,14 +41,13 @@ def init_db():
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 );
 
-                -- In-place column migrations
                 ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT TRUE;
                 ALTER TABLE users ADD COLUMN IF NOT EXISTS can_upload BOOLEAN DEFAULT FALSE;
                 UPDATE users SET role = 'QC Incharge' WHERE role = 'operator';
                 UPDATE users SET can_upload = TRUE WHERE role = 'admin';
             """)
 
-            # 2. Job Cards Table (Run ID enables name reuse)
+            # 2. Job Cards Table with unique run_id primary key
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS job_cards (
                     run_id BIGSERIAL PRIMARY KEY,
@@ -62,7 +61,6 @@ def init_db():
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 );
 
-                -- In-place column migrations
                 ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS run_id BIGSERIAL;
                 ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS description TEXT;
                 ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS deletion_reason TEXT;
@@ -70,7 +68,7 @@ def init_db():
                 ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;
             """)
 
-            # Remove legacy primary key from job_cards if it was on job_card_id
+            # Ensure run_id is primary key and drop legacy job_card_id PK
             cur.execute("""
                 DO $$
                 BEGIN
@@ -89,7 +87,7 @@ def init_db():
                 WHERE status != 'DELETED';
             """)
 
-            # 3. Codes Table: DROP compound primary key (job_card_id, code_value)
+            # 3. Codes Table with run_id foreign reference
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS codes (
                     id BIGSERIAL PRIMARY KEY,
@@ -105,7 +103,7 @@ def init_db():
                 ALTER TABLE codes ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PENDING';
                 ALTER TABLE codes ADD COLUMN IF NOT EXISTS scanned_at TIMESTAMP WITH TIME ZONE NULL;
 
-                -- Drop compound primary key or foreign key blockers
+                -- Drop legacy composite primary keys and unique constraints
                 DO $$
                 DECLARE
                     r RECORD;
@@ -128,9 +126,25 @@ def init_db():
                 DROP INDEX IF EXISTS idx_codes_value_unique;
                 DROP INDEX IF EXISTS codes_job_card_id_code_value_key;
 
+                CREATE INDEX IF NOT EXISTS idx_codes_run_id ON codes (run_id);
                 CREATE INDEX IF NOT EXISTS idx_codes_value ON codes (code_value);
                 CREATE INDEX IF NOT EXISTS idx_codes_status ON codes (status);
                 CREATE INDEX IF NOT EXISTS idx_codes_jc ON codes (job_card_id);
+            """)
+
+            # Data Migration: Populate run_id and mark codes of deleted jobs as DELETED
+            cur.execute("""
+                UPDATE codes c
+                SET run_id = j.run_id
+                FROM job_cards j
+                WHERE c.job_card_id = j.job_card_id AND c.run_id IS NULL;
+
+                UPDATE codes c
+                SET status = 'DELETED'
+                FROM job_cards j
+                WHERE (c.run_id = j.run_id OR c.job_card_id = j.job_card_id) 
+                  AND j.status = 'DELETED' 
+                  AND c.status != 'DELETED';
             """)
 
             # 4. Scan Logs Table
@@ -162,7 +176,7 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_lifecycle_time ON job_lifecycle_logs (timestamp DESC);
             """)
 
-            # 6. Seed Default Admin if Database is Fresh
+            # 6. Seed Default Admin
             cur.execute("SELECT COUNT(*) FROM users;")
             if cur.fetchone()[0] == 0:
                 admin_hash = hash_password("admin123")
