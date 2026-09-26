@@ -230,8 +230,8 @@
     <!-- Main Workspace -->
     <main class="max-w-6xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 flex-1 flex flex-col gap-4 sm:gap-6">
 
-        <!-- Job Context Ribbon & Dynamic Quick Search -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+        <!-- Job Context Ribbon, Search Bar, & Action Buttons -->
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
                     <h1 id="active-title-card" class="text-xl sm:text-3xl font-extrabold tracking-tight text-white font-mono truncate">Job Card: None</h1>
@@ -239,15 +239,34 @@
                 <p id="header-job-desc" class="text-xs sm:text-sm text-slate-400 mt-1 truncate">Search active production jobs using the search field.</p>
             </div>
 
-            <!-- Instant Search Input: Strictly searches ACTIVE jobs -->
-            <div class="relative w-full md:w-80 shrink-0">
-                <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Search active jobs..." 
-                       class="linear-input w-full px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm font-mono rounded placeholder-slate-500 shadow-inner min-h-[44px]">
-                <div id="job-list" class="absolute left-0 right-0 top-full mt-1.5 linear-card rounded shadow-2xl max-h-64 overflow-y-auto z-30 hidden"></div>
+            <!-- Job Search Bar and Adjacent Action Buttons Group -->
+            <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full lg:w-auto shrink-0">
+                <!-- Search Input: Strictly searches ACTIVE jobs -->
+                <div class="relative flex-1 sm:w-72 shrink-0">
+                    <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Search active jobs..." 
+                           class="linear-input w-full px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm font-mono rounded placeholder-slate-500 shadow-inner min-h-[44px]">
+                    <div id="job-list" class="absolute left-0 right-0 top-full mt-1.5 linear-card rounded shadow-2xl max-h-64 overflow-y-auto z-30 hidden"></div>
+                </div>
+
+                <!-- Action Buttons: Positioned directly next to Search Bar, inactive by default -->
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <button id="report-btn" onclick="openReportModal()" disabled 
+                            class="linear-button-secondary text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[44px] font-medium shadow-sm whitespace-nowrap">
+                        QC Report
+                    </button>
+                    <button id="lifecycle-btn" onclick="openLifecycleModal()" disabled 
+                            class="linear-button-secondary text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[44px] font-medium shadow-sm whitespace-nowrap">
+                        Lifecycle Audit
+                    </button>
+                    <button id="job-toggle-btn" onclick="handleJobStatusToggle()" disabled 
+                            class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded opacity-30 pointer-events-none transition-all min-h-[44px] font-semibold shadow-sm whitespace-nowrap">
+                        Complete Job
+                    </button>
+                </div>
             </div>
         </div>
 
-        <!-- Metric Figures (3-column streamlined layout: Blocked and Completion Rate removed) -->
+        <!-- Metric Figures (3-column streamlined layout) -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
             <div class="linear-card p-3 sm:p-4 rounded">
                 <span class="text-xs text-slate-400 block font-medium">Total Pool</span>
@@ -306,8 +325,7 @@
                 </div>
             </div>
 
-            <!-- Horizontally scrollable on small mobile displays -->
-            <div class="overflow-x-auto flex-1 max-h-72 overflow-y-auto">
+            <div class="overflow-x-auto flex-1 max-h-80 overflow-y-auto">
                 <table class="w-full text-left text-xs sm:text-sm whitespace-nowrap sm:whitespace-normal">
                     <thead>
                         <tr class="border-b border-white/[0.08] text-[11px] sm:text-xs text-slate-400 font-semibold bg-[#161821] sticky top-0 z-10">
@@ -325,19 +343,6 @@
                     </tbody>
                 </table>
             </div>
-        </div>
-
-        <!-- Action Buttons Relocated to Bottom of Screen, Below Verification Stream Table -->
-        <div class="flex flex-wrap items-center justify-end gap-2.5 pt-1 pb-4">
-            <button id="report-btn" onclick="openReportModal()" disabled class="linear-button-secondary text-xs sm:text-sm px-4 py-2 rounded disabled:opacity-30 min-h-[42px] font-medium shadow-sm">
-                QC Report
-            </button>
-            <button id="lifecycle-btn" onclick="openLifecycleModal()" disabled class="linear-button-secondary text-xs sm:text-sm px-4 py-2 rounded disabled:opacity-30 min-h-[42px] font-medium shadow-sm">
-                Lifecycle Audit
-            </button>
-            <button id="job-toggle-btn" onclick="handleJobStatusToggle()" disabled class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs sm:text-sm px-4 py-2 rounded disabled:opacity-30 transition-colors min-h-[42px] font-semibold shadow-sm">
-                Complete Job
-            </button>
         </div>
 
     </main>
@@ -791,23 +796,37 @@
             document.getElementById('status-last-code').classList.add('hidden');
             document.getElementById('status-badge').classList.add('hidden');
 
-            document.getElementById('report-btn').disabled = false;
-            document.getElementById('lifecycle-btn').disabled = false;
+            // Activate top action buttons
+            const rptBtn = document.getElementById('report-btn');
+            const lifeBtn = document.getElementById('lifecycle-btn');
+            const toggleBtn = document.getElementById('job-toggle-btn');
+
+            rptBtn.disabled = false;
+            rptBtn.classList.remove('opacity-30', 'pointer-events-none');
+            
+            lifeBtn.disabled = false;
+            lifeBtn.classList.remove('opacity-30', 'pointer-events-none');
 
             const pending = Math.max(0, total - consumed);
             document.getElementById('kpi-total').innerText = total.toLocaleString();
             document.getElementById('kpi-consumed').innerText = consumed.toLocaleString();
             document.getElementById('kpi-pending').innerText = pending.toLocaleString();
 
-            const toggleBtn = document.getElementById('job-toggle-btn');
             if (status === 'ACTIVE') {
                 toggleBtn.innerText = "Complete Job";
-                toggleBtn.className = "bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs sm:text-sm px-4 py-2 rounded transition-colors min-h-[42px] font-semibold shadow-sm";
+                toggleBtn.className = "bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded transition-all min-h-[44px] font-semibold shadow-sm whitespace-nowrap";
                 toggleBtn.disabled = false;
+                toggleBtn.classList.remove('opacity-30', 'pointer-events-none');
             } else {
                 toggleBtn.innerText = "Reactivate (Admin)";
-                toggleBtn.className = "linear-button-secondary text-amber-400 text-xs sm:text-sm px-4 py-2 rounded min-h-[42px] font-medium shadow-sm";
-                toggleBtn.disabled = (currentUser.role !== 'admin');
+                toggleBtn.className = "linear-button-secondary text-amber-400 text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded min-h-[44px] font-medium shadow-sm whitespace-nowrap";
+                if (currentUser.role === 'admin') {
+                    toggleBtn.disabled = false;
+                    toggleBtn.classList.remove('opacity-30', 'pointer-events-none');
+                } else {
+                    toggleBtn.disabled = true;
+                    toggleBtn.classList.add('opacity-30', 'pointer-events-none');
+                }
             }
 
             resetInput();
@@ -949,9 +968,17 @@
                     document.getElementById('kpi-consumed').innerText = "0";
                     document.getElementById('kpi-pending').innerText = "0";
 
-                    document.getElementById('job-toggle-btn').disabled = true;
-                    document.getElementById('lifecycle-btn').disabled = true;
-                    document.getElementById('report-btn').disabled = true;
+                    // Disable top buttons
+                    const rptBtn = document.getElementById('report-btn');
+                    const lifeBtn = document.getElementById('lifecycle-btn');
+                    const toggleBtn = document.getElementById('job-toggle-btn');
+
+                    rptBtn.disabled = true;
+                    rptBtn.classList.add('opacity-30', 'pointer-events-none');
+                    lifeBtn.disabled = true;
+                    lifeBtn.classList.add('opacity-30', 'pointer-events-none');
+                    toggleBtn.disabled = true;
+                    toggleBtn.classList.add('opacity-30', 'pointer-events-none');
                 }
 
                 loadMasterJobs(currentMasterTab);
