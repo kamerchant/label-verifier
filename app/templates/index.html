@@ -3,75 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CCL Pakistan VDV - SAP B1 Shop-Floor Cockpit</title>
+    <title>CCL Pakistan VDV</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
-            font-family: "Segoe UI", Tahoma, Arial, sans-serif;
-            background-color: #d9e1e8; /* SAP B1 Shell Gray */
-            color: #2b3648;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", sans-serif;
+            background-color: #0d0e11; /* Linear Matte Void */
+            color: #d0d6e0;
+            letter-spacing: -0.01em;
         }
-        .sap-panel {
-            background-color: #ffffff;
-            border: 1px solid #a4b4c4;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        .linear-card {
+            background-color: #12141a;
+            border: 1px solid rgba(255, 255, 255, 0.07);
         }
-        .sap-header {
-            background: linear-gradient(180deg, #354a5f 0%, #283848 100%);
+        .linear-subcard {
+            background-color: #161821;
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
-        .sap-toolbar {
-            background: linear-gradient(180deg, #f2f5f8 0%, #e2e8ee 100%);
-            border-bottom: 1px solid #b6c4d0;
+        .linear-input {
+            background-color: #090a0d;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #f1f5f9;
+            transition: all 0.15s ease;
         }
-        .sap-btn-primary {
-            background: linear-gradient(180deg, #1b6ec2 0%, #15589c 100%);
-            border: 1px solid #0f467e;
+        .linear-input:focus {
+            border-color: #5e6ad2;
+            box-shadow: 0 0 0 1px #5e6ad2;
+            outline: none;
         }
-        .sap-btn-primary:hover {
-            background: linear-gradient(180deg, #227bd6 0%, #1862ad 100%);
+        .linear-button-primary {
+            background-color: #5e6ad2;
+            color: #ffffff;
+            transition: all 0.12s ease;
         }
-        .sap-btn-default {
-            background: linear-gradient(180deg, #ffffff 0%, #ebf0f5 100%);
-            border: 1px solid #abadb3;
+        .linear-button-primary:hover {
+            background-color: #6875e3;
         }
-        .sap-btn-default:hover {
-            background: linear-gradient(180deg, #f7f9fa 0%, #dce4ec 100%);
+        .linear-button-secondary {
+            background-color: #1a1c24;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #cbd5e1;
+            transition: all 0.12s ease;
         }
-        .sap-table th {
-            background: linear-gradient(180deg, #eef3f7 0%, #d8e3ec 100%);
-            border-right: 1px solid #b4c2ce;
-            border-bottom: 1px solid #a0b2c2;
-            color: #334155;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-        .sap-table td {
-            border-bottom: 1px solid #e2e8f0;
-            border-right: 1px solid #eef2f6;
-            font-size: 12px;
-        }
-        
-        /* High-Contrast Verification Industrial Themes */
-        .status-ready {
-            background: linear-gradient(180deg, #f8fafc 0%, #edf2f7 100%);
-            border-color: #94a3b8;
-            color: #334155;
-        }
-        .status-pass {
-            background: linear-gradient(180deg, #15803d 0%, #166534 100%);
-            border-color: #14532d;
+        .linear-button-secondary:hover {
+            background-color: #222530;
             color: #ffffff;
         }
-        .status-fail {
-            background: linear-gradient(180deg, #b91c1c 0%, #991b1b 100%);
-            border-color: #7f1d1d;
-            color: #ffffff;
+        .linear-badge-pass {
+            background-color: rgba(46, 213, 115, 0.1);
+            color: #2ed573;
+            border: 1px solid rgba(46, 213, 115, 0.25);
         }
-        .status-warn {
-            background: linear-gradient(180deg, #c2410c 0%, #9a3412 100%);
-            border-color: #7c2d12;
-            color: #ffffff;
+        .linear-badge-fail {
+            background-color: rgba(255, 71, 87, 0.1);
+            color: #ff4757;
+            border: 1px solid rgba(255, 71, 87, 0.25);
+        }
+        .linear-badge-warn {
+            background-color: rgba(255, 165, 2, 0.1);
+            color: #ffa502;
+            border: 1px solid rgba(255, 165, 2, 0.25);
+        }
+
+        /* Result billboard states */
+        .state-ready {
+            border-left: 2px solid #5e6ad2;
+        }
+        .state-pass {
+            border-left: 2px solid #2ed573;
+            background: linear-gradient(90deg, rgba(46, 213, 115, 0.08) 0%, #161821 100%);
+        }
+        .state-fail {
+            border-left: 2px solid #ff4757;
+            background: linear-gradient(90deg, rgba(255, 71, 87, 0.08) 0%, #161821 100%);
+        }
+        .state-warn {
+            border-left: 2px solid #ffa502;
+            background: linear-gradient(90deg, rgba(255, 165, 2, 0.08) 0%, #161821 100%);
         }
 
         @media print {
@@ -180,435 +188,435 @@
         }
     </style>
 </head>
-<body class="min-h-screen p-2 md:p-4 flex flex-col justify-between">
+<body class="min-h-screen flex flex-col justify-between selection:bg-[#5e6ad2] selection:text-white">
 
-    <!-- Top Master Cockpit Window Frame -->
-    <div class="sap-panel rounded-t-sm flex flex-col max-w-7xl w-full mx-auto overflow-hidden">
-        
-        <!-- SAP Client Window Header Ribbon -->
-        <header class="sap-header text-white px-3 py-2 flex flex-wrap justify-between items-center text-xs">
-            <div class="flex items-center gap-3">
-                <div class="bg-white px-2 py-0.5 rounded-sm flex items-center shrink-0">
-                    <img src="/static/logo.jpg" alt="CCL Logo" class="h-6 w-auto max-w-[90px] object-contain block">
+    <!-- Top Command Navigation -->
+    <header class="border-b border-white/[0.06] bg-[#0d0e11]/90 backdrop-blur-md px-6 py-2.5 flex items-center justify-between text-xs sticky top-0 z-40">
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
+                <div class="w-5 h-5 rounded bg-[#5e6ad2] flex items-center justify-center font-bold text-white text-[11px] shadow-sm">
+                    C
                 </div>
-                <div>
-                    <span class="font-bold tracking-wide">CCL Pakistan VDV — Shop-Floor Verification Cockpit</span>
-                    <span id="user-display" class="block text-[11px] text-slate-300">Checking credentials...</span>
+                <span class="font-semibold text-slate-100">CCL VDV</span>
+            </div>
+            <span class="text-slate-600">/</span>
+            <span class="text-slate-400">Serialization Stream</span>
+            <span class="text-slate-600">/</span>
+            <span id="header-active-slug" class="font-mono text-slate-200">STANDBY</span>
+        </div>
+
+        <!-- Global Search & Navigation Buttons -->
+        <div class="flex items-center gap-2.5">
+            <span id="active-badge" class="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">NO JOB SELECTED</span>
+            <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-2.5 py-1 rounded text-xs font-medium">Create New Job</button>
+            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-2.5 py-1 rounded text-xs font-medium">All Jobs</button>
+            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-2.5 py-1 rounded text-xs font-medium">Users</button>
+            <button onclick="toggleModal('pw-modal')" class="linear-button-secondary px-2.5 py-1 rounded text-xs font-medium">Password</button>
+            <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-2.5 py-1 rounded text-xs font-medium transition-colors">Logout</button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="max-w-6xl w-full mx-auto px-6 py-6 flex-1 flex flex-col gap-6">
+
+        <!-- Job Context Ribbon & Dynamic Quick Search -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex-1 max-w-xl">
+                <div class="flex items-center gap-3">
+                    <h1 id="active-title-card" class="text-xl font-bold tracking-tight text-white font-mono">Job Card: None</h1>
+                    <span id="status-chip" class="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-slate-800 text-slate-400 border border-slate-700">STANDBY</span>
+                </div>
+                <p id="header-job-desc" class="text-xs text-slate-400 mt-1 truncate">Type in the command search below to load a serialized production run.</p>
+            </div>
+
+            <!-- Instant Search Input -->
+            <div class="relative w-full md:w-72">
+                <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Find job card # or description..." 
+                       class="linear-input w-full px-3 py-1.5 text-xs font-mono rounded placeholder-slate-500">
+                <div id="job-list" class="absolute left-0 right-0 top-full mt-1 linear-card rounded shadow-2xl max-h-56 overflow-y-auto z-30 hidden"></div>
+            </div>
+        </div>
+
+        <!-- Metric Figures (Linear Monospace Counters) -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div class="linear-card p-3 rounded">
+                <span class="text-[11px] text-slate-400 block">Total Pool</span>
+                <span id="kpi-total" class="text-xl font-semibold font-mono text-white mt-0.5 block">0</span>
+                <span class="text-[10px] text-slate-500 mt-0.5 block">Assigned batch pool</span>
+            </div>
+            <div class="linear-card p-3 rounded">
+                <span class="text-[11px] text-[#2ed573] block">Verified (Pass)</span>
+                <span id="kpi-consumed" class="text-xl font-semibold font-mono text-[#2ed573] mt-0.5 block">0</span>
+                <span class="text-[10px] text-slate-500 mt-0.5 block">Consumed serials</span>
+            </div>
+            <div class="linear-card p-3 rounded">
+                <span class="text-[11px] text-amber-400 block">Pending Queue</span>
+                <span id="kpi-pending" class="text-xl font-semibold font-mono text-slate-300 mt-0.5 block">0</span>
+                <span class="text-[10px] text-slate-500 mt-0.5 block">Remaining in feed</span>
+            </div>
+            <div class="linear-card p-3 rounded">
+                <span class="text-[11px] text-slate-400 block">Blocked</span>
+                <span id="kpi-blocked" class="text-xl font-semibold font-mono text-slate-300 mt-0.5 block">0</span>
+                <span class="text-[10px] text-slate-500 mt-0.5 block">Quarantined units</span>
+            </div>
+            <div class="linear-card p-3 rounded col-span-2 md:col-span-1">
+                <span class="text-[11px] text-slate-400 block">Completion Rate</span>
+                <span id="counter" class="text-xl font-semibold font-mono text-[#5e6ad2] mt-0.5 block">0 / 0</span>
+                <div class="w-full bg-white/[0.06] h-1 rounded-full mt-2 overflow-hidden">
+                    <div id="progress-bar-fill" class="bg-[#5e6ad2] h-full transition-all duration-200" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scanning Terminal Canvas -->
+        <div class="linear-card p-5 rounded flex flex-col gap-4">
+            
+            <!-- Result Notice Bar -->
+            <div id="status-card" class="linear-subcard px-4 py-3 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-2 state-ready">
+                <div class="flex items-center gap-3">
+                    <span id="status-dot" class="w-2 h-2 rounded-full bg-[#5e6ad2]"></span>
+                    <div>
+                        <span id="status-heading" class="text-xs font-semibold text-slate-100 font-mono tracking-wide">VERIFY CODE</span>
+                        <span id="status-detail" class="text-xs text-slate-400 ml-2">&middot; Select a job card and scan serialized barcode labels</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span id="status-last-code" class="text-[11px] font-mono text-slate-500">READY</span>
+                    <span id="status-badge" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#1a1c24] text-slate-300">STANDBY</span>
                 </div>
             </div>
 
-            <!-- Standard SAP Action Controls -->
-            <div class="flex items-center gap-1.5 mt-2 sm:mt-0">
-                <span id="active-badge" class="px-2 py-1 bg-amber-600/90 text-white rounded-xs font-mono font-bold text-[11px] uppercase tracking-wide">No Job Selected</span>
-                <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden sap-btn-primary text-white px-2.5 py-1 rounded-sm text-[11px] font-semibold">Create New Job</button>
-                <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden sap-btn-default text-slate-800 px-2.5 py-1 rounded-sm text-[11px] font-semibold">All Jobs Report</button>
-                <button id="btn-users" onclick="openUserModal()" class="hidden sap-btn-default text-slate-800 px-2.5 py-1 rounded-sm text-[11px] font-semibold">User Admin</button>
-                <button onclick="toggleModal('pw-modal')" class="sap-btn-default text-slate-800 px-2.5 py-1 rounded-sm text-[11px] font-semibold">Change PW</button>
-                <button onclick="logout()" class="bg-[#8b2323] hover:bg-[#701c1c] text-white border border-[#5c1717] px-2.5 py-1 rounded-sm text-[11px] font-semibold">Logout</button>
-            </div>
-        </header>
-
-        <!-- Document Header Band (SAP Marketing Document Structure) -->
-        <section class="sap-toolbar p-3 grid grid-cols-1 md:grid-cols-4 gap-3 text-xs border-b border-[#b6c4d0]">
-            <!-- Search & Selected Document -->
-            <div class="flex flex-col gap-1">
-                <label class="text-slate-600 font-bold text-[10px] uppercase">Find & Select Job Card</label>
-                <div class="relative">
-                    <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Type to search job card..." 
-                           class="w-full bg-white border border-[#a4b4c4] px-2 py-1.5 font-mono text-xs text-slate-800 rounded-sm focus:outline-none focus:border-[#1b6ec2] shadow-inner">
-                    <!-- Dropdown Matching Results Panel -->
-                    <div id="job-list" class="absolute left-0 right-0 top-full mt-1 bg-white border border-[#a4b4c4] rounded-sm shadow-xl max-h-56 overflow-y-auto z-40 hidden"></div>
-                </div>
-            </div>
-
-            <!-- Description -->
-            <div class="flex flex-col gap-1">
-                <label class="text-slate-600 font-bold text-[10px] uppercase">Label / Job Description</label>
-                <input type="text" id="header-job-desc" readonly value="No Job Selected" class="bg-[#eef2f6] border border-[#cbd5e1] px-2 py-1.5 text-slate-700 rounded-sm w-full truncate">
-            </div>
-
-            <!-- Status Indicator -->
-            <div class="flex flex-col gap-1">
-                <label class="text-slate-600 font-bold text-[10px] uppercase">Job Execution Status</label>
-                <div class="flex items-center gap-2 mt-1">
-                    <span id="status-indicator-dot" class="w-3 h-3 rounded-full bg-slate-400"></span>
-                    <span id="status-indicator-text" class="font-bold text-slate-600 uppercase tracking-wider text-[11px]">STANDBY</span>
-                </div>
-            </div>
-
-            <!-- Station Time & Progress Counter -->
-            <div class="flex flex-col gap-1 text-right">
-                <label class="text-slate-600 font-bold text-[10px] uppercase">Validated Progress Rate</label>
-                <span id="counter" class="font-mono text-slate-800 text-sm font-bold mt-1">0 / 0</span>
-            </div>
-        </section>
-
-        <!-- Industrial Verification Billboard (Dynamic Alert Banner) -->
-        <section class="p-4 bg-[#f8fafc] border-b border-[#cbd5e1]">
-            <div id="status-card" class="status-ready border-2 p-5 rounded-sm shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-colors duration-150">
-                <div>
-                    <span id="status-badge" class="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-slate-300 text-slate-800">READY</span>
-                    <h2 id="status-heading" class="text-2xl md:text-3xl font-extrabold tracking-tight mt-1">VERIFY CODE</h2>
-                    <p id="status-detail" class="font-mono text-xs text-slate-600 mt-1">Select an active job card and scan serialized barcode labels.</p>
-                </div>
-                <div class="text-left md:text-right border-t md:border-t-0 md:border-l border-slate-300 pt-2 md:pt-0 md:pl-6 w-full md:w-auto">
-                    <span class="text-[10px] uppercase tracking-wider text-slate-500 block font-semibold">Active Code Stream</span>
-                    <span id="status-last-code" class="font-mono text-lg font-bold tracking-wider text-slate-800">READY</span>
-                </div>
-            </div>
-
-            <!-- Monospace Terminal Barcode Prompt -->
-            <form id="scan-form" onsubmit="handleScan(event)" class="mt-3 flex gap-2">
+            <!-- Monospace Scan Input -->
+            <form id="scan-form" onsubmit="handleScan(event)" class="flex gap-2">
                 <div class="relative flex-1">
-                    <span class="absolute left-3 top-2.5 font-mono text-slate-400 font-bold">&gt;|</span>
-                    <input type="text" id="barcode-input" placeholder="Scanner input active -- scan barcode label..." autofocus autocomplete="off"
-                           class="w-full pl-8 pr-3 py-2 bg-white border-2 border-[#1b6ec2] focus:border-emerald-600 focus:outline-none rounded-sm font-mono text-base font-semibold text-slate-800 shadow-inner">
+                    <input type="text" id="barcode-input" placeholder="Scanner input active -- scan serialized barcode..." autofocus autocomplete="off"
+                           class="linear-input w-full px-3 py-2 text-sm font-mono rounded">
                 </div>
-                <button type="submit" class="sap-btn-primary text-white px-6 font-semibold text-xs rounded-sm tracking-wide shadow">
-                    Verify Code
+                <button type="submit" class="linear-button-primary px-5 py-2 rounded text-xs font-semibold font-mono">
+                    Verify (↵)
                 </button>
             </form>
-        </section>
+        </div>
 
-        <!-- KPI Metric Tiles (SAP B1 Business Analytics Strip) -->
-        <section class="grid grid-cols-2 md:grid-cols-4 gap-px bg-[#b6c4d0] border-b border-[#b6c4d0] text-center text-xs">
-            <div class="bg-white p-3">
-                <span class="text-slate-500 font-bold block text-[10px] uppercase">Total Target Pool</span>
-                <span id="kpi-total" class="text-xl font-bold font-mono text-slate-800">0</span>
-                <span class="text-[10px] text-slate-400 block mt-0.5">Assigned serialized units</span>
-            </div>
-            <div class="bg-white p-3">
-                <span class="text-emerald-700 font-bold block text-[10px] uppercase">Verified (Consumed)</span>
-                <span id="kpi-consumed" class="text-xl font-bold font-mono text-emerald-700">0</span>
-                <span class="text-[10px] text-emerald-600 block mt-0.5">Pass validation confirmed</span>
-            </div>
-            <div class="bg-white p-3">
-                <span class="text-amber-700 font-bold block text-[10px] uppercase">Pending Production</span>
-                <span id="kpi-pending" class="text-xl font-bold font-mono text-amber-700">0</span>
-                <span class="text-[10px] text-amber-600 block mt-0.5">Remaining in print queue</span>
-            </div>
-            <div class="bg-white p-3">
-                <span class="text-rose-700 font-bold block text-[10px] uppercase">Blocked / Quarantined</span>
-                <span id="kpi-blocked" class="text-xl font-bold font-mono text-rose-700">0</span>
-                <span class="text-[10px] text-rose-600 block mt-0.5">Stopped duplicate attempts</span>
-            </div>
-        </section>
-
-        <!-- Dense Data Matrix (Live Verification Stream Tab) -->
-        <section class="p-3 bg-white flex-1 flex flex-col">
-            <div class="flex justify-between items-center mb-2">
-                <div class="flex gap-1 border-b border-[#cbd5e1] w-full">
-                    <button class="bg-white border-t-2 border-t-[#1b6ec2] border-x border-[#cbd5e1] px-4 py-1.5 text-xs font-bold text-slate-800 -mb-px">
-                        Live Verification Stream (Last 10 Scans)
+        <!-- Real-Time Stream Table -->
+        <div class="linear-card rounded overflow-hidden flex-1 flex flex-col">
+            <div class="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between text-xs">
+                <div class="flex items-center gap-3 font-medium text-slate-300">
+                    <span>Live Verification Stream</span>
+                    <span class="text-slate-600">|</span>
+                    <span class="text-[11px] text-slate-500 font-mono">Recent scans recorded this session</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="report-btn" onclick="openReportModal()" disabled class="linear-button-secondary text-[11px] px-2.5 py-1 rounded disabled:opacity-30">
+                        QC Report
+                    </button>
+                    <button id="lifecycle-btn" onclick="openLifecycleModal()" disabled class="linear-button-secondary text-[11px] px-2.5 py-1 rounded disabled:opacity-30">
+                        Lifecycle Audit
+                    </button>
+                    <button id="job-toggle-btn" onclick="handleJobStatusToggle()" disabled class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-[11px] px-2.5 py-1 rounded disabled:opacity-30 transition-colors">
+                        Complete Job
                     </button>
                 </div>
             </div>
 
-            <div class="border border-[#cbd5e1] rounded-sm overflow-hidden flex-1 overflow-y-auto max-h-60">
-                <table class="w-full text-left sap-table">
+            <div class="overflow-x-auto flex-1">
+                <table class="w-full text-left text-xs">
                     <thead>
-                        <tr>
-                            <th class="p-2 w-12 text-center">Line</th>
-                            <th class="p-2">Scanned Barcode Value</th>
-                            <th class="p-2">Evaluation Result</th>
-                            <th class="p-2">Timestamp</th>
-                            <th class="p-2">QC Inspector</th>
+                        <tr class="border-b border-white/[0.06] text-[11px] text-slate-500 font-medium">
+                            <th class="px-4 py-2.5 w-16">Seq</th>
+                            <th class="px-4 py-2.5">Payload Value</th>
+                            <th class="px-4 py-2.5">Evaluation</th>
+                            <th class="px-4 py-2.5">Recorded At</th>
+                            <th class="px-4 py-2.5">Inspector</th>
                         </tr>
                     </thead>
-                    <tbody id="recent-scans-rows" class="divide-y divide-[#e2e8f0] font-mono">
+                    <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] font-mono text-xs">
                         <tr>
-                            <td colspan="5" class="p-3 text-center text-slate-400 font-sans italic text-xs">No active scan logs recorded for this terminal session</td>
+                            <td colspan="5" class="px-4 py-6 text-center text-slate-500 font-sans italic text-xs">No scan events recorded for this session</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
-        </section>
+        </div>
 
-        <!-- SAP Action Footer Toolbar -->
-        <footer class="sap-toolbar p-2.5 flex flex-wrap justify-between items-center border-t border-[#b6c4d0] gap-2">
-            <div class="flex items-center gap-2">
-                <span class="text-[11px] text-slate-600">Terminal Scanner: <strong class="text-emerald-700">Online & Active</strong></span>
-            </div>
-            <div class="flex items-center gap-2">
-                <button id="report-btn" onclick="openReportModal()" disabled class="sap-btn-default text-slate-800 disabled:opacity-40 px-3 py-1.5 rounded-sm text-xs font-bold shadow-xs">
-                    View QC Report
-                </button>
-                <button id="lifecycle-btn" onclick="openLifecycleModal()" disabled class="sap-btn-default text-slate-800 disabled:opacity-40 px-3 py-1.5 rounded-sm text-xs font-bold shadow-xs">
-                    Lifecycle Log
-                </button>
-                <button id="job-toggle-btn" onclick="handleJobStatusToggle()" disabled class="bg-[#a82a2a] hover:bg-[#8f2424] text-white border border-[#7a1f1f] disabled:opacity-40 px-3 py-1.5 rounded-sm text-xs font-bold shadow-xs">
-                    Complete & Block Job
-                </button>
-            </div>
-        </footer>
+    </main>
 
-    </div>
+    <!-- Footer Information Bar -->
+    <footer class="border-t border-white/[0.06] px-6 py-2 flex items-center justify-between text-[11px] text-slate-500">
+        <div class="flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-[#2ed573]"></span>
+            <span>Scanner stream online</span>
+            <span class="text-slate-700">&middot;</span>
+            <span id="user-display">Checking session...</span>
+        </div>
+        <div class="font-mono text-slate-400">
+            Press <kbd class="bg-[#1e2029] text-slate-300 px-1 py-0.5 rounded font-mono text-[10px]">Enter</kbd> to submit
+        </div>
+    </footer>
 
     <!-- Login Modal -->
-    <div id="login-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50">
-        <div class="sap-panel p-6 rounded-sm max-w-sm w-full border border-slate-400 shadow-2xl">
-            <div class="flex justify-center mb-3">
-                <div class="bg-white p-2 rounded shadow-sm">
-                    <img src="/static/logo.jpg" alt="CCL Logo" class="h-10 w-auto max-w-[130px] object-contain block">
-                </div>
+    <div id="login-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="linear-card p-6 rounded-lg max-w-sm w-full shadow-2xl">
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-5 h-5 rounded bg-[#5e6ad2] flex items-center justify-center font-bold text-white text-[11px]">C</div>
+                <span class="font-semibold text-white text-sm">CCL Pakistan VDV</span>
             </div>
-            <h2 class="text-base font-bold text-center text-slate-800 mb-0.5">CCL Pakistan VDV</h2>
-            <p class="text-[11px] text-slate-500 text-center mb-5">SAP Business One QC Station Authentication</p>
+            <p class="text-xs text-slate-400 mb-4">Sign in to initialize serialization terminal</p>
             <form onsubmit="handleLogin(event)" class="space-y-3">
                 <div>
-                    <label class="block text-[11px] font-bold mb-1 text-slate-600 uppercase">Operator User ID</label>
-                    <input type="text" id="login-user" required class="w-full bg-white border border-slate-300 rounded-sm p-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#1b6ec2]">
+                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Username</label>
+                    <input type="text" id="login-user" required class="linear-input w-full p-2 text-xs rounded">
                 </div>
                 <div>
-                    <label class="block text-[11px] font-bold mb-1 text-slate-600 uppercase">Station Password</label>
-                    <input type="password" id="login-pass" required class="w-full bg-white border border-slate-300 rounded-sm p-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#1b6ec2]">
+                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Password</label>
+                    <input type="password" id="login-pass" required class="linear-input w-full p-2 text-xs rounded">
                 </div>
-                <button type="submit" class="sap-btn-primary w-full py-1.5 text-white text-xs font-bold rounded-sm mt-2 shadow">Log On Terminal</button>
+                <button type="submit" class="linear-button-primary w-full py-2 rounded text-xs font-semibold mt-2">Sign In</button>
             </form>
         </div>
     </div>
 
-    <!-- Authorization Password Modal (Unblocking, User Deletions) -->
-    <div id="auth-confirm-modal" class="fixed inset-0 bg-black/85 flex items-center justify-center hidden p-4 z-[70]">
-        <div class="sap-panel p-5 rounded-sm max-w-sm w-full border border-amber-600 shadow-2xl">
-            <h3 id="auth-confirm-title" class="text-sm font-bold mb-1 text-amber-800">Admin Authorization Required</h3>
-            <p id="auth-confirm-subtitle" class="text-[11px] text-slate-600 mb-4">Please enter your administrator password to proceed.</p>
+    <!-- Password Confirmation Modal (Unblocking, User Deletions) -->
+    <div id="auth-confirm-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-[70]">
+        <div class="linear-card p-5 rounded-lg max-w-sm w-full border border-amber-500/20 shadow-2xl">
+            <h3 id="auth-confirm-title" class="text-sm font-bold mb-1 text-amber-400">Admin Authorization Required</h3>
+            <p id="auth-confirm-subtitle" class="text-xs text-slate-400 mb-4">Enter administrator password to proceed.</p>
             <form onsubmit="executeAuthorizedAction(event)" class="space-y-3">
                 <div>
-                    <label class="block text-[10px] font-bold mb-1 text-slate-600 uppercase">Admin Password</label>
-                    <input type="password" id="auth-admin-pass" required class="w-full bg-white border border-slate-300 rounded-sm p-1.5 text-xs text-slate-800 focus:outline-none focus:border-amber-600">
+                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Admin Password</label>
+                    <input type="password" id="auth-admin-pass" required class="linear-input w-full p-2 text-xs rounded focus:border-amber-400">
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="closeAuthModal()" class="sap-btn-default px-3 py-1 rounded-sm text-xs font-semibold">Cancel</button>
-                    <button type="submit" id="auth-confirm-btn" class="sap-btn-primary text-white px-3 py-1 rounded-sm text-xs font-semibold">Authorize</button>
+                    <button type="button" onclick="closeAuthModal()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Cancel</button>
+                    <button type="submit" id="auth-confirm-btn" class="linear-button-primary px-3 py-1.5 rounded text-xs font-medium">Authorize</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Job Deletion Dialog (Elevated z-index to appear above reports) -->
-    <div id="job-delete-modal" class="fixed inset-0 bg-black/85 flex items-center justify-center hidden p-4 z-[70]">
-        <div class="sap-panel p-5 rounded-sm max-w-md w-full border border-red-600 shadow-2xl">
+    <!-- Soft Delete Modal (Reason + Password) -->
+    <div id="job-delete-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-[70]">
+        <div class="linear-card p-5 rounded-lg max-w-md w-full border border-red-500/20 shadow-2xl">
             <div class="flex justify-between items-center mb-2">
-                <h3 class="text-sm font-bold text-red-800 uppercase tracking-wide">Soft Delete Job Card Run</h3>
-                <button type="button" onclick="closeJobDeleteModal()" class="text-slate-400 hover:text-slate-700 text-sm font-bold">✕</button>
+                <h3 class="text-sm font-bold text-red-400">Soft Delete Job Card</h3>
+                <button type="button" onclick="closeJobDeleteModal()" class="text-slate-400 hover:text-white text-xs">✕</button>
             </div>
-            <p id="job-delete-subtitle" class="text-[11px] text-slate-600 mb-3 leading-relaxed"></p>
+            <p id="job-delete-subtitle" class="text-xs text-slate-400 mb-4 leading-relaxed"></p>
             <form onsubmit="submitJobDelete(event)" class="space-y-3">
                 <div>
-                    <label class="block text-[10px] font-bold mb-1 text-slate-600 uppercase">Reason for Deletion *</label>
-                    <textarea id="job-delete-reason" required rows="2" placeholder="e.g. Plate defect / Canceled run / Incorrect serialization batch" 
-                              class="w-full bg-white border border-slate-300 rounded-sm p-2 text-xs text-slate-800 focus:outline-none focus:border-red-600"></textarea>
+                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Reason for Deletion *</label>
+                    <textarea id="job-delete-reason" required rows="2" placeholder="e.g. Order canceled / Plate error / Wrong serial range" 
+                              class="linear-input w-full p-2 text-xs rounded focus:border-red-400 placeholder-slate-600"></textarea>
                 </div>
                 <div>
-                    <label class="block text-[10px] font-bold mb-1 text-slate-600 uppercase">Admin Password *</label>
-                    <input type="password" id="job-delete-pass" required class="w-full bg-white border border-slate-300 rounded-sm p-1.5 text-xs text-slate-800 focus:outline-none focus:border-red-600">
+                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Admin Password *</label>
+                    <input type="password" id="job-delete-pass" required class="linear-input w-full p-2 text-xs rounded focus:border-red-400">
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="closeJobDeleteModal()" class="sap-btn-default px-3 py-1 rounded-sm text-xs font-semibold">Cancel</button>
-                    <button type="submit" id="btn-confirm-delete" class="bg-[#8b2323] hover:bg-[#701c1c] text-white border border-[#5c1717] px-3 py-1 rounded-sm text-xs font-semibold">Confirm Deletion</button>
+                    <button type="button" onclick="closeJobDeleteModal()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Cancel</button>
+                    <button type="submit" id="btn-confirm-delete" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 rounded text-xs font-medium transition-colors">Archive Job</button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Warning Confirmation Modal: Codes Exist in Deleted Job -->
-    <div id="deleted-dup-warning-modal" class="fixed inset-0 bg-black/85 flex items-center justify-center hidden p-4 z-[70]">
-        <div class="sap-panel p-5 rounded-sm max-w-md w-full border border-amber-600 shadow-2xl">
-            <h3 class="text-sm font-bold mb-1 text-amber-800 uppercase tracking-wide">Warning: Reused Serial Sequence Detected</h3>
-            <p id="deleted-dup-warning-msg" class="text-xs text-slate-700 mb-4 leading-relaxed"></p>
+    <div id="deleted-dup-warning-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-[70]">
+        <div class="linear-card p-5 rounded-lg max-w-md w-full border border-amber-500/30 shadow-2xl">
+            <h3 class="text-sm font-bold mb-1 text-amber-400">Warning: Reused Serial Codes Detected</h3>
+            <p id="deleted-dup-warning-msg" class="text-xs text-slate-300 mb-5 leading-relaxed"></p>
             <div class="flex justify-end gap-2">
-                <button type="button" onclick="toggleModal('deleted-dup-warning-modal')" class="sap-btn-default px-3 py-1 rounded-sm text-xs font-semibold">Abort</button>
-                <button type="button" onclick="confirmOverrideAndCreate()" class="sap-btn-primary text-white px-3 py-1 rounded-sm text-xs font-semibold">Proceed with Ingestion</button>
+                <button type="button" onclick="toggleModal('deleted-dup-warning-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Cancel</button>
+                <button type="button" onclick="confirmOverrideAndCreate()" class="linear-button-primary px-3 py-1.5 rounded text-xs font-medium">Proceed with Run</button>
             </div>
         </div>
     </div>
 
     <!-- Password Change Modal -->
-    <div id="pw-modal" class="fixed inset-0 bg-black/85 flex items-center justify-center hidden p-4 z-50">
-        <div class="sap-panel p-5 rounded-sm max-w-sm w-full border border-slate-400 shadow-2xl">
-            <h3 id="pw-title" class="text-sm font-bold mb-1 text-slate-800">Change Station Password</h3>
-            <p id="pw-subtitle" class="text-[11px] text-slate-500 mb-4">Enter current and new authentication credentials</p>
+    <div id="pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-50">
+        <div class="linear-card p-5 rounded-lg max-w-sm w-full shadow-2xl">
+            <h3 id="pw-title" class="text-sm font-bold mb-1 text-white">Change Password</h3>
+            <p id="pw-subtitle" class="text-xs text-slate-400 mb-4">Enter current and new authentication credentials</p>
             <form onsubmit="handleChangePassword(event)" class="space-y-3">
                 <div>
-                    <label class="block text-[10px] font-bold mb-1 text-slate-600 uppercase">Current Password</label>
-                    <input type="password" id="pw-current" required class="w-full bg-white border border-slate-300 rounded-sm p-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#1b6ec2]">
+                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Current Password</label>
+                    <input type="password" id="pw-current" required class="linear-input w-full p-2 text-xs rounded">
                 </div>
                 <div>
-                    <label class="block text-[10px] font-bold mb-1 text-slate-600 uppercase">New Password (min 6 chars)</label>
-                    <input type="password" id="pw-new" required minlength="6" class="w-full bg-white border border-slate-300 rounded-sm p-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#1b6ec2]">
+                    <label class="block text-[11px] font-medium text-slate-400 mb-1">New Password (min 6 chars)</label>
+                    <input type="password" id="pw-new" required minlength="6" class="linear-input w-full p-2 text-xs rounded">
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" id="pw-cancel-btn" onclick="toggleModal('pw-modal')" class="sap-btn-default px-3 py-1 rounded-sm text-xs font-semibold">Cancel</button>
-                    <button type="submit" class="sap-btn-primary text-white px-3 py-1 rounded-sm text-xs font-semibold">Save Password</button>
+                    <button type="button" id="pw-cancel-btn" onclick="toggleModal('pw-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Cancel</button>
+                    <button type="submit" class="linear-button-primary px-3 py-1.5 rounded text-xs font-semibold">Save Password</button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Create New Job Modal -->
-    <div id="upload-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
-        <div class="sap-panel p-6 rounded-sm max-w-md w-full border border-slate-400 shadow-2xl">
-            <h3 class="text-sm font-bold mb-3 text-slate-800 uppercase tracking-wide">Create Production Order & Upload Serial Pool</h3>
+    <div id="upload-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-50">
+        <div class="linear-card p-6 rounded-lg max-w-md w-full shadow-2xl">
+            <h3 class="text-sm font-bold mb-3 text-white">Create New Job & Ingest Serial Pool</h3>
             <form id="create-job-form" onsubmit="uploadJob(event, false)" class="space-y-3">
                 <div>
-                    <label class="block text-[10px] font-bold mb-1 text-slate-600 uppercase">Job Card / Production Order # *</label>
-                    <input type="text" id="new-job-id" required placeholder="e.g. JC-2026-99" class="w-full bg-white border border-slate-300 rounded-sm p-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#1b6ec2]">
+                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Job Card # *</label>
+                    <input type="text" id="new-job-id" required placeholder="e.g. JC-2026-99" class="linear-input w-full p-2 text-xs rounded font-mono">
                 </div>
                 <div>
-                    <label class="block text-[10px] font-bold mb-1 text-slate-600 uppercase">Item Description (Optional)</label>
-                    <input type="text" id="new-job-desc" placeholder="e.g. 500ml Shampoo labels - 50k run" class="w-full bg-white border border-slate-300 rounded-sm p-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#1b6ec2]">
+                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Job Description (Optional)</label>
+                    <input type="text" id="new-job-desc" placeholder="e.g. 500ml Shampoo labels - 50k run" class="linear-input w-full p-2 text-xs rounded">
                 </div>
                 <div>
-                    <label class="block text-[10px] font-bold mb-1 text-slate-600 uppercase">Barcode Data File (CSV / TXT) *</label>
-                    <input type="file" id="new-job-file" accept=".csv,.txt" required class="w-full bg-slate-50 border border-slate-300 rounded-sm p-1.5 text-xs text-slate-600">
+                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Batch Data File (CSV / TXT) *</label>
+                    <input type="file" id="new-job-file" accept=".csv,.txt" required class="linear-input w-full p-2 text-xs rounded text-slate-400">
                     <p class="text-[10px] text-slate-500 mt-1">Codes are checked against active and deleted jobs.</p>
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="toggleModal('upload-modal')" class="sap-btn-default px-3 py-1 rounded-sm text-xs font-semibold">Cancel</button>
-                    <button type="submit" id="upload-btn" class="sap-btn-primary text-white px-3 py-1 rounded-sm text-xs font-semibold">Ingest & Open Run</button>
+                    <button type="button" onclick="toggleModal('upload-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Cancel</button>
+                    <button type="submit" id="upload-btn" class="linear-button-primary px-3 py-1.5 rounded text-xs font-semibold">Create Job</button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Admin Master Jobs Report Modal with Status Toggles -->
-    <div id="master-jobs-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
-        <div class="sap-panel p-5 rounded-sm max-w-5xl w-full border border-slate-400 shadow-2xl flex flex-col max-h-[90vh]">
-            <div class="flex justify-between items-center mb-3 border-b border-[#cbd5e1] pb-2">
+    <div id="master-jobs-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-50">
+        <div class="linear-card p-5 rounded-lg max-w-5xl w-full shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center mb-3 border-b border-white/[0.06] pb-2">
                 <div>
-                    <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">All Jobs Status Report & Production Management</h3>
-                    <p class="text-[11px] text-slate-500">Live operational status across active, completed, and soft-deleted runs</p>
+                    <h3 class="text-sm font-bold text-white">All Jobs Status Report</h3>
+                    <p class="text-[11px] text-slate-400">View live status across active, completed, or deleted historical jobs</p>
                 </div>
-                <button onclick="toggleModal('master-jobs-modal')" class="sap-btn-default px-3 py-1 text-xs rounded-sm font-semibold">Close</button>
+                <button onclick="toggleModal('master-jobs-modal')" class="linear-button-secondary px-2.5 py-1 text-xs rounded font-medium">Close</button>
             </div>
 
             <!-- 4 Filter Tabs -->
-            <div class="flex gap-1 mb-2">
-                <button onclick="filterMasterJobs('ALL')" id="filter-tab-all" class="sap-btn-primary text-white px-3 py-1 rounded-sm text-xs font-semibold">All Jobs</button>
-                <button onclick="filterMasterJobs('ACTIVE')" id="filter-tab-active" class="sap-btn-default text-slate-700 px-3 py-1 rounded-sm text-xs font-semibold">Active Only</button>
-                <button onclick="filterMasterJobs('COMPLETED')" id="filter-tab-completed" class="sap-btn-default text-slate-700 px-3 py-1 rounded-sm text-xs font-semibold">Completed Only</button>
-                <button onclick="filterMasterJobs('DELETED')" id="filter-tab-deleted" class="sap-btn-default text-slate-700 px-3 py-1 rounded-sm text-xs font-semibold">Deleted Only</button>
+            <div class="flex gap-1.5 mb-3">
+                <button onclick="filterMasterJobs('ALL')" id="filter-tab-all" class="linear-button-primary px-3 py-1 rounded text-xs font-medium">All Jobs</button>
+                <button onclick="filterMasterJobs('ACTIVE')" id="filter-tab-active" class="linear-button-secondary px-3 py-1 rounded text-xs font-medium">Active Only</button>
+                <button onclick="filterMasterJobs('COMPLETED')" id="filter-tab-completed" class="linear-button-secondary px-3 py-1 rounded text-xs font-medium">Completed Only</button>
+                <button onclick="filterMasterJobs('DELETED')" id="filter-tab-deleted" class="linear-button-secondary px-3 py-1 rounded text-xs font-medium">Deleted Only</button>
             </div>
 
             <!-- Jobs Table -->
-            <div class="flex-1 overflow-y-auto border border-[#cbd5e1] rounded-sm">
-                <table class="w-full text-left sap-table">
+            <div class="flex-1 overflow-y-auto border border-white/[0.06] rounded">
+                <table class="w-full text-left text-xs">
                     <thead>
-                        <tr>
-                            <th class="p-2">Job Card</th>
-                            <th class="p-2">Description / Deletion Reason</th>
-                            <th class="p-2">Creation / Deletion Date</th>
-                            <th class="p-2 text-center">Status</th>
-                            <th class="p-2 text-right">Codes Verified</th>
-                            <th class="p-2 text-center">Action</th>
+                        <tr class="border-b border-white/[0.06] text-[11px] text-slate-500 font-medium bg-[#161821]">
+                            <th class="p-2.5">Job Card</th>
+                            <th class="p-2.5">Description / Deletion Reason</th>
+                            <th class="p-2.5">Timestamps</th>
+                            <th class="p-2.5 text-center">Status</th>
+                            <th class="p-2.5 text-right">Codes Verified</th>
+                            <th class="p-2.5 text-center">Action</th>
                         </tr>
                     </thead>
-                    <tbody id="master-jobs-rows" class="divide-y divide-[#e2e8f0]"></tbody>
+                    <tbody id="master-jobs-rows" class="divide-y divide-white/[0.04]"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
     <!-- User Management Modal -->
-    <div id="user-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
-        <div class="sap-panel p-5 rounded-sm max-w-xl w-full border border-slate-400 shadow-2xl">
-            <div class="flex justify-between items-center mb-3 pb-2 border-b border-[#cbd5e1]">
-                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Operator Access & Upload Authorization</h3>
-                <button onclick="toggleModal('user-modal')" class="text-slate-400 hover:text-slate-700 font-bold">✕</button>
+    <div id="user-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-50">
+        <div class="linear-card p-5 rounded-lg max-w-xl w-full shadow-2xl">
+            <div class="flex justify-between items-center mb-3 pb-2 border-b border-white/[0.06]">
+                <h3 class="text-sm font-bold text-white">Operator Permissions</h3>
+                <button onclick="toggleModal('user-modal')" class="text-slate-400 hover:text-white text-xs">✕</button>
             </div>
             
-            <form onsubmit="createUser(event)" class="bg-[#f2f5f8] p-3 rounded-sm mb-3 space-y-2 border border-[#cbd5e1]">
+            <form onsubmit="createUser(event)" class="linear-subcard p-3 rounded mb-3 space-y-2">
                 <div class="grid grid-cols-3 gap-2">
-                    <input type="text" id="new-user-name" placeholder="User ID" required class="bg-white border border-slate-300 rounded-sm p-1.5 text-xs text-slate-800">
-                    <input type="password" id="new-user-pass" placeholder="Password (min 6)" required class="bg-white border border-slate-300 rounded-sm p-1.5 text-xs text-slate-800">
-                    <select id="new-user-role" class="bg-white border border-slate-300 rounded-sm p-1.5 text-xs text-slate-800">
+                    <input type="text" id="new-user-name" placeholder="Username" required class="linear-input p-1.5 text-xs rounded">
+                    <input type="password" id="new-user-pass" placeholder="Password (min 6)" required class="linear-input p-1.5 text-xs rounded">
+                    <select id="new-user-role" class="linear-input p-1.5 text-xs rounded text-slate-200">
                         <option value="QC Incharge">QC Incharge</option>
                         <option value="admin">Admin</option>
                     </select>
                 </div>
-                <div class="flex justify-between items-center pt-1 border-t border-slate-200">
-                    <label class="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
-                        <input type="checkbox" id="new-user-can-upload" class="rounded-xs text-[#1b6ec2]">
+                <div class="flex justify-between items-center pt-1 border-t border-white/[0.06]">
+                    <label class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
+                        <input type="checkbox" id="new-user-can-upload" class="rounded bg-[#090a0d] border-white/[0.1] text-[#5e6ad2]">
                         <span>Allow creating new job cards</span>
                     </label>
-                    <button type="submit" class="sap-btn-primary text-white px-3 py-1 rounded-sm text-xs font-semibold">Add User</button>
+                    <button type="submit" class="linear-button-primary px-3 py-1 rounded text-xs font-semibold">Create User</button>
                 </div>
             </form>
 
-            <div class="max-h-60 overflow-y-auto text-xs border border-[#cbd5e1] rounded-sm">
-                <table class="w-full text-left sap-table">
+            <div class="max-h-60 overflow-y-auto text-xs border border-white/[0.06] rounded">
+                <table class="w-full text-left">
                     <thead>
-                        <tr>
-                            <th class="p-2">User / Role</th>
-                            <th class="p-2 text-center">Can Create Jobs?</th>
-                            <th class="p-2 text-right">Action</th>
+                        <tr class="border-b border-white/[0.06] text-[11px] text-slate-500 bg-[#161821]">
+                            <th class="p-2.5">User / Role</th>
+                            <th class="p-2.5 text-center">Can Create Jobs?</th>
+                            <th class="p-2.5 text-right">Action</th>
                         </tr>
                     </thead>
-                    <tbody id="users-table" class="divide-y divide-[#e2e8f0]"></tbody>
+                    <tbody id="users-table" class="divide-y divide-white/[0.04]"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
     <!-- QC Report Modal -->
-    <div id="report-modal" class="printable-modal fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
-        <div class="sap-panel p-5 rounded-sm max-w-4xl w-full border border-slate-400 shadow-2xl flex flex-col max-h-[90vh]">
-            <div class="report-header-box flex justify-between items-start mb-3 border-b border-slate-300 pb-2">
+    <div id="report-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-50">
+        <div class="linear-card p-5 rounded-lg max-w-4xl w-full shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="report-header-box flex justify-between items-start mb-3 border-b border-white/[0.06] pb-2">
                 <div>
-                    <h3 id="report-job-id" class="print-title text-base font-bold text-slate-800">QC Report</h3>
-                    <p id="report-desc" class="print-subtitle text-xs text-slate-600"></p>
+                    <h3 id="report-job-id" class="print-title text-base font-bold text-white">QC Report</h3>
+                    <p id="report-desc" class="print-subtitle text-xs text-slate-400"></p>
                 </div>
                 <div class="flex gap-1.5 no-print">
-                    <button onclick="window.print()" class="sap-btn-default px-3 py-1 rounded-sm text-xs font-semibold">Print Report</button>
-                    <button id="download-csv-btn" class="sap-btn-primary text-white px-3 py-1 rounded-sm text-xs font-semibold">Download CSV</button>
-                    <button onclick="toggleModal('report-modal')" class="sap-btn-default px-3 py-1 rounded-sm text-xs font-semibold">Close</button>
+                    <button onclick="window.print()" class="linear-button-secondary px-3 py-1 rounded text-xs font-medium">Print Report</button>
+                    <button id="download-csv-btn" class="linear-button-primary px-3 py-1 rounded text-xs font-medium">Download CSV</button>
+                    <button onclick="toggleModal('report-modal')" class="linear-button-secondary px-3 py-1 rounded text-xs font-medium">Close</button>
                 </div>
             </div>
 
             <div id="report-stats" class="grid grid-cols-4 gap-2 mb-3 text-center"></div>
 
-            <div class="print-table-container flex-1 overflow-y-auto border border-[#cbd5e1] rounded-sm">
-                <table class="w-full text-left sap-table">
+            <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.06] rounded">
+                <table class="w-full text-left text-xs">
                     <thead>
-                        <tr>
-                            <th class="p-2">Timestamp</th>
-                            <th class="p-2">Inspector</th>
-                            <th class="p-2">Scanned Barcode Value</th>
-                            <th class="p-2">Evaluation</th>
+                        <tr class="border-b border-white/[0.06] text-[11px] text-slate-500 bg-[#161821]">
+                            <th class="p-2.5">Timestamp</th>
+                            <th class="p-2.5">Inspector</th>
+                            <th class="p-2.5">Scanned Barcode</th>
+                            <th class="p-2.5">Evaluation</th>
                         </tr>
                     </thead>
-                    <tbody id="report-log-rows" class="divide-y divide-[#e2e8f0] font-mono text-xs"></tbody>
+                    <tbody id="report-log-rows" class="divide-y divide-white/[0.04] font-mono text-xs"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
     <!-- Job Lifecycle Audit Trail Modal -->
-    <div id="lifecycle-modal" class="printable-modal fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
-        <div class="sap-panel p-5 rounded-sm max-w-3xl w-full border border-slate-400 shadow-2xl flex flex-col max-h-[85vh]">
-            <div class="report-header-box flex justify-between items-start mb-3 border-b border-slate-300 pb-2">
+    <div id="lifecycle-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-50">
+        <div class="linear-card p-5 rounded-lg max-w-3xl w-full shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="report-header-box flex justify-between items-start mb-3 border-b border-white/[0.06] pb-2">
                 <div>
-                    <h3 id="lifecycle-job-id" class="print-title text-base font-bold text-slate-800">Lifecycle Audit Log</h3>
-                    <p id="lifecycle-desc" class="print-subtitle text-xs text-slate-600"></p>
+                    <h3 id="lifecycle-job-id" class="print-title text-base font-bold text-white">Lifecycle Audit Log</h3>
+                    <p id="lifecycle-desc" class="print-subtitle text-xs text-slate-400"></p>
                 </div>
                 <div class="flex gap-1.5 no-print">
-                    <button onclick="window.print()" class="sap-btn-default px-3 py-1 rounded-sm text-xs font-semibold">Print Log</button>
-                    <button onclick="toggleModal('lifecycle-modal')" class="sap-btn-default px-3 py-1 rounded-sm text-xs font-semibold">Close</button>
+                    <button onclick="window.print()" class="linear-button-secondary px-3 py-1 rounded text-xs font-medium">Print Log</button>
+                    <button onclick="toggleModal('lifecycle-modal')" class="linear-button-secondary px-3 py-1 rounded text-xs font-medium">Close</button>
                 </div>
             </div>
 
-            <div class="print-table-container flex-1 overflow-y-auto border border-[#cbd5e1] rounded-sm">
-                <table class="w-full text-left sap-table">
+            <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.06] rounded">
+                <table class="w-full text-left text-xs">
                     <thead>
-                        <tr>
-                            <th class="p-2">Timestamp</th>
-                            <th class="p-2">Authorized User</th>
-                            <th class="p-2">Action Performed</th>
-                            <th class="p-2">Reason / Details</th>
+                        <tr class="border-b border-white/[0.06] text-[11px] text-slate-500 bg-[#161821]">
+                            <th class="p-2.5">Timestamp</th>
+                            <th class="p-2.5">Authorized User</th>
+                            <th class="p-2.5">Action Performed</th>
+                            <th class="p-2.5">Reason / Details</th>
                         </tr>
                     </thead>
-                    <tbody id="lifecycle-log-rows" class="divide-y divide-[#e2e8f0] font-mono text-xs"></tbody>
+                    <tbody id="lifecycle-log-rows" class="divide-y divide-white/[0.04] font-mono text-xs"></tbody>
                 </table>
             </div>
         </div>
@@ -656,7 +664,7 @@
             if (data.authenticated) {
                 currentUser = data;
                 document.getElementById('login-modal').classList.add('hidden');
-                document.getElementById('user-display').innerText = `Terminal: PRESS-04 | User: ${data.username} (${data.role})`;
+                document.getElementById('user-display').innerText = `${data.username} (${data.role})`;
                 
                 if (data.role === 'admin') {
                     document.getElementById('btn-users').classList.remove('hidden');
@@ -738,21 +746,21 @@
             const jobs = await res.json();
 
             if (jobs.length === 0) {
-                list.innerHTML = `<div class="p-2 text-xs text-slate-500 italic text-center">No active jobs match '${query}'</div>`;
+                list.innerHTML = `<div class="p-3 text-xs text-slate-500 italic text-center">No active jobs match '${query}'</div>`;
                 list.classList.remove('hidden');
                 return;
             }
 
             list.innerHTML = jobs.map(j => `
                 <div onclick="selectJob('${j.id}', '${escape(j.description)}', '${j.status}', ${j.consumed}, ${j.total})" 
-                     class="p-2 hover:bg-[#eef4fa] border-b border-slate-100 cursor-pointer flex justify-between items-center">
+                     class="p-2.5 hover:bg-white/[0.04] border-b border-white/[0.04] cursor-pointer flex justify-between items-center transition-colors">
                     <div>
-                        <span class="font-bold font-mono text-xs block text-slate-800">${j.id}</span>
-                        ${j.description ? `<span class="text-[11px] text-slate-500 block truncate max-w-[200px]">${j.description}</span>` : ''}
+                        <span class="font-bold font-mono text-xs block text-slate-100">${j.id}</span>
+                        ${j.description ? `<span class="text-[11px] text-slate-400 block truncate max-w-[180px]">${j.description}</span>` : ''}
                     </div>
                     <div class="text-right">
-                        <span class="text-[10px] px-1.5 py-0.5 rounded font-bold ${j.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}">${j.status}</span>
-                        <span class="block text-[10px] text-slate-400 font-mono mt-0.5">${j.consumed} / ${j.total}</span>
+                        <span class="text-[10px] px-1.5 py-0.5 rounded font-mono ${j.status === 'ACTIVE' ? 'linear-badge-pass' : 'linear-badge-fail'}">${j.status}</span>
+                        <span class="block text-[10px] text-slate-500 font-mono mt-0.5">${j.consumed} / ${j.total}</span>
                     </div>
                 </div>
             `).join('');
@@ -766,21 +774,20 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = id;
-            document.getElementById('header-job-desc').value = activeJobDesc || 'Standard Production Batch';
+            document.getElementById('header-active-slug').innerText = id;
+            document.getElementById('active-title-card').innerText = `Job Card: ${id}`;
+            document.getElementById('header-job-desc').innerText = activeJobDesc || 'Batch serialization active & ready for verification stream.';
 
-            document.getElementById('active-badge').innerText = `Job Card: ${id}`;
-            document.getElementById('active-badge').className = "px-2 py-1 bg-emerald-700 text-white rounded-xs font-mono font-bold text-[11px] uppercase tracking-wide";
+            document.getElementById('active-badge').innerText = `JOB CARD: ${id}`;
+            document.getElementById('active-badge').className = "px-2 py-0.5 rounded text-[10px] font-mono font-medium linear-badge-pass";
             
-            const dot = document.getElementById('status-indicator-dot');
-            const txt = document.getElementById('status-indicator-text');
+            const chip = document.getElementById('status-chip');
             if (status === 'ACTIVE') {
-                dot.className = "w-3 h-3 rounded-full bg-emerald-500 animate-pulse";
-                txt.innerText = "ACTIVE (IN RUN)";
-                txt.className = "font-bold text-emerald-800 uppercase tracking-wider text-[11px]";
+                chip.innerText = "IN RUN";
+                chip.className = "px-2 py-0.5 rounded-full text-[10px] font-mono font-medium linear-badge-pass";
             } else {
-                dot.className = "w-3 h-3 rounded-full bg-rose-500";
-                txt.innerText = "COMPLETED / BLOCKED";
-                txt.className = "font-bold text-rose-800 uppercase tracking-wider text-[11px]";
+                chip.innerText = "COMPLETED";
+                chip.className = "px-2 py-0.5 rounded-full text-[10px] font-mono font-medium linear-badge-fail";
             }
 
             document.getElementById('report-btn').disabled = false;
@@ -793,14 +800,17 @@
             document.getElementById('kpi-pending').innerText = pending.toLocaleString();
             document.getElementById('kpi-blocked').innerText = "0";
 
+            const percent = total > 0 ? (consumed / total * 100).toFixed(1) : 0;
+            document.getElementById('progress-bar-fill').style.width = `${percent}%`;
+
             const toggleBtn = document.getElementById('job-toggle-btn');
             if (status === 'ACTIVE') {
-                toggleBtn.innerText = "Complete & Block Job";
-                toggleBtn.className = "bg-[#a82a2a] hover:bg-[#8f2424] text-white border border-[#7a1f1f] px-3 py-1.5 rounded-sm text-xs font-bold shadow-xs";
+                toggleBtn.innerText = "Complete Job";
+                toggleBtn.className = "bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-[11px] px-2.5 py-1 rounded transition-colors";
                 toggleBtn.disabled = false;
             } else {
-                toggleBtn.innerText = "Reactivate & Unblock (Admin)";
-                toggleBtn.className = "sap-btn-default text-amber-800 border-amber-600 px-3 py-1.5 rounded-sm text-xs font-bold shadow-xs";
+                toggleBtn.innerText = "Reactivate (Admin)";
+                toggleBtn.className = "linear-button-secondary text-amber-400 text-[11px] px-2.5 py-1 rounded";
                 toggleBtn.disabled = (currentUser.role !== 'admin');
             }
 
@@ -811,7 +821,7 @@
             if (!activeJobId) return;
 
             if (activeJobStatus === 'ACTIVE') {
-                if (!confirm(`Mark Job Card ${activeJobId} as COMPLETED and block all remaining unprinted serials?`)) return;
+                if (!confirm(`Mark Job Card ${activeJobId} completed and block remaining unprinted codes?`)) return;
                 const res = await fetch(`/api/jobs/${activeJobId}/complete`, { method: 'POST' });
                 if (res.ok) {
                     alert(`Job Card ${activeJobId} completed.`);
@@ -829,12 +839,12 @@
                     'UNBLOCK', 
                     activeJobId, 
                     'Admin Authorization: Reactivate Job', 
-                    `Enter administrator password to unblock Job Card ${activeJobId} and restore pending barcodes.`
+                    `Enter administrator password to unblock Job Card ${activeJobId} and restore remaining codes.`
                 );
             }
         }
 
-        // --- Reusable Authorization Password Modal ---
+        // --- Reusable Password Modal ---
         function triggerAuthModal(actionType, target, title, subtitle) {
             pendingAction = { type: actionType, target: target };
             document.getElementById('auth-confirm-title').innerText = title;
@@ -883,7 +893,7 @@
         function requestJobDelete(jobCardId) {
             targetDeleteJobId = jobCardId;
             document.getElementById('job-delete-subtitle').innerText = 
-                `State reason and re-enter admin password to move Job Card '${jobCardId}' to deleted archive.`;
+                `Provide a reason and admin password to move Job Card '${jobCardId}' to deleted status.`;
             document.getElementById('job-delete-reason').value = "";
             document.getElementById('job-delete-pass').value = "";
             document.getElementById('job-delete-modal').classList.remove('hidden');
@@ -918,18 +928,20 @@
             });
 
             btn.disabled = false;
-            btn.innerText = "Confirm Deletion";
+            btn.innerText = "Archive Job";
 
             if (res.ok) {
                 const deletedName = targetDeleteJobId;
                 closeJobDeleteModal();
-                alert(`Job Card '${deletedName}' archived to deleted status.`);
+                alert(`Job Card '${deletedName}' moved to deleted status.`);
                 
                 if (activeJobId === deletedName) {
                     activeJobId = null;
-                    document.getElementById('active-badge').innerText = "No Job Selected";
-                    document.getElementById('active-badge').className = "px-2 py-1 bg-amber-600/90 text-white rounded-xs font-mono font-bold text-[11px] uppercase tracking-wide";
-                    document.getElementById('header-job-desc').value = "No Job Selected";
+                    document.getElementById('active-badge').innerText = "NO JOB SELECTED";
+                    document.getElementById('active-badge').className = "px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20";
+                    document.getElementById('active-title-card').innerText = "Job Card: None";
+                    document.getElementById('header-job-desc').innerText = "Type in the command search below to load a serialized production run.";
+                    document.getElementById('header-active-slug').innerText = "STANDBY";
                     document.getElementById('job-toggle-btn').disabled = true;
                     document.getElementById('lifecycle-btn').disabled = true;
                     document.getElementById('report-btn').disabled = true;
@@ -953,9 +965,9 @@
             ['all', 'active', 'completed', 'deleted'].forEach(t => {
                 const btn = document.getElementById(`filter-tab-${t}`);
                 if (t === filterType.toLowerCase()) {
-                    btn.className = "sap-btn-primary text-white px-3 py-1 rounded-sm text-xs font-semibold";
+                    btn.className = "linear-button-primary px-3 py-1 rounded text-xs font-medium";
                 } else {
-                    btn.className = "sap-btn-default text-slate-700 px-3 py-1 rounded-sm text-xs font-semibold";
+                    btn.className = "linear-button-secondary px-3 py-1 rounded text-xs font-medium";
                 }
             });
 
@@ -969,36 +981,36 @@
             }
 
             tbody.innerHTML = jobs.map(j => {
-                let badgeClass = "bg-slate-200 text-slate-700";
-                if (j.status === 'ACTIVE') badgeClass = "bg-emerald-100 text-emerald-800 font-bold";
-                else if (j.status === 'COMPLETED') badgeClass = "bg-blue-100 text-blue-800 font-bold";
-                else if (j.status === 'DELETED') badgeClass = "bg-red-100 text-red-800 font-bold";
+                let badgeClass = "bg-slate-800 text-slate-400 border border-slate-700";
+                if (j.status === 'ACTIVE') badgeClass = "linear-badge-pass";
+                else if (j.status === 'COMPLETED') badgeClass = "bg-blue-500/10 text-blue-400 border border-blue-500/20";
+                else if (j.status === 'DELETED') badgeClass = "linear-badge-fail";
 
                 const descDetail = j.status === 'DELETED' 
-                    ? `<span class="text-red-700 font-bold block">Reason: ${j.deletion_reason}</span><span class="text-slate-500 block text-[11px]">Deleted by: ${j.deleted_by}</span>`
+                    ? `<span class="text-red-400 font-medium block">Reason: ${j.deletion_reason}</span><span class="text-slate-500 block text-[11px]">Deleted by: ${j.deleted_by}</span>`
                     : (j.description || '-');
 
                 const timeDetail = j.status === 'DELETED' 
-                    ? `<span class="text-slate-500 block font-mono text-[11px]">Created: ${j.created_at}</span><span class="text-red-700 block font-mono text-[11px]">Deleted: ${j.deleted_at}</span>`
-                    : `<span class="text-slate-600 block font-mono text-[11px]">${j.created_at}</span>`;
+                    ? `<span class="text-slate-500 block font-mono text-[11px]">Created: ${j.created_at}</span><span class="text-red-400 block font-mono text-[11px]">Deleted: ${j.deleted_at}</span>`
+                    : `<span class="text-slate-400 block font-mono text-[11px]">${j.created_at}</span>`;
 
                 return `
-                    <tr class="hover:bg-slate-50">
-                        <td class="p-2 font-mono font-bold text-slate-800">${j.job_card_id}</td>
-                        <td class="p-2 max-w-[260px] text-xs">${descDetail}</td>
-                        <td class="p-2">${timeDetail}</td>
-                        <td class="p-2 text-center">
-                            <span class="px-2 py-0.5 rounded text-[10px] ${badgeClass}">
+                    <tr class="hover:bg-white/[0.02]">
+                        <td class="p-2.5 font-mono font-bold text-slate-100">${j.job_card_id}</td>
+                        <td class="p-2.5 max-w-[240px] text-xs">${descDetail}</td>
+                        <td class="p-2.5">${timeDetail}</td>
+                        <td class="p-2.5 text-center">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono ${badgeClass}">
                                 ${j.status}
                             </span>
                         </td>
-                        <td class="p-2 text-right font-mono text-xs">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
-                        <td class="p-2 text-center">
+                        <td class="p-2.5 text-right font-mono text-xs text-slate-300">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
+                        <td class="p-2.5 text-center">
                             ${j.status !== 'DELETED' ? `
-                                <button onclick="requestJobDelete('${j.job_card_id}')" class="bg-[#8b2323] hover:bg-[#701c1c] text-white px-2 py-0.5 rounded text-[10px] font-semibold">
+                                <button onclick="requestJobDelete('${j.job_card_id}')" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-2 py-0.5 rounded text-[10px] font-medium transition-colors">
                                     Delete
                                 </button>
-                            ` : '<span class="text-slate-400 italic text-[11px]">Archived</span>'}
+                            ` : '<span class="text-slate-600 italic text-[11px]">Archived</span>'}
                         </td>
                     </tr>
                 `;
@@ -1016,7 +1028,7 @@
             const code = input.value.trim();
             if (!code) return;
             if (!activeJobId) {
-                alert("Please select a Job Card from the top bar first.");
+                alert("Please select a Job Card from the search bar first.");
                 input.value = "";
                 return;
             }
@@ -1036,45 +1048,46 @@
             const heading = document.getElementById('status-heading');
             const detail = document.getElementById('status-detail');
             const badge = document.getElementById('status-badge');
+            const dot = document.getElementById('status-dot');
             const codeDisplay = document.getElementById('status-last-code');
 
             codeDisplay.innerText = code;
 
             if (result === 'PASS') {
                 playTone('PASS');
-                card.className = "status-pass border-2 p-5 rounded-sm shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4";
-                badge.className = "text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-emerald-900/60 text-emerald-200";
-                badge.innerText = "PASS [OK]";
-                heading.innerText = "VERIFIED -- PASS";
-                detail.innerText = msg;
-                detail.className = "font-mono text-xs text-emerald-100 mt-1";
+                card.className = "linear-subcard px-4 py-3 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-2 state-pass";
+                dot.className = "w-2 h-2 rounded-full bg-[#2ed573]";
+                badge.className = "px-2 py-0.5 rounded text-[10px] font-mono font-bold linear-badge-pass";
+                badge.innerText = "PASS";
+                heading.innerText = "VALIDATED";
+                detail.innerText = `· ${msg}`;
             } else if (result === 'DUPLICATE' || result === 'BLOCKED') {
                 playTone('FAIL');
-                card.className = "status-fail border-2 p-5 rounded-sm shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4";
-                badge.className = "text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-red-950/60 text-red-200";
-                badge.innerText = "STOP PRESS";
+                card.className = "linear-subcard px-4 py-3 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-2 state-fail";
+                dot.className = "w-2 h-2 rounded-full bg-[#ff4757]";
+                badge.className = "px-2 py-0.5 rounded text-[10px] font-mono font-bold linear-badge-fail";
+                badge.innerText = "STOP RUN";
                 heading.innerText = "COLLISION / BLOCKED";
-                detail.innerText = msg;
-                detail.className = "font-mono text-xs text-red-100 mt-1";
+                detail.innerText = `· ${msg}`;
             } else if (result === 'MISMATCH') {
                 playTone('FAIL');
-                card.className = "status-fail border-2 p-5 rounded-sm shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4";
-                badge.className = "text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-red-950/60 text-red-200";
-                badge.innerText = "WRONG BATCH";
-                heading.innerText = "BATCH MISMATCH";
-                detail.innerText = msg;
-                detail.className = "font-mono text-xs text-red-100 mt-1";
+                card.className = "linear-subcard px-4 py-3 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-2 state-fail";
+                dot.className = "w-2 h-2 rounded-full bg-[#ff4757]";
+                badge.className = "px-2 py-0.5 rounded text-[10px] font-mono font-bold linear-badge-fail";
+                badge.innerText = "MISMATCH";
+                heading.innerText = "BATCH CONFLICT";
+                detail.innerText = `· ${msg}`;
             } else {
                 playTone('FAIL');
-                card.className = "status-warn border-2 p-5 rounded-sm shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4";
-                badge.className = "text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-orange-950/60 text-orange-200";
-                badge.innerText = "INVALID";
-                heading.innerText = "UNKNOWN SERIAL";
-                detail.innerText = msg;
-                detail.className = "font-mono text-xs text-orange-100 mt-1";
+                card.className = "linear-subcard px-4 py-3 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-2 state-warn";
+                dot.className = "w-2 h-2 rounded-full bg-[#ffa502]";
+                badge.className = "px-2 py-0.5 rounded text-[10px] font-mono font-bold linear-badge-warn";
+                badge.innerText = "UNKNOWN";
+                heading.innerText = "UNREGISTERED CODE";
+                detail.innerText = `· ${msg}`;
             }
 
-            // Append to Terminal Stream
+            // Stream buffer
             const now = new Date().toLocaleTimeString();
             recentScans.unshift({ code, result, time: now, user: currentUser.username });
             if (recentScans.length > 10) recentScans.pop();
@@ -1084,15 +1097,15 @@
         function renderStreamTable() {
             const tbody = document.getElementById('recent-scans-rows');
             tbody.innerHTML = recentScans.map((s, idx) => {
-                let badge = "bg-emerald-100 text-emerald-800";
-                if (s.result !== 'PASS') badge = "bg-rose-100 text-rose-800";
+                let badge = "linear-badge-pass";
+                if (s.result !== 'PASS') badge = "linear-badge-fail";
                 return `
-                    <tr class="hover:bg-slate-50">
-                        <td class="p-2 text-center text-slate-400 font-sans">${idx + 1}</td>
-                        <td class="p-2 font-bold text-slate-800">${s.code}</td>
-                        <td class="p-2"><span class="${badge} px-2 py-0.5 rounded text-[11px] font-bold font-sans">${s.result}</span></td>
-                        <td class="p-2 text-slate-600">${s.time}</td>
-                        <td class="p-2 font-sans text-slate-700">${s.user}</td>
+                    <tr class="hover:bg-white/[0.02]">
+                        <td class="px-4 py-2 text-slate-500 font-mono">#${recentScans.length - idx}</td>
+                        <td class="px-4 py-2 font-bold text-slate-200">${s.code}</td>
+                        <td class="px-4 py-2"><span class="${badge} px-2 py-0.5 rounded text-[10px] font-mono font-bold">${s.result}</span></td>
+                        <td class="px-4 py-2 text-slate-400 font-mono">${s.time}</td>
+                        <td class="px-4 py-2 font-sans text-slate-300">${s.user}</td>
                     </tr>
                 `;
             }).join('');
@@ -1103,7 +1116,7 @@
             if (e) e.preventDefault();
             const btn = document.getElementById('upload-btn');
             btn.disabled = true;
-            btn.innerText = "Validating...";
+            btn.innerText = "Processing...";
 
             const body = new FormData();
             body.append("job_card_id", document.getElementById('new-job-id').value.trim());
@@ -1116,15 +1129,15 @@
 
             if (res.status === 409 && data.status === "deleted_duplicate_warning") {
                 document.getElementById('deleted-dup-warning-msg').innerText = 
-                    `Code '${data.code}' exists in deleted Job Card '${data.deleted_job_card}'. Would you like to proceed with creating this job anyway?`;
+                    `Code '${data.code}' exists in deleted Job Card '${data.deleted_job_card}'. Would you like to continue creating this job anyway?`;
                 document.getElementById('deleted-dup-warning-modal').classList.remove('hidden');
                 btn.disabled = false;
-                btn.innerText = "Ingest & Open Run";
+                btn.innerText = "Create Job";
                 return;
             }
 
             if (res.ok) {
-                alert(`Production Order ${data.job_card_id} created with ${data.total_extracted.toLocaleString()} serial codes.`);
+                alert(`Job Card ${data.job_card_id} created with ${data.total_extracted.toLocaleString()} serial codes.`);
                 toggleModal('upload-modal');
                 document.getElementById('deleted-dup-warning-modal').classList.add('hidden');
                 document.getElementById('create-job-form').reset();
@@ -1134,7 +1147,7 @@
             }
 
             btn.disabled = false;
-            btn.innerText = "Ingest & Open Run";
+            btn.innerText = "Create Job";
         }
 
         function confirmOverrideAndCreate() {
@@ -1147,30 +1160,30 @@
             const res = await fetch(`/api/reports/${activeJobId}`);
             const data = await res.json();
 
-            document.getElementById('report-job-id').innerText = `QC Report: Job Card ${data.job_card_id} (${data.status})`;
-            document.getElementById('report-desc').innerText = data.description || "Standard Serialized Batch";
+            document.getElementById('report-job-id').innerText = `QC Report: ${data.job_card_id} (${data.status})`;
+            document.getElementById('report-desc').innerText = data.description || "Serialized Production Batch";
             document.getElementById('download-csv-btn').onclick = () => {
                 window.location.href = `/api/reports/${activeJobId}/csv`;
             };
 
             const stats = document.getElementById('report-stats');
             stats.innerHTML = `
-                <div class="bg-white border border-slate-300 p-2 rounded-sm"><span class="text-slate-500 block text-[10px] font-bold uppercase">TOTAL POOL</span><span class="font-bold text-sm text-slate-800 font-mono">${data.total_codes.toLocaleString()}</span></div>
-                <div class="bg-white border border-slate-300 p-2 rounded-sm"><span class="text-emerald-700 block text-[10px] font-bold uppercase">VERIFIED (PASS)</span><span class="font-bold text-sm text-emerald-700 font-mono">${data.consumed_codes.toLocaleString()}</span></div>
-                <div class="bg-white border border-slate-300 p-2 rounded-sm"><span class="text-amber-700 block text-[10px] font-bold uppercase">PENDING</span><span class="font-bold text-sm text-amber-700 font-mono">${data.pending_codes.toLocaleString()}</span></div>
-                <div class="bg-white border border-slate-300 p-2 rounded-sm"><span class="text-rose-700 block text-[10px] font-bold uppercase">BLOCKED</span><span class="font-bold text-sm text-rose-700 font-mono">${data.blocked_codes.toLocaleString()}</span></div>
+                <div class="linear-card p-2 rounded"><span class="text-slate-400 block text-[10px] font-mono uppercase">TOTAL POOL</span><span class="font-bold text-sm text-white font-mono">${data.total_codes.toLocaleString()}</span></div>
+                <div class="linear-card p-2 rounded"><span class="text-[#2ed573] block text-[10px] font-mono uppercase">VERIFIED</span><span class="font-bold text-sm text-[#2ed573] font-mono">${data.consumed_codes.toLocaleString()}</span></div>
+                <div class="linear-card p-2 rounded"><span class="text-amber-400 block text-[10px] font-mono uppercase">PENDING</span><span class="font-bold text-sm text-amber-400 font-mono">${data.pending_codes.toLocaleString()}</span></div>
+                <div class="linear-card p-2 rounded"><span class="text-red-400 block text-[10px] font-mono uppercase">BLOCKED</span><span class="font-bold text-sm text-red-400 font-mono">${data.blocked_codes.toLocaleString()}</span></div>
             `;
 
             const tbody = document.getElementById('report-log-rows');
             if (data.recent_logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-400 italic">No inspection logs recorded yet</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-500 italic">No inspection logs recorded yet</td></tr>`;
             } else {
                 tbody.innerHTML = data.recent_logs.map(log => `
-                    <tr class="hover:bg-slate-50">
-                        <td class="p-2 font-mono text-[11px] text-slate-600">${log.time}</td>
-                        <td class="p-2 font-bold text-slate-700 font-sans">${log.user}</td>
-                        <td class="p-2 font-mono text-slate-800">${log.code}</td>
-                        <td class="p-2 font-bold font-sans ${log.result === 'PASS' ? 'text-emerald-700' : 'text-rose-700'}">${log.result}</td>
+                    <tr class="hover:bg-white/[0.02]">
+                        <td class="p-2 font-mono text-[11px] text-slate-400">${log.time}</td>
+                        <td class="p-2 font-bold text-slate-300 font-sans">${log.user}</td>
+                        <td class="p-2 font-mono text-slate-200">${log.code}</td>
+                        <td class="p-2 font-bold font-mono ${log.result === 'PASS' ? 'text-[#2ed573]' : 'text-red-400'}">${log.result}</td>
                     </tr>
                 `).join('');
             }
@@ -1184,39 +1197,39 @@
             const res = await fetch(`/api/jobs/${activeJobId}/lifecycle-logs`);
             const data = await res.json();
 
-            document.getElementById('lifecycle-job-id').innerText = `Lifecycle Audit Log: Job Card ${data.job_card_id} (${data.status})`;
+            document.getElementById('lifecycle-job-id').innerText = `Lifecycle Audit Log: ${data.job_card_id} (${data.status})`;
             
-            const descText = data.description ? `Job: ${data.description}` : 'Batch Serialization Order';
+            const descText = data.description ? `Job: ${data.description}` : 'Serialized Production Batch';
             const createdText = data.created_at ? ` | Date Created: ${data.created_at}` : '';
             document.getElementById('lifecycle-desc').innerText = `${descText}${createdText}`;
 
             const tbody = document.getElementById('lifecycle-log-rows');
             if (data.logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-400 italic">No state changes recorded</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-500 italic">No state changes recorded</td></tr>`;
             } else {
                 tbody.innerHTML = data.logs.map(log => {
                     let label = log.action;
-                    let colorClass = "text-slate-700";
+                    let colorClass = "text-slate-300";
                     if (log.action === 'CREATED') {
                         label = "Job Created & Ingested";
-                        colorClass = "text-blue-700 font-bold";
+                        colorClass = "text-[#5e6ad2] font-semibold";
                     } else if (log.action === 'REACTIVATED_AND_UNBLOCKED') {
                         label = "Reactivated & Unblocked";
-                        colorClass = "text-amber-700 font-bold";
+                        colorClass = "text-amber-400 font-semibold";
                     } else if (log.action === 'COMPLETED_AND_BLOCKED') {
                         label = "Completed & Blocked";
-                        colorClass = "text-rose-700 font-bold";
+                        colorClass = "text-red-400 font-semibold";
                     } else if (log.action === 'DELETED') {
                         label = "Soft Deleted";
-                        colorClass = "text-red-700 font-bold";
+                        colorClass = "text-red-400 font-semibold";
                     }
 
                     return `
-                        <tr class="hover:bg-slate-50">
-                            <td class="p-2 font-mono text-[11px] text-slate-600">${log.time}</td>
-                            <td class="p-2 font-bold font-sans text-slate-800">${log.user}</td>
-                            <td class="p-2 font-sans ${colorClass}">${label}</td>
-                            <td class="p-2 text-slate-600 text-xs font-sans">${log.reason || '-'}</td>
+                        <tr class="hover:bg-white/[0.02]">
+                            <td class="p-2 font-mono text-[11px] text-slate-400">${log.time}</td>
+                            <td class="p-2 font-bold text-slate-200 font-sans">${log.user}</td>
+                            <td class="p-2 font-mono ${colorClass}">${label}</td>
+                            <td class="p-2 text-slate-400 text-xs font-sans">${log.reason || '-'}</td>
                         </tr>
                     `;
                 }).join('');
@@ -1232,21 +1245,21 @@
             const users = await res.json();
             const container = document.getElementById('users-table');
             container.innerHTML = users.map(u => `
-                <tr class="hover:bg-slate-50">
-                    <td class="p-2 font-sans">
-                        <span class="font-bold text-slate-800">${u.username}</span>
-                        <span class="text-[9px] uppercase ml-1 px-1 rounded bg-slate-200 text-slate-700 font-semibold">${u.role}</span>
-                        ${u.must_change_password ? '<span class="text-[9px] text-amber-700 font-bold block">(PW Change Required)</span>' : ''}
+                <tr class="hover:bg-white/[0.02]">
+                    <td class="p-2.5 font-sans">
+                        <span class="font-bold text-slate-200">${u.username}</span>
+                        <span class="text-[9px] uppercase ml-1 px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">${u.role}</span>
+                        ${u.must_change_password ? '<span class="text-[9px] text-amber-400 font-mono block mt-0.5">(PW Reset Required)</span>' : ''}
                     </td>
-                    <td class="p-2 text-center">
+                    <td class="p-2.5 text-center">
                         <input type="checkbox" ${u.can_upload ? 'checked' : ''} 
                                onchange="toggleUploadPermission('${u.username}', this.checked)"
-                               class="rounded text-[#1b6ec2] cursor-pointer">
+                               class="rounded bg-[#090a0d] border-white/[0.1] text-[#5e6ad2] cursor-pointer">
                     </td>
-                    <td class="p-2 text-right">
+                    <td class="p-2.5 text-right">
                         ${u.username !== currentUser.username ? `
-                            <button onclick="requestUserDelete('${u.username}')" class="text-red-700 hover:text-red-900 font-bold text-xs">Delete</button>
-                        ` : '<span class="text-[10px] text-slate-400">Current</span>'}
+                            <button onclick="requestUserDelete('${u.username}')" class="text-red-400 hover:text-red-300 font-medium text-xs">Delete</button>
+                        ` : '<span class="text-[10px] text-slate-500 font-mono">Current</span>'}
                     </td>
                 </tr>
             `).join('');
