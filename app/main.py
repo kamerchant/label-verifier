@@ -28,7 +28,6 @@ async def get_logo():
     logo_path = os.path.join(STATIC_DIR, "logo.jpg")
     if os.path.exists(logo_path):
         return FileResponse(logo_path, media_type="image/jpeg")
-    # Check parent directory fallback if placed in root
     parent_logo = os.path.join(os.path.dirname(BASE_DIR), "static", "logo.jpg")
     if os.path.exists(parent_logo):
         return FileResponse(parent_logo, media_type="image/jpeg")
@@ -243,7 +242,7 @@ def delete_user_with_auth(
         release_connection(conn)
 
 # --- Job Search & Management ---
-# Main screen search: Strictly filters for ACTIVE jobs
+# Main screen search: Strictly queries ACTIVE jobs
 @app.get("/api/jobs")
 def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
     conn = get_connection()
