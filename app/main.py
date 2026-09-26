@@ -1,19 +1,61 @@
 import io
-from fastapi import FastAPI, UploadFile, File, Form, Request, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
+import os
+import csv
+import codecs
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi.responses import FileResponse, JSONResponse
 from app.database import init_db, get_connection, release_connection
 
 app = FastAPI(title="Label QC Verifier")
-templates = Jinja2Templates(directory="app/templates")
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+HTML_PATH = os.path.join(BASE_DIR, "templates", "index.html")
 
 @app.on_event("startup")
 def startup():
     init_db()
 
-@app.get("/", response_class=HTMLResponse)
-def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+@app.get("/")
+async def index():
+    return FileResponse(HTML_PATH, media_type="text/html")
+
+# Helper endpoint to cleanly purge and re-initialize tables with TEXT types
+@app.get("/reset-db")
+def reset_database():
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                DROP TABLE IF EXISTS codes CASCADE;
+                DROP TABLE IF EXISTS job_cards CASCADE;
+
+                CREATE TABLE job_cards (
+                    job_card_id TEXT PRIMARY KEY,
+                    client_name TEXT,
+                    status VARCHAR(20) DEFAULT 'ACTIVE',
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE codes (
+                    job_card_id TEXT REFERENCES job_cards(job_card_id) ON DELETE CASCADE,
+                    code_value TEXT NOT NULL,
+                    short_code TEXT NOT NULL,
+                    status VARCHAR(20) DEFAULT 'PENDING',
+                    scanned_at TIMESTAMP WITH TIME ZONE NULL,
+                    PRIMARY KEY (job_card_id, code_value)
+                );
+
+                CREATE INDEX idx_codes_value ON codes (code_value);
+                CREATE INDEX idx_codes_short ON codes (short_code);
+                CREATE INDEX idx_codes_status ON codes (status);
+            """)
+            conn.commit()
+            return {"status": "success", "message": "Database tables recreated with TEXT type successfully!"}
+    except Exception as e:
+        conn.rollback()
+        return {"status": "error", "message": str(e)}
+    finally:
+        release_connection(conn)
 
 @app.get("/api/jobs")
 def get_jobs():
@@ -35,32 +77,66 @@ def get_jobs():
         release_connection(conn)
 
 @app.post("/api/jobs/create")
-async def create_job(job_card_id: str = Form(...), file: UploadFile = File(...)):
+async def create_job(
+    job_card_id: str = Form(...),
+    file: UploadFile = File(...)
+):
     job_card_id = job_card_id.strip()
+
     conn = get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute("SELECT job_card_id FROM job_cards WHERE job_card_id = %s", (job_card_id,))
             if cur.fetchone():
-                raise HTTPException(status_code=400, detail="Job Card ID already exists.")
-            
+                raise HTTPException(status_code=400, detail=f"Job Card '{job_card_id}' already exists.")
+
             cur.execute("INSERT INTO job_cards (job_card_id) VALUES (%s)", (job_card_id,))
 
+            # Stream through lines directly
+            utf8_reader = codecs.iterdecode(file.file, "utf-8", errors="ignore")
+            csv_reader = csv.reader(utf8_reader, delimiter=",", skipinitialspace=True)
+
             csv_buffer = io.StringIO()
-            while contents := await file.read(1024 * 1024):
-                lines = contents.decode("utf-8", errors="ignore").splitlines()
-                for line in lines:
-                    code = line.strip().strip(",")
-                    if code and not code.lower().startswith("code"):
-                        csv_buffer.write(f"{job_card_id}\t{code}\tPENDING\n")
+            seen_in_batch = set()
+
+            for row in csv_reader:
+                if not row:
+                    continue
+
+                for cell in row:
+                    item = cell.strip().strip('"').strip("'").replace('\r', '').replace('\n', '').replace('\t', '')
+                    
+                    if not item:
+                        continue
+
+                    # If cell is URL, extract the 12-char suffix code alongside the full URL
+                    if "://" in item:
+                        full_url = item
+                        short = item.rstrip("/").split("/")[-1].upper()
+                    else:
+                        full_url = item
+                        short = item.upper()
+
+                    # Deduplicate within same batch
+                    if short not in seen_in_batch:
+                        seen_in_batch.add(short)
+                        # Tab-separated for PostgreSQL COPY: job_card_id \t code_value \t short_code \t status
+                        csv_buffer.write(f"{job_card_id}\t{full_url}\t{short}\tPENDING\n")
+
+            if not seen_in_batch:
+                raise HTTPException(status_code=400, detail="No valid codes found in the file.")
 
             csv_buffer.seek(0)
-            cur.copy_from(csv_buffer, 'codes', columns=('job_card_id', 'code_value', 'status'))
+            cur.copy_from(csv_buffer, 'codes', columns=('job_card_id', 'code_value', 'short_code', 'status'))
             conn.commit()
-            return {"status": "success", "job_card_id": job_card_id}
+            return {"status": "success", "job_card_id": job_card_id, "total_extracted": len(seen_in_batch)}
+
+    except HTTPException:
+        conn.rollback()
+        raise
     except Exception as e:
         conn.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     finally:
         release_connection(conn)
 
@@ -79,30 +155,45 @@ def complete_job(job_card_id: str):
 @app.post("/api/verify")
 def verify_code(job_card_id: str = Form(...), code: str = Form(...)):
     job_card_id = job_card_id.strip()
-    code = code.strip()
+    scanned = code.strip().replace('\r', '').replace('\n', '')
+
+    # Derive short code if operator scanned the full URL
+    short_scanned = scanned.rstrip("/").split("/")[-1].upper()
+
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT job_card_id, status FROM codes WHERE code_value = %s", (code,))
+            # Match against either the full URL or the short code
+            cur.execute("""
+                SELECT job_card_id, status, short_code 
+                FROM codes 
+                WHERE code_value = %s OR short_code = %s
+            """, (scanned, short_scanned))
             rows = cur.fetchall()
 
             if not rows:
-                return JSONResponse(status_code=200, content={"result": "UNKNOWN", "message": "Code not found in system."})
+                return JSONResponse(status_code=200, content={"result": "UNKNOWN", "message": f"Code '{scanned}' not found in system."})
 
             matched = next((r for r in rows if r[0] == job_card_id), None)
 
             if not matched:
-                other_jobs = ", ".join([r[0] for r in rows])
+                other_jobs = ", ".join(list(set([r[0] for r in rows])))
                 return JSONResponse(status_code=200, content={"result": "MISMATCH", "message": f"Wrong job! Belongs to: {other_jobs}"})
 
             status = matched[1]
+            found_short = matched[2]
+
             if status == "CONSUMED":
-                return JSONResponse(status_code=200, content={"result": "DUPLICATE", "message": "Code already printed & consumed!"})
+                return JSONResponse(status_code=200, content={"result": "DUPLICATE", "message": f"Code '{found_short}' already printed & consumed!"})
             elif status == "BLOCKED":
-                return JSONResponse(status_code=200, content={"result": "BLOCKED", "message": "Code is from a completed/blocked batch!"})
+                return JSONResponse(status_code=200, content={"result": "BLOCKED", "message": f"Code '{found_short}' belongs to a completed/blocked batch!"})
             elif status == "PENDING":
-                cur.execute("UPDATE codes SET status = 'CONSUMED', scanned_at = NOW() WHERE job_card_id = %s AND code_value = %s", (job_card_id, code))
+                cur.execute("""
+                    UPDATE codes 
+                    SET status = 'CONSUMED', scanned_at = NOW() 
+                    WHERE job_card_id = %s AND (code_value = %s OR short_code = %s)
+                """, (job_card_id, scanned, short_scanned))
                 conn.commit()
-                return JSONResponse(status_code=200, content={"result": "PASS", "message": "Valid Code"})
+                return JSONResponse(status_code=200, content={"result": "PASS", "message": f"Code: {found_short}"})
     finally:
         release_connection(conn)
