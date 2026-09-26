@@ -230,7 +230,7 @@ def delete_user_with_auth(
         release_connection(conn)
 
 # --- Job Search & Management ---
-# Active jobs search (strictly joins codes by run_id so old deleted runs NEVER contaminate counts)
+# Main screen search: ONLY returns jobs with status = 'ACTIVE' (closed & deleted jobs are excluded)
 @app.get("/api/jobs")
 def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
     conn = get_connection()
@@ -244,7 +244,7 @@ def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
                        j.run_id
                 FROM job_cards j
                 LEFT JOIN codes c ON j.run_id = c.run_id AND c.status != 'DELETED'
-                WHERE j.status != 'DELETED'
+                WHERE j.status = 'ACTIVE'
             """
             params = []
             if query.strip():
@@ -269,6 +269,7 @@ def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
     finally:
         release_connection(conn)
 
+# All Jobs Master Report (Admin view: queries all jobs with status filtering)
 @app.get("/api/admin/master-jobs")
 def get_master_jobs_report(status_filter: str = "ALL", admin: dict = Depends(require_admin)):
     conn = get_connection()
@@ -329,10 +330,10 @@ async def create_job(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # 1. Reject if active/completed job exists with the same ID
+            # 1. Reject if an active or completed job already exists with this ID
             cur.execute("SELECT run_id FROM job_cards WHERE job_card_id = %s AND status != 'DELETED'", (job_card_id,))
             if cur.fetchone():
-                raise HTTPException(status_code=400, detail=f"Active Job Card '{job_card_id}' already exists.")
+                raise HTTPException(status_code=400, detail=f"Active/Open Job Card '{job_card_id}' already exists.")
 
             utf8_reader = codecs.iterdecode(file.file, "utf-8", errors="ignore")
             csv_reader = csv.reader(utf8_reader, delimiter=",", skipinitialspace=True)
@@ -375,13 +376,13 @@ async def create_job(
                 active_matches = [m for m in matches if m[2] != 'DELETED']
                 deleted_job_matches = [m for m in matches if m[2] == 'DELETED']
 
-                # HARD BLOCK: Duplicate in ACTIVE or COMPLETED job
+                # HARD BLOCK: Matched an ACTIVE or COMPLETED job
                 if active_matches:
                     conflicting_jc = active_matches[0][0]
                     sample_dup = active_matches[0][1]
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Upload rejected: Duplicate codes detected! Code '{sample_dup}' already exists in active/completed Job Card '{conflicting_jc}'."
+                        detail=f"Upload rejected: Duplicate codes detected! Code '{sample_dup}' already exists in open/completed Job Card '{conflicting_jc}'."
                     )
 
                 # SOFT WARNING: Code exists in a DELETED job
@@ -395,7 +396,7 @@ async def create_job(
                         "deleted_job_card": conflicting_jc
                     })
 
-            # 3. Create new Job Card and obtain its run_id
+            # 3. Create new Job Card and obtain run_id
             cur.execute("""
                 INSERT INTO job_cards (job_card_id, description, status) 
                 VALUES (%s, %s, 'ACTIVE') 
@@ -411,7 +412,7 @@ async def create_job(
 
             cur.copy_from(csv_buffer, 'codes', columns=('run_id', 'job_card_id', 'code_value', 'status'))
 
-            # 5. Record lifecycle log
+            # 5. Lifecycle Log
             lifecycle_reason = "Initial batch ingestion"
             if deleted_job_matches and override_deleted_warning:
                 conflicting_jc = deleted_job_matches[0][0]
@@ -464,11 +465,11 @@ def soft_delete_job(
             """, (reason, admin["username"], job_card_id))
             updated = cur.fetchone()
             if not updated:
-                raise HTTPException(status_code=404, detail="Active Job Card not found or already deleted.")
+                raise HTTPException(status_code=404, detail="Active/Open Job Card not found or already deleted.")
             
             run_id = updated[0]
 
-            # Mark all codes in this specific run as DELETED so they never match in active jobs
+            # Mark all codes in this specific run as DELETED
             cur.execute("UPDATE codes SET status = 'DELETED' WHERE run_id = %s", (run_id,))
 
             cur.execute("""
@@ -638,7 +639,7 @@ def verify_code(
                 )
                 conn.commit()
 
-            # 2. Check for scanned code across active & completed jobs (DELETED codes are completely excluded)
+            # 2. Check for scanned code across active & completed jobs
             cur.execute("""
                 SELECT c.run_id, j.job_card_id, c.status, c.code_value 
                 FROM codes c

@@ -6,29 +6,34 @@
     <title>CCL Pakistan VDV</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* Base typography scaled up by 2 font sizes across all elements */
+        html {
+            font-size: 16px;
+        }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", sans-serif;
             background-color: #0d0e11; /* Linear Matte Void */
             color: #d0d6e0;
             letter-spacing: -0.01em;
+            font-size: 1rem; /* 16px default instead of 12-14px */
         }
         .linear-card {
             background-color: #12141a;
-            border: 1px solid rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
         .linear-subcard {
             background-color: #161821;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.06);
         }
         .linear-input {
             background-color: #090a0d;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.12);
             color: #f1f5f9;
             transition: all 0.15s ease;
         }
         .linear-input:focus {
             border-color: #5e6ad2;
-            box-shadow: 0 0 0 1px #5e6ad2;
+            box-shadow: 0 0 0 2px rgba(94, 106, 210, 0.25);
             outline: none;
         }
         .linear-button-primary {
@@ -41,7 +46,7 @@
         }
         .linear-button-secondary {
             background-color: #1a1c24;
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             color: #cbd5e1;
             transition: all 0.12s ease;
         }
@@ -50,36 +55,36 @@
             color: #ffffff;
         }
         .linear-badge-pass {
-            background-color: rgba(46, 213, 115, 0.1);
+            background-color: rgba(46, 213, 115, 0.12);
             color: #2ed573;
-            border: 1px solid rgba(46, 213, 115, 0.25);
+            border: 1px solid rgba(46, 213, 115, 0.3);
         }
         .linear-badge-fail {
-            background-color: rgba(255, 71, 87, 0.1);
+            background-color: rgba(255, 71, 87, 0.12);
             color: #ff4757;
-            border: 1px solid rgba(255, 71, 87, 0.25);
+            border: 1px solid rgba(255, 71, 87, 0.3);
         }
         .linear-badge-warn {
-            background-color: rgba(255, 165, 2, 0.1);
+            background-color: rgba(255, 165, 2, 0.12);
             color: #ffa502;
-            border: 1px solid rgba(255, 165, 2, 0.25);
+            border: 1px solid rgba(255, 165, 2, 0.3);
         }
 
         /* Result billboard states */
         .state-ready {
-            border-left: 2px solid #5e6ad2;
+            border-left: 3px solid #5e6ad2;
         }
         .state-pass {
-            border-left: 2px solid #2ed573;
-            background: linear-gradient(90deg, rgba(46, 213, 115, 0.08) 0%, #161821 100%);
+            border-left: 3px solid #2ed573;
+            background: linear-gradient(90deg, rgba(46, 213, 115, 0.1) 0%, #161821 100%);
         }
         .state-fail {
-            border-left: 2px solid #ff4757;
-            background: linear-gradient(90deg, rgba(255, 71, 87, 0.08) 0%, #161821 100%);
+            border-left: 3px solid #ff4757;
+            background: linear-gradient(90deg, rgba(255, 71, 87, 0.1) 0%, #161821 100%);
         }
         .state-warn {
-            border-left: 2px solid #ffa502;
-            background: linear-gradient(90deg, rgba(255, 165, 2, 0.08) 0%, #161821 100%);
+            border-left: 3px solid #ffa502;
+            background: linear-gradient(90deg, rgba(255, 165, 2, 0.1) 0%, #161821 100%);
         }
 
         @media print {
@@ -122,14 +127,14 @@
                 margin-bottom: 12px !important;
             }
             .print-title {
-                font-size: 18pt !important;
+                font-size: 20pt !important;
                 color: #0f172a !important;
                 font-weight: 800 !important;
                 background: #ffffff !important;
                 margin-bottom: 2px !important;
             }
             .print-subtitle {
-                font-size: 11pt !important;
+                font-size: 13pt !important;
                 color: #334155 !important;
                 background: #ffffff !important;
             }
@@ -170,7 +175,7 @@
                 font-weight: 700 !important;
                 border: 1px solid #94a3b8 !important;
                 padding: 8px !important;
-                font-size: 9pt !important;
+                font-size: 10pt !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
@@ -178,7 +183,7 @@
                 color: #0f172a !important;
                 border: 1px solid #cbd5e1 !important;
                 padding: 6px 8px !important;
-                font-size: 8.5pt !important;
+                font-size: 9.5pt !important;
                 background: #ffffff !important;
             }
             tr {
@@ -190,29 +195,24 @@
 </head>
 <body class="min-h-screen flex flex-col justify-between selection:bg-[#5e6ad2] selection:text-white">
 
-    <!-- Top Command Navigation -->
-    <header class="border-b border-white/[0.06] bg-[#0d0e11]/90 backdrop-blur-md px-6 py-2.5 flex items-center justify-between text-xs sticky top-0 z-40">
+    <!-- Top Command Navigation Bar -->
+    <header class="border-b border-white/[0.08] bg-[#0d0e11]/95 backdrop-blur-md px-6 py-3.5 flex flex-wrap items-center justify-between text-sm sticky top-0 z-40 gap-3">
         <div class="flex items-center gap-3">
-            <div class="flex items-center gap-2">
-                <div class="w-5 h-5 rounded bg-[#5e6ad2] flex items-center justify-center font-bold text-white text-[11px] shadow-sm">
-                    C
-                </div>
-                <span class="font-semibold text-slate-100">CCL VDV</span>
+            <div class="w-6 h-6 rounded bg-[#5e6ad2] flex items-center justify-center font-bold text-white text-xs shadow-sm">
+                C
             </div>
-            <span class="text-slate-600">/</span>
-            <span class="text-slate-400">Serialization Stream</span>
-            <span class="text-slate-600">/</span>
-            <span id="header-active-slug" class="font-mono text-slate-200">STANDBY</span>
+            <!-- Prominent branding without 'Serialization Stream' -->
+            <span class="font-bold text-slate-100 text-lg tracking-wide">CCL Pakistan VDV</span>
         </div>
 
-        <!-- Global Search & Navigation Buttons -->
+        <!-- Global Status Badge & Actions -->
         <div class="flex items-center gap-2.5">
-            <span id="active-badge" class="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">NO JOB SELECTED</span>
-            <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-2.5 py-1 rounded text-xs font-medium">Create New Job</button>
-            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-2.5 py-1 rounded text-xs font-medium">All Jobs</button>
-            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-2.5 py-1 rounded text-xs font-medium">Users</button>
-            <button onclick="toggleModal('pw-modal')" class="linear-button-secondary px-2.5 py-1 rounded text-xs font-medium">Password</button>
-            <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-2.5 py-1 rounded text-xs font-medium transition-colors">Logout</button>
+            <span id="active-badge" class="px-2.5 py-1 rounded text-xs font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/25">NO JOB SELECTED</span>
+            <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-3 py-1.5 rounded text-sm font-semibold">Create New Job</button>
+            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-sm font-medium">All Jobs</button>
+            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-sm font-medium">Users</button>
+            <button onclick="toggleModal('pw-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-sm font-medium">Password</button>
+            <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-3 py-1.5 rounded text-sm font-medium transition-colors">Logout</button>
         </div>
     </header>
 
@@ -223,66 +223,66 @@
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div class="flex-1 max-w-xl">
                 <div class="flex items-center gap-3">
-                    <h1 id="active-title-card" class="text-xl font-bold tracking-tight text-white font-mono">Job Card: None</h1>
-                    <span id="status-chip" class="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-slate-800 text-slate-400 border border-slate-700">STANDBY</span>
+                    <h1 id="active-title-card" class="text-2xl font-bold tracking-tight text-white font-mono">Job Card: None</h1>
+                    <span id="status-chip" class="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-slate-800 text-slate-400 border border-slate-700">STANDBY</span>
                 </div>
-                <p id="header-job-desc" class="text-xs text-slate-400 mt-1 truncate">Type in the command search below to load a serialized production run.</p>
+                <p id="header-job-desc" class="text-sm text-slate-400 mt-1 truncate">Search active production jobs using the search field.</p>
             </div>
 
-            <!-- Instant Search Input -->
-            <div class="relative w-full md:w-72">
-                <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Find job card # or description..." 
-                       class="linear-input w-full px-3 py-1.5 text-xs font-mono rounded placeholder-slate-500">
-                <div id="job-list" class="absolute left-0 right-0 top-full mt-1 linear-card rounded shadow-2xl max-h-56 overflow-y-auto z-30 hidden"></div>
+            <!-- Instant Search Input: Strictly searches ACTIVE jobs -->
+            <div class="relative w-full md:w-80">
+                <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Search active jobs..." 
+                       class="linear-input w-full px-3.5 py-2 text-sm font-mono rounded placeholder-slate-500 shadow-inner">
+                <div id="job-list" class="absolute left-0 right-0 top-full mt-1.5 linear-card rounded shadow-2xl max-h-64 overflow-y-auto z-30 hidden"></div>
             </div>
         </div>
 
         <!-- Metric Figures (Linear Monospace Counters) -->
         <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <div class="linear-card p-3 rounded">
-                <span class="text-[11px] text-slate-400 block">Total Pool</span>
-                <span id="kpi-total" class="text-xl font-semibold font-mono text-white mt-0.5 block">0</span>
-                <span class="text-[10px] text-slate-500 mt-0.5 block">Assigned batch pool</span>
+            <div class="linear-card p-4 rounded">
+                <span class="text-xs text-slate-400 block font-medium">Total Pool</span>
+                <span id="kpi-total" class="text-2xl font-bold font-mono text-white mt-1 block">0</span>
+                <span class="text-xs text-slate-500 mt-1 block">Assigned batch pool</span>
             </div>
-            <div class="linear-card p-3 rounded">
-                <span class="text-[11px] text-[#2ed573] block">Verified (Pass)</span>
-                <span id="kpi-consumed" class="text-xl font-semibold font-mono text-[#2ed573] mt-0.5 block">0</span>
-                <span class="text-[10px] text-slate-500 mt-0.5 block">Consumed serials</span>
+            <div class="linear-card p-4 rounded">
+                <span class="text-xs text-[#2ed573] block font-medium">Verified (Pass)</span>
+                <span id="kpi-consumed" class="text-2xl font-bold font-mono text-[#2ed573] mt-1 block">0</span>
+                <span class="text-xs text-slate-500 mt-1 block">Consumed serials</span>
             </div>
-            <div class="linear-card p-3 rounded">
-                <span class="text-[11px] text-amber-400 block">Pending Queue</span>
-                <span id="kpi-pending" class="text-xl font-semibold font-mono text-slate-300 mt-0.5 block">0</span>
-                <span class="text-[10px] text-slate-500 mt-0.5 block">Remaining in feed</span>
+            <div class="linear-card p-4 rounded">
+                <span class="text-xs text-amber-400 block font-medium">Pending Queue</span>
+                <span id="kpi-pending" class="text-2xl font-bold font-mono text-slate-300 mt-1 block">0</span>
+                <span class="text-xs text-slate-500 mt-1 block">Remaining in feed</span>
             </div>
-            <div class="linear-card p-3 rounded">
-                <span class="text-[11px] text-slate-400 block">Blocked</span>
-                <span id="kpi-blocked" class="text-xl font-semibold font-mono text-slate-300 mt-0.5 block">0</span>
-                <span class="text-[10px] text-slate-500 mt-0.5 block">Quarantined units</span>
+            <div class="linear-card p-4 rounded">
+                <span class="text-xs text-slate-400 block font-medium">Blocked</span>
+                <span id="kpi-blocked" class="text-2xl font-bold font-mono text-slate-300 mt-1 block">0</span>
+                <span class="text-xs text-slate-500 mt-1 block">Quarantined units</span>
             </div>
-            <div class="linear-card p-3 rounded col-span-2 md:col-span-1">
-                <span class="text-[11px] text-slate-400 block">Completion Rate</span>
-                <span id="counter" class="text-xl font-semibold font-mono text-[#5e6ad2] mt-0.5 block">0 / 0</span>
-                <div class="w-full bg-white/[0.06] h-1 rounded-full mt-2 overflow-hidden">
+            <div class="linear-card p-4 rounded col-span-2 md:col-span-1">
+                <span class="text-xs text-slate-400 block font-medium">Completion Rate</span>
+                <span id="counter" class="text-2xl font-bold font-mono text-[#5e6ad2] mt-1 block">0 / 0</span>
+                <div class="w-full bg-white/[0.08] h-1.5 rounded-full mt-2 overflow-hidden">
                     <div id="progress-bar-fill" class="bg-[#5e6ad2] h-full transition-all duration-200" style="width: 0%"></div>
                 </div>
             </div>
         </div>
 
         <!-- Scanning Terminal Canvas -->
-        <div class="linear-card p-5 rounded flex flex-col gap-4">
+        <div class="linear-card p-6 rounded flex flex-col gap-4">
             
             <!-- Result Notice Bar -->
-            <div id="status-card" class="linear-subcard px-4 py-3 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-2 state-ready">
+            <div id="status-card" class="linear-subcard px-5 py-4 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-3 state-ready">
                 <div class="flex items-center gap-3">
-                    <span id="status-dot" class="w-2 h-2 rounded-full bg-[#5e6ad2]"></span>
+                    <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-[#5e6ad2]"></span>
                     <div>
-                        <span id="status-heading" class="text-xs font-semibold text-slate-100 font-mono tracking-wide">VERIFY CODE</span>
-                        <span id="status-detail" class="text-xs text-slate-400 ml-2">&middot; Select a job card and scan serialized barcode labels</span>
+                        <span id="status-heading" class="text-sm font-bold text-slate-100 font-mono tracking-wide">VERIFY CODE</span>
+                        <span id="status-detail" class="text-sm text-slate-400 ml-2">&middot; Select an active job card and scan serialized barcodes</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-3">
-                    <span id="status-last-code" class="text-[11px] font-mono text-slate-500">READY</span>
-                    <span id="status-badge" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#1a1c24] text-slate-300">STANDBY</span>
+                    <span id="status-last-code" class="text-sm font-mono text-slate-400">READY</span>
+                    <span id="status-badge" class="px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#1a1c24] text-slate-300">STANDBY</span>
                 </div>
             </div>
 
@@ -290,9 +290,9 @@
             <form id="scan-form" onsubmit="handleScan(event)" class="flex gap-2">
                 <div class="relative flex-1">
                     <input type="text" id="barcode-input" placeholder="Scanner input active -- scan serialized barcode..." autofocus autocomplete="off"
-                           class="linear-input w-full px-3 py-2 text-sm font-mono rounded">
+                           class="linear-input w-full px-4 py-3 text-base md:text-lg font-mono rounded">
                 </div>
-                <button type="submit" class="linear-button-primary px-5 py-2 rounded text-xs font-semibold font-mono">
+                <button type="submit" class="linear-button-primary px-6 py-3 rounded text-sm font-semibold font-mono">
                     Verify (↵)
                 </button>
             </form>
@@ -300,39 +300,39 @@
 
         <!-- Real-Time Stream Table -->
         <div class="linear-card rounded overflow-hidden flex-1 flex flex-col">
-            <div class="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between text-xs">
-                <div class="flex items-center gap-3 font-medium text-slate-300">
-                    <span>Live Verification Stream</span>
+            <div class="px-5 py-4 border-b border-white/[0.08] flex flex-wrap items-center justify-between gap-3 text-sm">
+                <div class="flex items-center gap-3 font-semibold text-slate-200">
+                    <span class="text-base">Live Verification Stream</span>
                     <span class="text-slate-600">|</span>
-                    <span class="text-[11px] text-slate-500 font-mono">Recent scans recorded this session</span>
+                    <span class="text-xs text-slate-400 font-mono font-normal">Recent scans recorded this session</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button id="report-btn" onclick="openReportModal()" disabled class="linear-button-secondary text-[11px] px-2.5 py-1 rounded disabled:opacity-30">
+                    <button id="report-btn" onclick="openReportModal()" disabled class="linear-button-secondary text-xs px-3 py-1.5 rounded disabled:opacity-30">
                         QC Report
                     </button>
-                    <button id="lifecycle-btn" onclick="openLifecycleModal()" disabled class="linear-button-secondary text-[11px] px-2.5 py-1 rounded disabled:opacity-30">
+                    <button id="lifecycle-btn" onclick="openLifecycleModal()" disabled class="linear-button-secondary text-xs px-3 py-1.5 rounded disabled:opacity-30">
                         Lifecycle Audit
                     </button>
-                    <button id="job-toggle-btn" onclick="handleJobStatusToggle()" disabled class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-[11px] px-2.5 py-1 rounded disabled:opacity-30 transition-colors">
+                    <button id="job-toggle-btn" onclick="handleJobStatusToggle()" disabled class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs px-3 py-1.5 rounded disabled:opacity-30 transition-colors">
                         Complete Job
                     </button>
                 </div>
             </div>
 
             <div class="overflow-x-auto flex-1">
-                <table class="w-full text-left text-xs">
+                <table class="w-full text-left text-sm">
                     <thead>
-                        <tr class="border-b border-white/[0.06] text-[11px] text-slate-500 font-medium">
-                            <th class="px-4 py-2.5 w-16">Seq</th>
-                            <th class="px-4 py-2.5">Payload Value</th>
-                            <th class="px-4 py-2.5">Evaluation</th>
-                            <th class="px-4 py-2.5">Recorded At</th>
-                            <th class="px-4 py-2.5">Inspector</th>
+                        <tr class="border-b border-white/[0.08] text-xs text-slate-400 font-semibold bg-[#161821]">
+                            <th class="px-5 py-3 w-20">Seq</th>
+                            <th class="px-5 py-3">Payload Value</th>
+                            <th class="px-5 py-3">Evaluation</th>
+                            <th class="px-5 py-3">Recorded At</th>
+                            <th class="px-5 py-3">Inspector</th>
                         </tr>
                     </thead>
-                    <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] font-mono text-xs">
+                    <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] font-mono text-sm">
                         <tr>
-                            <td colspan="5" class="px-4 py-6 text-center text-slate-500 font-sans italic text-xs">No scan events recorded for this session</td>
+                            <td colspan="5" class="px-5 py-8 text-center text-slate-500 font-sans italic text-sm">No scan events recorded for this session</td>
                         </tr>
                     </tbody>
                 </table>
@@ -342,53 +342,53 @@
     </main>
 
     <!-- Footer Information Bar -->
-    <footer class="border-t border-white/[0.06] px-6 py-2 flex items-center justify-between text-[11px] text-slate-500">
+    <footer class="border-t border-white/[0.08] px-6 py-2.5 flex items-center justify-between text-xs text-slate-400">
         <div class="flex items-center gap-2">
-            <span class="w-1.5 h-1.5 rounded-full bg-[#2ed573]"></span>
-            <span>Scanner stream online</span>
-            <span class="text-slate-700">&middot;</span>
+            <span class="w-2 h-2 rounded-full bg-[#2ed573]"></span>
+            <span>Online</span>
+            <span class="text-slate-600">&middot;</span>
             <span id="user-display">Checking session...</span>
         </div>
         <div class="font-mono text-slate-400">
-            Press <kbd class="bg-[#1e2029] text-slate-300 px-1 py-0.5 rounded font-mono text-[10px]">Enter</kbd> to submit
+            Press <kbd class="bg-[#1e2029] text-slate-300 px-1.5 py-0.5 rounded font-mono text-xs">Enter</kbd> to submit
         </div>
     </footer>
 
     <!-- Login Modal -->
     <div id="login-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <div class="linear-card p-6 rounded-lg max-w-sm w-full shadow-2xl">
-            <div class="flex items-center gap-2 mb-4">
-                <div class="w-5 h-5 rounded bg-[#5e6ad2] flex items-center justify-center font-bold text-white text-[11px]">C</div>
-                <span class="font-semibold text-white text-sm">CCL Pakistan VDV</span>
+            <div class="flex items-center gap-2.5 mb-4">
+                <div class="w-6 h-6 rounded bg-[#5e6ad2] flex items-center justify-center font-bold text-white text-xs">C</div>
+                <span class="font-bold text-white text-base">CCL Pakistan VDV</span>
             </div>
             <p class="text-xs text-slate-400 mb-4">Sign in to initialize serialization terminal</p>
-            <form onsubmit="handleLogin(event)" class="space-y-3">
+            <form onsubmit="handleLogin(event)" class="space-y-3.5">
                 <div>
-                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Username</label>
-                    <input type="text" id="login-user" required class="linear-input w-full p-2 text-xs rounded">
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Username</label>
+                    <input type="text" id="login-user" required class="linear-input w-full p-2.5 text-sm rounded">
                 </div>
                 <div>
-                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Password</label>
-                    <input type="password" id="login-pass" required class="linear-input w-full p-2 text-xs rounded">
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Password</label>
+                    <input type="password" id="login-pass" required class="linear-input w-full p-2.5 text-sm rounded">
                 </div>
-                <button type="submit" class="linear-button-primary w-full py-2 rounded text-xs font-semibold mt-2">Sign In</button>
+                <button type="submit" class="linear-button-primary w-full py-2.5 rounded text-sm font-semibold mt-2">Sign In</button>
             </form>
         </div>
     </div>
 
     <!-- Password Confirmation Modal (Unblocking, User Deletions) -->
     <div id="auth-confirm-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-[70]">
-        <div class="linear-card p-5 rounded-lg max-w-sm w-full border border-amber-500/20 shadow-2xl">
-            <h3 id="auth-confirm-title" class="text-sm font-bold mb-1 text-amber-400">Admin Authorization Required</h3>
+        <div class="linear-card p-6 rounded-lg max-w-sm w-full border border-amber-500/25 shadow-2xl">
+            <h3 id="auth-confirm-title" class="text-base font-bold mb-1 text-amber-400">Admin Authorization Required</h3>
             <p id="auth-confirm-subtitle" class="text-xs text-slate-400 mb-4">Enter administrator password to proceed.</p>
-            <form onsubmit="executeAuthorizedAction(event)" class="space-y-3">
+            <form onsubmit="executeAuthorizedAction(event)" class="space-y-3.5">
                 <div>
-                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Admin Password</label>
-                    <input type="password" id="auth-admin-pass" required class="linear-input w-full p-2 text-xs rounded focus:border-amber-400">
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Admin Password</label>
+                    <input type="password" id="auth-admin-pass" required class="linear-input w-full p-2.5 text-sm rounded focus:border-amber-400">
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="closeAuthModal()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Cancel</button>
-                    <button type="submit" id="auth-confirm-btn" class="linear-button-primary px-3 py-1.5 rounded text-xs font-medium">Authorize</button>
+                    <button type="button" onclick="closeAuthModal()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
+                    <button type="submit" id="auth-confirm-btn" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-medium">Authorize</button>
                 </div>
             </form>
         </div>
@@ -396,25 +396,25 @@
 
     <!-- Soft Delete Modal (Reason + Password) -->
     <div id="job-delete-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-[70]">
-        <div class="linear-card p-5 rounded-lg max-w-md w-full border border-red-500/20 shadow-2xl">
+        <div class="linear-card p-6 rounded-lg max-w-md w-full border border-red-500/25 shadow-2xl">
             <div class="flex justify-between items-center mb-2">
-                <h3 class="text-sm font-bold text-red-400">Soft Delete Job Card</h3>
-                <button type="button" onclick="closeJobDeleteModal()" class="text-slate-400 hover:text-white text-xs">✕</button>
+                <h3 class="text-base font-bold text-red-400">Soft Delete Job Card</h3>
+                <button type="button" onclick="closeJobDeleteModal()" class="text-slate-400 hover:text-white text-sm">✕</button>
             </div>
             <p id="job-delete-subtitle" class="text-xs text-slate-400 mb-4 leading-relaxed"></p>
-            <form onsubmit="submitJobDelete(event)" class="space-y-3">
+            <form onsubmit="submitJobDelete(event)" class="space-y-3.5">
                 <div>
-                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Reason for Deletion *</label>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Reason for Deletion *</label>
                     <textarea id="job-delete-reason" required rows="2" placeholder="e.g. Order canceled / Plate error / Wrong serial range" 
-                              class="linear-input w-full p-2 text-xs rounded focus:border-red-400 placeholder-slate-600"></textarea>
+                              class="linear-input w-full p-2.5 text-sm rounded focus:border-red-400 placeholder-slate-600"></textarea>
                 </div>
                 <div>
-                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Admin Password *</label>
-                    <input type="password" id="job-delete-pass" required class="linear-input w-full p-2 text-xs rounded focus:border-red-400">
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Admin Password *</label>
+                    <input type="password" id="job-delete-pass" required class="linear-input w-full p-2.5 text-sm rounded focus:border-red-400">
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="closeJobDeleteModal()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Cancel</button>
-                    <button type="submit" id="btn-confirm-delete" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 rounded text-xs font-medium transition-colors">Archive Job</button>
+                    <button type="button" onclick="closeJobDeleteModal()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
+                    <button type="submit" id="btn-confirm-delete" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-3.5 py-1.5 rounded text-xs font-medium transition-colors">Archive Job</button>
                 </div>
             </form>
         </div>
@@ -422,33 +422,33 @@
 
     <!-- Warning Confirmation Modal: Codes Exist in Deleted Job -->
     <div id="deleted-dup-warning-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-[70]">
-        <div class="linear-card p-5 rounded-lg max-w-md w-full border border-amber-500/30 shadow-2xl">
-            <h3 class="text-sm font-bold mb-1 text-amber-400">Warning: Reused Serial Codes Detected</h3>
+        <div class="linear-card p-6 rounded-lg max-w-md w-full border border-amber-500/30 shadow-2xl">
+            <h3 class="text-base font-bold mb-1 text-amber-400">Warning: Reused Serial Codes Detected</h3>
             <p id="deleted-dup-warning-msg" class="text-xs text-slate-300 mb-5 leading-relaxed"></p>
             <div class="flex justify-end gap-2">
-                <button type="button" onclick="toggleModal('deleted-dup-warning-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Cancel</button>
-                <button type="button" onclick="confirmOverrideAndCreate()" class="linear-button-primary px-3 py-1.5 rounded text-xs font-medium">Proceed with Run</button>
+                <button type="button" onclick="toggleModal('deleted-dup-warning-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
+                <button type="button" onclick="confirmOverrideAndCreate()" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-medium">Proceed with Run</button>
             </div>
         </div>
     </div>
 
     <!-- Password Change Modal -->
     <div id="pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-50">
-        <div class="linear-card p-5 rounded-lg max-w-sm w-full shadow-2xl">
-            <h3 id="pw-title" class="text-sm font-bold mb-1 text-white">Change Password</h3>
+        <div class="linear-card p-6 rounded-lg max-w-sm w-full shadow-2xl">
+            <h3 id="pw-title" class="text-base font-bold mb-1 text-white">Change Password</h3>
             <p id="pw-subtitle" class="text-xs text-slate-400 mb-4">Enter current and new authentication credentials</p>
-            <form onsubmit="handleChangePassword(event)" class="space-y-3">
+            <form onsubmit="handleChangePassword(event)" class="space-y-3.5">
                 <div>
-                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Current Password</label>
-                    <input type="password" id="pw-current" required class="linear-input w-full p-2 text-xs rounded">
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Current Password</label>
+                    <input type="password" id="pw-current" required class="linear-input w-full p-2.5 text-sm rounded">
                 </div>
                 <div>
-                    <label class="block text-[11px] font-medium text-slate-400 mb-1">New Password (min 6 chars)</label>
-                    <input type="password" id="pw-new" required minlength="6" class="linear-input w-full p-2 text-xs rounded">
+                    <label class="block text-xs font-medium text-slate-400 mb-1">New Password (min 6 chars)</label>
+                    <input type="password" id="pw-new" required minlength="6" class="linear-input w-full p-2.5 text-sm rounded">
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" id="pw-cancel-btn" onclick="toggleModal('pw-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Cancel</button>
-                    <button type="submit" class="linear-button-primary px-3 py-1.5 rounded text-xs font-semibold">Save Password</button>
+                    <button type="button" id="pw-cancel-btn" onclick="toggleModal('pw-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
+                    <button type="submit" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold">Save Password</button>
                 </div>
             </form>
         </div>
@@ -457,59 +457,66 @@
     <!-- Create New Job Modal -->
     <div id="upload-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-50">
         <div class="linear-card p-6 rounded-lg max-w-md w-full shadow-2xl">
-            <h3 class="text-sm font-bold mb-3 text-white">Create New Job & Ingest Serial Pool</h3>
-            <form id="create-job-form" onsubmit="uploadJob(event, false)" class="space-y-3">
+            <h3 class="text-base font-bold mb-3 text-white">Create New Job & Ingest Serial Pool</h3>
+            <form id="create-job-form" onsubmit="uploadJob(event, false)" class="space-y-3.5">
                 <div>
-                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Job Card # *</label>
-                    <input type="text" id="new-job-id" required placeholder="e.g. JC-2026-99" class="linear-input w-full p-2 text-xs rounded font-mono">
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Job Card # *</label>
+                    <input type="text" id="new-job-id" required placeholder="e.g. JC-2026-99" class="linear-input w-full p-2.5 text-sm rounded font-mono">
                 </div>
                 <div>
-                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Job Description (Optional)</label>
-                    <input type="text" id="new-job-desc" placeholder="e.g. 500ml Shampoo labels - 50k run" class="linear-input w-full p-2 text-xs rounded">
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Job Description (Optional)</label>
+                    <input type="text" id="new-job-desc" placeholder="e.g. 500ml Shampoo labels - 50k run" class="linear-input w-full p-2.5 text-sm rounded">
                 </div>
                 <div>
-                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Batch Data File (CSV / TXT) *</label>
-                    <input type="file" id="new-job-file" accept=".csv,.txt" required class="linear-input w-full p-2 text-xs rounded text-slate-400">
-                    <p class="text-[10px] text-slate-500 mt-1">Codes are checked against active and deleted jobs.</p>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Batch Data File (CSV / TXT) *</label>
+                    <input type="file" id="new-job-file" accept=".csv,.txt" required class="linear-input w-full p-2.5 text-xs rounded text-slate-400">
+                    <p class="text-xs text-slate-500 mt-1">Codes are checked against active and deleted jobs.</p>
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="toggleModal('upload-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Cancel</button>
-                    <button type="submit" id="upload-btn" class="linear-button-primary px-3 py-1.5 rounded text-xs font-semibold">Create Job</button>
+                    <button type="button" onclick="toggleModal('upload-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
+                    <button type="submit" id="upload-btn" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold">Create Job</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Admin Master Jobs Report Modal with Status Toggles -->
+    <!-- Admin Master Jobs Report Modal with Real-Time Search & Status Toggles -->
     <div id="master-jobs-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-50">
-        <div class="linear-card p-5 rounded-lg max-w-5xl w-full shadow-2xl flex flex-col max-h-[90vh]">
-            <div class="flex justify-between items-center mb-3 border-b border-white/[0.06] pb-2">
+        <div class="linear-card p-6 rounded-lg max-w-5xl w-full shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center mb-3 border-b border-white/[0.08] pb-3">
                 <div>
-                    <h3 class="text-sm font-bold text-white">All Jobs Status Report</h3>
-                    <p class="text-[11px] text-slate-400">View live status across active, completed, or deleted historical jobs</p>
+                    <h3 class="text-base font-bold text-white">All Jobs Status Report</h3>
+                    <p class="text-xs text-slate-400">View live status across active, completed, or deleted historical jobs</p>
                 </div>
-                <button onclick="toggleModal('master-jobs-modal')" class="linear-button-secondary px-2.5 py-1 text-xs rounded font-medium">Close</button>
+                <button onclick="toggleModal('master-jobs-modal')" class="linear-button-secondary px-3 py-1.5 text-xs rounded font-medium">Close</button>
             </div>
 
-            <!-- 4 Filter Tabs -->
-            <div class="flex gap-1.5 mb-3">
-                <button onclick="filterMasterJobs('ALL')" id="filter-tab-all" class="linear-button-primary px-3 py-1 rounded text-xs font-medium">All Jobs</button>
-                <button onclick="filterMasterJobs('ACTIVE')" id="filter-tab-active" class="linear-button-secondary px-3 py-1 rounded text-xs font-medium">Active Only</button>
-                <button onclick="filterMasterJobs('COMPLETED')" id="filter-tab-completed" class="linear-button-secondary px-3 py-1 rounded text-xs font-medium">Completed Only</button>
-                <button onclick="filterMasterJobs('DELETED')" id="filter-tab-deleted" class="linear-button-secondary px-3 py-1 rounded text-xs font-medium">Deleted Only</button>
+            <!-- Toolbar: Status Filter Buttons + Search Input -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+                <div class="flex gap-1.5">
+                    <button onclick="filterMasterJobs('ALL')" id="filter-tab-all" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-medium">All Jobs</button>
+                    <button onclick="filterMasterJobs('ACTIVE')" id="filter-tab-active" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Active Only</button>
+                    <button onclick="filterMasterJobs('COMPLETED')" id="filter-tab-completed" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Completed Only</button>
+                    <button onclick="filterMasterJobs('DELETED')" id="filter-tab-deleted" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Deleted Only</button>
+                </div>
+                <!-- Search bar for All Jobs modal -->
+                <div class="relative w-full md:w-72">
+                    <input type="text" id="master-job-search" oninput="renderMasterJobsTable()" placeholder="Search in all jobs..." 
+                           class="linear-input w-full px-3 py-1.5 text-xs font-mono rounded placeholder-slate-500">
+                </div>
             </div>
 
             <!-- Jobs Table -->
-            <div class="flex-1 overflow-y-auto border border-white/[0.06] rounded">
-                <table class="w-full text-left text-xs">
+            <div class="flex-1 overflow-y-auto border border-white/[0.08] rounded">
+                <table class="w-full text-left text-sm">
                     <thead>
-                        <tr class="border-b border-white/[0.06] text-[11px] text-slate-500 font-medium bg-[#161821]">
-                            <th class="p-2.5">Job Card</th>
-                            <th class="p-2.5">Description / Deletion Reason</th>
-                            <th class="p-2.5">Timestamps</th>
-                            <th class="p-2.5 text-center">Status</th>
-                            <th class="p-2.5 text-right">Codes Verified</th>
-                            <th class="p-2.5 text-center">Action</th>
+                        <tr class="border-b border-white/[0.08] text-xs text-slate-400 font-semibold bg-[#161821]">
+                            <th class="p-3">Job Card</th>
+                            <th class="p-3">Description / Deletion Reason</th>
+                            <th class="p-3">Timestamps</th>
+                            <th class="p-3 text-center">Status</th>
+                            <th class="p-3 text-right">Codes Verified</th>
+                            <th class="p-3 text-center">Action</th>
                         </tr>
                     </thead>
                     <tbody id="master-jobs-rows" class="divide-y divide-white/[0.04]"></tbody>
@@ -520,37 +527,37 @@
 
     <!-- User Management Modal -->
     <div id="user-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-50">
-        <div class="linear-card p-5 rounded-lg max-w-xl w-full shadow-2xl">
-            <div class="flex justify-between items-center mb-3 pb-2 border-b border-white/[0.06]">
-                <h3 class="text-sm font-bold text-white">Operator Permissions</h3>
-                <button onclick="toggleModal('user-modal')" class="text-slate-400 hover:text-white text-xs">✕</button>
+        <div class="linear-card p-6 rounded-lg max-w-xl w-full shadow-2xl">
+            <div class="flex justify-between items-center mb-3 pb-2 border-b border-white/[0.08]">
+                <h3 class="text-base font-bold text-white">Operator Permissions</h3>
+                <button onclick="toggleModal('user-modal')" class="text-slate-400 hover:text-white text-sm">✕</button>
             </div>
             
-            <form onsubmit="createUser(event)" class="linear-subcard p-3 rounded mb-3 space-y-2">
+            <form onsubmit="createUser(event)" class="linear-subcard p-4 rounded mb-4 space-y-2.5">
                 <div class="grid grid-cols-3 gap-2">
-                    <input type="text" id="new-user-name" placeholder="Username" required class="linear-input p-1.5 text-xs rounded">
-                    <input type="password" id="new-user-pass" placeholder="Password (min 6)" required class="linear-input p-1.5 text-xs rounded">
-                    <select id="new-user-role" class="linear-input p-1.5 text-xs rounded text-slate-200">
+                    <input type="text" id="new-user-name" placeholder="Username" required class="linear-input p-2 text-xs rounded">
+                    <input type="password" id="new-user-pass" placeholder="Password (min 6)" required class="linear-input p-2 text-xs rounded">
+                    <select id="new-user-role" class="linear-input p-2 text-xs rounded text-slate-200">
                         <option value="QC Incharge">QC Incharge</option>
                         <option value="admin">Admin</option>
                     </select>
                 </div>
-                <div class="flex justify-between items-center pt-1 border-t border-white/[0.06]">
+                <div class="flex justify-between items-center pt-2 border-t border-white/[0.06]">
                     <label class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
                         <input type="checkbox" id="new-user-can-upload" class="rounded bg-[#090a0d] border-white/[0.1] text-[#5e6ad2]">
                         <span>Allow creating new job cards</span>
                     </label>
-                    <button type="submit" class="linear-button-primary px-3 py-1 rounded text-xs font-semibold">Create User</button>
+                    <button type="submit" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold">Create User</button>
                 </div>
             </form>
 
-            <div class="max-h-60 overflow-y-auto text-xs border border-white/[0.06] rounded">
+            <div class="max-h-60 overflow-y-auto text-sm border border-white/[0.08] rounded">
                 <table class="w-full text-left">
                     <thead>
-                        <tr class="border-b border-white/[0.06] text-[11px] text-slate-500 bg-[#161821]">
-                            <th class="p-2.5">User / Role</th>
-                            <th class="p-2.5 text-center">Can Create Jobs?</th>
-                            <th class="p-2.5 text-right">Action</th>
+                        <tr class="border-b border-white/[0.08] text-xs text-slate-400 bg-[#161821]">
+                            <th class="p-3">User / Role</th>
+                            <th class="p-3 text-center">Can Create Jobs?</th>
+                            <th class="p-3 text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody id="users-table" class="divide-y divide-white/[0.04]"></tbody>
@@ -561,29 +568,29 @@
 
     <!-- QC Report Modal -->
     <div id="report-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-50">
-        <div class="linear-card p-5 rounded-lg max-w-4xl w-full shadow-2xl flex flex-col max-h-[90vh]">
-            <div class="report-header-box flex justify-between items-start mb-3 border-b border-white/[0.06] pb-2">
+        <div class="linear-card p-6 rounded-lg max-w-4xl w-full shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="report-header-box flex justify-between items-start mb-3 border-b border-white/[0.08] pb-2">
                 <div>
-                    <h3 id="report-job-id" class="print-title text-base font-bold text-white">QC Report</h3>
+                    <h3 id="report-job-id" class="print-title text-lg font-bold text-white">QC Report</h3>
                     <p id="report-desc" class="print-subtitle text-xs text-slate-400"></p>
                 </div>
-                <div class="flex gap-1.5 no-print">
-                    <button onclick="window.print()" class="linear-button-secondary px-3 py-1 rounded text-xs font-medium">Print Report</button>
-                    <button id="download-csv-btn" class="linear-button-primary px-3 py-1 rounded text-xs font-medium">Download CSV</button>
-                    <button onclick="toggleModal('report-modal')" class="linear-button-secondary px-3 py-1 rounded text-xs font-medium">Close</button>
+                <div class="flex gap-2 no-print">
+                    <button onclick="window.print()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Print Report</button>
+                    <button id="download-csv-btn" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-medium">Download CSV</button>
+                    <button onclick="toggleModal('report-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Close</button>
                 </div>
             </div>
 
             <div id="report-stats" class="grid grid-cols-4 gap-2 mb-3 text-center"></div>
 
-            <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.06] rounded">
-                <table class="w-full text-left text-xs">
+            <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded">
+                <table class="w-full text-left text-sm">
                     <thead>
-                        <tr class="border-b border-white/[0.06] text-[11px] text-slate-500 bg-[#161821]">
-                            <th class="p-2.5">Timestamp</th>
-                            <th class="p-2.5">Inspector</th>
-                            <th class="p-2.5">Scanned Barcode</th>
-                            <th class="p-2.5">Evaluation</th>
+                        <tr class="border-b border-white/[0.08] text-xs text-slate-400 bg-[#161821]">
+                            <th class="p-3">Timestamp</th>
+                            <th class="p-3">Inspector</th>
+                            <th class="p-3">Scanned Barcode</th>
+                            <th class="p-3">Evaluation</th>
                         </tr>
                     </thead>
                     <tbody id="report-log-rows" class="divide-y divide-white/[0.04] font-mono text-xs"></tbody>
@@ -594,26 +601,26 @@
 
     <!-- Job Lifecycle Audit Trail Modal -->
     <div id="lifecycle-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-50">
-        <div class="linear-card p-5 rounded-lg max-w-3xl w-full shadow-2xl flex flex-col max-h-[85vh]">
-            <div class="report-header-box flex justify-between items-start mb-3 border-b border-white/[0.06] pb-2">
+        <div class="linear-card p-6 rounded-lg max-w-3xl w-full shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="report-header-box flex justify-between items-start mb-3 border-b border-white/[0.08] pb-2">
                 <div>
-                    <h3 id="lifecycle-job-id" class="print-title text-base font-bold text-white">Lifecycle Audit Log</h3>
+                    <h3 id="lifecycle-job-id" class="print-title text-lg font-bold text-white">Lifecycle Audit Log</h3>
                     <p id="lifecycle-desc" class="print-subtitle text-xs text-slate-400"></p>
                 </div>
-                <div class="flex gap-1.5 no-print">
-                    <button onclick="window.print()" class="linear-button-secondary px-3 py-1 rounded text-xs font-medium">Print Log</button>
-                    <button onclick="toggleModal('lifecycle-modal')" class="linear-button-secondary px-3 py-1 rounded text-xs font-medium">Close</button>
+                <div class="flex gap-2 no-print">
+                    <button onclick="window.print()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Print Log</button>
+                    <button onclick="toggleModal('lifecycle-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Close</button>
                 </div>
             </div>
 
-            <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.06] rounded">
-                <table class="w-full text-left text-xs">
+            <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded">
+                <table class="w-full text-left text-sm">
                     <thead>
-                        <tr class="border-b border-white/[0.06] text-[11px] text-slate-500 bg-[#161821]">
-                            <th class="p-2.5">Timestamp</th>
-                            <th class="p-2.5">Authorized User</th>
-                            <th class="p-2.5">Action Performed</th>
-                            <th class="p-2.5">Reason / Details</th>
+                        <tr class="border-b border-white/[0.08] text-xs text-slate-400 bg-[#161821]">
+                            <th class="p-3">Timestamp</th>
+                            <th class="p-3">Authorized User</th>
+                            <th class="p-3">Action Performed</th>
+                            <th class="p-3">Reason / Details</th>
                         </tr>
                     </thead>
                     <tbody id="lifecycle-log-rows" class="divide-y divide-white/[0.04] font-mono text-xs"></tbody>
@@ -630,6 +637,7 @@
         let pendingAction = null;
         let targetDeleteJobId = null;
         let currentMasterTab = 'ALL';
+        let rawMasterJobs = [];
         let recentScans = [];
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -731,7 +739,7 @@
             location.reload();
         }
 
-        // --- Search-Driven Job Selection (Dropdown Panel) ---
+        // --- Main Screen Search: Strictly queries ACTIVE jobs ---
         async function handleJobSearch() {
             const query = document.getElementById('job-search').value.trim();
             const list = document.getElementById('job-list');
@@ -753,14 +761,14 @@
 
             list.innerHTML = jobs.map(j => `
                 <div onclick="selectJob('${j.id}', '${escape(j.description)}', '${j.status}', ${j.consumed}, ${j.total})" 
-                     class="p-2.5 hover:bg-white/[0.04] border-b border-white/[0.04] cursor-pointer flex justify-between items-center transition-colors">
+                     class="p-3 hover:bg-white/[0.04] border-b border-white/[0.04] cursor-pointer flex justify-between items-center transition-colors">
                     <div>
-                        <span class="font-bold font-mono text-xs block text-slate-100">${j.id}</span>
-                        ${j.description ? `<span class="text-[11px] text-slate-400 block truncate max-w-[180px]">${j.description}</span>` : ''}
+                        <span class="font-bold font-mono text-sm block text-slate-100">${j.id}</span>
+                        ${j.description ? `<span class="text-xs text-slate-400 block truncate max-w-[200px]">${j.description}</span>` : ''}
                     </div>
                     <div class="text-right">
-                        <span class="text-[10px] px-1.5 py-0.5 rounded font-mono ${j.status === 'ACTIVE' ? 'linear-badge-pass' : 'linear-badge-fail'}">${j.status}</span>
-                        <span class="block text-[10px] text-slate-500 font-mono mt-0.5">${j.consumed} / ${j.total}</span>
+                        <span class="text-xs px-2 py-0.5 rounded font-mono linear-badge-pass">${j.status}</span>
+                        <span class="block text-xs text-slate-500 font-mono mt-0.5">${j.consumed} / ${j.total}</span>
                     </div>
                 </div>
             `).join('');
@@ -774,20 +782,19 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = id;
-            document.getElementById('header-active-slug').innerText = id;
             document.getElementById('active-title-card').innerText = `Job Card: ${id}`;
             document.getElementById('header-job-desc').innerText = activeJobDesc || 'Batch serialization active & ready for verification stream.';
 
             document.getElementById('active-badge').innerText = `JOB CARD: ${id}`;
-            document.getElementById('active-badge').className = "px-2 py-0.5 rounded text-[10px] font-mono font-medium linear-badge-pass";
+            document.getElementById('active-badge').className = "px-2.5 py-1 rounded text-xs font-mono font-bold linear-badge-pass";
             
             const chip = document.getElementById('status-chip');
             if (status === 'ACTIVE') {
                 chip.innerText = "IN RUN";
-                chip.className = "px-2 py-0.5 rounded-full text-[10px] font-mono font-medium linear-badge-pass";
+                chip.className = "px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold linear-badge-pass";
             } else {
                 chip.innerText = "COMPLETED";
-                chip.className = "px-2 py-0.5 rounded-full text-[10px] font-mono font-medium linear-badge-fail";
+                chip.className = "px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold linear-badge-fail";
             }
 
             document.getElementById('report-btn').disabled = false;
@@ -806,11 +813,11 @@
             const toggleBtn = document.getElementById('job-toggle-btn');
             if (status === 'ACTIVE') {
                 toggleBtn.innerText = "Complete Job";
-                toggleBtn.className = "bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-[11px] px-2.5 py-1 rounded transition-colors";
+                toggleBtn.className = "bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs px-3 py-1.5 rounded transition-colors";
                 toggleBtn.disabled = false;
             } else {
                 toggleBtn.innerText = "Reactivate (Admin)";
-                toggleBtn.className = "linear-button-secondary text-amber-400 text-[11px] px-2.5 py-1 rounded";
+                toggleBtn.className = "linear-button-secondary text-amber-400 text-xs px-3 py-1.5 rounded";
                 toggleBtn.disabled = (currentUser.role !== 'admin');
             }
 
@@ -938,10 +945,9 @@
                 if (activeJobId === deletedName) {
                     activeJobId = null;
                     document.getElementById('active-badge').innerText = "NO JOB SELECTED";
-                    document.getElementById('active-badge').className = "px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20";
+                    document.getElementById('active-badge').className = "px-2.5 py-1 rounded text-xs font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/25";
                     document.getElementById('active-title-card').innerText = "Job Card: None";
-                    document.getElementById('header-job-desc').innerText = "Type in the command search below to load a serialized production run.";
-                    document.getElementById('header-active-slug').innerText = "STANDBY";
+                    document.getElementById('header-job-desc').innerText = "Search active production jobs using the search field.";
                     document.getElementById('job-toggle-btn').disabled = true;
                     document.getElementById('lifecycle-btn').disabled = true;
                     document.getElementById('report-btn').disabled = true;
@@ -954,9 +960,10 @@
             }
         }
 
-        // --- Admin Master Jobs Report ---
+        // --- Admin Master Jobs Report with Instant Search ---
         async function openMasterJobsModal() {
             document.getElementById('master-jobs-modal').classList.remove('hidden');
+            document.getElementById('master-job-search').value = "";
             loadMasterJobs('ALL');
         }
 
@@ -965,60 +972,70 @@
             ['all', 'active', 'completed', 'deleted'].forEach(t => {
                 const btn = document.getElementById(`filter-tab-${t}`);
                 if (t === filterType.toLowerCase()) {
-                    btn.className = "linear-button-primary px-3 py-1 rounded text-xs font-medium";
+                    btn.className = "linear-button-primary px-3.5 py-1.5 rounded text-xs font-medium";
                 } else {
-                    btn.className = "linear-button-secondary px-3 py-1 rounded text-xs font-medium";
+                    btn.className = "linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium";
                 }
             });
 
             const res = await fetch(`/api/admin/master-jobs?status_filter=${filterType}`);
-            const jobs = await res.json();
-
-            const tbody = document.getElementById('master-jobs-rows');
-            if (jobs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-3 text-center text-slate-500 italic text-xs">No job cards found under '${filterType}'</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = jobs.map(j => {
-                let badgeClass = "bg-slate-800 text-slate-400 border border-slate-700";
-                if (j.status === 'ACTIVE') badgeClass = "linear-badge-pass";
-                else if (j.status === 'COMPLETED') badgeClass = "bg-blue-500/10 text-blue-400 border border-blue-500/20";
-                else if (j.status === 'DELETED') badgeClass = "linear-badge-fail";
-
-                const descDetail = j.status === 'DELETED' 
-                    ? `<span class="text-red-400 font-medium block">Reason: ${j.deletion_reason}</span><span class="text-slate-500 block text-[11px]">Deleted by: ${j.deleted_by}</span>`
-                    : (j.description || '-');
-
-                const timeDetail = j.status === 'DELETED' 
-                    ? `<span class="text-slate-500 block font-mono text-[11px]">Created: ${j.created_at}</span><span class="text-red-400 block font-mono text-[11px]">Deleted: ${j.deleted_at}</span>`
-                    : `<span class="text-slate-400 block font-mono text-[11px]">${j.created_at}</span>`;
-
-                return `
-                    <tr class="hover:bg-white/[0.02]">
-                        <td class="p-2.5 font-mono font-bold text-slate-100">${j.job_card_id}</td>
-                        <td class="p-2.5 max-w-[240px] text-xs">${descDetail}</td>
-                        <td class="p-2.5">${timeDetail}</td>
-                        <td class="p-2.5 text-center">
-                            <span class="px-2 py-0.5 rounded text-[10px] font-mono ${badgeClass}">
-                                ${j.status}
-                            </span>
-                        </td>
-                        <td class="p-2.5 text-right font-mono text-xs text-slate-300">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
-                        <td class="p-2.5 text-center">
-                            ${j.status !== 'DELETED' ? `
-                                <button onclick="requestJobDelete('${j.job_card_id}')" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-2 py-0.5 rounded text-[10px] font-medium transition-colors">
-                                    Delete
-                                </button>
-                            ` : '<span class="text-slate-600 italic text-[11px]">Archived</span>'}
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+            rawMasterJobs = await res.json();
+            renderMasterJobsTable();
         }
 
         function filterMasterJobs(filterType) {
             loadMasterJobs(filterType);
+        }
+
+        function renderMasterJobsTable() {
+            const query = (document.getElementById('master-job-search').value || "").toLowerCase().trim();
+            const filtered = rawMasterJobs.filter(j => 
+                j.job_card_id.toLowerCase().includes(query) ||
+                (j.description && j.description.toLowerCase().includes(query)) ||
+                (j.status && j.status.toLowerCase().includes(query))
+            );
+
+            const tbody = document.getElementById('master-jobs-rows');
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500 italic text-sm">No job cards found matching '${query}'</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(j => {
+                let badgeClass = "bg-slate-800 text-slate-400 border border-slate-700";
+                if (j.status === 'ACTIVE') badgeClass = "linear-badge-pass";
+                else if (j.status === 'COMPLETED') badgeClass = "bg-blue-500/10 text-blue-400 border border-blue-500/25";
+                else if (j.status === 'DELETED') badgeClass = "linear-badge-fail";
+
+                const descDetail = j.status === 'DELETED' 
+                    ? `<span class="text-red-400 font-medium block">Reason: ${j.deletion_reason}</span><span class="text-slate-500 block text-xs">Deleted by: ${j.deleted_by}</span>`
+                    : (j.description || '-');
+
+                const timeDetail = j.status === 'DELETED' 
+                    ? `<span class="text-slate-500 block font-mono text-xs">Created: ${j.created_at}</span><span class="text-red-400 block font-mono text-xs">Deleted: ${j.deleted_at}</span>`
+                    : `<span class="text-slate-400 block font-mono text-xs">${j.created_at}</span>`;
+
+                return `
+                    <tr class="hover:bg-white/[0.02]">
+                        <td class="p-3 font-mono font-bold text-slate-100">${j.job_card_id}</td>
+                        <td class="p-3 max-w-[240px] text-sm">${descDetail}</td>
+                        <td class="p-3">${timeDetail}</td>
+                        <td class="p-3 text-center">
+                            <span class="px-2 py-0.5 rounded text-xs font-mono font-bold ${badgeClass}">
+                                ${j.status}
+                            </span>
+                        </td>
+                        <td class="p-3 text-right font-mono text-sm text-slate-300">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
+                        <td class="p-3 text-center">
+                            ${j.status !== 'DELETED' ? `
+                                <button onclick="requestJobDelete('${j.job_card_id}')" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-2.5 py-1 rounded text-xs font-medium transition-colors">
+                                    Delete
+                                </button>
+                            ` : '<span class="text-slate-600 italic text-xs">Archived</span>'}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         // --- Real-time Scanning Engine ---
@@ -1028,7 +1045,7 @@
             const code = input.value.trim();
             if (!code) return;
             if (!activeJobId) {
-                alert("Please select a Job Card from the search bar first.");
+                alert("Please select an active Job Card from the search bar first.");
                 input.value = "";
                 return;
             }
@@ -1055,33 +1072,33 @@
 
             if (result === 'PASS') {
                 playTone('PASS');
-                card.className = "linear-subcard px-4 py-3 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-2 state-pass";
-                dot.className = "w-2 h-2 rounded-full bg-[#2ed573]";
-                badge.className = "px-2 py-0.5 rounded text-[10px] font-mono font-bold linear-badge-pass";
+                card.className = "linear-subcard px-5 py-4 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-3 state-pass";
+                dot.className = "w-2.5 h-2.5 rounded-full bg-[#2ed573]";
+                badge.className = "px-2.5 py-1 rounded text-xs font-mono font-bold linear-badge-pass";
                 badge.innerText = "PASS";
                 heading.innerText = "VALIDATED";
                 detail.innerText = `· ${msg}`;
             } else if (result === 'DUPLICATE' || result === 'BLOCKED') {
                 playTone('FAIL');
-                card.className = "linear-subcard px-4 py-3 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-2 state-fail";
-                dot.className = "w-2 h-2 rounded-full bg-[#ff4757]";
-                badge.className = "px-2 py-0.5 rounded text-[10px] font-mono font-bold linear-badge-fail";
+                card.className = "linear-subcard px-5 py-4 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-3 state-fail";
+                dot.className = "w-2.5 h-2.5 rounded-full bg-[#ff4757]";
+                badge.className = "px-2.5 py-1 rounded text-xs font-mono font-bold linear-badge-fail";
                 badge.innerText = "STOP RUN";
                 heading.innerText = "COLLISION / BLOCKED";
                 detail.innerText = `· ${msg}`;
             } else if (result === 'MISMATCH') {
                 playTone('FAIL');
-                card.className = "linear-subcard px-4 py-3 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-2 state-fail";
-                dot.className = "w-2 h-2 rounded-full bg-[#ff4757]";
-                badge.className = "px-2 py-0.5 rounded text-[10px] font-mono font-bold linear-badge-fail";
+                card.className = "linear-subcard px-5 py-4 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-3 state-fail";
+                dot.className = "w-2.5 h-2.5 rounded-full bg-[#ff4757]";
+                badge.className = "px-2.5 py-1 rounded text-xs font-mono font-bold linear-badge-fail";
                 badge.innerText = "MISMATCH";
                 heading.innerText = "BATCH CONFLICT";
                 detail.innerText = `· ${msg}`;
             } else {
                 playTone('FAIL');
-                card.className = "linear-subcard px-4 py-3 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-2 state-warn";
-                dot.className = "w-2 h-2 rounded-full bg-[#ffa502]";
-                badge.className = "px-2 py-0.5 rounded text-[10px] font-mono font-bold linear-badge-warn";
+                card.className = "linear-subcard px-5 py-4 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-3 state-warn";
+                dot.className = "w-2.5 h-2.5 rounded-full bg-[#ffa502]";
+                badge.className = "px-2.5 py-1 rounded text-xs font-mono font-bold linear-badge-warn";
                 badge.innerText = "UNKNOWN";
                 heading.innerText = "UNREGISTERED CODE";
                 detail.innerText = `· ${msg}`;
@@ -1101,11 +1118,11 @@
                 if (s.result !== 'PASS') badge = "linear-badge-fail";
                 return `
                     <tr class="hover:bg-white/[0.02]">
-                        <td class="px-4 py-2 text-slate-500 font-mono">#${recentScans.length - idx}</td>
-                        <td class="px-4 py-2 font-bold text-slate-200">${s.code}</td>
-                        <td class="px-4 py-2"><span class="${badge} px-2 py-0.5 rounded text-[10px] font-mono font-bold">${s.result}</span></td>
-                        <td class="px-4 py-2 text-slate-400 font-mono">${s.time}</td>
-                        <td class="px-4 py-2 font-sans text-slate-300">${s.user}</td>
+                        <td class="px-5 py-2.5 text-slate-500 font-mono">#${recentScans.length - idx}</td>
+                        <td class="px-5 py-2.5 font-bold text-slate-200">${s.code}</td>
+                        <td class="px-5 py-2.5"><span class="${badge} px-2.5 py-0.5 rounded text-xs font-mono font-bold">${s.result}</span></td>
+                        <td class="px-5 py-2.5 text-slate-400 font-mono">${s.time}</td>
+                        <td class="px-5 py-2.5 font-sans text-slate-300">${s.user}</td>
                     </tr>
                 `;
             }).join('');
@@ -1168,10 +1185,10 @@
 
             const stats = document.getElementById('report-stats');
             stats.innerHTML = `
-                <div class="linear-card p-2 rounded"><span class="text-slate-400 block text-[10px] font-mono uppercase">TOTAL POOL</span><span class="font-bold text-sm text-white font-mono">${data.total_codes.toLocaleString()}</span></div>
-                <div class="linear-card p-2 rounded"><span class="text-[#2ed573] block text-[10px] font-mono uppercase">VERIFIED</span><span class="font-bold text-sm text-[#2ed573] font-mono">${data.consumed_codes.toLocaleString()}</span></div>
-                <div class="linear-card p-2 rounded"><span class="text-amber-400 block text-[10px] font-mono uppercase">PENDING</span><span class="font-bold text-sm text-amber-400 font-mono">${data.pending_codes.toLocaleString()}</span></div>
-                <div class="linear-card p-2 rounded"><span class="text-red-400 block text-[10px] font-mono uppercase">BLOCKED</span><span class="font-bold text-sm text-red-400 font-mono">${data.blocked_codes.toLocaleString()}</span></div>
+                <div class="linear-card p-3 rounded"><span class="text-slate-400 block text-xs font-mono uppercase">TOTAL POOL</span><span class="font-bold text-base text-white font-mono">${data.total_codes.toLocaleString()}</span></div>
+                <div class="linear-card p-3 rounded"><span class="text-[#2ed573] block text-xs font-mono uppercase">VERIFIED</span><span class="font-bold text-base text-[#2ed573] font-mono">${data.consumed_codes.toLocaleString()}</span></div>
+                <div class="linear-card p-3 rounded"><span class="text-amber-400 block text-xs font-mono uppercase">PENDING</span><span class="font-bold text-base text-amber-400 font-mono">${data.pending_codes.toLocaleString()}</span></div>
+                <div class="linear-card p-3 rounded"><span class="text-red-400 block text-xs font-mono uppercase">BLOCKED</span><span class="font-bold text-base text-red-400 font-mono">${data.blocked_codes.toLocaleString()}</span></div>
             `;
 
             const tbody = document.getElementById('report-log-rows');
@@ -1180,10 +1197,10 @@
             } else {
                 tbody.innerHTML = data.recent_logs.map(log => `
                     <tr class="hover:bg-white/[0.02]">
-                        <td class="p-2 font-mono text-[11px] text-slate-400">${log.time}</td>
-                        <td class="p-2 font-bold text-slate-300 font-sans">${log.user}</td>
-                        <td class="p-2 font-mono text-slate-200">${log.code}</td>
-                        <td class="p-2 font-bold font-mono ${log.result === 'PASS' ? 'text-[#2ed573]' : 'text-red-400'}">${log.result}</td>
+                        <td class="p-2.5 font-mono text-xs text-slate-400">${log.time}</td>
+                        <td class="p-2.5 font-bold text-slate-300 font-sans">${log.user}</td>
+                        <td class="p-2.5 font-mono text-slate-200">${log.code}</td>
+                        <td class="p-2.5 font-bold font-mono ${log.result === 'PASS' ? 'text-[#2ed573]' : 'text-red-400'}">${log.result}</td>
                     </tr>
                 `).join('');
             }
@@ -1226,10 +1243,10 @@
 
                     return `
                         <tr class="hover:bg-white/[0.02]">
-                            <td class="p-2 font-mono text-[11px] text-slate-400">${log.time}</td>
-                            <td class="p-2 font-bold text-slate-200 font-sans">${log.user}</td>
-                            <td class="p-2 font-mono ${colorClass}">${label}</td>
-                            <td class="p-2 text-slate-400 text-xs font-sans">${log.reason || '-'}</td>
+                            <td class="p-2.5 font-mono text-xs text-slate-400">${log.time}</td>
+                            <td class="p-2.5 font-bold text-slate-200 font-sans">${log.user}</td>
+                            <td class="p-2.5 font-mono ${colorClass}">${label}</td>
+                            <td class="p-2.5 text-slate-400 text-xs font-sans">${log.reason || '-'}</td>
                         </tr>
                     `;
                 }).join('');
@@ -1246,20 +1263,20 @@
             const container = document.getElementById('users-table');
             container.innerHTML = users.map(u => `
                 <tr class="hover:bg-white/[0.02]">
-                    <td class="p-2.5 font-sans">
+                    <td class="p-3 font-sans">
                         <span class="font-bold text-slate-200">${u.username}</span>
-                        <span class="text-[9px] uppercase ml-1 px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">${u.role}</span>
-                        ${u.must_change_password ? '<span class="text-[9px] text-amber-400 font-mono block mt-0.5">(PW Reset Required)</span>' : ''}
+                        <span class="text-xs uppercase ml-1.5 px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">${u.role}</span>
+                        ${u.must_change_password ? '<span class="text-xs text-amber-400 font-mono block mt-1">(PW Reset Required)</span>' : ''}
                     </td>
-                    <td class="p-2.5 text-center">
+                    <td class="p-3 text-center">
                         <input type="checkbox" ${u.can_upload ? 'checked' : ''} 
                                onchange="toggleUploadPermission('${u.username}', this.checked)"
-                               class="rounded bg-[#090a0d] border-white/[0.1] text-[#5e6ad2] cursor-pointer">
+                               class="rounded bg-[#090a0d] border-white/[0.1] text-[#5e6ad2] cursor-pointer w-4 h-4">
                     </td>
-                    <td class="p-2.5 text-right">
+                    <td class="p-3 text-right">
                         ${u.username !== currentUser.username ? `
                             <button onclick="requestUserDelete('${u.username}')" class="text-red-400 hover:text-red-300 font-medium text-xs">Delete</button>
-                        ` : '<span class="text-[10px] text-slate-500 font-mono">Current</span>'}
+                        ` : '<span class="text-xs text-slate-500 font-mono">Current</span>'}
                     </td>
                 </tr>
             `).join('');
