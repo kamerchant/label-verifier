@@ -6,7 +6,7 @@
     <title>CCL Pakistan VDV</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Responsive base typography: 16px on mobile, 18px on desktop */
+        /* Responsive base typography & iOS zoom prevention */
         html {
             font-size: 16px;
         }
@@ -35,6 +35,7 @@
             background-color: #090a0d;
             border: 1px solid rgba(255, 255, 255, 0.12);
             color: #f1f5f9;
+            font-size: 1rem !important; /* Forces 16px+ to prevent iOS Safari auto-zoom */
             transition: all 0.15s ease;
         }
         .linear-input:focus {
@@ -210,96 +211,94 @@
 <body class="min-h-screen flex flex-col justify-between selection:bg-[#5e6ad2] selection:text-white">
 
     <!-- Top Command Navigation Bar -->
-    <header class="border-b border-white/[0.08] bg-[#0d0e11]/95 backdrop-blur-md px-3 sm:px-6 py-3 flex flex-wrap items-center justify-between text-sm sticky top-0 z-40 gap-2">
+    <header class="border-b border-white/[0.08] bg-[#0d0e11]/95 backdrop-blur-md px-3 sm:px-5 py-2.5 sm:py-3 flex flex-wrap items-center justify-between text-sm sticky top-0 z-40 gap-2">
         <div class="flex items-center gap-2 sm:gap-3 shrink-0">
             <div class="bg-white px-2 py-1 rounded shadow-sm flex items-center justify-center shrink-0">
-                <img src="/static/logo.jpg" alt="CCL Logo" class="h-6 sm:h-8 w-auto max-w-[90px] sm:max-w-[120px] object-contain block" onerror="this.onerror=null; this.src='/logo.jpg';">
+                <img src="/static/logo.jpg" alt="CCL Logo" class="h-6 sm:h-7 w-auto max-w-[85px] sm:max-w-[110px] object-contain block" onerror="this.onerror=null; this.src='/logo.jpg';">
             </div>
-            <span class="font-extrabold text-white text-base sm:text-xl tracking-wide whitespace-nowrap">CCL Pakistan VDV</span>
+            <span class="font-extrabold text-white text-sm sm:text-lg tracking-wide whitespace-nowrap">CCL Pakistan VDV</span>
         </div>
 
-        <div class="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar w-full sm:w-auto py-1 sm:py-0">
-            <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-3 py-1.5 rounded text-xs sm:text-sm font-semibold whitespace-nowrap min-h-[38px] flex items-center">Create Job</button>
-            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center">View All Jobs</button>
-            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center">User Admin</button>
-            <button onclick="toggleModal('pw-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center">Change Password</button>
-            <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-3 py-1.5 rounded text-xs sm:text-sm font-medium transition-colors whitespace-nowrap min-h-[38px] flex items-center">Logout</button>
+        <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto py-1 sm:py-0">
+            <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-2.5 py-1.5 rounded text-xs sm:text-sm font-semibold whitespace-nowrap min-h-[36px] flex items-center">Create Job</button>
+            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-2.5 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[36px] flex items-center">View All Jobs</button>
+            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-2.5 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[36px] flex items-center">User Admin</button>
+            <button onclick="toggleModal('pw-modal')" class="linear-button-secondary px-2.5 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[36px] flex items-center">Change Password</button>
+            <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-2.5 py-1.5 rounded text-xs sm:text-sm font-medium transition-colors whitespace-nowrap min-h-[36px] flex items-center">Logout</button>
         </div>
     </header>
 
     <!-- Main Workspace -->
-    <main class="max-w-6xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 flex-1 flex flex-col gap-4 sm:gap-6">
+    <main class="max-w-6xl w-full mx-auto px-3 sm:px-5 py-3 sm:py-5 flex-1 flex flex-col gap-3 sm:gap-5">
 
         <!-- Job Context Ribbon, Search Bar, & Action Buttons -->
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
+        <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
             <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
-                    <h1 id="active-title-card" class="text-xl sm:text-3xl font-extrabold tracking-tight text-white font-mono truncate">Job Card: None</h1>
-                </div>
-                <p id="header-job-desc" class="text-xs sm:text-sm text-slate-400 mt-1 truncate">Search active production jobs using the search field.</p>
+                <h1 id="active-title-card" class="text-lg sm:text-2xl font-extrabold tracking-tight text-white font-mono truncate">Job Card: None</h1>
+                <p id="header-job-desc" class="text-xs sm:text-sm text-slate-400 mt-0.5 truncate">Search active production jobs using the search field.</p>
             </div>
 
             <!-- Job Search Bar and Adjacent Action Buttons Group -->
-            <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full lg:w-auto shrink-0">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full xl:w-auto shrink-0">
                 <!-- Search Input -->
-                <div class="relative flex-1 sm:w-72 shrink-0">
+                <div class="relative flex-1 sm:w-64 shrink-0">
                     <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Search active jobs..." 
-                           class="linear-input w-full px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm font-mono rounded placeholder-slate-500 shadow-inner min-h-[44px]">
-                    <div id="job-list" class="absolute left-0 right-0 top-full mt-1.5 linear-card rounded shadow-2xl max-h-64 overflow-y-auto z-30 hidden"></div>
+                           class="linear-input w-full px-3 py-2 text-base sm:text-sm font-mono rounded placeholder-slate-500 shadow-inner min-h-[44px]">
+                    <div id="job-list" class="absolute left-0 right-0 top-full mt-1 linear-card rounded shadow-2xl max-h-60 overflow-y-auto z-30 hidden"></div>
                 </div>
 
                 <!-- Action Buttons: Positioned directly next to Search Bar, inactive by default -->
-                <div class="flex items-center gap-1.5 shrink-0">
+                <div class="grid grid-cols-3 sm:flex items-center gap-1.5 shrink-0">
                     <button id="report-btn" onclick="openReportModal()" disabled 
-                            class="linear-button-secondary text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[44px] font-medium shadow-sm whitespace-nowrap">
+                            class="linear-button-secondary text-xs px-2.5 py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[44px] font-medium shadow-sm whitespace-nowrap text-center">
                         QC Report
                     </button>
                     <button id="lifecycle-btn" onclick="openLifecycleModal()" disabled 
-                            class="linear-button-secondary text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[44px] font-medium shadow-sm whitespace-nowrap">
-                        Lifecycle Audit
+                            class="linear-button-secondary text-xs px-2.5 py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[44px] font-medium shadow-sm whitespace-nowrap text-center">
+                        Audit Log
                     </button>
                     <button id="job-toggle-btn" onclick="handleJobStatusToggle()" disabled 
-                            class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded opacity-30 pointer-events-none transition-all min-h-[44px] font-semibold shadow-sm whitespace-nowrap">
-                        Complete Job
+                            class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs px-2.5 py-2 rounded opacity-30 pointer-events-none transition-all min-h-[44px] font-semibold shadow-sm whitespace-nowrap text-center">
+                        Complete
                     </button>
                 </div>
             </div>
         </div>
 
         <!-- Metric Figures (3-column streamlined layout) -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-            <div class="linear-card p-3 sm:p-4 rounded">
-                <span class="text-xs text-slate-400 block font-medium">Total Pool</span>
-                <span id="kpi-total" class="text-xl sm:text-3xl font-bold font-mono text-white mt-1 block">0</span>
-                <span class="text-[11px] sm:text-xs text-slate-500 mt-1 block truncate">Assigned batch pool</span>
+        <div class="grid grid-cols-3 gap-2 sm:gap-3">
+            <div class="linear-card p-2.5 sm:p-3.5 rounded">
+                <span class="text-[10px] sm:text-xs text-slate-400 block font-medium uppercase tracking-wider">Total Pool</span>
+                <span id="kpi-total" class="text-lg sm:text-2xl font-bold font-mono text-white mt-0.5 block">0</span>
+                <span class="text-[10px] text-slate-500 mt-0.5 hidden sm:block truncate">Assigned batch pool</span>
             </div>
-            <div class="linear-card p-3 sm:p-4 rounded">
-                <span class="text-xs text-[#2ed573] block font-medium">Verified (Pass)</span>
-                <span id="kpi-consumed" class="text-xl sm:text-3xl font-bold font-mono text-[#2ed573] mt-1 block">0</span>
-                <span class="text-[11px] sm:text-xs text-slate-500 mt-1 block truncate">Consumed serials</span>
+            <div class="linear-card p-2.5 sm:p-3.5 rounded">
+                <span class="text-[10px] sm:text-xs text-[#2ed573] block font-medium uppercase tracking-wider">Verified</span>
+                <span id="kpi-consumed" class="text-lg sm:text-2xl font-bold font-mono text-[#2ed573] mt-0.5 block">0</span>
+                <span class="text-[10px] text-slate-500 mt-0.5 hidden sm:block truncate">Consumed serials</span>
             </div>
-            <div class="linear-card p-3 sm:p-4 rounded">
-                <span class="text-xs text-amber-400 block font-medium">Remaining Codes</span>
-                <span id="kpi-pending" class="text-xl sm:text-3xl font-bold font-mono text-slate-300 mt-1 block">0</span>
-                <span class="text-[11px] sm:text-xs text-slate-500 mt-1 block truncate">Remaining in feed</span>
+            <div class="linear-card p-2.5 sm:p-3.5 rounded">
+                <span class="text-[10px] sm:text-xs text-amber-400 block font-medium uppercase tracking-wider">Remaining</span>
+                <span id="kpi-pending" class="text-lg sm:text-2xl font-bold font-mono text-slate-300 mt-0.5 block">0</span>
+                <span class="text-[10px] text-slate-500 mt-0.5 hidden sm:block truncate">Remaining in feed</span>
             </div>
         </div>
 
         <!-- Scanning Terminal Canvas -->
-        <div class="linear-card p-4 sm:p-6 rounded flex flex-col gap-3 sm:gap-4">
+        <div class="linear-card p-3 sm:p-5 rounded flex flex-col gap-3">
             
             <!-- Result Notice Bar -->
-            <div id="status-card" class="linear-subcard px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-2 sm:gap-3 state-ready">
-                <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
+            <div id="status-card" class="linear-subcard px-3 sm:px-4 py-2.5 sm:py-3.5 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-2 state-ready">
+                <div class="flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
                     <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-[#5e6ad2] shrink-0"></span>
                     <div class="min-w-0 flex-1">
-                        <span id="status-heading" class="text-sm sm:text-base font-bold text-slate-100 font-mono tracking-wide leading-snug block">To Verify Code, Select the Job ID and Enter Code Below</span>
-                        <span id="status-detail" class="text-xs sm:text-sm text-slate-400 block"></span>
+                        <span id="status-heading" class="text-xs sm:text-sm font-bold text-slate-100 font-mono tracking-wide leading-snug block">To Verify Code, Select the Job ID and Enter Code Below</span>
+                        <span id="status-detail" class="text-xs text-slate-400 block"></span>
                     </div>
                 </div>
-                <div class="flex items-center gap-2 sm:gap-3 self-end md:self-auto shrink-0 mt-1 md:mt-0">
-                    <span id="status-last-code" class="text-xs sm:text-base font-mono text-slate-400 max-w-[180px] sm:max-w-none truncate hidden"></span>
-                    <span id="status-badge" class="px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs font-mono font-bold hidden"></span>
+                <div class="flex items-center gap-2 self-end md:self-auto shrink-0 mt-1 md:mt-0">
+                    <span id="status-last-code" class="text-xs sm:text-sm font-mono text-slate-400 max-w-[150px] sm:max-w-none truncate hidden"></span>
+                    <span id="status-badge" class="px-2 py-0.5 rounded text-[10px] sm:text-xs font-mono font-bold hidden"></span>
                 </div>
             </div>
 
@@ -307,19 +306,19 @@
             <form id="scan-form" onsubmit="handleScan(event)" class="flex flex-col sm:flex-row gap-2">
                 <div class="relative flex-1">
                     <input type="text" id="barcode-input" placeholder="Scan or Enter Code for Verification" autofocus autocomplete="off"
-                           class="linear-input w-full px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-lg font-mono rounded min-h-[48px]">
+                           class="linear-input w-full px-3.5 sm:px-4 py-2.5 sm:py-3 text-base font-mono rounded min-h-[48px]">
                 </div>
-                <button type="submit" class="linear-button-primary px-6 sm:px-7 py-2.5 sm:py-3 rounded text-sm sm:text-base font-semibold font-mono min-h-[48px] flex items-center justify-center">
+                <button type="submit" class="linear-button-primary px-6 py-2.5 sm:py-3 rounded text-sm sm:text-base font-semibold font-mono min-h-[48px] flex items-center justify-center shrink-0">
                     Verify
                 </button>
             </form>
         </div>
 
         <!-- Real-Time Stream Table Container (Extended to bottom of screen) -->
-        <div class="linear-card rounded overflow-hidden flex-1 flex flex-col min-h-[350px]">
-            <div class="px-3.5 sm:px-5 py-3 sm:py-4 border-b border-white/[0.08] flex items-center justify-between text-sm shrink-0">
-                <div class="flex items-center gap-2 sm:gap-3 font-semibold text-slate-200">
-                    <span class="text-sm sm:text-lg">Live Verification Stream</span>
+        <div class="linear-card rounded overflow-hidden flex-1 flex flex-col min-h-[300px]">
+            <div class="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-white/[0.08] flex items-center justify-between text-xs sm:text-sm shrink-0">
+                <div class="flex items-center gap-2 font-semibold text-slate-200">
+                    <span class="text-xs sm:text-base">Live Verification Stream</span>
                     <span class="text-slate-600 hidden sm:inline">|</span>
                     <span class="text-xs text-slate-400 font-mono font-normal hidden sm:inline">Recent scans recorded this session</span>
                 </div>
@@ -328,17 +327,17 @@
             <div class="overflow-x-auto flex-1 overflow-y-auto">
                 <table class="w-full text-left text-xs sm:text-sm whitespace-nowrap sm:whitespace-normal">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-[11px] sm:text-xs text-slate-400 font-semibold bg-[#161821] sticky top-0 z-10">
-                            <th class="px-3 sm:px-5 py-2.5 sm:py-3 w-16">Seq</th>
-                            <th class="px-3 sm:px-5 py-2.5 sm:py-3">Payload Value</th>
-                            <th class="px-3 sm:px-5 py-2.5 sm:py-3">Evaluation</th>
-                            <th class="px-3 sm:px-5 py-2.5 sm:py-3">Recorded At</th>
-                            <th class="px-3 sm:px-5 py-2.5 sm:py-3">Inspector</th>
+                        <tr class="border-b border-white/[0.08] text-[10px] sm:text-xs text-slate-400 font-semibold bg-[#161821] sticky top-0 z-10">
+                            <th class="px-2.5 sm:px-4 py-2 sm:py-2.5 w-14">Seq</th>
+                            <th class="px-2.5 sm:px-4 py-2 sm:py-2.5">Payload Value</th>
+                            <th class="px-2.5 sm:px-4 py-2 sm:py-2.5">Evaluation</th>
+                            <th class="px-2.5 sm:px-4 py-2 sm:py-2.5">Recorded At</th>
+                            <th class="px-2.5 sm:px-4 py-2 sm:py-2.5">Inspector</th>
                         </tr>
                     </thead>
-                    <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] font-mono text-xs sm:text-sm">
+                    <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] font-mono text-xs">
                         <tr>
-                            <td colspan="5" class="px-3 sm:px-5 py-6 sm:py-8 text-center text-slate-500 font-sans italic">No scan events recorded for this session</td>
+                            <td colspan="5" class="px-3 py-8 text-center text-slate-500 font-sans italic">No scan events recorded for this session</td>
                         </tr>
                     </tbody>
                 </table>
@@ -348,20 +347,20 @@
     </main>
 
     <!-- Footer Information Bar -->
-    <footer class="border-t border-white/[0.08] px-3 sm:px-6 py-2.5 sm:py-3 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-1">
+    <footer class="border-t border-white/[0.08] px-3 sm:px-6 py-2 flex items-center justify-between text-[11px] sm:text-xs text-slate-400">
         <div class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-[#2ed573]"></span>
             <span>Online</span>
             <span class="text-slate-600">&middot;</span>
-            <span id="user-display" class="truncate max-w-[200px] sm:max-w-none">Checking session...</span>
+            <span id="user-display" class="truncate max-w-[180px] sm:max-w-none">Checking session...</span>
         </div>
-        <div class="font-mono text-slate-500 text-[11px] sm:text-xs hidden sm:block">
+        <div class="font-mono text-slate-500 text-[11px] hidden sm:block">
             Press <kbd class="bg-[#1e2029] text-slate-300 px-1.5 py-0.5 rounded font-mono">Enter</kbd> to submit
         </div>
     </footer>
 
     <!-- Login Modal -->
-    <div id="login-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
+    <div id="login-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center p-3 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full shadow-2xl">
             <div class="flex items-center gap-3 mb-4">
                 <div class="bg-white p-1 rounded shrink-0">
@@ -373,11 +372,11 @@
             <form onsubmit="handleLogin(event)" class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Username</label>
-                    <input type="text" id="login-user" required class="linear-input w-full p-2.5 text-sm rounded min-h-[44px]">
+                    <input type="text" id="login-user" required class="linear-input w-full p-2.5 text-base rounded min-h-[44px]">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Password</label>
-                    <input type="password" id="login-pass" required class="linear-input w-full p-2.5 text-sm rounded min-h-[44px]">
+                    <input type="password" id="login-pass" required class="linear-input w-full p-2.5 text-base rounded min-h-[44px]">
                 </div>
                 <button type="submit" class="linear-button-primary w-full py-2.5 rounded text-sm font-semibold mt-2 min-h-[44px]">Sign In</button>
             </form>
@@ -385,14 +384,14 @@
     </div>
 
     <!-- Password Confirmation Modal -->
-    <div id="auth-confirm-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[70]">
+    <div id="auth-confirm-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 z-[70]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-amber-500/25 shadow-2xl">
             <h3 id="auth-confirm-title" class="text-base font-bold mb-1 text-amber-400">Admin Authorization Required</h3>
             <p id="auth-confirm-subtitle" class="text-xs text-slate-400 mb-4">Enter administrator password to proceed.</p>
             <form onsubmit="executeAuthorizedAction(event)" class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Admin Password</label>
-                    <input type="password" id="auth-admin-pass" required class="linear-input w-full p-2.5 text-sm rounded focus:border-amber-400 min-h-[44px]">
+                    <input type="password" id="auth-admin-pass" required class="linear-input w-full p-2.5 text-base rounded focus:border-amber-400 min-h-[44px]">
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" onclick="closeAuthModal()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium min-h-[40px]">Cancel</button>
@@ -403,7 +402,7 @@
     </div>
 
     <!-- Soft Delete Modal -->
-    <div id="job-delete-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[70]">
+    <div id="job-delete-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 z-[70]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full border border-red-500/25 shadow-2xl">
             <div class="flex justify-between items-center mb-2">
                 <h3 class="text-base font-bold text-red-400">Soft Delete Job Card</h3>
@@ -414,11 +413,11 @@
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Reason for Deletion *</label>
                     <textarea id="job-delete-reason" required rows="2" placeholder="e.g. Order canceled / Plate error / Wrong serial range" 
-                              class="linear-input w-full p-2.5 text-sm rounded focus:border-red-400 placeholder-slate-600"></textarea>
+                              class="linear-input w-full p-2.5 text-base rounded focus:border-red-400 placeholder-slate-600"></textarea>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Admin Password *</label>
-                    <input type="password" id="job-delete-pass" required class="linear-input w-full p-2.5 text-sm rounded focus:border-red-400 min-h-[44px]">
+                    <input type="password" id="job-delete-pass" required class="linear-input w-full p-2.5 text-base rounded focus:border-red-400 min-h-[44px]">
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" onclick="closeJobDeleteModal()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium min-h-[40px]">Cancel</button>
@@ -429,7 +428,7 @@
     </div>
 
     <!-- Warning Confirmation Modal -->
-    <div id="deleted-dup-warning-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[70]">
+    <div id="deleted-dup-warning-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 z-[70]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full border border-amber-500/30 shadow-2xl">
             <h3 class="text-base font-bold mb-1 text-amber-400">Warning: Reused Serial Codes Detected</h3>
             <p id="deleted-dup-warning-msg" class="text-xs text-slate-300 mb-5 leading-relaxed"></p>
@@ -441,18 +440,18 @@
     </div>
 
     <!-- Password Change Modal -->
-    <div id="pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
+    <div id="pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full shadow-2xl">
             <h3 id="pw-title" class="text-base font-bold mb-1 text-white">Change Password</h3>
             <p id="pw-subtitle" class="text-xs text-slate-400 mb-4">Enter current and new authentication credentials</p>
             <form onsubmit="handleChangePassword(event)" class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Current Password</label>
-                    <input type="password" id="pw-current" required class="linear-input w-full p-2.5 text-sm rounded min-h-[44px]">
+                    <input type="password" id="pw-current" required class="linear-input w-full p-2.5 text-base rounded min-h-[44px]">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">New Password (min 6 chars)</label>
-                    <input type="password" id="pw-new" required minlength="6" class="linear-input w-full p-2.5 text-sm rounded min-h-[44px]">
+                    <input type="password" id="pw-new" required minlength="6" class="linear-input w-full p-2.5 text-base rounded min-h-[44px]">
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" id="pw-cancel-btn" onclick="toggleModal('pw-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium min-h-[40px]">Cancel</button>
@@ -463,17 +462,17 @@
     </div>
 
     <!-- Create New Job Modal -->
-    <div id="upload-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
+    <div id="upload-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full shadow-2xl">
             <h3 class="text-base font-bold mb-3 text-white">Create New Job & Ingest Serial Pool</h3>
             <form id="create-job-form" onsubmit="uploadJob(event, false)" class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Job Card # *</label>
-                    <input type="text" id="new-job-id" required placeholder="e.g. JC-2026-99" class="linear-input w-full p-2.5 text-sm rounded font-mono min-h-[44px]">
+                    <input type="text" id="new-job-id" required placeholder="e.g. JC-2026-99" class="linear-input w-full p-2.5 text-base rounded font-mono min-h-[44px]">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Job Description (Optional)</label>
-                    <input type="text" id="new-job-desc" placeholder="e.g. 500ml Shampoo labels - 50k run" class="linear-input w-full p-2.5 text-sm rounded min-h-[44px]">
+                    <input type="text" id="new-job-desc" placeholder="e.g. 500ml Shampoo labels - 50k run" class="linear-input w-full p-2.5 text-base rounded min-h-[44px]">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Batch Data File (CSV / TXT) *</label>
@@ -489,7 +488,7 @@
     </div>
 
     <!-- Admin Master Jobs Report Modal -->
-    <div id="master-jobs-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
+    <div id="master-jobs-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 z-50">
         <div class="linear-card p-4 sm:p-6 rounded-lg max-w-5xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="flex justify-between items-center mb-3 border-b border-white/[0.08] pb-3">
                 <div>
@@ -508,7 +507,7 @@
                 </div>
                 <div class="relative w-full md:w-72">
                     <input type="text" id="master-job-search" oninput="renderMasterJobsTable()" placeholder="Search in all jobs..." 
-                           class="linear-input w-full px-3 py-1.5 text-xs font-mono rounded placeholder-slate-500 min-h-[38px]">
+                           class="linear-input w-full px-3 py-1.5 text-base sm:text-xs font-mono rounded placeholder-slate-500 min-h-[38px]">
                 </div>
             </div>
 
@@ -531,7 +530,7 @@
     </div>
 
     <!-- User Management Modal -->
-    <div id="user-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
+    <div id="user-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 z-50">
         <div class="linear-card p-4 sm:p-6 rounded-lg max-w-xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="flex justify-between items-center mb-3 pb-2 border-b border-white/[0.08]">
                 <h3 class="text-base font-bold text-white">Operator Permissions</h3>
@@ -540,9 +539,9 @@
             
             <form onsubmit="createUser(event)" class="linear-subcard p-3 sm:p-4 rounded mb-3 space-y-2.5">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <input type="text" id="new-user-name" placeholder="Username" required class="linear-input p-2 text-xs rounded min-h-[40px]">
-                    <input type="password" id="new-user-pass" placeholder="Password (min 6)" required class="linear-input p-2 text-xs rounded min-h-[40px]">
-                    <select id="new-user-role" class="linear-input p-2 text-xs rounded text-slate-200 min-h-[40px]">
+                    <input type="text" id="new-user-name" placeholder="Username" required class="linear-input p-2 text-base sm:text-xs rounded min-h-[40px]">
+                    <input type="password" id="new-user-pass" placeholder="Password (min 6)" required class="linear-input p-2 text-base sm:text-xs rounded min-h-[40px]">
+                    <select id="new-user-role" class="linear-input p-2 text-base sm:text-xs rounded text-slate-200 min-h-[40px]">
                         <option value="QC Incharge">QC Incharge</option>
                         <option value="admin">Admin</option>
                     </select>
@@ -572,7 +571,7 @@
     </div>
 
     <!-- QC Report Modal -->
-    <div id="report-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
+    <div id="report-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 z-50">
         <div class="linear-card p-4 sm:p-6 rounded-lg max-w-4xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="report-header-box flex flex-wrap justify-between items-start mb-3 border-b border-white/[0.08] pb-2 gap-2">
                 <div>
@@ -605,7 +604,7 @@
     </div>
 
     <!-- Job Lifecycle Audit Trail Modal -->
-    <div id="lifecycle-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
+    <div id="lifecycle-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 z-50">
         <div class="linear-card p-4 sm:p-6 rounded-lg max-w-3xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="report-header-box flex flex-wrap justify-between items-start mb-3 border-b border-white/[0.08] pb-2 gap-2">
                 <div>
@@ -814,12 +813,12 @@
 
             if (status === 'ACTIVE') {
                 toggleBtn.innerText = "Complete Job";
-                toggleBtn.className = "bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded transition-all min-h-[44px] font-semibold shadow-sm whitespace-nowrap";
+                toggleBtn.className = "bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs px-3 py-2 rounded transition-all min-h-[44px] font-semibold shadow-sm whitespace-nowrap";
                 toggleBtn.disabled = false;
                 toggleBtn.classList.remove('opacity-30', 'pointer-events-none');
             } else {
                 toggleBtn.innerText = "Reactivate (Admin)";
-                toggleBtn.className = "linear-button-secondary text-amber-400 text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded min-h-[44px] font-medium shadow-sm whitespace-nowrap";
+                toggleBtn.className = "linear-button-secondary text-amber-400 text-xs px-3 py-2 rounded min-h-[44px] font-medium shadow-sm whitespace-nowrap";
                 if (currentUser.role === 'admin') {
                     toggleBtn.disabled = false;
                     toggleBtn.classList.remove('opacity-30', 'pointer-events-none');
@@ -1147,11 +1146,11 @@
                 if (s.result !== 'PASS') badge = "linear-badge-fail";
                 return `
                     <tr class="hover:bg-white/[0.02]">
-                        <td class="px-3 sm:px-5 py-2 sm:py-2.5 text-slate-500 font-mono">#${recentScans.length - idx}</td>
-                        <td class="px-3 sm:px-5 py-2 sm:py-2.5 font-bold text-slate-200">${s.code}</td>
-                        <td class="px-3 sm:px-5 py-2 sm:py-2.5"><span class="${badge} px-2 py-0.5 rounded text-xs font-mono font-bold">${s.result}</span></td>
-                        <td class="px-3 sm:px-5 py-2 sm:py-2.5 text-slate-400 font-mono">${s.time}</td>
-                        <td class="px-3 sm:px-5 py-2 sm:py-2.5 font-sans text-slate-300">${s.user}</td>
+                        <td class="px-2.5 sm:px-4 py-2 text-slate-500 font-mono">#${recentScans.length - idx}</td>
+                        <td class="px-2.5 sm:px-4 py-2 font-bold text-slate-200">${s.code}</td>
+                        <td class="px-2.5 sm:px-4 py-2"><span class="${badge} px-2 py-0.5 rounded text-xs font-mono font-bold">${s.result}</span></td>
+                        <td class="px-2.5 sm:px-4 py-2 text-slate-400 font-mono">${s.time}</td>
+                        <td class="px-2.5 sm:px-4 py-2 font-sans text-slate-300">${s.user}</td>
                     </tr>
                 `;
             }).join('');
@@ -1216,7 +1215,7 @@
             stats.innerHTML = `
                 <div class="linear-card p-2 sm:p-3 rounded"><span class="text-slate-400 block text-[11px] sm:text-xs font-mono uppercase">TOTAL POOL</span><span class="font-bold text-sm sm:text-base text-white font-mono">${data.total_codes.toLocaleString()}</span></div>
                 <div class="linear-card p-2 sm:p-3 rounded"><span class="text-[#2ed573] block text-[11px] sm:text-xs font-mono uppercase">VERIFIED</span><span class="font-bold text-sm sm:text-base text-[#2ed573] font-mono">${data.consumed_codes.toLocaleString()}</span></div>
-                <div class="linear-card p-2 sm:p-3 rounded"><span class="text-amber-400 block text-[11px] sm:text-xs font-mono uppercase">REMAINING CODES</span><span class="font-bold text-sm sm:text-base text-amber-400 font-mono">${data.pending_codes.toLocaleString()}</span></div>
+                <div class="linear-card p-2 sm:p-3 rounded"><span class="text-amber-400 block text-[11px] sm:text-xs font-mono uppercase">REMAINING</span><span class="font-bold text-sm sm:text-base text-amber-400 font-mono">${data.pending_codes.toLocaleString()}</span></div>
                 <div class="linear-card p-2 sm:p-3 rounded"><span class="text-red-400 block text-[11px] sm:text-xs font-mono uppercase">BLOCKED</span><span class="font-bold text-sm sm:text-base text-red-400 font-mono">${data.blocked_codes.toLocaleString()}</span></div>
             `;
 
