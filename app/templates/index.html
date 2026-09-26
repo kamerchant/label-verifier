@@ -209,8 +209,8 @@
         <div class="flex items-center gap-2.5">
             <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-3.5 py-1.5 rounded text-sm font-semibold">Create New Job</button>
             <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-3.5 py-1.5 rounded text-sm font-medium">All Jobs</button>
-            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-3.5 py-1.5 rounded text-sm font-medium">Users</button>
-            <button onclick="toggleModal('pw-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-sm font-medium">Password</button>
+            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-3.5 py-1.5 rounded text-sm font-medium">User Admin</button>
+            <button onclick="toggleModal('pw-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-sm font-medium">Change Password</button>
             <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-3.5 py-1.5 rounded text-sm font-medium transition-colors">Logout</button>
         </div>
     </header>
@@ -273,7 +273,7 @@
             <!-- Result Notice Bar -->
             <div id="status-card" class="linear-subcard px-5 py-4 rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-3 state-ready">
                 <div class="flex items-center gap-3">
-                    <span id="status-dot" class="w-3 h-3 rounded-full bg-[#5e6ad2]"></span>
+                    <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-[#5e6ad2]"></span>
                     <div>
                         <span id="status-heading" class="text-base font-bold text-slate-100 font-mono tracking-wide">VERIFY CODE</span>
                         <span id="status-detail" class="text-sm text-slate-400 ml-2">&middot; Select an active job card and scan serialized barcodes</span>
@@ -288,7 +288,7 @@
             <!-- Monospace Scan Input -->
             <form id="scan-form" onsubmit="handleScan(event)" class="flex gap-2">
                 <div class="relative flex-1">
-                    <input type="text" id="barcode-input" placeholder="Scanner input active -- scan serialized barcode..." autofocus autocomplete="off"
+                    <input type="text" id="barcode-input" placeholder="Scan or Enter Code for Verification" autofocus autocomplete="off"
                            class="linear-input w-full px-4 py-3 text-lg font-mono rounded">
                 </div>
                 <button type="submit" class="linear-button-primary px-7 py-3 rounded text-base font-semibold font-mono">
@@ -470,7 +470,7 @@
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Batch Data File (CSV / TXT) *</label>
-                    <input type="file" id="new-job-file" accept=".csv,.txt" required class="linear-input w-full p-2.5 text-xs rounded text-slate-400">
+                    <input type="file" id="new-job-file" accept=".csv,.txt" required class="linear-input w-full p-2.5 text-sm rounded text-slate-400">
                     <p class="text-xs text-slate-500 mt-1">Codes are checked against active and deleted jobs.</p>
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
@@ -826,7 +826,6 @@
             if (!activeJobId) return;
 
             if (activeJobStatus === 'ACTIVE') {
-                // Confirmation text updated: removed "and block remaining unprinted codes"
                 if (!confirm(`Mark Job Card ${activeJobId} completed?`)) return;
                 const res = await fetch(`/api/jobs/${activeJobId}/complete`, { method: 'POST' });
                 if (res.ok) {
