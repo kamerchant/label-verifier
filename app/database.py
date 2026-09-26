@@ -28,17 +28,20 @@ def init_db():
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # Users table
+            # Users table with can_upload flag
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     username TEXT PRIMARY KEY,
                     password_hash TEXT NOT NULL,
                     role VARCHAR(50) DEFAULT 'QC Incharge',
                     must_change_password BOOLEAN DEFAULT TRUE,
+                    can_upload BOOLEAN DEFAULT FALSE,
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 );
                 ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT TRUE;
+                ALTER TABLE users ADD COLUMN IF NOT EXISTS can_upload BOOLEAN DEFAULT FALSE;
                 UPDATE users SET role = 'QC Incharge' WHERE role = 'operator';
+                UPDATE users SET can_upload = TRUE WHERE role = 'admin';
             """)
 
             # Job Cards
@@ -66,7 +69,7 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_codes_status ON codes (status);
             """)
 
-            # Scan logs (barcode audit trail)
+            # Scan logs
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS scan_logs (
                     id BIGSERIAL PRIMARY KEY,
@@ -80,7 +83,7 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_scan_logs_time ON scan_logs (scanned_at DESC);
             """)
 
-            # Lifecycle logs (completion and unblocking audit trail)
+            # Lifecycle logs
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS job_lifecycle_logs (
                     id BIGSERIAL PRIMARY KEY,
@@ -93,13 +96,13 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_lifecycle_time ON job_lifecycle_logs (timestamp DESC);
             """)
 
-            # Default admin seeding
+            # Seed default admin
             cur.execute("SELECT COUNT(*) FROM users;")
             if cur.fetchone()[0] == 0:
                 admin_hash = hash_password("admin123")
                 cur.execute(
-                    "INSERT INTO users (username, password_hash, role, must_change_password) VALUES (%s, %s, %s, %s)",
-                    ("admin", admin_hash, "admin", True)
+                    "INSERT INTO users (username, password_hash, role, must_change_password, can_upload) VALUES (%s, %s, %s, %s, %s)",
+                    ("admin", admin_hash, "admin", True, True)
                 )
 
             conn.commit()

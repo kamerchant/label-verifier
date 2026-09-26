@@ -41,11 +41,22 @@ def require_admin(user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin permissions required")
     return user
 
+def require_uploader(user: dict = Depends(get_current_user)):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT can_upload, role FROM users WHERE username = %s", (user["username"],))
+            row = cur.fetchone()
+            if not row or (not row[0] and row[1] != "admin"):
+                raise HTTPException(status_code=403, detail="You do not have permission to upload batch files.")
+            return user
+    finally:
+        release_connection(conn)
+
 @app.get("/")
 async def index():
     return FileResponse(HTML_PATH, media_type="text/html")
 
-# Reset maintenance route
 @app.get("/reset-db")
 def reset_database():
     conn = get_connection()
@@ -99,7 +110,7 @@ def login(response: Response, username: str = Form(...), password: str = Form(..
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT password_hash, role, must_change_password FROM users WHERE username = %s", (username,))
+            cur.execute("SELECT password_hash, role, must_change_password, can_upload FROM users WHERE username = %s", (username,))
             user = cur.fetchone()
             if not user or not verify_password(password, user[0]):
                 raise HTTPException(status_code=400, detail="Invalid username or password")
@@ -117,7 +128,8 @@ def login(response: Response, username: str = Form(...), password: str = Form(..
                 "status": "success",
                 "username": username,
                 "role": user[1],
-                "must_change_password": user[2]
+                "must_change_password": user[2],
+                "can_upload": user[3]
             }
     finally:
         release_connection(conn)
@@ -134,9 +146,10 @@ def get_me(request: Request):
         conn = get_connection()
         try:
             with conn.cursor() as cur:
-                cur.execute("SELECT must_change_password FROM users WHERE username = %s", (user["username"],))
+                cur.execute("SELECT must_change_password, can_upload FROM users WHERE username = %s", (user["username"],))
                 row = cur.fetchone()
                 must_change = row[0] if row else False
+                can_upload = row[1] if row else False
         finally:
             release_connection(conn)
 
@@ -144,7 +157,8 @@ def get_me(request: Request):
             "authenticated": True,
             "username": user["username"],
             "role": user["role"],
-            "must_change_password": must_change
+            "must_change_password": must_change,
+            "can_upload": can_upload
         }
     except HTTPException:
         return {"authenticated": False}
@@ -182,13 +196,14 @@ def list_users(admin: dict = Depends(require_admin)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT username, role, must_change_password, created_at FROM users ORDER BY created_at ASC")
+            cur.execute("SELECT username, role, must_change_password, can_upload, created_at FROM users ORDER BY created_at ASC")
             rows = cur.fetchall()
             return [{
                 "username": r[0],
                 "role": r[1],
                 "must_change_password": r[2],
-                "created_at": r[3].strftime("%Y-%m-%d %H:%M")
+                "can_upload": r[3],
+                "created_at": r[4].strftime("%Y-%m-%d %H:%M")
             } for r in rows]
     finally:
         release_connection(conn)
@@ -198,6 +213,7 @@ def create_user(
     username: str = Form(...),
     password: str = Form(...),
     role: str = Form("QC Incharge"),
+    can_upload: bool = Form(False),
     admin: dict = Depends(require_admin)
 ):
     username = username.strip().lower()
@@ -213,9 +229,24 @@ def create_user(
 
             pw_hash = hash_password(password)
             cur.execute(
-                "INSERT INTO users (username, password_hash, role, must_change_password) VALUES (%s, %s, %s, TRUE)",
-                (username, pw_hash, role)
+                "INSERT INTO users (username, password_hash, role, must_change_password, can_upload) VALUES (%s, %s, %s, TRUE, %s)",
+                (username, pw_hash, role, can_upload)
             )
+            conn.commit()
+            return {"status": "success"}
+    finally:
+        release_connection(conn)
+
+@app.post("/api/users/{username}/toggle-upload")
+def toggle_user_upload(
+    username: str,
+    can_upload: bool = Form(...),
+    admin: dict = Depends(require_admin)
+):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE users SET can_upload = %s WHERE username = %s", (can_upload, username))
             conn.commit()
             return {"status": "success"}
     finally:
@@ -260,12 +291,13 @@ def get_jobs(user: dict = Depends(get_current_user)):
     finally:
         release_connection(conn)
 
+# Ingestion guarded by require_uploader dependency
 @app.post("/api/jobs/create")
 async def create_job(
     job_card_id: str = Form(...),
     description: str = Form(""),
     file: UploadFile = File(...),
-    admin: dict = Depends(require_admin)
+    uploader: dict = Depends(require_uploader)
 ):
     job_card_id = job_card_id.strip()
     description = description.strip()
@@ -315,7 +347,7 @@ async def create_job(
     finally:
         release_connection(conn)
 
-# Complete & Block: Executable by QC Incharge and Admin; logged in lifecycle audit
+# Complete & Block
 @app.post("/api/jobs/{job_card_id}/complete")
 def complete_job(job_card_id: str, user: dict = Depends(get_current_user)):
     conn = get_connection()
@@ -324,7 +356,6 @@ def complete_job(job_card_id: str, user: dict = Depends(get_current_user)):
             cur.execute("UPDATE job_cards SET status = 'COMPLETED' WHERE job_card_id = %s", (job_card_id,))
             cur.execute("UPDATE codes SET status = 'BLOCKED' WHERE job_card_id = %s AND status = 'PENDING'", (job_card_id,))
             
-            # Log the action
             cur.execute(
                 "INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by) VALUES (%s, %s, %s)",
                 (job_card_id, "COMPLETED_AND_BLOCKED", user["username"])
@@ -334,7 +365,7 @@ def complete_job(job_card_id: str, user: dict = Depends(get_current_user)):
     finally:
         release_connection(conn)
 
-# Reactivate & Unblock: Admin ONLY + Mandatory Password Re-verification
+# Reactivate & Unblock
 @app.post("/api/jobs/{job_card_id}/unblock")
 def unblock_job(
     job_card_id: str,
@@ -344,17 +375,14 @@ def unblock_job(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # Verify admin password
             cur.execute("SELECT password_hash FROM users WHERE username = %s", (admin["username"],))
             row = cur.fetchone()
             if not row or not verify_password(admin_password, row[0]):
                 raise HTTPException(status_code=403, detail="Invalid admin password. Unblocking denied.")
 
-            # Reactivate job and restore blocked codes to pending
             cur.execute("UPDATE job_cards SET status = 'ACTIVE' WHERE job_card_id = %s", (job_card_id,))
             cur.execute("UPDATE codes SET status = 'PENDING' WHERE job_card_id = %s AND status = 'BLOCKED'", (job_card_id,))
 
-            # Log the action
             cur.execute(
                 "INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by) VALUES (%s, %s, %s)",
                 (job_card_id, "REACTIVATED_AND_UNBLOCKED", admin["username"])
@@ -364,7 +392,7 @@ def unblock_job(
     finally:
         release_connection(conn)
 
-# --- Lifecycle Audit Trail Endpoint ---
+# Lifecycle Audit Trail
 @app.get("/api/jobs/{job_card_id}/lifecycle-logs")
 def get_lifecycle_logs(job_card_id: str, user: dict = Depends(get_current_user)):
     conn = get_connection()
@@ -396,7 +424,7 @@ def get_lifecycle_logs(job_card_id: str, user: dict = Depends(get_current_user))
     finally:
         release_connection(conn)
 
-# --- Strict Verification Engine ---
+# Strict Verification
 @app.post("/api/verify")
 def verify_code(
     job_card_id: str = Form(...), 
@@ -469,7 +497,7 @@ def verify_code(
     finally:
         release_connection(conn)
 
-# --- Reporting Endpoints ---
+# Reporting Endpoints
 @app.get("/api/reports/{job_card_id}")
 def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
     conn = get_connection()

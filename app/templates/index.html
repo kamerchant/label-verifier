@@ -10,12 +10,10 @@
         .flash-fail { background-color: #b91c1c !important; color: white !important; }
         .flash-warn { background-color: #c2410c !important; color: white !important; }
         
-        /* Clean Factory Print Layout: Pure White Background Across All Containers */
         @media print {
             body * {
                 visibility: hidden !important;
             }
-            /* Printable Report or Printable Lifecycle Modal */
             .printable-modal, .printable-modal * {
                 visibility: visible !important;
                 background-color: transparent !important;
@@ -123,8 +121,15 @@
     <!-- Top Navigation Header -->
     <header class="w-full max-w-5xl flex justify-between items-center py-4 border-b border-slate-700 mb-6">
         <div class="flex items-center gap-4">
-            <div class="bg-white p-1.5 rounded shadow-sm flex items-center justify-center">
-                <img src="/static/logo.jpg" alt="CCL Logo" class="h-10 w-auto object-contain">
+            <div class="bg-white px-2.5 py-1.5 rounded shadow-sm flex items-center justify-center">
+                <svg class="h-9 w-auto" viewBox="0 0 480 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="400" cy="80" r="75" fill="#1d5fa8" />
+                    <path d="M 400 80 L 325 80 A 75 75 0 0 1 400 5 Z" fill="#ffffff" />
+                    <rect x="270" y="70" width="130" height="130" fill="#000000" />
+                    <path d="M 95 95 C 95 84 88 77 75 77 C 62 77 53 88 53 103 C 53 118 62 129 75 129 C 88 129 95 122 95 111 L 118 111 C 117 132 101 150 75 150 C 47 150 28 130 28 103 C 28 76 47 56 75 56 C 101 56 117 74 118 95 Z" fill="#000000"/>
+                    <path d="M 195 95 C 195 84 188 77 175 77 C 162 77 153 88 153 103 C 153 118 162 129 175 129 C 188 129 195 122 195 111 L 218 111 C 217 132 201 150 175 150 C 147 150 128 130 128 103 C 128 76 147 56 175 56 C 201 56 217 74 218 95 Z" fill="#000000"/>
+                    <path d="M 235 59 L 260 59 L 260 127 L 295 127 L 295 147 L 235 147 Z" fill="#000000"/>
+                </svg>
             </div>
             <div>
                 <h1 class="text-2xl font-bold tracking-wider text-white">CCL Pakistan VDV</h1>
@@ -196,8 +201,15 @@
     <div id="login-modal" class="fixed inset-0 bg-slate-950 flex items-center justify-center p-4 z-50">
         <div class="bg-slate-800 p-8 rounded-lg max-w-sm w-full border border-slate-700 shadow-2xl">
             <div class="flex justify-center mb-4">
-                <div class="bg-white p-2 rounded">
-                    <img src="/static/logo.jpg" alt="CCL Logo" class="h-10 w-auto object-contain">
+                <div class="bg-white px-3 py-2 rounded shadow-sm">
+                    <svg class="h-10 w-auto" viewBox="0 0 480 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="400" cy="80" r="75" fill="#1d5fa8" />
+                        <path d="M 400 80 L 325 80 A 75 75 0 0 1 400 5 Z" fill="#ffffff" />
+                        <rect x="270" y="70" width="130" height="130" fill="#000000" />
+                        <path d="M 95 95 C 95 84 88 77 75 77 C 62 77 53 88 53 103 C 53 118 62 129 75 129 C 88 129 95 122 95 111 L 118 111 C 117 132 101 150 75 150 C 47 150 28 130 28 103 C 28 76 47 56 75 56 C 101 56 117 74 118 95 Z" fill="#000000"/>
+                        <path d="M 195 95 C 195 84 188 77 175 77 C 162 77 153 88 153 103 C 153 118 162 129 175 129 C 188 129 195 122 195 111 L 218 111 C 217 132 201 150 175 150 C 147 150 128 130 128 103 C 128 76 147 56 175 56 C 201 56 217 74 218 95 Z" fill="#000000"/>
+                        <path d="M 235 59 L 260 59 L 260 127 L 295 127 L 295 147 L 235 147 Z" fill="#000000"/>
+                    </svg>
                 </div>
             </div>
             <h2 class="text-xl font-bold text-center mb-1">CCL Pakistan VDV</h2>
@@ -284,25 +296,40 @@
 
     <!-- User Management Modal -->
     <div id="user-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
-        <div class="bg-slate-800 p-6 rounded-lg max-w-lg w-full border border-slate-600 shadow-2xl">
+        <div class="bg-slate-800 p-6 rounded-lg max-w-xl w-full border border-slate-600 shadow-2xl">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-bold">User Management</h3>
+                <h3 class="text-lg font-bold">User Management & Permissions</h3>
                 <button onclick="toggleModal('user-modal')" class="text-slate-400 hover:text-white">✕</button>
             </div>
             
-            <form onsubmit="createUser(event)" class="bg-slate-900 p-3 rounded mb-4 grid grid-cols-3 gap-2">
-                <input type="text" id="new-user-name" placeholder="Username" required class="bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
-                <input type="password" id="new-user-pass" placeholder="Password (min 6)" required class="bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
-                <div class="flex gap-1">
-                    <select id="new-user-role" class="bg-slate-800 border border-slate-700 rounded p-1 text-xs text-white">
+            <!-- Create User Form with Upload Permission Toggle -->
+            <form onsubmit="createUser(event)" class="bg-slate-900 p-3 rounded mb-4 space-y-2">
+                <div class="grid grid-cols-3 gap-2">
+                    <input type="text" id="new-user-name" placeholder="Username" required class="bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                    <input type="password" id="new-user-pass" placeholder="Password (min 6)" required class="bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                    <select id="new-user-role" class="bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
                         <option value="QC Incharge">QC Incharge</option>
                         <option value="admin">Admin</option>
                     </select>
-                    <button type="submit" class="bg-purple-600 hover:bg-purple-500 px-2 py-1 rounded text-xs font-bold flex-1">Add</button>
+                </div>
+                <div class="flex justify-between items-center pt-1 border-t border-slate-800">
+                    <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                        <input type="checkbox" id="new-user-can-upload" class="rounded bg-slate-800 border-slate-700 text-blue-600 focus:ring-0">
+                        <span>Allow uploading job cards & codes</span>
+                    </label>
+                    <button type="submit" class="bg-purple-600 hover:bg-purple-500 px-4 py-1.5 rounded text-xs font-bold text-white">Create User</button>
                 </div>
             </form>
 
-            <div id="users-table" class="max-h-60 overflow-y-auto text-xs space-y-1">Loading users...</div>
+            <!-- User List Table -->
+            <div class="max-h-64 overflow-y-auto text-xs">
+                <div class="grid grid-cols-12 gap-2 p-2 font-bold text-slate-400 border-b border-slate-700">
+                    <div class="col-span-4">User / Role</div>
+                    <div class="col-span-5 text-center">Can Upload Codes?</div>
+                    <div class="col-span-3 text-right">Actions</div>
+                </div>
+                <div id="users-table" class="space-y-1 mt-1">Loading users...</div>
+            </div>
         </div>
     </div>
 
@@ -408,9 +435,16 @@
                 document.getElementById('login-modal').classList.add('hidden');
                 document.getElementById('user-display').innerText = `Logged in as: ${data.username} (${data.role})`;
                 
+                // Show Admin Panel Button for Admin
                 if (data.role === 'admin') {
-                    document.getElementById('btn-upload').classList.remove('hidden');
                     document.getElementById('btn-users').classList.remove('hidden');
+                }
+
+                // Show Upload Button ONLY if user has upload permission or is Admin
+                if (data.can_upload || data.role === 'admin') {
+                    document.getElementById('btn-upload').classList.remove('hidden');
+                } else {
+                    document.getElementById('btn-upload').classList.add('hidden');
                 }
 
                 if (data.must_change_password) {
@@ -555,7 +589,6 @@
                     alert(err.detail || "Action failed");
                 }
             } else {
-                // Unblock requested -> trigger Admin Password confirmation modal
                 if (currentUser.role !== 'admin') {
                     alert("Only Administrator can reactivate and unblock a completed job.");
                     return;
@@ -733,23 +766,59 @@
             toggleModal('report-modal');
         }
 
+        // --- User Admin with Upload Toggles ---
         async function openUserModal() {
             toggleModal('user-modal');
             const res = await fetch('/api/users');
             const users = await res.json();
             const container = document.getElementById('users-table');
             container.innerHTML = users.map(u => `
-                <div class="flex justify-between items-center p-2 bg-slate-900 rounded">
-                    <div>
+                <div class="grid grid-cols-12 gap-2 items-center p-2 bg-slate-900 rounded border border-slate-800">
+                    <div class="col-span-4">
                         <span class="font-bold">${u.username}</span>
-                        <span class="text-[10px] uppercase ml-2 px-1 rounded ${u.role === 'admin' ? 'bg-purple-900 text-purple-200' : 'bg-slate-700 text-slate-300'}">${u.role}</span>
-                        ${u.must_change_password ? '<span class="text-[9px] text-yellow-400 ml-1">(Must change PW)</span>' : ''}
+                        <span class="text-[9px] uppercase ml-1 px-1 rounded ${u.role === 'admin' ? 'bg-purple-900 text-purple-200' : 'bg-slate-700 text-slate-300'}">${u.role}</span>
+                        ${u.must_change_password ? '<div class="text-[9px] text-yellow-400 mt-0.5">(Must change PW)</div>' : ''}
                     </div>
-                    ${u.username !== currentUser.username ? `
-                        <button onclick="deleteUser('${u.username}')" class="text-red-400 hover:text-red-300">Delete</button>
-                    ` : '<span class="text-[10px] text-slate-500">Active User</span>'}
+                    
+                    <!-- Can Upload Checkbox/Tick -->
+                    <div class="col-span-5 flex items-center justify-center">
+                        <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="checkbox" ${u.can_upload ? 'checked' : ''} 
+                                   onchange="toggleUploadPermission('${u.username}', this.checked)"
+                                   class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-blue-600 focus:ring-0 cursor-pointer">
+                            <span class="text-[11px] ${u.can_upload ? 'text-green-400 font-semibold' : 'text-slate-500'}">
+                                ${u.can_upload ? 'Allowed' : 'Disabled'}
+                            </span>
+                        </label>
+                    </div>
+
+                    <div class="col-span-3 text-right">
+                        ${u.username !== currentUser.username ? `
+                            <button onclick="deleteUser('${u.username}')" class="text-red-400 hover:text-red-300">Delete</button>
+                        ` : '<span class="text-[10px] text-slate-500">You</span>'}
+                    </div>
                 </div>
             `).join('');
+        }
+
+        async function toggleUploadPermission(username, allowed) {
+            const body = new FormData();
+            body.append("can_upload", allowed);
+
+            const res = await fetch(`/api/users/${username}/toggle-upload`, {
+                method: 'POST',
+                body: body
+            });
+
+            if (res.ok) {
+                // If the user modified their own permission, refresh session state
+                if (username === currentUser.username) {
+                    checkSession();
+                }
+                openUserModal();
+            } else {
+                alert("Failed to update upload permission.");
+            }
         }
 
         async function createUser(e) {
@@ -758,6 +827,7 @@
             body.append("username", document.getElementById('new-user-name').value);
             body.append("password", document.getElementById('new-user-pass').value);
             body.append("role", document.getElementById('new-user-role').value);
+            body.append("can_upload", document.getElementById('new-user-can-upload').checked);
 
             const res = await fetch('/api/users/create', { method: 'POST', body });
             if (res.ok) {
