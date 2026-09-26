@@ -84,20 +84,20 @@
             border-left: 3px solid #5e6ad2;
         }
         .status-state-yellow {
-            background-color: #fbbf24 !important; /* Amber/Yellow */
+            background-color: #fbbf24 !important;
             color: #000000 !important;
             font-weight: 700;
             border-left: 3px solid #d97706;
         }
         .status-state-green {
-            background-color: #2ed573 !important; /* Green */
+            background-color: #2ed573 !important;
             color: #000000 !important;
             font-weight: 700;
             border-left: 3px solid #10b981;
         }
         .status-state-red {
-            background-color: #ff4757 !important; /* Red */
-            color: #000000 !important; /* Black text on red */
+            background-color: #ff4757 !important;
+            color: #000000 !important;
             font-weight: 700;
             border-left: 3px solid #991b1b;
         }
@@ -110,7 +110,7 @@
             scrollbar-width: none;
         }
 
-        /* Print formatting styles: A4 size, top-aligned, 5mm side margins, footer at bottom */
+        /* Robust A4 Print Styles */
         @media print {
             @page {
                 size: A4 portrait;
@@ -119,37 +119,32 @@
             body * {
                 visibility: hidden !important;
             }
-            .printable-modal, .printable-modal * {
+            .printable-modal:not(.hidden), .printable-modal:not(.hidden) * {
                 visibility: visible !important;
-                background-color: transparent !important;
             }
-            .printable-modal {
+            .printable-modal:not(.hidden) {
                 position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
                 width: 100% !important;
-                max-width: 100% !important;
-                min-height: 100% !important;
                 background: #ffffff !important;
                 color: #0f172a !important;
-                box-shadow: none !important;
-                border: none !important;
                 padding: 0 !important;
                 margin: 0 !important;
                 display: block !important;
+                box-shadow: none !important;
+                backdrop-filter: none !important;
             }
-            .printable-modal > div {
+            .printable-modal:not(.hidden) > div {
                 background: #ffffff !important;
                 border: none !important;
                 box-shadow: none !important;
-                max-width: 100% !important;
                 width: 100% !important;
+                max-width: 100% !important;
                 padding: 0 !important;
                 margin: 0 !important;
-                display: flex !important;
-                flex-direction: column !important;
-                justify-content: flex-start !important;
-                min-height: 287mm !important;
+                max-height: none !important;
+                display: block !important;
             }
             .no-print, button {
                 display: none !important;
@@ -158,16 +153,16 @@
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: flex-start !important;
-                margin-bottom: 10px !important;
+                margin-bottom: 8px !important;
             }
             .print-brand-logo {
-                height: 32px !important;
+                height: 28px !important;
                 width: auto !important;
                 object-fit: contain !important;
-                margin-bottom: 3px !important;
+                margin-bottom: 2px !important;
             }
             .print-brand-text {
-                font-size: 9.5pt !important;
+                font-size: 9pt !important;
                 font-weight: 800 !important;
                 color: #0f172a !important;
                 letter-spacing: 0.05em !important;
@@ -179,21 +174,21 @@
                 margin-bottom: 10px !important;
             }
             .print-title {
-                font-size: 16pt !important;
+                font-size: 14pt !important;
                 color: #0f172a !important;
                 font-weight: 800 !important;
                 background: #ffffff !important;
                 margin-bottom: 2px !important;
             }
             .print-subtitle {
-                font-size: 11pt !important;
+                font-size: 10pt !important;
                 color: #334155 !important;
                 background: #ffffff !important;
             }
             #report-stats {
                 display: grid !important;
                 grid-template-columns: repeat(2, 1fr) !important;
-                gap: 10px !important;
+                gap: 8px !important;
                 margin-bottom: 12px !important;
                 background: #ffffff !important;
             }
@@ -214,7 +209,6 @@
                 overflow: visible !important;
                 border: 1px solid #cbd5e1 !important;
                 background: #ffffff !important;
-                flex: 1 !important;
             }
             table {
                 width: 100% !important;
@@ -231,7 +225,7 @@
                 font-weight: 700 !important;
                 border: 1px solid #94a3b8 !important;
                 padding: 6px 8px !important;
-                font-size: 9.5pt !important;
+                font-size: 9pt !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
@@ -239,7 +233,7 @@
                 color: #0f172a !important;
                 border: 1px solid #cbd5e1 !important;
                 padding: 5px 8px !important;
-                font-size: 9pt !important;
+                font-size: 8.5pt !important;
                 background: #ffffff !important;
             }
             tr {
@@ -248,13 +242,13 @@
             }
             .print-timestamp-footer {
                 display: block !important;
-                margin-top: auto !important;
-                padding-top: 12px !important;
-                font-size: 8.5pt !important;
+                margin-top: 20mm !important;
+                padding-top: 8px !important;
+                font-size: 8pt !important;
                 color: #64748b !important;
                 text-align: right !important;
                 font-family: monospace !important;
-                border-top: 1px solid #e2e8f0 !important;
+                border-top: 1px solid #cbd5e1 !important;
             }
         }
         .print-timestamp-footer {
@@ -294,7 +288,6 @@
                 <p id="header-job-desc" class="text-xs sm:text-sm text-slate-400 mt-1 truncate">Search active production jobs using the search field.</p>
             </div>
 
-            <!-- Job Search Bar and Adjacent Action Buttons Group -->
             <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full lg:w-auto shrink-0">
                 <div class="relative flex-1 sm:w-72 shrink-0">
                     <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Search active jobs..." 
@@ -341,7 +334,6 @@
         <!-- Scanning Terminal Canvas -->
         <div class="linear-card p-4 sm:p-6 rounded flex flex-col gap-3 sm:gap-4">
             
-            <!-- Status Notice Bar (Centered, no bullets, dynamic background colors) -->
             <div id="status-card" class="px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-black">
                 <div class="flex items-center justify-center gap-2.5 sm:gap-3 min-w-0">
                     <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-[#5e6ad2] shrink-0 hidden"></span>
@@ -637,6 +629,7 @@
         </div>
     </div>
 
+    <!-- QC Report Modal -->
     <div id="report-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
         <div class="linear-card p-6 rounded-lg max-w-4xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="report-header-box flex justify-between items-start mb-3 border-b border-white/[0.08] pb-3">
@@ -674,6 +667,7 @@
         </div>
     </div>
 
+    <!-- Job Lifecycle Audit Trail Modal -->
     <div id="lifecycle-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
         <div class="linear-card p-6 rounded-lg max-w-3xl w-full shadow-2xl flex flex-col max-h-[85vh]">
             <div class="report-header-box flex justify-between items-start mb-3 border-b border-white/[0.08] pb-2">
@@ -865,7 +859,6 @@
             const promptDesc = activeJobDesc ? `${activeJobDesc} - Ready for Validation` : `Job Card ${id} - Ready for Validation`;
             document.getElementById('header-job-desc').innerText = promptDesc;
 
-            // Status bar turns yellow when job is selected
             const card = document.getElementById('status-card');
             card.className = "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-yellow";
             document.getElementById('status-heading').innerText = promptDesc;
