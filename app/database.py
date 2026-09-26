@@ -1,6 +1,9 @@
 import os
 import psycopg2
 from psycopg2.pool import SimpleConnectionPool
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
@@ -15,79 +18,79 @@ def get_connection():
 def release_connection(conn):
     pool.putconn(conn)
 
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
 def init_db():
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # 1. Drop existing primary key and foreign key constraints to allow type conversion
+            # Users table
             cur.execute("""
-                DO $$
-                BEGIN
-                    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'codes') THEN
-                        ALTER TABLE codes DROP CONSTRAINT IF EXISTS codes_pkey CASCADE;
-                        ALTER TABLE codes DROP CONSTRAINT IF EXISTS codes_job_card_id_fkey CASCADE;
-                    END IF;
-                    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'job_cards') THEN
-                        ALTER TABLE job_cards DROP CONSTRAINT IF EXISTS job_cards_pkey CASCADE;
-                    END IF;
-                END $$;
+                CREATE TABLE IF NOT EXISTS users (
+                    username TEXT PRIMARY KEY,
+                    password_hash TEXT NOT NULL,
+                    role VARCHAR(20) DEFAULT 'operator',
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
             """)
 
-            # 2. Create tables if they do not exist
+            # Job Cards with description
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS job_cards (
                     job_card_id TEXT PRIMARY KEY,
+                    description TEXT,
                     client_name TEXT,
                     status VARCHAR(20) DEFAULT 'ACTIVE',
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 );
+                ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS description TEXT;
+            """)
 
+            # Codes table
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS codes (
-                    job_card_id TEXT REFERENCES job_cards(job_card_id),
+                    job_card_id TEXT REFERENCES job_cards(job_card_id) ON DELETE CASCADE,
                     code_value TEXT NOT NULL,
                     short_code TEXT NOT NULL,
                     status VARCHAR(20) DEFAULT 'PENDING',
-                    scanned_at TIMESTAMP WITH TIME ZONE NULL
+                    scanned_at TIMESTAMP WITH TIME ZONE NULL,
+                    PRIMARY KEY (job_card_id, code_value)
                 );
-            """)
-
-            # 3. Force convert all columns to TEXT
-            cur.execute("""
-                ALTER TABLE job_cards ALTER COLUMN job_card_id TYPE TEXT;
-                ALTER TABLE codes ALTER COLUMN job_card_id TYPE TEXT;
-                ALTER TABLE codes ALTER COLUMN code_value TYPE TEXT;
-                ALTER TABLE codes ADD COLUMN IF NOT EXISTS short_code TEXT;
-
-                -- Re-add constraints
-                DO $$
-                BEGIN
-                    IF NOT EXISTS (
-                        SELECT 1 FROM pg_constraint WHERE conname = 'job_cards_pkey'
-                    ) THEN
-                        ALTER TABLE job_cards ADD PRIMARY KEY (job_card_id);
-                    END IF;
-
-                    IF NOT EXISTS (
-                        SELECT 1 FROM pg_constraint WHERE conname = 'codes_pkey'
-                    ) THEN
-                        ALTER TABLE codes ADD PRIMARY KEY (job_card_id, code_value);
-                    END IF;
-
-                    IF NOT EXISTS (
-                        SELECT 1 FROM pg_constraint WHERE conname = 'codes_job_card_id_fkey'
-                    ) THEN
-                        ALTER TABLE codes ADD CONSTRAINT codes_job_card_id_fkey 
-                        FOREIGN KEY (job_card_id) REFERENCES job_cards(job_card_id) ON DELETE CASCADE;
-                    END IF;
-                END $$;
-
                 CREATE INDEX IF NOT EXISTS idx_codes_value ON codes (code_value);
                 CREATE INDEX IF NOT EXISTS idx_codes_short ON codes (short_code);
                 CREATE INDEX IF NOT EXISTS idx_codes_status ON codes (status);
             """)
+
+            # Scan logs table for detailed QC reporting
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS scan_logs (
+                    id BIGSERIAL PRIMARY KEY,
+                    job_card_id TEXT,
+                    code_scanned TEXT NOT NULL,
+                    result VARCHAR(20) NOT NULL,
+                    scanned_by TEXT NOT NULL,
+                    scanned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE INDEX IF NOT EXISTS idx_scan_logs_jc ON scan_logs (job_card_id);
+                CREATE INDEX IF NOT EXISTS idx_scan_logs_time ON scan_logs (scanned_at DESC);
+            """)
+
+            # Seed default admin if no users exist
+            cur.execute("SELECT COUNT(*) FROM users;")
+            if cur.fetchone()[0] == 0:
+                admin_hash = hash_password("admin123")
+                cur.execute(
+                    "INSERT INTO users (username, password_hash, role) VALUES (%s, %s, %s)",
+                    ("admin", admin_hash, "admin")
+                )
+
             conn.commit()
     except Exception as e:
         conn.rollback()
-        print(f"Database migration note: {e}")
+        print(f"Database init warning: {e}")
     finally:
         release_connection(conn)

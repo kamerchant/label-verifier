@@ -13,19 +13,35 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 flex flex-col items-center">
 
-    <header class="w-full max-w-4xl flex justify-between items-center py-4 border-b border-slate-700 mb-6">
-        <h1 class="text-2xl font-bold tracking-wider">VARIABLE DATA QC VERIFIER</h1>
+    <!-- Top Navigation -->
+    <header class="w-full max-w-5xl flex justify-between items-center py-4 border-b border-slate-700 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold tracking-wider">VARIABLE DATA QC VERIFIER</h1>
+            <p id="user-display" class="text-xs text-slate-400 mt-0.5">Checking login...</p>
+        </div>
         <div class="flex items-center gap-3">
             <span id="active-badge" class="px-3 py-1 bg-yellow-600 rounded text-xs uppercase font-bold tracking-wide">No Job Selected</span>
-            <button onclick="toggleUploadModal()" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm font-semibold">Upload Batch</button>
+            <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs font-semibold">Upload Batch</button>
+            <button id="btn-users" onclick="openUserModal()" class="hidden px-3 py-1 bg-purple-700 hover:bg-purple-800 rounded text-xs font-semibold">User Admin</button>
+            <button onclick="logout()" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs font-semibold">Logout</button>
         </div>
     </header>
 
-    <main class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- Main Workspace -->
+    <main class="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- Job Cards Side Panel -->
-        <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
-            <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Job Cards</h2>
-            <div id="job-list" class="space-y-2 overflow-y-auto max-h-96">Loading...</div>
+        <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 flex flex-col">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Job Cards</h2>
+            </div>
+            
+            <!-- Real-time Filter -->
+            <div class="mb-3">
+                <input type="text" id="job-search" oninput="filterJobs()" placeholder="Search jobs or descriptions..." 
+                       class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500">
+            </div>
+
+            <div id="job-list" class="space-y-2 overflow-y-auto max-h-[440px] flex-1">Loading...</div>
         </div>
 
         <!-- Shopfloor Scanner Area -->
@@ -34,6 +50,7 @@
                 <span id="status-badge" class="text-xs font-bold px-3 py-1 rounded bg-slate-700 mb-3 tracking-widest uppercase">READY</span>
                 <h2 id="status-heading" class="text-4xl font-extrabold mb-2">SCAN LABEL</h2>
                 <p id="status-detail" class="text-slate-400 font-mono text-base">Select a job card and scan a barcode to verify</p>
+                <p id="status-job-desc" class="text-xs text-slate-500 mt-2 italic"></p>
             </div>
 
             <!-- Auto-focused Barcode Input -->
@@ -42,42 +59,131 @@
                     class="w-full bg-slate-950 border-2 border-blue-500 rounded p-4 text-center text-xl font-mono focus:outline-none focus:border-green-400 shadow-inner">
             </form>
 
-            <div class="flex justify-between items-center bg-slate-800 p-4 rounded-lg border border-slate-700">
-                <button id="end-job-btn" onclick="completeJob()" disabled class="px-4 py-2 bg-red-800 hover:bg-red-700 disabled:opacity-30 rounded font-semibold text-sm">
-                    Complete Job & Block Remaining
-                </button>
+            <div class="flex flex-wrap justify-between items-center bg-slate-800 p-4 rounded-lg border border-slate-700 gap-2">
+                <div class="flex gap-2">
+                    <button id="end-job-btn" onclick="completeJob()" disabled class="px-3 py-2 bg-red-800 hover:bg-red-700 disabled:opacity-30 rounded font-semibold text-xs">
+                        Complete & Block Job
+                    </button>
+                    <button id="report-btn" onclick="openReportModal()" disabled class="px-3 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-30 rounded font-semibold text-xs">
+                        View QC Report
+                    </button>
+                </div>
                 <div class="text-right">
-                    <span class="text-xs text-slate-400 block uppercase">Active Job Progress</span>
-                    <span id="counter" class="text-lg font-bold font-mono">0 / 0</span>
+                    <span class="text-xs text-slate-400 block uppercase">Active Progress</span>
+                    <span id="counter" class="text-base font-bold font-mono">0 / 0</span>
                 </div>
             </div>
         </div>
     </main>
 
+    <!-- Login Modal (Full screen overlay if not logged in) -->
+    <div id="login-modal" class="fixed inset-0 bg-slate-950 flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-800 p-8 rounded-lg max-w-sm w-full border border-slate-700 shadow-2xl">
+            <h2 class="text-xl font-bold text-center mb-1">QC System Login</h2>
+            <p class="text-xs text-slate-400 text-center mb-6">Enter credentials to access scanning</p>
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold mb-1 text-slate-300">Username</label>
+                    <input type="text" id="login-user" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1 text-slate-300">Password</label>
+                    <input type="password" id="login-pass" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white">
+                </div>
+                <button type="submit" class="w-full py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm font-semibold">Sign In</button>
+            </form>
+        </div>
+    </div>
+
     <!-- Upload Modal -->
     <div id="upload-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
         <div class="bg-slate-800 p-6 rounded-lg max-w-md w-full border border-slate-600 shadow-2xl">
-            <h3 class="text-lg font-bold mb-4">Upload New Batch Data</h3>
-            <form id="upload-form" onsubmit="uploadJob(event)" class="space-y-4">
+            <h3 class="text-lg font-bold mb-4">Create Job Card & Upload Batch</h3>
+            <form onsubmit="uploadJob(event)" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold mb-1 text-slate-300">Job Card #</label>
-                    <input type="text" id="new-job-id" required placeholder="e.g. JC-2026-99" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white">
+                    <label class="block text-xs font-semibold mb-1 text-slate-300">Job Card # *</label>
+                    <input type="text" id="new-job-id" required placeholder="e.g. JC-2026-99" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold mb-1 text-slate-300">CSV File (WeCheer 10/12-column format)</label>
+                    <label class="block text-xs font-semibold mb-1 text-slate-300">Job Description (Optional)</label>
+                    <input type="text" id="new-job-desc" placeholder="e.g. 500ml Shampoo labels - 50k run" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1 text-slate-300">Batch File (CSV / TXT) *</label>
                     <input type="file" id="new-job-file" accept=".csv,.txt" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-slate-300">
-                    <p class="text-[11px] text-slate-400 mt-1">Both QR URLs and human-readable serials will be indexed automatically.</p>
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="toggleUploadModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm">Cancel</button>
-                    <button type="submit" id="upload-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm font-semibold">Upload</button>
+                    <button type="button" onclick="toggleModal('upload-modal')" class="px-4 py-2 bg-slate-700 rounded text-xs">Cancel</button>
+                    <button type="submit" id="upload-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-xs font-semibold">Upload</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <!-- User Management Modal -->
+    <div id="user-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
+        <div class="bg-slate-800 p-6 rounded-lg max-w-lg w-full border border-slate-600 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold">User Management</h3>
+                <button onclick="toggleModal('user-modal')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            
+            <!-- Create User Form -->
+            <form onsubmit="createUser(event)" class="bg-slate-900 p-3 rounded mb-4 grid grid-cols-3 gap-2">
+                <input type="text" id="new-user-name" placeholder="Username" required class="bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                <input type="password" id="new-user-pass" placeholder="Password (min 6)" required class="bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white">
+                <div class="flex gap-1">
+                    <select id="new-user-role" class="bg-slate-800 border border-slate-700 rounded p-1 text-xs text-white">
+                        <option value="operator">Operator</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                    <button type="submit" class="bg-purple-600 hover:bg-purple-500 px-2 py-1 rounded text-xs font-bold flex-1">Add</button>
+                </div>
+            </form>
+
+            <div id="users-table" class="max-h-60 overflow-y-auto text-xs space-y-1">Loading users...</div>
+        </div>
+    </div>
+
+    <!-- QC Report Modal -->
+    <div id="report-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center hidden p-4 z-50">
+        <div class="bg-slate-800 p-6 rounded-lg max-w-3xl w-full border border-slate-600 shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-start mb-3 border-b border-slate-700 pb-3">
+                <div>
+                    <h3 id="report-job-id" class="text-lg font-bold">Job Card Report</h3>
+                    <p id="report-desc" class="text-xs text-slate-400"></p>
+                </div>
+                <div class="flex gap-2">
+                    <button id="download-csv-btn" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 rounded text-xs font-semibold">Download CSV</button>
+                    <button onclick="toggleModal('report-modal')" class="px-2 py-1 bg-slate-700 rounded text-xs">Close</button>
+                </div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div id="report-stats" class="grid grid-cols-4 gap-2 mb-4 text-center"></div>
+
+            <!-- Scan Log Table -->
+            <div class="flex-1 overflow-y-auto border border-slate-700 rounded">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-900 text-slate-400 sticky top-0">
+                        <tr>
+                            <th class="p-2">Timestamp</th>
+                            <th class="p-2">Inspector</th>
+                            <th class="p-2">Scanned Code</th>
+                            <th class="p-2">Result</th>
+                        </tr>
+                    </thead>
+                    <tbody id="report-log-rows" class="divide-y divide-slate-700"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <script>
+        let currentUser = null;
         let activeJobId = null;
+        let activeJobDesc = "";
+        let allJobs = [];
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
         function playTone(type) {
@@ -88,7 +194,7 @@
             gain.connect(audioCtx.destination);
 
             if (type === 'PASS') {
-                osc.frequency.setValueAtTime(1046.5, audioCtx.currentTime); // High C
+                osc.frequency.setValueAtTime(1046.5, audioCtx.currentTime);
                 gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
                 osc.start();
@@ -104,32 +210,97 @@
             }
         }
 
+        // --- Auth & Session ---
+        async function checkSession() {
+            const res = await fetch('/api/auth/me');
+            const data = await res.json();
+            if (data.authenticated) {
+                currentUser = data;
+                document.getElementById('login-modal').classList.add('hidden');
+                document.getElementById('user-display').innerText = `Logged in as: ${data.username} (${data.role})`;
+                
+                if (data.role === 'admin') {
+                    document.getElementById('btn-upload').classList.remove('hidden');
+                    document.getElementById('btn-users').classList.remove('hidden');
+                }
+                fetchJobs();
+            } else {
+                document.getElementById('login-modal').classList.remove('hidden');
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const body = new FormData();
+            body.append("username", document.getElementById('login-user').value);
+            body.append("password", document.getElementById('login-pass').value);
+
+            const res = await fetch('/api/auth/login', { method: 'POST', body });
+            if (res.ok) {
+                checkSession();
+            } else {
+                const err = await res.json();
+                alert(err.detail || "Login failed");
+            }
+        }
+
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            location.reload();
+        }
+
+        // --- Job List & Selection ---
         async function fetchJobs() {
             const res = await fetch('/api/jobs');
-            const jobs = await res.json();
+            if (res.status === 401) return checkSession();
+            allJobs = await res.json();
+            renderJobList(allJobs);
+        }
+
+        function filterJobs() {
+            const query = document.getElementById('job-search').value.toLowerCase().trim();
+            const filtered = allJobs.filter(j => 
+                j.id.toLowerCase().includes(query) || 
+                j.description.toLowerCase().includes(query)
+            );
+            renderJobList(filtered);
+        }
+
+        function renderJobList(jobs) {
             const list = document.getElementById('job-list');
+            if (jobs.length === 0) {
+                list.innerHTML = `<div class="text-xs text-slate-500 italic p-2 text-center">No job cards found</div>`;
+                return;
+            }
             list.innerHTML = jobs.map(j => `
-                <div onclick="selectJob('${j.id}', '${j.status}', ${j.consumed}, ${j.total})" 
+                <div onclick="selectJob('${j.id}', '${escape(j.description)}', '${j.status}', ${j.consumed}, ${j.total})" 
                      class="p-3 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded cursor-pointer ${activeJobId === j.id ? 'border-blue-400 bg-slate-700' : ''}">
-                    <div class="flex justify-between items-center">
-                        <span class="font-bold font-mono text-sm">${j.id}</span>
-                        <span class="text-xs px-2 py-0.5 rounded ${j.status === 'ACTIVE' ? 'bg-green-800' : 'bg-red-800'}">${j.status}</span>
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="font-bold font-mono text-sm block">${j.id}</span>
+                            ${j.description ? `<span class="text-[11px] text-slate-300 block line-clamp-1">${j.description}</span>` : ''}
+                        </div>
+                        <span class="text-[10px] px-1.5 py-0.5 rounded ${j.status === 'ACTIVE' ? 'bg-green-800' : 'bg-red-800'}">${j.status}</span>
                     </div>
                     <div class="text-xs text-slate-400 mt-1">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()} verified</div>
                 </div>
             `).join('');
         }
 
-        function selectJob(id, status, consumed, total) {
+        function selectJob(id, descEncoded, status, consumed, total) {
             activeJobId = id;
+            activeJobDesc = unescape(descEncoded);
             document.getElementById('active-badge').innerText = id;
             document.getElementById('active-badge').className = "px-3 py-1 bg-green-600 rounded text-xs uppercase font-bold tracking-wide";
-            document.getElementById('end-job-btn').disabled = (status !== 'ACTIVE');
+            document.getElementById('end-job-btn').disabled = (status !== 'ACTIVE' || currentUser.role !== 'admin');
+            document.getElementById('report-btn').disabled = false;
             document.getElementById('counter').innerText = `${consumed.toLocaleString()} / ${total.toLocaleString()}`;
-            fetchJobs();
+            document.getElementById('status-job-desc').innerText = activeJobDesc ? `Job: ${activeJobDesc}` : '';
+            filterJobs();
             resetInput();
         }
 
+        // --- Scanning & Feedback ---
         async function handleScan(e) {
             e.preventDefault();
             const input = document.getElementById('barcode-input');
@@ -165,7 +336,7 @@
                 card.classList.add('flash-pass');
                 badge.innerText = "PASS";
                 heading.innerText = "VERIFIED";
-                detail.innerText = `Code: ${code}`;
+                detail.innerText = msg;
             } else if (result === 'DUPLICATE' || result === 'BLOCKED') {
                 playTone('FAIL');
                 card.classList.add('flash-fail');
@@ -194,42 +365,113 @@
             resetInput();
         }
 
-        function toggleUploadModal() {
-            document.getElementById('upload-modal').classList.toggle('hidden');
-        }
-
         async function uploadJob(e) {
             e.preventDefault();
             const btn = document.getElementById('upload-btn');
             btn.disabled = true;
-            btn.innerText = "Extracting & Uploading...";
+            btn.innerText = "Uploading...";
 
             const body = new FormData();
             body.append("job_card_id", document.getElementById('new-job-id').value.trim());
+            body.append("description", document.getElementById('new-job-desc').value.trim());
             body.append("file", document.getElementById('new-job-file').files[0]);
 
-            try {
-                const res = await fetch('/api/jobs/create', { 
-                    method: 'POST', 
-                    body: body 
-                });
-
-                if (res.ok) {
-                    const data = await res.json();
-                    alert(`Success! Imported ${data.total_extracted.toLocaleString()} unique codes for Job Card: ${data.job_card_id}`);
-                    toggleUploadModal();
-                    fetchJobs();
-                    e.target.reset();
-                } else {
-                    const err = await res.json();
-                    alert(`Error: ${err.detail || "Upload failed. Please check the file."}`);
-                }
-            } catch (networkError) {
-                alert("Network error: Could not reach the server. Check your connection.");
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "Upload";
+            const res = await fetch('/api/jobs/create', { method: 'POST', body });
+            if (res.ok) {
+                const data = await res.json();
+                alert(`Success! Imported ${data.total_extracted.toLocaleString()} codes for ${data.job_card_id}`);
+                toggleModal('upload-modal');
+                fetchJobs();
+                e.target.reset();
+            } else {
+                const err = await res.json();
+                alert(err.detail || "Upload failed");
             }
+            btn.disabled = false;
+            btn.innerText = "Upload";
+        }
+
+        // --- QC Reports View ---
+        async function openReportModal() {
+            if (!activeJobId) return;
+            const res = await fetch(`/api/reports/${activeJobId}`);
+            const data = await res.json();
+
+            document.getElementById('report-job-id').innerText = `QC Report: ${data.job_card_id} (${data.status})`;
+            document.getElementById('report-desc').innerText = data.description || "No description provided";
+            document.getElementById('download-csv-btn').onclick = () => {
+                window.location.href = `/api/reports/${activeJobId}/csv`;
+            };
+
+            const stats = document.getElementById('report-stats');
+            stats.innerHTML = `
+                <div class="bg-slate-900 p-2 rounded"><span class="text-slate-400 block text-[10px]">TOTAL POOL</span><span class="font-bold text-sm">${data.total_codes.toLocaleString()}</span></div>
+                <div class="bg-slate-900 p-2 rounded"><span class="text-green-400 block text-[10px]">VERIFIED (PASS)</span><span class="font-bold text-sm text-green-400">${data.consumed_codes.toLocaleString()}</span></div>
+                <div class="bg-slate-900 p-2 rounded"><span class="text-yellow-400 block text-[10px]">PENDING</span><span class="font-bold text-sm text-yellow-400">${data.pending_codes.toLocaleString()}</span></div>
+                <div class="bg-slate-900 p-2 rounded"><span class="text-red-400 block text-[10px]">BLOCKED</span><span class="font-bold text-sm text-red-400">${data.blocked_codes.toLocaleString()}</span></div>
+            `;
+
+            const tbody = document.getElementById('report-log-rows');
+            if (data.recent_logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-500 italic">No inspection logs recorded yet</td></tr>`;
+            } else {
+                tbody.innerHTML = data.recent_logs.map(log => `
+                    <tr class="hover:bg-slate-700/50">
+                        <td class="p-2 font-mono text-[11px] text-slate-400">${log.time}</td>
+                        <td class="p-2 font-bold">${log.user}</td>
+                        <td class="p-2 font-mono">${log.code}</td>
+                        <td class="p-2 font-bold ${log.result === 'PASS' ? 'text-green-400' : 'text-red-400'}">${log.result}</td>
+                    </tr>
+                `).join('');
+            }
+
+            toggleModal('report-modal');
+        }
+
+        // --- User Admin ---
+        async function openUserModal() {
+            toggleModal('user-modal');
+            const res = await fetch('/api/users');
+            const users = await res.json();
+            const container = document.getElementById('users-table');
+            container.innerHTML = users.map(u => `
+                <div class="flex justify-between items-center p-2 bg-slate-900 rounded">
+                    <div>
+                        <span class="font-bold">${u.username}</span>
+                        <span class="text-[10px] uppercase ml-2 px-1 rounded ${u.role === 'admin' ? 'bg-purple-900 text-purple-200' : 'bg-slate-700 text-slate-300'}">${u.role}</span>
+                    </div>
+                    ${u.username !== currentUser.username ? `
+                        <button onclick="deleteUser('${u.username}')" class="text-red-400 hover:text-red-300">Delete</button>
+                    ` : '<span class="text-[10px] text-slate-500">Active User</span>'}
+                </div>
+            `).join('');
+        }
+
+        async function createUser(e) {
+            e.preventDefault();
+            const body = new FormData();
+            body.append("username", document.getElementById('new-user-name').value);
+            body.append("password", document.getElementById('new-user-pass').value);
+            body.append("role", document.getElementById('new-user-role').value);
+
+            const res = await fetch('/api/users/create', { method: 'POST', body });
+            if (res.ok) {
+                e.target.reset();
+                openUserModal();
+            } else {
+                const err = await res.json();
+                alert(err.detail || "Failed to create user");
+            }
+        }
+
+        async function deleteUser(username) {
+            if (!confirm(`Delete user ${username}?`)) return;
+            const res = await fetch(`/api/users/${username}`, { method: 'DELETE' });
+            if (res.ok) openUserModal();
+        }
+
+        function toggleModal(id) {
+            document.getElementById(id).classList.toggle('hidden');
         }
 
         function resetInput() {
@@ -238,12 +480,12 @@
         }
 
         document.addEventListener('click', (e) => {
-            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'SELECT') {
                 resetInput();
             }
         });
 
-        fetchJobs();
+        checkSession();
     </script>
 </body>
 </html>
