@@ -409,7 +409,7 @@
         </div>
     </footer>
 
-    <!-- Custom Alert Modal ("Please Verify!") -->
+    <!-- Custom Alert Modal -->
     <div id="custom-alert-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/35 shadow-2xl text-center">
             <h3 class="text-base font-bold mb-1 text-white">Please Verify!</h3>
@@ -418,7 +418,7 @@
         </div>
     </div>
 
-    <!-- Custom Confirm Modal ("Please Verify!") -->
+    <!-- Custom Confirm Modal -->
     <div id="custom-confirm-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-amber-500/35 shadow-2xl text-center">
             <h3 class="text-base font-bold mb-1 text-amber-400">Please Verify!</h3>
@@ -427,6 +427,28 @@
                 <button type="button" onclick="resolveCustomConfirm(false)" class="linear-button-secondary px-4 py-2 rounded text-xs font-medium min-h-[40px]">Cancel</button>
                 <button type="button" onclick="resolveCustomConfirm(true)" class="linear-button-primary px-4 py-2 rounded text-xs font-medium min-h-[40px]">Confirm</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Admin Reset Password Modal -->
+    <div id="admin-reset-pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[80]">
+        <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/30 shadow-2xl">
+            <h3 class="text-base font-bold mb-1 text-white">Reset Operator Password</h3>
+            <p id="admin-reset-pw-subtitle" class="text-xs text-slate-400 mb-4">Enter a new temporary password for this user.</p>
+            <form onsubmit="submitAdminResetPassword(event)" class="space-y-3.5">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">New Password (min 6 chars) *</label>
+                    <input type="password" id="admin-new-pw" required minlength="6" class="linear-input w-full p-2.5 text-sm rounded">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Enter your admin password *</label>
+                    <input type="password" id="admin-confirm-pw" required class="linear-input w-full p-2.5 text-sm rounded">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeAdminResetModal()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
+                    <button type="submit" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold">Reset Password</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -762,6 +784,7 @@
         let activeJobStatus = null;
         let pendingAction = null;
         let targetDeleteJobId = null;
+        let targetResetUsername = null;
         let currentMasterTab = 'ALL';
         let rawMasterJobs = [];
         let allScans = [];
@@ -1353,6 +1376,46 @@
             updateBulkStatusButtonState();
         }
 
+        // Admin Reset User Password Functions
+        function promptAdminResetPassword(username) {
+            targetResetUsername = username;
+            document.getElementById('admin-reset-pw-subtitle').innerText = `Enter a new temporary password for user '${username}'.`;
+            document.getElementById('admin-new-pw').value = "";
+            document.getElementById('admin-confirm-pw').value = "";
+            document.getElementById('admin-reset-pw-modal').classList.remove('hidden');
+        }
+
+        function closeAdminResetModal() {
+            targetResetUsername = null;
+            document.getElementById('admin-reset-pw-modal').classList.add('hidden');
+        }
+
+        async function submitAdminResetPassword(e) {
+            e.preventDefault();
+            if (!targetResetUsername) return;
+
+            const newPassword = document.getElementById('admin-new-pw').value;
+            const adminPassword = document.getElementById('admin-confirm-pw').value;
+
+            const body = new FormData();
+            body.append("new_password", newPassword);
+            body.append("admin_password", adminPassword);
+
+            const res = await fetch(`/api/users/${targetResetUsername}/reset-password`, {
+                method: 'POST',
+                body: body
+            });
+
+            if (res.ok) {
+                closeAdminResetModal();
+                showCustomAlert(`Password for user '${targetResetUsername}' reset successfully.`);
+                openUserModal();
+            } else {
+                const err = await res.json();
+                showCustomAlert(err.detail || "Failed to reset password.");
+            }
+        }
+
         async function handleScan(e) {
             e.preventDefault();
             const input = document.getElementById('barcode-input');
@@ -1591,6 +1654,7 @@
                                class="rounded bg-[#090a0d] border-white/[0.1] text-[#5e6ad2] cursor-pointer w-4 h-4">
                     </td>
                     <td class="p-3 text-right">
+                        <button onclick="promptAdminResetPassword('${u.username}')" class="text-indigo-400 hover:text-indigo-300 font-medium text-xs mr-2">Reset PW</button>
                         ${u.username !== currentUser.username ? `
                             <button onclick="requestUserDelete('${u.username}')" class="text-red-400 hover:text-red-300 font-medium text-xs">Delete</button>
                         ` : '<span class="text-xs text-slate-500 font-mono">Current</span>'}
