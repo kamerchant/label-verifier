@@ -29,9 +29,15 @@ def init_db():
                     role VARCHAR(50) NOT NULL DEFAULT 'QC Incharge',
                     must_change_password BOOLEAN DEFAULT TRUE,
                     can_upload BOOLEAN DEFAULT FALSE,
+                    is_active BOOLEAN DEFAULT TRUE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
+            # Safely add is_active column if upgrading existing database
+            cur.execute("""
+                ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+            """)
+
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS job_cards (
                     run_id SERIAL PRIMARY KEY,
@@ -77,10 +83,10 @@ def init_db():
             # Automatically ensure admin user exists and reset password to 'admin123'
             admin_hash = hash_password("admin123")
             cur.execute("""
-                INSERT INTO users (username, password_hash, role, must_change_password, can_upload)
-                VALUES ('admin', %s, 'admin', FALSE, TRUE)
+                INSERT INTO users (username, password_hash, role, must_change_password, can_upload, is_active)
+                VALUES ('admin', %s, 'admin', FALSE, TRUE, TRUE)
                 ON CONFLICT (username) DO UPDATE 
-                SET password_hash = %s, role = 'admin', can_upload = TRUE;
+                SET password_hash = %s, role = 'admin', can_upload = TRUE, is_active = TRUE;
             """, (admin_hash, admin_hash))
 
             conn.commit()

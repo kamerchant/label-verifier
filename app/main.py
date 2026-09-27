@@ -1,5 +1,6 @@
 import io
 import os
+import re
 import csv
 import json
 import codecs
@@ -37,6 +38,17 @@ async def get_logo():
 def startup():
     init_db()
 
+# --- Password Validation Helper ---
+def validate_password_strength(password: str):
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters long.")
+    if not re.search(r"[A-Z]", password):
+        raise HTTPException(status_code=400, detail="Password must include at least one uppercase letter.")
+    if not re.search(r"[a-z]", password):
+        raise HTTPException(status_code=400, detail="Password must include at least one lowercase letter.")
+    if not re.search(r"[0-9]", password):
+        raise HTTPException(status_code=400, detail="Password must include at least one number.")
+
 # --- Auth Helpers ---
 def get_current_user(request: Request):
     token = request.cookies.get("qc_session")
@@ -44,6 +56,16 @@ def get_current_user(request: Request):
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
         data = signer.loads(token, max_age=86400 * 7)
+        # Verify user is still active in DB
+        conn = get_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT is_active FROM users WHERE username = %s", (data["username"],))
+                row = cur.fetchone()
+                if not row or not row[0]:
+                    raise HTTPException(status_code=403, detail="Account is suspended or deactivated.")
+        finally:
+            release_connection(conn)
         return data
     except (BadSignature, SignatureExpired):
         raise HTTPException(status_code=401, detail="Session expired or invalid")
@@ -76,10 +98,13 @@ def login(response: Response, username: str = Form(...), password: str = Form(..
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT password_hash, role, must_change_password, can_upload FROM users WHERE username = %s", (username,))
+            cur.execute("SELECT password_hash, role, must_change_password, can_upload, is_active FROM users WHERE username = %s", (username,))
             user = cur.fetchone()
             if not user or not verify_password(password, user[0]):
                 raise HTTPException(status_code=400, detail="Invalid username or password")
+            
+            if not user[4]:
+                raise HTTPException(status_code=403, detail="This account has been suspended. Please contact your administrator.")
 
             token = signer.dumps({"username": username, "role": user[1]})
             response.set_cookie(
@@ -135,8 +160,7 @@ def change_password(
     new_password: str = Form(...),
     user: dict = Depends(get_current_user)
 ):
-    if len(new_password) < 6:
-        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    validate_password_strength(new_password)
 
     conn = get_connection()
     try:
@@ -162,14 +186,15 @@ def list_users(admin: dict = Depends(require_admin)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT username, role, must_change_password, can_upload, created_at FROM users ORDER BY created_at ASC")
+            cur.execute("SELECT username, role, must_change_password, can_upload, is_active, created_at FROM users ORDER BY created_at ASC")
             rows = cur.fetchall()
             return [{
                 "username": r[0],
                 "role": r[1],
                 "must_change_password": r[2],
                 "can_upload": r[3],
-                "created_at": r[4].strftime("%Y-%m-%d %H:%M")
+                "is_active": r[4] if r[4] is not None else True,
+                "created_at": r[5].strftime("%Y-%m-%d %H:%M")
             } for r in rows]
     finally:
         release_connection(conn)
@@ -183,8 +208,7 @@ def create_user(
     admin: dict = Depends(require_admin)
 ):
     username = username.strip().lower()
-    if len(password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    validate_password_strength(password)
 
     conn = get_connection()
     try:
@@ -195,7 +219,7 @@ def create_user(
 
             pw_hash = hash_password(password)
             cur.execute(
-                "INSERT INTO users (username, password_hash, role, must_change_password, can_upload) VALUES (%s, %s, %s, TRUE, %s)",
+                "INSERT INTO users (username, password_hash, role, must_change_password, can_upload, is_active) VALUES (%s, %s, %s, TRUE, %s, TRUE)",
                 (username, pw_hash, role, can_upload)
             )
             conn.commit()
@@ -210,19 +234,16 @@ def admin_reset_user_password(
     admin_password: str = Form(...),
     admin: dict = Depends(require_admin)
 ):
-    if len(new_password) < 6:
-        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    validate_password_strength(new_password)
 
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # Verify admin password first
             cur.execute("SELECT password_hash FROM users WHERE username = %s", (admin["username"],))
             admin_row = cur.fetchone()
             if not admin_row or not verify_password(admin_password, admin_row[0]):
                 raise HTTPException(status_code=403, detail="Invalid admin password.")
 
-            # Check if target user exists
             cur.execute("SELECT username FROM users WHERE username = %s", (username,))
             if not cur.fetchone():
                 raise HTTPException(status_code=404, detail="User not found.")
@@ -237,6 +258,24 @@ def admin_reset_user_password(
     finally:
         release_connection(conn)
 
+@app.post("/api/users/{username}/toggle-active")
+def toggle_user_active(
+    username: str,
+    is_active: bool = Form(...),
+    admin: dict = Depends(require_admin)
+):
+    if username == admin["username"] and not is_active:
+        raise HTTPException(status_code=400, detail="Cannot suspend your own admin account.")
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE users SET is_active = %s WHERE username = %s", (is_active, username))
+            conn.commit()
+            return {"status": "success"}
+    finally:
+        release_connection(conn)
+
 @app.post("/api/users/{username}/toggle-upload")
 def toggle_user_upload(
     username: str,
@@ -247,29 +286,6 @@ def toggle_user_upload(
     try:
         with conn.cursor() as cur:
             cur.execute("UPDATE users SET can_upload = %s WHERE username = %s", (can_upload, username))
-            conn.commit()
-            return {"status": "success"}
-    finally:
-        release_connection(conn)
-
-@app.post("/api/users/{username}/delete")
-def delete_user_with_auth(
-    username: str,
-    admin_password: str = Form(...),
-    admin: dict = Depends(require_admin)
-):
-    if username == admin["username"]:
-        raise HTTPException(status_code=400, detail="Cannot delete your own account.")
-
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("SELECT password_hash FROM users WHERE username = %s", (admin["username"],))
-            row = cur.fetchone()
-            if not row or not verify_password(admin_password, row[0]):
-                raise HTTPException(status_code=403, detail="Invalid admin password. User deletion aborted.")
-
-            cur.execute("DELETE FROM users WHERE username = %s", (username,))
             conn.commit()
             return {"status": "success"}
     finally:
@@ -377,7 +393,7 @@ def bulk_status_change(
             cur.execute("SELECT password_hash FROM users WHERE username = %s", (admin["username"],))
             row = cur.fetchone()
             if not row or not verify_password(admin_password, row[0]):
-                raise HTTPException(status_code=403, detail="Invalid admin password. Status update denied.")
+                raise HTTPException(status_code=403, detail="Invalid password. Status update denied.")
 
             jc_ids = json.loads(job_card_ids)
             if not jc_ids:
@@ -527,7 +543,7 @@ def soft_delete_job(
             cur.execute("SELECT password_hash FROM users WHERE username = %s", (admin["username"],))
             row = cur.fetchone()
             if not row or not verify_password(admin_password, row[0]):
-                raise HTTPException(status_code=403, detail="Invalid admin password. Deletion aborted.")
+                raise HTTPException(status_code=403, detail="Invalid password. Deletion aborted.")
 
             cur.execute("""
                 UPDATE job_cards 
@@ -597,7 +613,7 @@ def unblock_job(
             cur.execute("SELECT password_hash FROM users WHERE username = %s", (admin["username"],))
             row = cur.fetchone()
             if not row or not verify_password(admin_password, row[0]):
-                raise HTTPException(status_code=403, detail="Invalid admin password. Unblocking denied.")
+                raise HTTPException(status_code=403, detail="Invalid password. Unblocking denied.")
 
             cur.execute("""
                 UPDATE job_cards 
