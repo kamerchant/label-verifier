@@ -311,7 +311,7 @@
                     </button>
                     <button id="job-toggle-btn" onclick="handleJobStatusToggle()" disabled 
                             class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded opacity-30 pointer-events-none transition-all min-h-[44px] font-semibold shadow-sm whitespace-nowrap">
-                        Complete Job
+                        Job Completed
                     </button>
                 </div>
             </div>
@@ -975,7 +975,7 @@
             document.getElementById('kpi-pending').innerText = pending.toLocaleString();
 
             if (status === 'ACTIVE') {
-                toggleBtn.innerText = "Complete Job";
+                toggleBtn.innerText = "Job Completed";
                 toggleBtn.className = "bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded transition-all min-h-[44px] font-semibold shadow-sm whitespace-nowrap";
                 toggleBtn.disabled = false;
                 toggleBtn.classList.remove('opacity-30', 'pointer-events-none');
@@ -1015,7 +1015,7 @@
                 if (!confirmed) return;
                 const res = await fetch(`/api/jobs/${activeJobId}/complete`, { method: 'POST' });
                 if (res.ok) {
-                    showCustomAlert(`Job Card ${activeJobId} completed.`);
+                    showCustomAlert(`Job Card ${activeJobId} completed.`, "Success");
                     selectJob(activeJobId, escape(activeJobDesc), 'COMPLETED', 0, 0);
                 } else {
                     const err = await res.json();
