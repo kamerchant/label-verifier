@@ -273,7 +273,7 @@
 
         <div class="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar w-full sm:w-auto py-1 sm:py-0">
             <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-3 py-1.5 rounded text-xs sm:text-sm font-semibold whitespace-nowrap min-h-[38px] flex items-center">Create Job</button>
-            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center">View All Jobs</button>
+            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center">Job Control Center</button>
             <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center">User Admin</button>
             <button onclick="toggleModal('pw-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center">Change Password</button>
             <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-3 py-1.5 rounded text-xs sm:text-sm font-medium transition-colors whitespace-nowrap min-h-[38px] flex items-center">Logout</button>
@@ -907,7 +907,7 @@
             activeJobId = id;
             activeJobDesc = unescape(descEncoded);
             activeJobStatus = status;
-            allScans = []; // Reset stream list for newly selected job
+            allScans = [];
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = id;
@@ -955,7 +955,6 @@
                 }
             }
 
-            // Fetch prior scan logs for this job if any exist
             await loadJobScanStream(id);
             resetInput();
         }
@@ -970,7 +969,7 @@
                         result: l.result,
                         time: l.time,
                         user: l.user
-                    })).reverse(); // Oldest to newest chronological stream
+                    })).reverse();
                     renderStreamTable();
                 }
             } catch (e) {
