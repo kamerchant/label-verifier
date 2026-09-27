@@ -445,7 +445,7 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Admin Password *</label>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Enter password *</label>
                     <input type="password" id="bulk-status-admin-pass" required class="linear-input w-full p-2.5 text-sm rounded focus:border-amber-400">
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
@@ -482,11 +482,11 @@
 
     <div id="auth-confirm-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[70]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-amber-500/25 shadow-2xl">
-            <h3 id="auth-confirm-title" class="text-base font-bold mb-1 text-amber-400">Admin Authorization Required</h3>
-            <p id="auth-confirm-subtitle" class="text-xs text-slate-400 mb-4">Enter administrator password to proceed.</p>
+            <h3 id="auth-confirm-title" class="text-base font-bold mb-1 text-amber-400">Authorization Required</h3>
+            <p id="auth-confirm-subtitle" class="text-xs text-slate-400 mb-4">Enter password to proceed.</p>
             <form onsubmit="executeAuthorizedAction(event)" class="space-y-3.5">
                 <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Admin Password</label>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Enter password</label>
                     <input type="password" id="auth-admin-pass" required class="linear-input w-full p-2.5 text-sm rounded focus:border-amber-400">
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
@@ -511,7 +511,7 @@
                               class="linear-input w-full p-2.5 text-sm rounded focus:border-red-400 placeholder-slate-600"></textarea>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Admin Password *</label>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Enter password *</label>
                     <input type="password" id="job-delete-pass" required class="linear-input w-full p-2.5 text-sm rounded focus:border-red-400">
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
@@ -528,7 +528,7 @@
             <p id="bulk-complete-subtitle" class="text-xs text-slate-300 mb-4 leading-relaxed"></p>
             <form onsubmit="submitBulkComplete(event)" class="space-y-3.5">
                 <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Admin Password *</label>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Enter password *</label>
                     <input type="password" id="bulk-admin-pass" required class="linear-input w-full p-2.5 text-sm rounded focus:border-amber-400">
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
@@ -1043,8 +1043,8 @@
                 triggerAuthModal(
                     'UNBLOCK', 
                     activeJobId, 
-                    'Admin Authorization: Reactivate Job', 
-                    `Enter administrator password to unblock Job Card ${activeJobId} and restore remaining codes.`
+                    'Authorization: Reactivate Job', 
+                    `Enter password to unblock Job Card ${activeJobId} and restore remaining codes.`
                 );
             }
         }
@@ -1096,7 +1096,7 @@
         function requestJobDelete(jobCardId) {
             targetDeleteJobId = jobCardId;
             document.getElementById('job-delete-subtitle').innerText = 
-                `Provide a reason and admin password to move Job Card '${jobCardId}' to deleted status.`;
+                `Provide a reason and password to move Job Card '${jobCardId}' to deleted status.`;
             document.getElementById('job-delete-reason').value = "";
             document.getElementById('job-delete-pass').value = "";
             document.getElementById('job-delete-modal').classList.remove('hidden');
@@ -1200,7 +1200,7 @@
                 return;
             }
             document.getElementById('bulk-status-subtitle').innerText = 
-                `You are about to update the status for ${selected.length} selected job(s). Enter admin password to confirm.`;
+                `You are about to update the status for ${selected.length} selected job(s). Enter password to confirm.`;
             document.getElementById('bulk-status-admin-pass').value = "";
             document.getElementById('bulk-status-modal').classList.remove('hidden');
         }
@@ -1619,7 +1619,7 @@
                 'DELETE_USER',
                 username,
                 'Authorize User Deletion',
-                `Are you sure you want to delete user '${username}'? Re-enter administrator password to confirm.`
+                `Are you sure you want to delete user '${username}'? Re-enter password to confirm.`
             );
         }
 
