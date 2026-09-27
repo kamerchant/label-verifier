@@ -430,10 +430,10 @@
         </div>
     </div>
 
-    <!-- Bulk Status Change Modal -->
+    <!-- Update Job Status Modal -->
     <div id="bulk-status-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[70]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-amber-500/25 shadow-2xl">
-            <h3 class="text-base font-bold mb-1 text-amber-400">Bulk Job Status Update</h3>
+            <h3 class="text-base font-bold mb-1 text-amber-400">Update Job Status</h3>
             <p id="bulk-status-subtitle" class="text-xs text-slate-300 mb-4 leading-relaxed"></p>
             <form onsubmit="submitBulkStatusChange(event)" class="space-y-3.5">
                 <div>
@@ -522,6 +522,23 @@
         </div>
     </div>
 
+    <div id="bulk-complete-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[70]">
+        <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-amber-500/25 shadow-2xl">
+            <h3 class="text-base font-bold mb-1 text-amber-400">Complete Selected Jobs</h3>
+            <p id="bulk-complete-subtitle" class="text-xs text-slate-300 mb-4 leading-relaxed"></p>
+            <form onsubmit="submitBulkComplete(event)" class="space-y-3.5">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Admin Password *</label>
+                    <input type="password" id="bulk-admin-pass" required class="linear-input w-full p-2.5 text-sm rounded focus:border-amber-400">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeBulkCompleteModal()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
+                    <button type="submit" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-medium">Confirm & Complete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="deleted-dup-warning-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[70]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full border border-amber-500/30 shadow-2xl">
             <h3 class="text-base font-bold mb-1 text-amber-400">Warning: Reused Serial Codes Detected</h3>
@@ -587,7 +604,7 @@
                     <p class="text-xs text-slate-400">View live status across active, inactive, completed, or deleted historical jobs</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button onclick="promptBulkStatusChange()" class="linear-button-primary px-3 py-1.5 text-xs rounded font-medium">Bulk Status Update</button>
+                    <button id="btn-bulk-status" onclick="promptBulkStatusChange()" disabled class="linear-button-primary px-3 py-1.5 text-xs rounded font-medium opacity-30 pointer-events-none transition-opacity">Update Job Status</button>
                     <button onclick="toggleModal('master-jobs-modal')" class="linear-button-secondary px-3.5 py-1.5 text-xs rounded font-medium">Close</button>
                 </div>
             </div>
@@ -1161,6 +1178,19 @@
         function toggleSelectAllJobs(masterCheckbox) {
             const checkboxes = document.querySelectorAll('.job-select-checkbox');
             checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
+            updateBulkStatusButtonState();
+        }
+
+        function updateBulkStatusButtonState() {
+            const selectedCount = document.querySelectorAll('.job-select-checkbox:checked').length;
+            const btn = document.getElementById('btn-bulk-status');
+            if (selectedCount > 0) {
+                btn.disabled = false;
+                btn.classList.remove('opacity-30', 'pointer-events-none');
+            } else {
+                btn.disabled = true;
+                btn.classList.add('opacity-30', 'pointer-events-none');
+            }
         }
 
         function promptBulkStatusChange() {
@@ -1204,7 +1234,7 @@
                 loadMasterJobs(currentMasterTab);
             } else {
                 const err = await res.json();
-                showCustomAlert(err.detail || "Bulk status update failed.");
+                showCustomAlert(err.detail || "Job status update failed.");
             }
         }
 
@@ -1248,6 +1278,7 @@
             const tbody = document.getElementById('master-jobs-rows');
             if (filtered.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500 italic text-sm">No job cards found matching '${query}'</td></tr>`;
+                updateBulkStatusButtonState();
                 return;
             }
 
@@ -1269,7 +1300,7 @@
                 return `
                     <tr class="hover:bg-white/[0.02]">
                         <td class="p-3 text-center">
-                            ${j.status !== 'DELETED' ? `<input type="checkbox" value="${j.job_card_id}" class="job-select-checkbox rounded bg-[#090a0d] border-white/[0.1] text-[#5e6ad2] w-4 h-4 cursor-pointer">` : ''}
+                            ${j.status !== 'DELETED' ? `<input type="checkbox" value="${j.job_card_id}" onchange="updateBulkStatusButtonState()" class="job-select-checkbox rounded bg-[#090a0d] border-white/[0.1] text-[#5e6ad2] w-4 h-4 cursor-pointer">` : ''}
                         </td>
                         <td class="p-3 font-mono font-bold text-slate-100">
                             <div class="inline-flex items-center gap-1.5">
@@ -1299,6 +1330,7 @@
                     </tr>
                 `;
             }).join('');
+            updateBulkStatusButtonState();
         }
 
         async function handleScan(e) {
