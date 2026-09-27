@@ -317,19 +317,19 @@
             </div>
         </div>
 
-        <!-- Metric Figures -->
+        <!-- Metric Figures (Centered) -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-            <div class="linear-card p-3 sm:p-4 rounded">
+            <div class="linear-card p-3 sm:p-4 rounded text-center flex flex-col items-center justify-center">
                 <span class="text-xs text-slate-400 block font-medium">Total Pool</span>
                 <span id="kpi-total" class="text-xl sm:text-3xl font-bold font-mono text-white mt-1 block">0</span>
                 <span class="text-[11px] sm:text-xs text-slate-500 mt-1 block truncate">Assigned batch pool</span>
             </div>
-            <div class="linear-card p-3 sm:p-4 rounded">
+            <div class="linear-card p-3 sm:p-4 rounded text-center flex flex-col items-center justify-center">
                 <span class="text-xs text-[#2ed573] block font-medium">Verified (Pass)</span>
                 <span id="kpi-consumed" class="text-xl sm:text-3xl font-bold font-mono text-[#2ed573] mt-1 block">0</span>
                 <span class="text-[11px] sm:text-xs text-slate-500 mt-1 block truncate">Consumed serials</span>
             </div>
-            <div class="linear-card p-3 sm:p-4 rounded">
+            <div class="linear-card p-3 sm:p-4 rounded text-center flex flex-col items-center justify-center">
                 <span class="text-xs text-amber-400 block font-medium">Remaining Codes</span>
                 <span id="kpi-pending" class="text-xl sm:text-3xl font-bold font-mono text-slate-300 mt-1 block">0</span>
                 <span class="text-[11px] sm:text-xs text-slate-500 mt-1 block truncate">Remaining in feed</span>
@@ -973,7 +973,6 @@
             const barcodeInput = document.getElementById('barcode-input');
             const verifyBtn = document.getElementById('verify-btn');
 
-            // Enable scanning and control buttons now that a job is selected
             rptBtn.disabled = false;
             rptBtn.classList.remove('opacity-30', 'pointer-events-none');
             
@@ -998,7 +997,6 @@
                 toggleBtn.disabled = false;
                 toggleBtn.classList.remove('opacity-30', 'pointer-events-none');
             } else {
-                // If job is INACTIVE or COMPLETED, do not show Reactivate button on main screen
                 toggleBtn.innerText = status;
                 toggleBtn.className = "linear-button-secondary text-slate-400 text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded min-h-[44px] font-medium shadow-sm whitespace-nowrap opacity-50 pointer-events-none";
                 toggleBtn.disabled = true;
@@ -1639,7 +1637,9 @@
 
         function resetInput() {
             const input = document.getElementById('barcode-input');
-            input.focus();
+            if (!input.disabled) {
+                input.focus();
+            }
         }
 
         document.addEventListener('click', (e) => {
