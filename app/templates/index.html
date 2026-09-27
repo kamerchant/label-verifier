@@ -15,17 +15,21 @@
                 font-size: 18px;
             }
         }
+
+        /* --- THEME 1: Titanium Obsidian (Default Dark) --- */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", sans-serif;
-            background-color: #0d0e11; /* Linear Matte Void */
+            background-color: #0d0e11;
             color: #d0d6e0;
             letter-spacing: -0.01em;
             font-size: 1rem;
             -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.2s ease, color 0.2s ease;
         }
         .linear-card {
             background-color: #12141a;
             border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: background-color 0.2s ease, border-color 0.2s ease;
         }
         .linear-subcard {
             background-color: #161821;
@@ -77,11 +81,88 @@
             border: 1px solid rgba(255, 165, 2, 0.3);
         }
 
+        /* --- THEME 2: Parchment (Warm Paper Neutral) --- */
+        html.theme-parchment body {
+            background-color: #f7f5f0;
+            color: #2c3531;
+        }
+        html.theme-parchment .linear-card {
+            background-color: #ffffff;
+            border: 1px solid #e3decb;
+            box-shadow: 0 2px 4px 0 rgba(44, 53, 49, 0.04);
+        }
+        html.theme-parchment .linear-subcard {
+            background-color: #f0ece1;
+            border: 1px solid #d4cebc;
+        }
+        html.theme-parchment .linear-input {
+            background-color: #fcfbfa;
+            border: 1px solid #d4cebc;
+            color: #1a211e;
+        }
+        html.theme-parchment .linear-input:focus {
+            border-color: #276749;
+            box-shadow: 0 0 0 2px rgba(39, 103, 73, 0.2);
+            outline: none;
+        }
+        html.theme-parchment .linear-button-primary {
+            background-color: #276749;
+            color: #ffffff;
+        }
+        html.theme-parchment .linear-button-primary:hover {
+            background-color: #22543d;
+        }
+        html.theme-parchment .linear-button-secondary {
+            background-color: #f0ece1;
+            border: 1px solid #d4cebc;
+            color: #3d4a45;
+        }
+        html.theme-parchment .linear-button-secondary:hover {
+            background-color: #e8e2d2;
+            color: #1a211e;
+        }
+        html.theme-parchment .linear-badge-pass {
+            background-color: rgba(47, 133, 90, 0.12);
+            color: #2f855a;
+            border: 1px solid rgba(47, 133, 90, 0.3);
+        }
+        html.theme-parchment .linear-badge-fail {
+            background-color: rgba(197, 48, 48, 0.12);
+            color: #c53030;
+            border: 1px solid rgba(197, 48, 48, 0.3);
+        }
+        html.theme-parchment .linear-badge-warn {
+            background-color: rgba(214, 158, 46, 0.15);
+            color: #b7791f;
+            border: 1px solid rgba(214, 158, 46, 0.3);
+        }
+        html.theme-parchment header, html.theme-parchment footer {
+            background-color: #f7f5f0 !important;
+            border-color: #e3decb !important;
+        }
+        html.theme-parchment header span, html.theme-parchment h1, html.theme-parchment footer span {
+            color: #1a211e !important;
+        }
+        html.theme-parchment table th {
+            background-color: #f0ece1 !important;
+            color: #3d4a45 !important;
+            border-color: #e3decb !important;
+        }
+        html.theme-parchment table td {
+            border-color: #e3decb !important;
+            color: #2c3531 !important;
+        }
+
         /* Status Bar Dynamic Color States */
         .status-state-black {
             background-color: #000000 !important;
             color: #f8fafc !important;
             border-left: 3px solid #5e6ad2;
+        }
+        html.theme-parchment .status-state-black {
+            background-color: #1a211e !important;
+            color: #f7f5f0 !important;
+            border-left: 3px solid #276749;
         }
         .status-state-yellow {
             background-color: #fbbf24 !important;
@@ -95,11 +176,21 @@
             font-weight: 700;
             border-left: 3px solid #10b981;
         }
+        html.theme-parchment .status-state-green {
+            background-color: #2f855a !important;
+            color: #ffffff !important;
+            border-left: 3px solid #22543d;
+        }
         .status-state-red {
             background-color: #ff4757 !important;
             color: #000000 !important;
             font-weight: 700;
             border-left: 3px solid #991b1b;
+        }
+        html.theme-parchment .status-state-red {
+            background-color: #c53030 !important;
+            color: #ffffff !important;
+            border-left: 3px solid #9b2c2c;
         }
 
         .no-scrollbar::-webkit-scrollbar {
@@ -275,6 +366,9 @@
             <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-3 py-1.5 rounded text-xs sm:text-sm font-semibold whitespace-nowrap min-h-[38px] flex items-center">Create Job</button>
             <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center">Job Control Center</button>
             <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center">User Admin</button>
+            <button onclick="toggleTheme()" id="theme-toggle-btn" class="linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center gap-1.5" title="Switch Theme">
+                <span id="theme-icon">☀️</span> <span id="theme-text">Parchment Theme</span>
+            </button>
             <button onclick="toggleModal('pw-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center">Change Password</button>
             <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-3 py-1.5 rounded text-xs sm:text-sm font-medium transition-colors whitespace-nowrap min-h-[38px] flex items-center">Logout</button>
         </div>
@@ -287,7 +381,7 @@
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
-                    <h1 id="active-title-card" class="text-xl sm:text-3xl font-extrabold tracking-tight text-white font-mono truncate">Job Card: None</h1>
+                    <h1 id="active-title-card" class="text-xl sm:text-3xl font-extrabold tracking-tight font-mono truncate">Job Card: None</h1>
                 </div>
                 <p id="header-job-desc" class="text-xs sm:text-sm text-slate-400 mt-1 truncate">Search active production jobs using the search field.</p>
             </div>
@@ -321,7 +415,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
             <div class="linear-card p-3 sm:p-4 rounded text-center flex flex-col items-center justify-center">
                 <span class="text-xs text-slate-400 block font-medium">Total Pool</span>
-                <span id="kpi-total" class="text-xl sm:text-3xl font-bold font-mono text-white mt-1 block">0</span>
+                <span id="kpi-total" class="text-xl sm:text-3xl font-bold font-mono mt-1 block">0</span>
                 <span class="text-[11px] sm:text-xs text-slate-500 mt-1 block truncate">Assigned batch pool</span>
             </div>
             <div class="linear-card p-3 sm:p-4 rounded text-center flex flex-col items-center justify-center">
@@ -331,7 +425,7 @@
             </div>
             <div class="linear-card p-3 sm:p-4 rounded text-center flex flex-col items-center justify-center">
                 <span class="text-xs text-amber-400 block font-medium">Remaining Codes</span>
-                <span id="kpi-pending" class="text-xl sm:text-3xl font-bold font-mono text-slate-300 mt-1 block">0</span>
+                <span id="kpi-pending" class="text-xl sm:text-3xl font-bold font-mono mt-1 block">0</span>
                 <span class="text-[11px] sm:text-xs text-slate-500 mt-1 block truncate">Remaining in feed</span>
             </div>
         </div>
@@ -367,7 +461,7 @@
         <!-- Verification Stream Table Container -->
         <div class="linear-card rounded overflow-hidden flex-1 flex flex-col min-h-[350px]">
             <div class="px-3.5 sm:px-5 py-3 sm:py-4 border-b border-white/[0.08] flex items-center justify-between text-sm shrink-0">
-                <div class="flex items-center gap-2 sm:gap-3 font-semibold text-slate-200">
+                <div class="flex items-center gap-2 sm:gap-3 font-semibold">
                     <span class="text-sm sm:text-lg">Verification Stream</span>
                     <span class="text-slate-600 hidden sm:inline">|</span>
                     <span class="text-xs text-slate-400 font-mono font-normal hidden sm:inline">All codes checked in this job card</span>
@@ -397,7 +491,7 @@
     </main>
 
     <!-- Footer Information Bar -->
-    <footer class="border-t border-white/[0.08] px-3 sm:px-6 py-2.5 sm:py-3 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-1">
+    <footer class="border-t px-3 sm:px-6 py-2.5 sm:py-3 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-1">
         <div class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-[#2ed573]"></span>
             <span>Online</span>
@@ -412,7 +506,7 @@
     <!-- Custom Alert Modal -->
     <div id="custom-alert-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/35 shadow-2xl text-center">
-            <h3 id="custom-alert-title" class="text-base font-bold mb-1 text-white">Please Verify!</h3>
+            <h3 id="custom-alert-title" class="text-base font-bold mb-1">Please Verify!</h3>
             <p id="custom-alert-msg" class="text-xs text-slate-300 mb-5 leading-relaxed"></p>
             <button type="button" onclick="closeCustomAlert()" class="linear-button-primary w-full py-2.5 rounded text-sm font-semibold min-h-[40px]">OK</button>
         </div>
@@ -433,7 +527,7 @@
     <!-- Admin Reset Password Modal -->
     <div id="admin-reset-pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[80]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/30 shadow-2xl">
-            <h3 class="text-base font-bold mb-1 text-white">Reset Operator Password</h3>
+            <h3 class="text-base font-bold mb-1">Reset Operator Password</h3>
             <p id="admin-reset-pw-subtitle" class="text-xs text-slate-400 mb-4">Enter a new temporary password for this user (Min 8 chars, 1 uppercase, 1 lowercase, 1 number).</p>
             <form onsubmit="submitAdminResetPassword(event)" class="space-y-3.5">
                 <div>
@@ -460,7 +554,7 @@
             <form onsubmit="submitBulkStatusChange(event)" class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">New Status *</label>
-                    <select id="bulk-target-status" class="linear-input w-full p-2.5 text-xs rounded text-slate-200">
+                    <select id="bulk-target-status" class="linear-input w-full p-2.5 text-xs rounded">
                         <option value="INACTIVE">INACTIVE (Disable Live Verification)</option>
                         <option value="ACTIVE">ACTIVE</option>
                         <option value="COMPLETED">COMPLETED</option>
@@ -485,7 +579,7 @@
                 <div class="bg-white p-1 rounded shrink-0">
                     <img src="/static/logo.jpg" alt="CCL Logo" class="h-6 w-auto object-contain block" onerror="this.onerror=null; this.src='/logo.jpg';">
                 </div>
-                <span class="font-bold text-white text-base">CCL ME - PK - Variable Data Verification</span>
+                <span class="font-bold text-base">CCL ME - PK - Variable Data Verification</span>
             </div>
             <p class="text-xs text-slate-400 mb-4">Sign in to initialize serialization terminal</p>
             <form onsubmit="handleLogin(event)" class="space-y-3.5">
@@ -521,7 +615,7 @@
 
     <div id="pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full shadow-2xl">
-            <h3 id="pw-title" class="text-base font-bold mb-1 text-white">Change Password</h3>
+            <h3 id="pw-title" class="text-base font-bold mb-1">Change Password</h3>
             <p id="pw-subtitle" class="text-xs text-slate-400 mb-4">Enter current and new credentials</p>
             <form onsubmit="handleChangePassword(event)" class="space-y-3.5">
                 <div>
@@ -542,7 +636,7 @@
 
     <div id="upload-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full shadow-2xl">
-            <h3 class="text-base font-bold mb-3 text-white">Create New Job & Ingest Serial Pool</h3>
+            <h3 class="text-base font-bold mb-3">Create New Job & Ingest Serial Pool</h3>
             <form id="create-job-form" onsubmit="uploadJob(event, false)" class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Job Card # *</label>
@@ -569,7 +663,7 @@
         <div class="linear-card p-4 sm:p-6 rounded-lg max-w-5xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="flex justify-between items-center mb-3 border-b border-white/[0.08] pb-3">
                 <div>
-                    <h3 class="text-base font-bold text-white">All Jobs Status Report</h3>
+                    <h3 class="text-base font-bold">All Jobs Status Report</h3>
                     <p class="text-xs text-slate-400">View live status across active, inactive, completed, or deleted historical jobs</p>
                 </div>
                 <div class="flex items-center gap-2">
@@ -592,10 +686,10 @@
                 </div>
             </div>
 
-            <div class="flex-1 overflow-y-auto border border-white/[0.08] rounded">
+            <div class="flex-1 overflow-y-auto border rounded">
                 <table class="w-full text-left text-sm">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-xs text-slate-400 font-semibold bg-[#161821]">
+                        <tr class="border-b text-xs font-semibold">
                             <th class="p-3 w-10 text-center"><input type="checkbox" id="select-all-jobs" onclick="toggleSelectAllJobs(this)"></th>
                             <th class="p-3">Job Card</th>
                             <th class="p-3">Description</th>
@@ -605,7 +699,7 @@
                             <th class="p-3 text-center">Action</th>
                         </tr>
                     </thead>
-                    <tbody id="master-jobs-rows" class="divide-y divide-white/[0.04]"></tbody>
+                    <tbody id="master-jobs-rows" class="divide-y"></tbody>
                 </table>
             </div>
         </div>
@@ -613,8 +707,8 @@
 
     <div id="user-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
         <div class="linear-card p-4 sm:p-6 rounded-lg max-w-xl w-full shadow-2xl flex flex-col max-h-[92vh]">
-            <div class="flex justify-between items-center mb-3 pb-2 border-b border-white/[0.08]">
-                <h3 class="text-base font-bold text-white">Operator Permissions</h3>
+            <div class="flex justify-between items-center mb-3 pb-2 border-b">
+                <h3 class="text-base font-bold">Operator Permissions</h3>
                 <button onclick="toggleModal('user-modal')" class="text-slate-400 hover:text-white text-sm">✕</button>
             </div>
             
@@ -622,30 +716,30 @@
                 <div class="grid grid-cols-3 gap-2">
                     <input type="text" id="new-user-name" placeholder="Username" required class="linear-input p-2 text-xs rounded">
                     <input type="password" id="new-user-pass" placeholder="Password" title="Minimum 8 characters, at least 1 uppercase, 1 lowercase, and 1 number." required class="linear-input p-2 text-xs rounded">
-                    <select id="new-user-role" class="linear-input p-2 text-xs rounded text-slate-200">
+                    <select id="new-user-role" class="linear-input p-2 text-xs rounded">
                         <option value="QC Incharge">QC Incharge</option>
                         <option value="admin">Admin</option>
                     </select>
                 </div>
-                <div class="flex justify-between items-center pt-2 border-t border-white/[0.06]">
-                    <label class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
-                        <input type="checkbox" id="new-user-can-upload" class="rounded bg-[#090a0d] border-white/[0.1] text-[#5e6ad2]">
+                <div class="flex justify-between items-center pt-2 border-t">
+                    <label class="flex items-center gap-1.5 text-xs cursor-pointer">
+                        <input type="checkbox" id="new-user-can-upload" class="rounded">
                         <span>Allow creating new job cards</span>
                     </label>
                     <button type="submit" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold">Create User</button>
                 </div>
             </form>
 
-            <div class="max-h-60 overflow-y-auto text-sm border border-white/[0.08] rounded">
+            <div class="max-h-60 overflow-y-auto text-sm border rounded">
                 <table class="w-full text-left">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-xs text-slate-400 bg-[#161821]">
+                        <tr class="border-b text-xs">
                             <th class="p-3">User / Role</th>
                             <th class="p-3 text-center">Can Create Jobs?</th>
                             <th class="p-3 text-right">Action</th>
                         </tr>
                     </thead>
-                    <tbody id="users-table" class="divide-y divide-white/[0.04]"></tbody>
+                    <tbody id="users-table" class="divide-y"></tbody>
                 </table>
             </div>
         </div>
@@ -654,13 +748,13 @@
     <!-- QC Report Modal -->
     <div id="report-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
         <div class="linear-card p-6 rounded-lg max-w-4xl w-full shadow-2xl flex flex-col max-h-[92vh]">
-            <div class="report-header-box flex justify-between items-start mb-3 border-b border-white/[0.08] pb-3">
+            <div class="report-header-box flex justify-between items-start mb-3 border-b pb-3">
                 <div class="flex flex-col">
                     <div class="print-brand-box">
                         <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
                         <span class="print-brand-text">CCL Middle East – Pakistan</span>
                     </div>
-                    <h3 id="report-job-id" class="print-title text-lg font-bold text-white">QC Report</h3>
+                    <h3 id="report-job-id" class="print-title text-lg font-bold">QC Report</h3>
                     <p id="report-desc" class="print-subtitle text-xs text-slate-400">VDV QC Report</p>
                 </div>
                 <div class="flex gap-2 no-print">
@@ -672,17 +766,17 @@
 
             <div id="report-stats" class="grid grid-cols-2 gap-3 mb-3 text-center"></div>
 
-            <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded">
+            <div class="print-table-container flex-1 overflow-y-auto border rounded">
                 <table class="w-full text-left text-sm">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-xs text-slate-400 bg-[#161821]">
+                        <tr class="border-b text-xs">
                             <th class="p-3">Timestamp</th>
                             <th class="p-3">Inspector</th>
                             <th class="p-3">Scanned Barcode</th>
                             <th class="p-3">Evaluation</th>
                         </tr>
                     </thead>
-                    <tbody id="report-log-rows" class="divide-y divide-white/[0.04] font-mono text-xs"></tbody>
+                    <tbody id="report-log-rows" class="divide-y font-mono text-xs"></tbody>
                 </table>
             </div>
             <div id="print-timestamp" class="print-timestamp-footer"></div>
@@ -692,13 +786,13 @@
     <!-- Job Lifecycle Audit Trail Modal -->
     <div id="lifecycle-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
         <div class="linear-card p-6 rounded-lg max-w-3xl w-full shadow-2xl flex flex-col max-h-[85vh]">
-            <div class="report-header-box flex justify-between items-start mb-3 border-b border-white/[0.08] pb-2">
+            <div class="report-header-box flex justify-between items-start mb-3 border-b pb-2">
                 <div>
                     <div class="print-brand-box">
                         <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
                         <span class="print-brand-text">CCL Middle East – Pakistan</span>
                     </div>
-                    <h3 id="lifecycle-job-id" class="print-title text-lg font-bold text-white">Lifecycle Audit Log</h3>
+                    <h3 id="lifecycle-job-id" class="print-title text-lg font-bold">Lifecycle Audit Log</h3>
                     <p id="lifecycle-desc" class="print-subtitle text-xs text-slate-400"></p>
                 </div>
                 <div class="flex gap-2 no-print">
@@ -707,17 +801,17 @@
                 </div>
             </div>
 
-            <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded">
+            <div class="print-table-container flex-1 overflow-y-auto border rounded">
                 <table class="w-full text-left text-sm">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-xs text-slate-400 bg-[#161821]">
+                        <tr class="border-b text-xs">
                             <th class="p-3">Timestamp</th>
                             <th class="p-3">Authorized User</th>
                             <th class="p-3">Action Performed</th>
                             <th class="p-3">Reason / Details</th>
                         </tr>
                     </thead>
-                    <tbody id="lifecycle-log-rows" class="divide-y divide-white/[0.04] font-mono text-xs"></tbody>
+                    <tbody id="lifecycle-log-rows" class="divide-y font-mono text-xs"></tbody>
                 </table>
             </div>
             <div id="print-timestamp-audit" class="print-timestamp-footer"></div>
@@ -739,6 +833,35 @@
         let confirmCallback = null;
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // --- Theme Initializer & Toggle ---
+        function initTheme() {
+            const savedTheme = localStorage.getItem('vdv_theme') || 'obsidian';
+            if (savedTheme === 'parchment') {
+                document.documentElement.classList.add('theme-parchment');
+                document.getElementById('theme-icon').innerText = '🌙';
+                document.getElementById('theme-text').innerText = 'Obsidian Theme';
+            } else {
+                document.documentElement.classList.remove('theme-parchment');
+                document.getElementById('theme-icon').innerText = '☀️';
+                document.getElementById('theme-text').innerText = 'Parchment Theme';
+            }
+        }
+
+        function toggleTheme() {
+            const isParchment = document.documentElement.classList.toggle('theme-parchment');
+            if (isParchment) {
+                localStorage.setItem('vdv_theme', 'parchment');
+                document.getElementById('theme-icon').innerText = '🌙';
+                document.getElementById('theme-text').innerText = 'Obsidian Theme';
+            } else {
+                localStorage.setItem('vdv_theme', 'obsidian');
+                document.getElementById('theme-icon').innerText = '☀️';
+                document.getElementById('theme-text').innerText = 'Parchment Theme';
+            }
+        }
+
+        initTheme();
 
         function showCustomAlert(message, title = "Please Verify!") {
             document.getElementById('custom-alert-title').innerText = title;
@@ -916,9 +1039,9 @@
 
             list.innerHTML = jobs.map(j => `
                 <div onclick="selectJob('${j.id}', '${escape(j.description)}', '${j.status}', ${j.consumed}, ${j.total})" 
-                     class="p-3 hover:bg-white/[0.04] border-b border-white/[0.04] cursor-pointer flex justify-between items-center transition-colors">
+                     class="p-3 hover:bg-white/[0.04] border-b cursor-pointer flex justify-between items-center transition-colors">
                     <div class="min-w-0 pr-2">
-                        <span class="font-bold font-mono text-sm block text-slate-100 truncate">${j.id}</span>
+                        <span class="font-bold font-mono text-sm block truncate">${j.id}</span>
                         ${j.description ? `<span class="text-xs text-slate-400 block truncate max-w-[200px]">${j.description}</span>` : ''}
                     </div>
                     <div class="text-right shrink-0">
@@ -1176,15 +1299,15 @@
                     : `<span class="text-slate-400 block font-mono text-xs">${j.created_at}</span>`;
 
                 return `
-                    <tr class="hover:bg-white/[0.02]">
+                    <tr class="hover:bg-black/[0.02]">
                         <td class="p-3 text-center">
-                            ${j.status !== 'DELETED' ? `<input type="checkbox" value="${j.job_card_id}" onchange="updateBulkStatusButtonState()" class="job-select-checkbox rounded bg-[#090a0d] border-white/[0.1] text-[#5e6ad2] w-4 h-4 cursor-pointer">` : ''}
+                            ${j.status !== 'DELETED' ? `<input type="checkbox" value="${j.job_card_id}" onchange="updateBulkStatusButtonState()" class="job-select-checkbox rounded w-4 h-4 cursor-pointer">` : ''}
                         </td>
-                        <td class="p-3 font-mono font-bold text-slate-100">
+                        <td class="p-3 font-mono font-bold">
                             <div class="inline-flex items-center gap-1.5">
                                 <span class="truncate">${j.job_card_id}</span>
                                 <button onclick="copyJobCardNumber('${j.job_card_id}', this)" title="Copy Job Card Number" class="linear-button-secondary p-1 rounded transition-colors inline-flex items-center justify-center shrink-0">
-                                    <svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                                     </svg>
                                 </button>
@@ -1197,7 +1320,7 @@
                                 ${j.status}
                             </span>
                         </td>
-                        <td class="p-3 text-right font-mono text-sm text-slate-300">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
+                        <td class="p-3 text-right font-mono text-sm">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
                         <td class="p-3 text-center">
                             <span class="text-slate-500 italic text-xs">Active Record</span>
                         </td>
@@ -1239,7 +1362,7 @@
 
             if (res.ok) {
                 closeAdminResetModal();
-                showCustomAlert(`Password for user '${targetResetUsername}' reset successfully.`, "Success");
+                showCustomAlert(`Password for user '${targetResetUsername}' reset successfully.`);
                 openUserModal();
             } else {
                 const err = await res.json();
@@ -1327,12 +1450,12 @@
                 let badge = "linear-badge-pass";
                 if (s.result !== 'PASS') badge = "linear-badge-fail";
                 return `
-                    <tr class="hover:bg-white/[0.02]">
+                    <tr class="hover:bg-black/[0.02]">
                         <td class="px-3 sm:px-5 py-2 sm:py-2.5 text-slate-500 font-mono">#${allScans.length - idx}</td>
-                        <td class="px-3 sm:px-5 py-2 sm:py-2.5 font-bold text-slate-200">${s.code}</td>
+                        <td class="px-3 sm:px-5 py-2 sm:py-2.5 font-bold">${s.code}</td>
                         <td class="px-3 sm:px-5 py-2 sm:py-2.5"><span class="${badge} px-2.5 py-0.5 rounded text-xs font-mono font-bold">${s.result}</span></td>
                         <td class="px-3 sm:px-5 py-2 sm:py-2.5 text-slate-400 font-mono">${s.time}</td>
-                        <td class="px-3 sm:px-5 py-2 sm:py-2.5 font-sans text-slate-300">${s.user}</td>
+                        <td class="px-3 sm:px-5 py-2 sm:py-2.5 font-sans">${s.user}</td>
                     </tr>
                 `;
             }).join('');
@@ -1407,10 +1530,10 @@
                 tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-500 italic">No inspection logs recorded yet</td></tr>`;
             } else {
                 tbody.innerHTML = data.recent_logs.map(log => `
-                    <tr class="hover:bg-white/[0.02]">
+                    <tr class="hover:bg-black/[0.02]">
                         <td class="p-2.5 font-mono text-xs text-slate-400">${log.time}</td>
-                        <td class="p-2.5 font-bold text-slate-300 font-sans">${log.user}</td>
-                        <td class="p-2.5 font-mono text-slate-200">${log.code}</td>
+                        <td class="p-2.5 font-bold font-sans">${log.user}</td>
+                        <td class="p-2.5 font-mono">${log.code}</td>
                         <td class="p-2.5 font-bold font-mono ${log.result === 'PASS' ? 'text-[#2ed573]' : 'text-red-400'}">${log.result}</td>
                     </tr>
                 `).join('');
@@ -1454,11 +1577,11 @@
                     }
 
                     return `
-                        <tr class="hover:bg-white/[0.02]">
+                        <tr class="hover:bg-black/[0.02]">
                             <td class="p-2.5 font-mono text-xs text-slate-400">${log.time}</td>
-                            <td class="p-2.5 font-bold text-slate-200 font-sans">${log.user}</td>
+                            <td class="p-2.5 font-bold font-sans">${log.user}</td>
                             <td class="p-2.5 font-mono ${colorClass}">${label}</td>
-                            <td class="p-2.5 text-slate-400 text-xs font-sans">${log.reason || '-'}</td>
+                            <td class="p-2.5 text-xs font-sans">${log.reason || '-'}</td>
                         </tr>
                     `;
                 }).join('');
@@ -1473,17 +1596,17 @@
             const users = await res.json();
             const container = document.getElementById('users-table');
             container.innerHTML = users.map(u => `
-                <tr class="hover:bg-white/[0.02]">
+                <tr class="hover:bg-black/[0.02]">
                     <td class="p-3 font-sans">
-                        <span class="font-bold text-slate-200">${u.username}</span>
-                        <span class="text-xs uppercase ml-1.5 px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">${u.role}</span>
+                        <span class="font-bold">${u.username}</span>
+                        <span class="text-xs uppercase ml-1.5 px-2 py-0.5 rounded font-mono">${u.role}</span>
                         ${!u.is_active ? '<span class="text-xs text-red-400 font-mono ml-2">(Suspended)</span>' : ''}
                         ${u.must_change_password ? '<span class="text-xs text-amber-400 font-mono block mt-1">(PW Reset Required)</span>' : ''}
                     </td>
                     <td class="p-3 text-center">
                         <input type="checkbox" ${u.can_upload ? 'checked' : ''} 
                                onchange="toggleUploadPermission('${u.username}', this.checked)"
-                               class="rounded bg-[#090a0d] border-white/[0.1] text-[#5e6ad2] cursor-pointer w-4 h-4">
+                               class="rounded cursor-pointer w-4 h-4">
                     </td>
                     <td class="p-3 text-right">
                         ${u.username !== currentUser.username ? `
