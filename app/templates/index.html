@@ -909,7 +909,7 @@
             const jobs = await res.json();
 
             if (jobs.length === 0) {
-                list.innerHTML = `<div class="p-3 text-xs text-slate-500 italic text-center">No active jobs match '${query}'</div>`;
+                list.innerHTML = `<div class="p-3 text-xs text-slate-500 italic text-center">No jobs match '${query}'</div>`;
                 list.classList.remove('hidden');
                 return;
             }
@@ -1098,7 +1098,7 @@
 
             if (res.ok) {
                 closeBulkStatusModal();
-                showCustomAlert("Job statuses updated successfully.");
+                showCustomAlert("Job statuses updated successfully.", "Success");
                 if (activeJobId && selected.includes(activeJobId)) {
                     selectJob(activeJobId, escape(activeJobDesc), targetStatus, 0, 0);
                 }
@@ -1239,7 +1239,7 @@
 
             if (res.ok) {
                 closeAdminResetModal();
-                showCustomAlert(`Password for user '${targetResetUsername}' reset successfully.`);
+                showCustomAlert(`Password for user '${targetResetUsername}' reset successfully.`, "Success");
                 openUserModal();
             } else {
                 const err = await res.json();
@@ -1363,7 +1363,7 @@
             }
 
             if (res.ok) {
-                showCustomAlert(`Job Card ${data.job_card_id} created with ${data.total_extracted.toLocaleString()} serial codes.`);
+                showCustomAlert(`Job Card ${data.job_card_id} created with ${data.total_extracted.toLocaleString()} serial codes.`, "Success");
                 toggleModal('upload-modal');
                 document.getElementById('deleted-dup-warning-modal').classList.add('hidden');
                 document.getElementById('create-job-form').reset();
@@ -1524,6 +1524,7 @@
             if (res.ok) {
                 e.target.reset();
                 openUserModal();
+                showCustomAlert("User created successfully.", "Success");
             } else {
                 const err = await res.json();
                 showCustomAlert(err.detail || "Failed to create user");
