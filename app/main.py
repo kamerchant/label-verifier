@@ -813,7 +813,7 @@ def export_report_csv(job_card_id: str, user: dict = Depends(get_current_user)):
 
             output.seek(0)
             return StreamingResponse(
-                iter([output.getvalue()]),
+                iter([output.getvalue()],
                 media_type="text/csv",
                 headers={"Content-Disposition": f"attachment; filename=QC_Report_{job_card_id}.csv"}
             )
