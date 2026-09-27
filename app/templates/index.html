@@ -727,7 +727,7 @@
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <input type="text" id="new-employee-name" placeholder="Employee Name (Optional)" class="linear-input p-2.5 text-xs rounded">
-                    <input type="text" id="new-employee-id" placeholder="Employee ID (Optional)" class="linear-input p-2.5 text-xs rounded font-mono">
+                    <input type="text" id="new-employee-id" placeholder="Employee ID (Optional)" class="linear-input p-2.5 text-xs rounded">
                 </div>
                 <div class="flex justify-between items-center pt-2 border-t">
                     <label class="flex items-center gap-1.5 text-xs cursor-pointer">
@@ -1604,16 +1604,16 @@
                     <td class="p-3 font-sans">
                         <div class="flex items-center gap-2">
                             <span class="font-bold">${u.username}</span>
-                            <span class="text-xs uppercase px-2 py-0.5 rounded font-mono bg-slate-800 text-slate-300">${u.role}</span>
+                            <span class="text-xs uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-300">${u.role}</span>
                         </div>
                         ${(u.employee_name || u.employee_id) ? `
                             <div class="text-xs text-slate-400 mt-0.5">
                                 ${u.employee_name ? `<span>Name: ${u.employee_name}</span>` : ''}
-                                ${u.employee_id ? `<span class="ml-2 font-mono">ID: ${u.employee_id}</span>` : ''}
+                                ${u.employee_id ? `<span class="ml-2">ID: ${u.employee_id}</span>` : ''}
                             </div>
                         ` : ''}
-                        ${!u.is_active ? '<span class="text-xs text-red-400 font-mono block mt-1">(Suspended)</span>' : ''}
-                        ${u.must_change_password ? '<span class="text-xs text-amber-400 font-mono block mt-1">(PW Reset Required)</span>' : ''}
+                        ${!u.is_active ? '<span class="text-xs text-red-400 block mt-1">(Suspended)</span>' : ''}
+                        ${u.must_change_password ? '<span class="text-xs text-amber-400 block mt-1">(PW Reset Required)</span>' : ''}
                     </td>
                     <td class="p-3 text-center">
                         <input type="checkbox" ${u.can_upload ? 'checked' : ''} 
@@ -1624,7 +1624,7 @@
                         ${u.username !== currentUser.username ? `
                             <button onclick="promptAdminResetPassword('${u.username}')" class="text-indigo-400 hover:text-indigo-300 font-medium text-xs mr-2">Reset PW</button>
                             <button onclick="toggleUserSuspension('${u.username}', ${u.is_active})" class="${u.is_active ? 'text-amber-400 hover:text-amber-300' : 'text-green-400 hover:text-green-300'} font-medium text-xs mr-2">${u.is_active ? 'Suspend' : 'Activate'}</button>
-                        ` : '<span class="text-xs text-slate-500 font-mono">Current User</span>'}
+                        ` : '<span class="text-xs text-slate-500">Current User</span>'}
                     </td>
                 </tr>
             `).join('');
