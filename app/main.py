@@ -56,7 +56,6 @@ def get_current_user(request: Request):
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
         data = signer.loads(token, max_age=86400 * 7)
-        # Verify user is still active in DB
         conn = get_connection()
         try:
             with conn.cursor() as cur:
@@ -291,7 +290,7 @@ def toggle_user_upload(
     finally:
         release_connection(conn)
 
-# --- Job Search & Management ---
+# --- Job Search & Management (Returns ACTIVE and COMPLETED jobs for main search) ---
 @app.get("/api/jobs")
 def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
     conn = get_connection()
@@ -305,7 +304,7 @@ def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
                        j.run_id
                 FROM job_cards j
                 LEFT JOIN codes c ON j.run_id = c.run_id AND c.status != 'DELETED'
-                WHERE j.status = 'ACTIVE'
+                WHERE j.status IN ('ACTIVE', 'COMPLETED')
             """
             params = []
             if query.strip():
