@@ -771,6 +771,21 @@
             resetInput();
         }
 
+        // Copy Job Card Number helper function with visual feedback
+        function copyJobCardNumber(text, btnElement) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = btnElement.innerText;
+                btnElement.innerText = "Copied!";
+                btnElement.className = "bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded text-[11px] font-medium transition-colors ml-2";
+                setTimeout(() => {
+                    btnElement.innerText = originalText;
+                    btnElement.className = "linear-button-secondary px-2 py-0.5 rounded text-[11px] font-medium transition-colors ml-2";
+                }, 1200);
+            }).catch(err => {
+                showCustomAlert("Failed to copy text.");
+            });
+        }
+
         function playTone(type) {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
@@ -1239,7 +1254,10 @@
                         <td class="p-3 text-center">
                             ${j.status === 'ACTIVE' ? `<input type="checkbox" value="${j.job_card_id}" class="job-select-checkbox rounded bg-[#090a0d] border-white/[0.1] text-[#5e6ad2] w-4 h-4 cursor-pointer">` : ''}
                         </td>
-                        <td class="p-3 font-mono font-bold text-slate-100">${j.job_card_id}</td>
+                        <td class="p-3 font-mono font-bold text-slate-100 flex items-center">
+                            <span>${j.job_card_id}</span>
+                            <button onclick="copyJobCardNumber('${j.job_card_id}', this)" class="linear-button-secondary px-2 py-0.5 rounded text-[11px] font-medium transition-colors ml-2">Copy</button>
+                        </td>
                         <td class="p-3 max-w-[240px] text-sm">${descDetail}</td>
                         <td class="p-3">${timeDetail}</td>
                         <td class="p-3 text-center">
