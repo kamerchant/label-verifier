@@ -522,7 +522,7 @@
     <div id="pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full shadow-2xl">
             <h3 id="pw-title" class="text-base font-bold mb-1 text-white">Change Password</h3>
-            <p id="pw-subtitle" class="text-xs text-slate-400 mb-4">Enter current and new authentication credentials (Min 8 chars, 1 uppercase, 1 lowercase, 1 number)</p>
+            <p id="pw-subtitle" class="text-xs text-slate-400 mb-4">Enter current and new credentials (Min 8 chars, 1 upper, 1 lower, 1 num)</p>
             <form onsubmit="handleChangePassword(event)" class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Current Password</label>
@@ -621,7 +621,7 @@
             <form onsubmit="createUser(event)" class="linear-subcard p-4 rounded mb-4 space-y-2.5">
                 <div class="grid grid-cols-3 gap-2">
                     <input type="text" id="new-user-name" placeholder="Username" required class="linear-input p-2 text-xs rounded">
-                    <input type="password" id="new-user-pass" placeholder="Password (Min 8, 1 Up, 1 Low, 1 Num)" required class="linear-input p-2 text-xs rounded">
+                    <input type="password" id="new-user-pass" placeholder="Min 8 chars, 1 upper, 1 lower, 1 num" required class="linear-input p-2 text-[11px] rounded">
                     <select id="new-user-role" class="linear-input p-2 text-xs rounded text-slate-200">
                         <option value="QC Incharge">QC Incharge</option>
                         <option value="admin">Admin</option>
