@@ -38,7 +38,6 @@ async def get_logo():
 def startup():
     init_db()
 
-# --- Password Validation Helper ---
 def validate_password_strength(password: str):
     if len(password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters long.")
@@ -49,7 +48,6 @@ def validate_password_strength(password: str):
     if not re.search(r"[0-9]", password):
         raise HTTPException(status_code=400, detail="Password must include at least one number.")
 
-# --- Auth Helpers ---
 def get_current_user(request: Request):
     token = request.cookies.get("qc_session")
     if not token:
@@ -90,7 +88,6 @@ def require_uploader(user: dict = Depends(get_current_user)):
 async def index():
     return FileResponse(HTML_PATH, media_type="text/html")
 
-# --- Authentication Endpoints ---
 @app.post("/api/auth/login")
 def login(response: Response, username: str = Form(...), password: str = Form(...)):
     username = username.strip().lower()
@@ -185,7 +182,7 @@ def list_users(admin: dict = Depends(require_admin)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT username, role, must_change_password, can_upload, is_active, created_at FROM users ORDER BY created_at ASC")
+            cur.execute("SELECT username, role, must_change_password, can_upload, is_active, employee_name, employee_id, created_at FROM users ORDER BY created_at ASC")
             rows = cur.fetchall()
             return [{
                 "username": r[0],
@@ -193,7 +190,9 @@ def list_users(admin: dict = Depends(require_admin)):
                 "must_change_password": r[2],
                 "can_upload": r[3],
                 "is_active": r[4] if r[4] is not None else True,
-                "created_at": r[5].strftime("%Y-%m-%d %H:%M")
+                "employee_name": r[5] or "",
+                "employee_id": r[6] or "",
+                "created_at": r[7].strftime("%Y-%m-%d %H:%M")
             } for r in rows]
     finally:
         release_connection(conn)
@@ -204,6 +203,8 @@ def create_user(
     password: str = Form(...),
     role: str = Form("QC Incharge"),
     can_upload: bool = Form(False),
+    employee_name: str = Form(""),
+    employee_id: str = Form(""),
     admin: dict = Depends(require_admin)
 ):
     username = username.strip().lower()
@@ -218,8 +219,9 @@ def create_user(
 
             pw_hash = hash_password(password)
             cur.execute(
-                "INSERT INTO users (username, password_hash, role, must_change_password, can_upload, is_active) VALUES (%s, %s, %s, TRUE, %s, TRUE)",
-                (username, pw_hash, role, can_upload)
+                """INSERT INTO users (username, password_hash, role, must_change_password, can_upload, is_active, employee_name, employee_id) 
+                   VALUES (%s, %s, %s, TRUE, %s, TRUE, %s, %s)""",
+                (username, pw_hash, role, can_upload, employee_name.strip(), employee_id.strip())
             )
             conn.commit()
             return {"status": "success"}
@@ -290,7 +292,7 @@ def toggle_user_upload(
     finally:
         release_connection(conn)
 
-# --- Job Search & Management (Returns ACTIVE and COMPLETED jobs for main search) ---
+# --- Job Search & Management ---
 @app.get("/api/jobs")
 def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
     conn = get_connection()
@@ -524,7 +526,6 @@ async def create_job(
     finally:
         release_connection(conn)
 
-# Soft Deletion
 @app.post("/api/jobs/{job_card_id}/delete")
 def soft_delete_job(
     job_card_id: str,
@@ -571,7 +572,6 @@ def soft_delete_job(
     finally:
         release_connection(conn)
 
-# Complete & Block
 @app.post("/api/jobs/{job_card_id}/complete")
 def complete_job(job_card_id: str, user: dict = Depends(get_current_user)):
     conn = get_connection()
@@ -599,7 +599,6 @@ def complete_job(job_card_id: str, user: dict = Depends(get_current_user)):
     finally:
         release_connection(conn)
 
-# Reactivate & Unblock
 @app.post("/api/jobs/{job_card_id}/unblock")
 def unblock_job(
     job_card_id: str,
@@ -636,7 +635,6 @@ def unblock_job(
     finally:
         release_connection(conn)
 
-# Lifecycle Audit Trail Endpoint
 @app.get("/api/jobs/{job_card_id}/lifecycle-logs")
 def get_lifecycle_logs(job_card_id: str, user: dict = Depends(get_current_user)):
     conn = get_connection()
@@ -692,7 +690,6 @@ def get_lifecycle_logs(job_card_id: str, user: dict = Depends(get_current_user))
     finally:
         release_connection(conn)
 
-# Strict Verification with Detailed Error Reporting & Cross-Job Card Checks
 @app.post("/api/verify")
 def verify_code(
     job_card_id: str = Form(...), 
@@ -790,7 +787,6 @@ def verify_code(
     finally:
         release_connection(conn)
 
-# QC Reports
 @app.get("/api/reports/{job_card_id}")
 def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
     conn = get_connection()
