@@ -292,15 +292,15 @@
                 <p id="header-job-desc" class="text-xs sm:text-sm text-slate-400 mt-1 truncate">Search active production jobs using the search field.</p>
             </div>
 
-            <!-- Job Search Bar and Adjacent Action Buttons Group (Optimized for Android/Mobile) -->
+            <!-- Job Search Bar and Adjacent Action Buttons Group -->
             <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full lg:w-auto shrink-0">
-                <div class="relative w-full sm:w-72 flex-1 sm:flex-initial shrink-0">
+                <div class="relative w-full sm:w-72 flex-1 sm:flex-initial">
                     <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Search active jobs..." 
                            class="linear-input w-full px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm font-mono rounded placeholder-slate-500 shadow-inner min-h-[44px]">
                     <div id="job-list" class="absolute left-0 right-0 top-full mt-1.5 linear-card rounded shadow-2xl max-h-64 overflow-y-auto z-30 hidden"></div>
                 </div>
 
-                <div class="flex items-center gap-1.5 shrink-0 w-full sm:w-auto justify-end">
+                <div class="flex items-center gap-1.5 shrink-0">
                     <button id="report-btn" onclick="openReportModal()" disabled 
                             class="linear-button-secondary text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[44px] font-medium shadow-sm whitespace-nowrap">
                         QC Report
@@ -364,13 +364,13 @@
             </form>
         </div>
 
-        <!-- Real-Time Stream Table Container -->
+        <!-- Verification Stream Table Container -->
         <div class="linear-card rounded overflow-hidden flex-1 flex flex-col min-h-[350px]">
             <div class="px-3.5 sm:px-5 py-3 sm:py-4 border-b border-white/[0.08] flex items-center justify-between text-sm shrink-0">
                 <div class="flex items-center gap-2 sm:gap-3 font-semibold text-slate-200">
-                    <span class="text-sm sm:text-lg">Live Verification Stream</span>
+                    <span class="text-sm sm:text-lg">Verification Stream</span>
                     <span class="text-slate-600 hidden sm:inline">|</span>
-                    <span class="text-xs text-slate-400 font-mono font-normal hidden sm:inline">Recent scans recorded this session</span>
+                    <span class="text-xs text-slate-400 font-mono font-normal hidden sm:inline">All codes checked this session</span>
                 </div>
             </div>
 
@@ -737,7 +737,7 @@
         let targetDeleteJobId = null;
         let currentMasterTab = 'ALL';
         let rawMasterJobs = [];
-        let recentScans = [];
+        let allScans = [];
 
         let confirmCallback = null;
 
@@ -903,10 +903,11 @@
             list.classList.remove('hidden');
         }
 
-        function selectJob(id, descEncoded, status, consumed, total) {
+        async function selectJob(id, descEncoded, status, consumed, total) {
             activeJobId = id;
             activeJobDesc = unescape(descEncoded);
             activeJobStatus = status;
+            allScans = []; // Reset stream list for newly selected job
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = id;
@@ -954,7 +955,27 @@
                 }
             }
 
+            // Fetch prior scan logs for this job if any exist
+            await loadJobScanStream(id);
             resetInput();
+        }
+
+        async function loadJobScanStream(jobCardId) {
+            try {
+                const res = await fetch(`/api/reports/${jobCardId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    allScans = data.recent_logs.map(l => ({
+                        code: l.code,
+                        result: l.result,
+                        time: l.time,
+                        user: l.user
+                    })).reverse(); // Oldest to newest chronological stream
+                    renderStreamTable();
+                }
+            } catch (e) {
+                console.error("Failed to load stream history", e);
+            }
         }
 
         async function handleJobStatusToggle() {
@@ -1076,6 +1097,7 @@
                 
                 if (activeJobId === deletedName) {
                     activeJobId = null;
+                    allScans = [];
                     document.getElementById('active-title-card').innerText = "Job Card: None";
                     document.getElementById('header-job-desc').innerText = "Search active production jobs using the search field.";
                     
@@ -1290,8 +1312,7 @@
             }
 
             const now = new Date().toLocaleTimeString();
-            recentScans.unshift({ code, result, time: now, user: currentUser.username });
-            if (recentScans.length > 10) recentScans.pop();
+            allScans.unshift({ code, result, time: now, user: currentUser.username });
             renderStreamTable();
         }
 
@@ -1311,12 +1332,17 @@
 
         function renderStreamTable() {
             const tbody = document.getElementById('recent-scans-rows');
-            tbody.innerHTML = recentScans.map((s, idx) => {
+            if (allScans.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="px-3 sm:px-5 py-8 sm:py-12 text-center text-slate-500 font-sans italic">No scan events recorded for this session</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = allScans.map((s, idx) => {
                 let badge = "linear-badge-pass";
                 if (s.result !== 'PASS') badge = "linear-badge-fail";
                 return `
                     <tr class="hover:bg-white/[0.02]">
-                        <td class="px-3 sm:px-5 py-2 sm:py-2.5 text-slate-500 font-mono">#${recentScans.length - idx}</td>
+                        <td class="px-3 sm:px-5 py-2 sm:py-2.5 text-slate-500 font-mono">#${allScans.length - idx}</td>
                         <td class="px-3 sm:px-5 py-2 sm:py-2.5 font-bold text-slate-200">${s.code}</td>
                         <td class="px-3 sm:px-5 py-2 sm:py-2.5"><span class="${badge} px-2.5 py-0.5 rounded text-xs font-mono font-bold">${s.result}</span></td>
                         <td class="px-3 sm:px-5 py-2 sm:py-2.5 text-slate-400 font-mono">${s.time}</td>

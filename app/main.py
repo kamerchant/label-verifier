@@ -768,7 +768,7 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
                 FROM scan_logs 
                 WHERE job_card_id = %s 
                 ORDER BY scanned_at DESC 
-                LIMIT 500
+                LIMIT 5000
             """, (jc_id,))
             logs = [{
                 "code": r[0],
