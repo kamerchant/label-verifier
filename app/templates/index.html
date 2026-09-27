@@ -366,9 +366,6 @@
             <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-3 py-1.5 rounded text-xs sm:text-sm font-semibold whitespace-nowrap min-h-[38px] flex items-center">Create Job</button>
             <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center">Job Control Center</button>
             <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center">User Admin</button>
-            <button onclick="toggleTheme()" id="theme-toggle-btn" class="linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center gap-1.5" title="Switch Theme">
-                <span id="theme-icon">☀️</span> <span id="theme-text">Parchment Theme</span>
-            </button>
             <button onclick="toggleModal('pw-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center">Change Password</button>
             <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-3 py-1.5 rounded text-xs sm:text-sm font-medium transition-colors whitespace-nowrap min-h-[38px] flex items-center">Logout</button>
         </div>
@@ -492,11 +489,17 @@
 
     <!-- Footer Information Bar -->
     <footer class="border-t px-3 sm:px-6 py-2.5 sm:py-3 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-1">
-        <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-[#2ed573]"></span>
-            <span>Online</span>
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-[#2ed573]"></span>
+                <span>Online</span>
+                <span class="text-slate-600">&middot;</span>
+                <span id="user-display" class="truncate max-w-[200px] sm:max-w-none">Checking session...</span>
+            </div>
             <span class="text-slate-600">&middot;</span>
-            <span id="user-display" class="truncate max-w-[200px] sm:max-w-none">Checking session...</span>
+            <button onclick="toggleTheme()" class="text-slate-400 hover:text-indigo-400 underline cursor-pointer bg-transparent border-none p-0 text-xs transition-colors" title="Switch Theme">
+                Theme: <span id="theme-name-text">Obsidian</span>
+            </button>
         </div>
         <div class="font-mono text-slate-500 text-[11px] sm:text-xs hidden sm:block">
             Press <kbd class="bg-[#1e2029] text-slate-300 px-1.5 py-0.5 rounded font-mono">Enter</kbd> to submit
@@ -661,7 +664,7 @@
 
     <div id="master-jobs-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
         <div class="linear-card p-4 sm:p-6 rounded-lg max-w-5xl w-full shadow-2xl flex flex-col max-h-[92vh]">
-            <div class="flex justify-between items-center mb-3 border-b border-white/[0.08] pb-3">
+            <div class="flex justify-between items-center mb-3 border-b pb-3">
                 <div>
                     <h3 class="text-base font-bold">All Jobs Status Report</h3>
                     <p class="text-xs text-slate-400">View live status across active, inactive, completed, or deleted historical jobs</p>
@@ -839,12 +842,10 @@
             const savedTheme = localStorage.getItem('vdv_theme') || 'obsidian';
             if (savedTheme === 'parchment') {
                 document.documentElement.classList.add('theme-parchment');
-                document.getElementById('theme-icon').innerText = '🌙';
-                document.getElementById('theme-text').innerText = 'Obsidian Theme';
+                document.getElementById('theme-name-text').innerText = 'Parchment';
             } else {
                 document.documentElement.classList.remove('theme-parchment');
-                document.getElementById('theme-icon').innerText = '☀️';
-                document.getElementById('theme-text').innerText = 'Parchment Theme';
+                document.getElementById('theme-name-text').innerText = 'Obsidian';
             }
         }
 
@@ -852,12 +853,10 @@
             const isParchment = document.documentElement.classList.toggle('theme-parchment');
             if (isParchment) {
                 localStorage.setItem('vdv_theme', 'parchment');
-                document.getElementById('theme-icon').innerText = '🌙';
-                document.getElementById('theme-text').innerText = 'Obsidian Theme';
+                document.getElementById('theme-name-text').innerText = 'Parchment';
             } else {
                 localStorage.setItem('vdv_theme', 'obsidian');
-                document.getElementById('theme-icon').innerText = '☀️';
-                document.getElementById('theme-text').innerText = 'Parchment Theme';
+                document.getElementById('theme-name-text').innerText = 'Obsidian';
             }
         }
 
@@ -1039,7 +1038,7 @@
 
             list.innerHTML = jobs.map(j => `
                 <div onclick="selectJob('${j.id}', '${escape(j.description)}', '${j.status}', ${j.consumed}, ${j.total})" 
-                     class="p-3 hover:bg-white/[0.04] border-b cursor-pointer flex justify-between items-center transition-colors">
+                     class="p-3 hover:bg-black/[0.02] border-b cursor-pointer flex justify-between items-center transition-colors">
                     <div class="min-w-0 pr-2">
                         <span class="font-bold font-mono text-sm block truncate">${j.id}</span>
                         ${j.description ? `<span class="text-xs text-slate-400 block truncate max-w-[200px]">${j.description}</span>` : ''}
