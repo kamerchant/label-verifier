@@ -299,6 +299,8 @@ def get_master_jobs_report(status_filter: str = "ALL", admin: dict = Depends(req
             params = []
             if status_filter == "ACTIVE":
                 sql += " WHERE j.status = 'ACTIVE'"
+            elif status_filter == "INACTIVE":
+                sql += " WHERE j.status = 'INACTIVE'"
             elif status_filter == "COMPLETED":
                 sql += " WHERE j.status = 'COMPLETED'"
             elif status_filter == "DELETED":
@@ -325,19 +327,23 @@ def get_master_jobs_report(status_filter: str = "ALL", admin: dict = Depends(req
     finally:
         release_connection(conn)
 
-@app.post("/api/admin/jobs/bulk-complete")
-def bulk_complete_jobs(
+@app.post("/api/admin/jobs/bulk-status")
+def bulk_status_change(
     job_card_ids: str = Form(...),
+    target_status: str = Form(...),
     admin_password: str = Form(...),
     admin: dict = Depends(require_admin)
 ):
+    if target_status not in ["ACTIVE", "INACTIVE", "COMPLETED"]:
+        raise HTTPException(status_code=400, detail="Invalid target status.")
+
     conn = get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute("SELECT password_hash FROM users WHERE username = %s", (admin["username"],))
             row = cur.fetchone()
             if not row or not verify_password(admin_password, row[0]):
-                raise HTTPException(status_code=403, detail="Invalid admin password. Bulk completion denied.")
+                raise HTTPException(status_code=403, detail="Invalid admin password. Status update denied.")
 
             jc_ids = json.loads(job_card_ids)
             if not jc_ids:
@@ -346,17 +352,21 @@ def bulk_complete_jobs(
             for jc_id in jc_ids:
                 cur.execute("""
                     UPDATE job_cards 
-                    SET status = 'COMPLETED' 
-                    WHERE job_card_id = %s AND status = 'ACTIVE'
+                    SET status = %s 
+                    WHERE job_card_id = %s AND status != 'DELETED'
                     RETURNING run_id
-                """, (jc_id,))
+                """, (target_status, jc_id))
                 jc_row = cur.fetchone()
                 if jc_row:
                     run_id = jc_row[0]
-                    cur.execute("UPDATE codes SET status = 'BLOCKED' WHERE run_id = %s AND status = 'PENDING'", (run_id,))
+                    if target_status == "COMPLETED":
+                        cur.execute("UPDATE codes SET status = 'BLOCKED' WHERE run_id = %s AND status = 'PENDING'", (run_id,))
+                    elif target_status == "ACTIVE":
+                        cur.execute("UPDATE codes SET status = 'PENDING' WHERE run_id = %s AND status = 'BLOCKED'", (run_id,))
+                    
                     cur.execute(
-                        "INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by) VALUES (%s, %s, %s)",
-                        (jc_id, "COMPLETED_AND_BLOCKED_BULK", admin["username"])
+                        "INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) VALUES (%s, %s, %s, %s)",
+                        (jc_id, f"STATUS_CHANGED_TO_{target_status}", admin["username"], "Bulk status update in Job Control Center")
                     )
 
             conn.commit()
@@ -558,12 +568,12 @@ def unblock_job(
             cur.execute("""
                 UPDATE job_cards 
                 SET status = 'ACTIVE' 
-                WHERE job_card_id = %s AND status = 'COMPLETED'
+                WHERE job_card_id = %s AND status IN ('COMPLETED', 'INACTIVE')
                 RETURNING run_id
             """, (job_card_id,))
             jc_row = cur.fetchone()
             if not jc_row:
-                raise HTTPException(status_code=404, detail="Completed Job Card not found.")
+                raise HTTPException(status_code=404, detail="Job Card not found.")
 
             run_id = jc_row[0]
             cur.execute("UPDATE codes SET status = 'PENDING' WHERE run_id = %s AND status = 'BLOCKED'", (run_id,))
@@ -660,6 +670,11 @@ def verify_code(
                 })
 
             active_run_id, jc_status = active_jc
+            if jc_status != 'ACTIVE':
+                return JSONResponse(status_code=200, content={
+                    "result": "BLOCKED",
+                    "message": f"Job Card '{job_card_id}' is {jc_status} and cannot be used for verification."
+                })
 
             def log_scan(res, msg):
                 cur.execute(
@@ -672,7 +687,7 @@ def verify_code(
                 SELECT c.run_id, j.job_card_id, c.status, c.code_value 
                 FROM codes c
                 JOIN job_cards j ON c.run_id = j.run_id
-                WHERE j.status != 'DELETED' AND c.status != 'DELETED' AND c.code_value = %s
+                WHERE j.status = 'ACTIVE' AND c.status != 'DELETED' AND c.code_value = %s
             """, (scanned,))
             rows = cur.fetchall()
 
