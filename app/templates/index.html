@@ -355,10 +355,10 @@
 
             <form id="scan-form" onsubmit="handleScan(event)" class="flex flex-col sm:flex-row gap-2">
                 <div class="relative flex-1">
-                    <input type="text" id="barcode-input" placeholder="Scan or Enter Code for Verification" autofocus autocomplete="off"
-                           class="linear-input w-full px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-lg font-mono rounded min-h-[48px]">
+                    <input type="text" id="barcode-input" placeholder="Select a job to enable scanning..." disabled autocomplete="off"
+                           class="linear-input w-full px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-lg font-mono rounded min-h-[48px] opacity-40 cursor-not-allowed">
                 </div>
-                <button type="submit" class="linear-button-primary px-6 sm:px-7 py-2.5 sm:py-3 rounded text-sm sm:text-base font-semibold font-mono min-h-[48px] flex items-center justify-center">
+                <button type="submit" id="verify-btn" disabled class="linear-button-primary px-6 sm:px-7 py-2.5 sm:py-3 rounded text-sm sm:text-base font-semibold font-mono min-h-[48px] flex items-center justify-center opacity-30 pointer-events-none">
                     Verify
                 </button>
             </form>
@@ -970,12 +970,22 @@
             const rptBtn = document.getElementById('report-btn');
             const lifeBtn = document.getElementById('lifecycle-btn');
             const toggleBtn = document.getElementById('job-toggle-btn');
+            const barcodeInput = document.getElementById('barcode-input');
+            const verifyBtn = document.getElementById('verify-btn');
 
+            // Enable scanning and control buttons now that a job is selected
             rptBtn.disabled = false;
             rptBtn.classList.remove('opacity-30', 'pointer-events-none');
             
             lifeBtn.disabled = false;
             lifeBtn.classList.remove('opacity-30', 'pointer-events-none');
+
+            barcodeInput.disabled = false;
+            barcodeInput.placeholder = "Scan or Enter Code for Verification";
+            barcodeInput.classList.remove('opacity-40', 'cursor-not-allowed');
+
+            verifyBtn.disabled = false;
+            verifyBtn.classList.remove('opacity-30', 'pointer-events-none');
 
             const pending = Math.max(0, total - consumed);
             document.getElementById('kpi-total').innerText = total.toLocaleString();
@@ -988,15 +998,10 @@
                 toggleBtn.disabled = false;
                 toggleBtn.classList.remove('opacity-30', 'pointer-events-none');
             } else {
-                toggleBtn.innerText = "Reactivate (Admin)";
-                toggleBtn.className = "linear-button-secondary text-amber-400 text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded min-h-[44px] font-medium shadow-sm whitespace-nowrap";
-                if (currentUser.role === 'admin') {
-                    toggleBtn.disabled = false;
-                    toggleBtn.classList.remove('opacity-30', 'pointer-events-none');
-                } else {
-                    toggleBtn.disabled = true;
-                    toggleBtn.classList.add('opacity-30', 'pointer-events-none');
-                }
+                // If job is INACTIVE or COMPLETED, do not show Reactivate button on main screen
+                toggleBtn.innerText = status;
+                toggleBtn.className = "linear-button-secondary text-slate-400 text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded min-h-[44px] font-medium shadow-sm whitespace-nowrap opacity-50 pointer-events-none";
+                toggleBtn.disabled = true;
             }
 
             await loadJobScanStream(id);
@@ -1035,17 +1040,6 @@
                     const err = await res.json();
                     showCustomAlert(err.detail || "Action failed");
                 }
-            } else {
-                if (currentUser.role !== 'admin') {
-                    showCustomAlert("Only Administrator can reactivate and unblock a completed job.");
-                    return;
-                }
-                triggerAuthModal(
-                    'UNBLOCK', 
-                    activeJobId, 
-                    'Authorization: Reactivate Job', 
-                    `Enter password to unblock Job Card ${activeJobId} and restore remaining codes.`
-                );
             }
         }
 
@@ -1159,6 +1153,8 @@
                     const rptBtn = document.getElementById('report-btn');
                     const lifeBtn = document.getElementById('lifecycle-btn');
                     const toggleBtn = document.getElementById('job-toggle-btn');
+                    const barcodeInput = document.getElementById('barcode-input');
+                    const verifyBtn = document.getElementById('verify-btn');
 
                     rptBtn.disabled = true;
                     rptBtn.classList.add('opacity-30', 'pointer-events-none');
@@ -1166,6 +1162,13 @@
                     lifeBtn.classList.add('opacity-30', 'pointer-events-none');
                     toggleBtn.disabled = true;
                     toggleBtn.classList.add('opacity-30', 'pointer-events-none');
+
+                    barcodeInput.disabled = true;
+                    barcodeInput.placeholder = "Select a job to enable scanning...";
+                    barcodeInput.classList.add('opacity-40', 'cursor-not-allowed');
+
+                    verifyBtn.disabled = true;
+                    verifyBtn.classList.add('opacity-30', 'pointer-events-none');
                 }
 
                 loadMasterJobs(currentMasterTab);
@@ -1258,7 +1261,6 @@
                 }
             });
 
-            // Update search placeholder based on filter tab
             const searchInput = document.getElementById('master-job-search');
             if (filterType === 'ALL') searchInput.placeholder = "Search in all jobs...";
             else if (filterType === 'ACTIVE') searchInput.placeholder = "Search in active jobs...";
