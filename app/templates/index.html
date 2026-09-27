@@ -579,7 +579,7 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <button onclick="promptBulkComplete()" class="linear-button-primary px-3 py-1.5 text-xs rounded font-medium">Complete Selected Jobs</button>
-                    <button onclick="toggleModal('master-jobs-modal')" class="linear-button-secondary px-3 py-1.5 text-xs rounded font-medium">Close</button>
+                    <button onclick="toggleModal('master-jobs-modal')" class="linear-button-secondary px-3.5 py-1.5 text-xs rounded font-medium">Close</button>
                 </div>
             </div>
 
@@ -778,7 +778,7 @@
                 const originalClass = btnElement.className;
                 
                 btnElement.innerHTML = `<svg class="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>`;
-                btnElement.className = "bg-green-500/20 border border-green-500/30 p-1 rounded transition-colors inline-flex items-center justify-center shrink-0 ml-2";
+                btnElement.className = "bg-green-500/20 border border-green-500/30 p-1 rounded transition-colors inline-flex items-center justify-center shrink-0 ml-1.5";
                 
                 setTimeout(() => {
                     btnElement.innerHTML = originalHTML;
@@ -1258,7 +1258,7 @@
                             ${j.status === 'ACTIVE' ? `<input type="checkbox" value="${j.job_card_id}" class="job-select-checkbox rounded bg-[#090a0d] border-white/[0.1] text-[#5e6ad2] w-4 h-4 cursor-pointer">` : ''}
                         </td>
                         <td class="p-3 font-mono font-bold text-slate-100">
-                            <div class="flex items-center justify-between w-44">
+                            <div class="inline-flex items-center gap-1.5">
                                 <span class="truncate">${j.job_card_id}</span>
                                 <button onclick="copyJobCardNumber('${j.job_card_id}', this)" title="Copy Job Card Number" class="linear-button-secondary p-1 rounded transition-colors inline-flex items-center justify-center shrink-0">
                                     <svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
