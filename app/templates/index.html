@@ -781,7 +781,7 @@
     <!-- Admin Reset Password Modal -->
     <div id="admin-reset-pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[80]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/30 shadow-2xl">
-            <h3 class="text-base font-bold mb-1 table-text-theme">Reset Operator Password</h3>
+            <h3 id="admin-reset-pw-title" class="text-base font-bold mb-1 table-text-theme">Reset Operator Password</h3>
             <p id="admin-reset-pw-subtitle" class="text-xs text-slate-400 mb-4">Enter a new temporary password for this user (Min 8 chars, 1 uppercase, 1 lowercase, 1 number).</p>
             <form onsubmit="submitAdminResetPassword(event)" class="space-y-3.5">
                 <div>
@@ -1635,9 +1635,9 @@
                 const btn = document.getElementById(`stream-filter-${t}`);
                 if (btn) {
                     if (t === type.toLowerCase()) {
-                        btn.className = "flex-1 md:flex-initial text-left px-3 py-2 rounded bg-white/15 text-white font-bold transition-colors hover:bg-white/20 flex justify-between items-center text-sm";
+                        btn.className = "flex-1 md:flex-initial text-left px-3 py-2 rounded bg-white/15 table-text-theme font-bold transition-colors hover:bg-white/20 flex justify-between items-center text-sm";
                     } else {
-                        btn.className = "flex-1 md:flex-initial text-left px-3 py-2 rounded text-slate-300 font-semibold hover:bg-white/10 transition-colors flex justify-between items-center text-sm";
+                        btn.className = "flex-1 md:flex-initial text-left px-3 py-2 rounded table-text-theme font-semibold hover:bg-white/10 transition-colors flex justify-between items-center text-sm";
                     }
                 }
             });
