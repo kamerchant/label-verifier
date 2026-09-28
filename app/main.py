@@ -716,10 +716,12 @@ def verify_code(
                 })
 
             active_run_id, jc_status = active_jc
+            
+            # STRICT CHECK: Only allow verification if job is ACTIVE
             if jc_status != 'ACTIVE':
                 return JSONResponse(status_code=200, content={
                     "result": "BLOCKED",
-                    "message": f"Job Card '{job_card_id}' is {jc_status} and cannot be used for verification."
+                    "message": f"Job Card '{job_card_id}' is {jc_status}. Scanning is disabled for completed jobs."
                 })
 
             def log_scan(res, msg):

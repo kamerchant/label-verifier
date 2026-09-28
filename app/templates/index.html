@@ -1119,24 +1119,32 @@
             lifeBtn.disabled = false;
             lifeBtn.classList.remove('opacity-30', 'pointer-events-none');
 
-            barcodeInput.disabled = false;
-            barcodeInput.placeholder = "Scan or Enter Code for Verification";
-            barcodeInput.classList.remove('opacity-40', 'cursor-not-allowed');
-
-            verifyBtn.disabled = false;
-            verifyBtn.classList.remove('opacity-30', 'pointer-events-none');
-
             const pending = Math.max(0, total - consumed);
             document.getElementById('kpi-total').innerText = total.toLocaleString();
             document.getElementById('kpi-consumed').innerText = consumed.toLocaleString();
             document.getElementById('kpi-pending').innerText = pending.toLocaleString();
 
             if (status === 'ACTIVE') {
+                barcodeInput.disabled = false;
+                barcodeInput.placeholder = "Scan or Enter Code for Verification";
+                barcodeInput.classList.remove('opacity-40', 'cursor-not-allowed');
+
+                verifyBtn.disabled = false;
+                verifyBtn.classList.remove('opacity-30', 'pointer-events-none');
+
                 toggleBtn.innerText = "Job Completed";
                 toggleBtn.className = "bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded transition-all min-h-[44px] font-semibold shadow-sm whitespace-nowrap";
                 toggleBtn.disabled = false;
                 toggleBtn.classList.remove('opacity-30', 'pointer-events-none');
             } else {
+                // COMPLETED or INACTIVE jobs: Lock scanning input and verify button
+                barcodeInput.disabled = true;
+                barcodeInput.placeholder = "Job is completed. Scanning disabled.";
+                barcodeInput.classList.add('opacity-40', 'cursor-not-allowed');
+
+                verifyBtn.disabled = true;
+                verifyBtn.classList.add('opacity-30', 'pointer-events-none');
+
                 toggleBtn.innerText = status;
                 toggleBtn.className = "linear-button-secondary text-slate-400 text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded min-h-[44px] font-medium shadow-sm whitespace-nowrap opacity-50 pointer-events-none";
                 toggleBtn.disabled = true;
