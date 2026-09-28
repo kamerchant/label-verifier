@@ -639,7 +639,7 @@
                 <table class="w-full text-left">
                     <thead>
                         <tr class="border-b border-white/[0.08] text-[10px] text-white bg-[#161821] sticky top-0">
-                            <th class="p-3">User & Employee Details</th>
+                            <th class="p-3">User Name</th>
                             <th class="p-3 text-center">Can Create Jobs?</th>
                             <th class="p-3 text-right">Action</th>
                         </tr>
@@ -719,7 +719,7 @@
                     <tbody id="lifecycle-log-rows" class="divide-y divide-white/[0.04] text-white"></tbody>
                 </table>
             </div>
-            <div id="print-timestamp-audit" class="print-timestamp-footer"></div>
+            <div id="print-timestamp" class="print-timestamp-footer"></div>
         </div>
     </div>
 
@@ -1070,7 +1070,7 @@
             document.getElementById('pw-title').innerText = "First Login Password Change Required";
             document.getElementById('pw-subtitle').innerText = "For security, you must update your password before proceeding.";
             document.getElementById('pw-cancel-btn').classList.add('hidden');
-            document.getElementById('pw-modal').classList.remove('hidden');
+            document.getElementById('pw-modal').classList.add('hidden');
         }
 
         async function handleLogin(e) {
@@ -1167,7 +1167,7 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `Job Card: ${id} <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>`;
+            document.getElementById('active-title-card').innerHTML = `Job Card: ${id} <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-700 hover:text-red-600 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>`;
             
             const promptDesc = status === 'ACTIVE' 
                 ? (activeJobDesc ? `${activeJobDesc} - Ready for Validation` : `Ready for Validation`)
@@ -1446,7 +1446,7 @@
 
             const tbody = document.getElementById('master-jobs-rows');
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400 italic text-xs">No job cards found matching '${query}'</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500 italic text-xs">No job cards found matching '${query}'</td></tr>`;
                 updateBulkStatusButtonState();
                 return;
             }
@@ -1459,19 +1459,19 @@
                 else if (j.status === 'DELETED') badgeClass = "linear-badge-fail";
 
                 const descDetail = j.status === 'DELETED' 
-                    ? `<span class="text-red-400 font-medium block">Reason: ${j.deletion_reason}</span><span class="text-slate-400 block text-[10px]">Deleted by: ${j.deleted_by}</span>`
+                    ? `<span class="text-red-400 font-medium block">Reason: ${j.deletion_reason}</span><span class="text-slate-500 block text-[10px]">Deleted by: ${j.deleted_by}</span>`
                     : (j.description || '-');
 
                 const timeDetail = j.status === 'DELETED' 
-                    ? `<span class="text-slate-400 block text-[10px]">Created: ${j.created_at}</span><span class="text-red-400 block text-[10px]">Deleted: ${j.deleted_at}</span>`
-                    : `<span class="text-slate-300 block text-[10px]">${j.created_at}</span>`;
+                    ? `<span class="text-slate-500 block text-[10px]">Created: ${j.created_at}</span><span class="text-red-400 block text-[10px]">Deleted: ${j.deleted_at}</span>`
+                    : `<span class="text-slate-700 block text-[10px]">${j.created_at}</span>`;
 
                 return `
                     <tr class="hover:bg-black/[0.02]">
                         <td class="p-3 text-center">
                             ${j.status !== 'DELETED' ? `<input type="checkbox" value="${j.job_card_id}" onchange="updateBulkStatusButtonState()" class="job-select-checkbox rounded w-4 h-4 cursor-pointer">` : ''}
                         </td>
-                        <td class="p-3 font-bold text-white">
+                        <td class="p-3 font-bold text-black">
                             <div class="inline-flex items-center gap-1.5">
                                 <span class="truncate">${j.job_card_id}</span>
                                 <button onclick="copyJobCardNumber('${j.job_card_id}', this)" title="Copy Job Card Number" class="linear-button-secondary p-1 rounded transition-colors inline-flex items-center justify-center shrink-0">
@@ -1481,16 +1481,16 @@
                                 </button>
                             </div>
                         </td>
-                        <td class="p-3 max-w-[200px] text-xs text-slate-200">${descDetail}</td>
+                        <td class="p-3 max-w-[200px] text-xs text-slate-800">${descDetail}</td>
                         <td class="p-3">${timeDetail}</td>
                         <td class="p-3 text-center">
                             <span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">
                                 ${j.status}
                             </span>
                         </td>
-                        <td class="p-3 text-right text-xs text-white">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
+                        <td class="p-3 text-right text-xs text-black font-semibold">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
                         <td class="p-3 text-center">
-                            <span class="text-slate-400 italic text-[11px]">Active Record</span>
+                            <span class="text-slate-500 italic text-[11px]">Active Record</span>
                         </td>
                     </tr>
                 `;
@@ -1749,20 +1749,20 @@
 
             const stats = document.getElementById('report-stats');
             stats.innerHTML = `
-                <div class="linear-card p-3 rounded" style="color: #0f172a;"><span class="block text-xs uppercase" style="color: #475569;">TOTAL POOL</span><span class="font-bold text-lg" style="color: #0f172a;">${data.total_codes.toLocaleString()}</span></div>
-                <div class="linear-card p-3 rounded" style="color: #0f172a;"><span class="block text-xs uppercase" style="color: #16a34a;">VERIFIED</span><span class="font-bold text-lg" style="color: #16a34a;">${data.consumed_codes.toLocaleString()}</span></div>
+                <div class="linear-card p-3 rounded bg-white border border-slate-300" style="color: #0f172a;"><span class="block text-xs uppercase font-semibold" style="color: #475569;">TOTAL POOL</span><span class="font-black text-lg text-black">${data.total_codes.toLocaleString()}</span></div>
+                <div class="linear-card p-3 rounded bg-white border border-slate-300" style="color: #0f172a;"><span class="block text-xs uppercase font-semibold" style="color: #16a34a;">VERIFIED</span><span class="font-black text-lg text-black">${data.consumed_codes.toLocaleString()}</span></div>
             `;
 
             const tbody = document.getElementById('report-log-rows');
             if (data.recent_logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-400 italic">No inspection logs recorded yet</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-500 italic">No inspection logs recorded yet</td></tr>`;
             } else {
                 tbody.innerHTML = data.recent_logs.map(log => `
                     <tr class="hover:bg-black/[0.02]">
-                        <td class="p-2.5 text-xs text-slate-300">${log.time}</td>
-                        <td class="p-2.5 font-bold text-white">${log.user}</td>
-                        <td class="p-2.5 text-white">${log.code}</td>
-                        <td class="p-2.5 font-bold ${log.result === 'PASS' ? 'text-[#2ed573]' : 'text-red-400'}">${log.result}</td>
+                        <td class="p-2.5 text-xs text-slate-800">${log.time}</td>
+                        <td class="p-2.5 font-bold text-black">${log.user}</td>
+                        <td class="p-2.5 text-black font-semibold">${log.code}</td>
+                        <td class="p-2.5 font-bold ${log.result === 'PASS' ? 'text-emerald-700' : 'text-red-700'}">${log.result}</td>
                     </tr>
                 `).join('');
             }
@@ -1785,31 +1785,31 @@
 
             const tbody = document.getElementById('lifecycle-log-rows');
             if (data.logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-400 italic">No state changes recorded</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-500 italic">No state changes recorded</td></tr>`;
             } else {
                 tbody.innerHTML = data.logs.map(log => {
                     let label = log.action;
-                    let colorClass = "text-slate-200";
+                    let colorClass = "text-slate-800";
                     if (log.action === 'CREATED') {
                         label = "Job Created & Ingested";
-                        colorClass = "text-indigo-300 font-semibold";
+                        colorClass = "text-indigo-800 font-bold";
                     } else if (log.action === 'REACTIVATED_AND_UNBLOCKED') {
                         label = "Reactivated & Unblocked";
-                        colorClass = "text-amber-400 font-semibold";
+                        colorClass = "text-amber-800 font-bold";
                     } else if (log.action === 'COMPLETED_AND_BLOCKED') {
                         label = "Completed & Blocked";
-                        colorClass = "text-red-400 font-semibold";
+                        colorClass = "text-red-800 font-bold";
                     } else if (log.action === 'DELETED') {
                         label = "Soft Deleted";
-                        colorClass = "text-red-400 font-semibold";
+                        colorClass = "text-red-800 font-bold";
                     }
 
                     return `
                         <tr class="hover:bg-black/[0.02]">
-                            <td class="p-2.5 text-xs text-slate-300">${log.time}</td>
-                            <td class="p-2.5 font-bold text-white">${log.user}</td>
+                            <td class="p-2.5 text-xs text-slate-800">${log.time}</td>
+                            <td class="p-2.5 font-bold text-black">${log.user}</td>
                             <td class="p-2.5 ${colorClass}">${label}</td>
-                            <td class="p-2.5 text-xs text-slate-300">${log.reason || '-'}</td>
+                            <td class="p-2.5 text-xs text-slate-800">${log.reason || '-'}</td>
                         </tr>
                     `;
                 }).join('');
@@ -1827,17 +1827,11 @@
                 <tr class="hover:bg-black/[0.02]">
                     <td class="p-3">
                         <div class="flex items-center gap-2">
-                            <span class="font-bold text-white">${u.username}</span>
-                            <span class="text-[10px] uppercase px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">${u.role}</span>
+                            <span class="font-black text-black text-xs">${u.username}</span>
+                            <span class="text-[10px] uppercase px-1.5 py-0.2 rounded bg-slate-200 text-slate-800 font-semibold">${u.role}</span>
                         </div>
-                        ${(u.employee_name || u.employee_id) ? `
-                            <div class="text-[11px] text-slate-300 mt-0.5">
-                                ${u.employee_name ? `<span>Name: ${u.employee_name}</span>` : ''}
-                                ${u.employee_id ? `<span class="ml-2">ID: ${u.employee_id}</span>` : ''}
-                            </div>
-                        ` : ''}
-                        ${!u.is_active ? '<span class="text-[10px] text-red-400 block mt-0.5">(Suspended)</span>' : ''}
-                        ${u.must_change_password ? '<span class="text-[10px] text-amber-400 block mt-0.5">(PW Reset Required)</span>' : ''}
+                        ${!u.is_active ? '<span class="text-[10px] text-red-700 font-bold block mt-0.5">(Suspended)</span>' : ''}
+                        ${u.must_change_password ? '<span class="text-[10px] text-amber-700 font-bold block mt-0.5">(PW Reset Required)</span>' : ''}
                     </td>
                     <td class="p-3 text-center">
                         <input type="checkbox" ${u.can_upload ? 'checked' : ''} 
@@ -1846,9 +1840,9 @@
                     </td>
                     <td class="p-3 text-right">
                         ${u.username !== currentUser.username ? `
-                            <button onclick="promptAdminResetPassword('${u.username}')" class="text-indigo-400 hover:text-indigo-300 font-medium text-xs mr-2">Reset PW</button>
-                            <button onclick="toggleUserSuspension('${u.username}', ${u.is_active})" class="${u.is_active ? 'text-amber-400 hover:text-amber-300' : 'text-green-400 hover:text-green-300'} font-medium text-xs">${u.is_active ? 'Suspend' : 'Activate'}</button>
-                        ` : '<span class="text-xs text-slate-400">Current User</span>'}
+                            <button onclick="promptAdminResetPassword('${u.username}')" class="text-indigo-700 hover:text-indigo-900 font-bold text-xs mr-2">Reset PW</button>
+                            <button onclick="toggleUserSuspension('${u.username}', ${u.is_active})" class="${u.is_active ? 'text-amber-700 hover:text-amber-900' : 'text-green-700 hover:text-green-900'} font-bold text-xs">${u.is_active ? 'Suspend' : 'Activate'}</button>
+                        ` : '<span class="text-xs text-slate-500 font-medium">Current User</span>'}
                     </td>
                 </tr>
             `).join('');
