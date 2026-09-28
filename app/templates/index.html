@@ -289,7 +289,7 @@
                 background: #ffffff !important;
                 border-bottom: 2px solid #0f172a !important;
                 padding-bottom: 3px !important;
-                margin-bottom: 6px !important;
+                margin-bottom: 6mm !important;
             }
             .print-title {
                 font-size: 12pt !important;
@@ -503,15 +503,15 @@
                     <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-1 mb-0.5 hidden md:block">Filter Stream</span>
                     <button onclick="filterStream('ALL')" id="stream-filter-all" class="flex-1 md:flex-initial text-left px-2 py-1.5 rounded bg-white/10 text-white font-medium transition-colors hover:bg-white/15 flex justify-between items-center text-[11px]">
                         <span>All Scans</span>
-                        <span id="stream-count-all" class="text-[10px] bg-slate-800 px-1.5 py-0.2 rounded text-slate-300">0</span>
+                        <span id="stream-count-all" class="text-[10px] bg-slate-800 px-1.5 py-0.2 rounded text-white font-bold">0</span>
                     </button>
-                    <button onclick="filterStream('PASS')" id="stream-filter-pass" class="flex-1 md:flex-initial text-left px-2 py-1.5 rounded text-slate-300 hover:bg-white/10 transition-colors flex justify-between items-center text-[11px]">
-                        <span>Pass Only</span>
-                        <span id="stream-count-pass" class="text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold px-1.5 py-0.2 rounded">0</span>
+                    <button onclick="filterStream('PASS')" id="stream-filter-pass" class="flex-1 md:flex-initial text-left px-2 py-1.5 rounded text-white hover:bg-white/10 transition-colors flex justify-between items-center text-[11px]">
+                        <span class="font-medium">Pass Only</span>
+                        <span id="stream-count-pass" class="text-[10px] bg-emerald-300 text-black font-extrabold px-1.5 py-0.2 rounded">0</span>
                     </button>
-                    <button onclick="filterStream('ERROR')" id="stream-filter-error" class="flex-1 md:flex-initial text-left px-2 py-1.5 rounded text-slate-300 hover:bg-white/10 transition-colors flex justify-between items-center text-[11px]">
-                        <span>Errors Only</span>
-                        <span id="stream-count-error" class="text-[10px] bg-red-500/20 text-red-300 font-semibold px-1.5 py-0.2 rounded">0</span>
+                    <button onclick="filterStream('ERROR')" id="stream-filter-error" class="flex-1 md:flex-initial text-left px-2 py-1.5 rounded text-white hover:bg-white/10 transition-colors flex justify-between items-center text-[11px]">
+                        <span class="font-medium">Errors Only</span>
+                        <span id="stream-count-error" class="text-[10px] bg-red-300 text-black font-extrabold px-1.5 py-0.2 rounded">0</span>
                     </button>
                 </div>
 
@@ -519,7 +519,7 @@
                 <div class="flex-1 overflow-x-auto overflow-y-auto">
                     <table class="w-full text-left text-xs whitespace-nowrap">
                         <thead>
-                            <tr class="border-b border-white/[0.08] text-[10px] text-slate-300 font-semibold bg-[#161821] sticky top-0 z-10">
+                            <tr class="border-b border-white/[0.08] text-[10px] text-white font-semibold bg-[#161821] sticky top-0 z-10">
                                 <th class="px-3 py-1.5 w-12">Seq</th>
                                 <th class="px-3 py-1.5">Code</th>
                                 <th class="px-3 py-1.5">Evaluation</th>
@@ -563,8 +563,8 @@
         <div class="linear-card p-4 sm:p-6 rounded-lg max-w-5xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="flex justify-between items-center mb-3 border-b border-white/[0.08] pb-3">
                 <div>
-                    <h3 class="text-base font-bold text-white">Job Control Center</h3>
-                    <p class="text-xs text-slate-300">View live status across active, inactive, completed, or deleted historical jobs</p>
+                    <h3 class="text-lg font-extrabold text-slate-100">Job Control Center</h3>
+                    <p class="text-xs text-slate-400">View live status across active, inactive, completed, or deleted historical jobs</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <button id="btn-bulk-status" onclick="promptBulkStatusChange()" disabled class="linear-button-primary px-3 py-1.5 text-xs rounded font-medium opacity-30 pointer-events-none transition-opacity">Update Job Status</button>
@@ -589,7 +589,7 @@
             <div class="flex-1 overflow-y-auto border border-white/[0.08] rounded">
                 <table class="w-full text-left text-xs whitespace-nowrap">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-[10px] text-slate-300 font-semibold bg-[#161821] sticky top-0 z-10">
+                        <tr class="border-b border-white/[0.08] text-[10px] text-white font-semibold bg-[#161821] sticky top-0 z-10">
                             <th class="p-3 w-10 text-center"><input type="checkbox" id="select-all-jobs" onclick="toggleSelectAllJobs(this)"></th>
                             <th class="p-3">Job Card</th>
                             <th class="p-3">Description</th>
@@ -609,7 +609,7 @@
     <div id="user-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
         <div class="linear-card p-4 sm:p-6 rounded-lg max-w-2xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="flex justify-between items-center mb-3 pb-2 border-b border-white/[0.08]">
-                <h3 class="text-base font-bold text-white">Operator & User Permissions</h3>
+                <h3 class="text-lg font-extrabold text-slate-100">Operator & User Permissions</h3>
                 <button onclick="toggleModal('user-modal')" class="linear-button-secondary px-3 py-1 text-xs rounded">Close</button>
             </div>
             
@@ -638,7 +638,7 @@
             <div class="max-h-64 overflow-y-auto text-xs border border-white/[0.08] rounded">
                 <table class="w-full text-left">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-[10px] text-slate-300 bg-[#161821] sticky top-0">
+                        <tr class="border-b border-white/[0.08] text-[10px] text-white bg-[#161821] sticky top-0">
                             <th class="p-3">User & Employee Details</th>
                             <th class="p-3 text-center">Can Create Jobs?</th>
                             <th class="p-3 text-right">Action</th>
@@ -659,7 +659,7 @@
                         <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
                         <span class="print-brand-text">CCL Middle East – Pakistan</span>
                     </div>
-                    <h3 id="report-job-id" class="print-title text-base font-bold text-white">QC Report</h3>
+                    <h3 id="report-job-id" class="print-title text-lg font-extrabold text-slate-100">QC Report</h3>
                     <p id="report-desc" class="print-subtitle text-xs text-slate-400">VDV QC Report</p>
                 </div>
                 <div class="flex gap-2 no-print">
@@ -674,7 +674,7 @@
             <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded">
                 <table class="w-full text-left text-xs whitespace-nowrap">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-[10px] text-slate-300 bg-[#161821] sticky top-0">
+                        <tr class="border-b border-white/[0.08] text-[10px] text-white bg-[#161821] sticky top-0">
                             <th class="p-3">Timestamp</th>
                             <th class="p-3">Inspector</th>
                             <th class="p-3">Scanned Barcode</th>
@@ -697,7 +697,7 @@
                         <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
                         <span class="print-brand-text">CCL Middle East – Pakistan</span>
                     </div>
-                    <h3 id="lifecycle-job-id" class="print-title text-base font-bold text-white">Lifecycle Audit Log</h3>
+                    <h3 id="lifecycle-job-id" class="print-title text-lg font-extrabold text-slate-100">Lifecycle Audit Log</h3>
                     <p id="lifecycle-desc" class="print-subtitle text-xs text-slate-400"></p>
                 </div>
                 <div class="flex gap-2 no-print">
@@ -709,7 +709,7 @@
             <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded">
                 <table class="w-full text-left text-xs whitespace-nowrap">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-[10px] text-slate-300 bg-[#161821] sticky top-0">
+                        <tr class="border-b border-white/[0.08] text-[10px] text-white bg-[#161821] sticky top-0">
                             <th class="p-3">Timestamp</th>
                             <th class="p-3">Authorized User</th>
                             <th class="p-3">Action Performed</th>
@@ -1615,7 +1615,7 @@
                     if (t === type.toLowerCase()) {
                         btn.className = "flex-1 md:flex-initial text-left px-2 py-1.5 rounded bg-white/10 text-white font-medium transition-colors hover:bg-white/15 flex justify-between items-center text-[11px]";
                     } else {
-                        btn.className = "flex-1 md:flex-initial text-left px-2 py-1.5 rounded text-slate-300 hover:bg-white/10 transition-colors flex justify-between items-center text-[11px]";
+                        btn.className = "flex-1 md:flex-initial text-left px-2 py-1.5 rounded text-white hover:bg-white/10 transition-colors flex justify-between items-center text-[11px]";
                     }
                 }
             });
