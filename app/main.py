@@ -461,13 +461,14 @@ async def create_job(
                         seen_in_batch.add(item)
                         raw_codes.append(item)
 
-            if not raw_codes:
+            total_codes = len(raw_codes)
+            if total_codes == 0:
                 raise HTTPException(status_code=400, detail="No valid codes found in the file.")
 
             conflicts = []
             if not override_duplicate:
                 chunk_size = 5000
-                for i in range(0, len(raw_codes), chunk_size):
+                for i in range(0, total_codes, chunk_size):
                     chunk = raw_codes[i:i + chunk_size]
                     cur.execute("""
                         SELECT c.code_value, j.job_card_id 
@@ -479,14 +480,14 @@ async def create_job(
                     for m in matches:
                         conflicts.append({"code": m[0], "job": m[1]})
 
-            if conflicts and not override_duplicate:
-                total_conflicts = len(conflicts)
-                sample_conflict = conflicts[0]
-                warning_msg = f"Found {total_conflicts} conflicting code(s) already existing across other jobs (e.g., Code '{sample_conflict['code']}' in Job '{sample_conflict['job']}'). Would you like to continue creating this job anyway?"
+            total_conflicts = len(conflicts)
+            if not override_duplicate:
+                warning_msg = f"There are {total_conflicts} conflicting code(s) out of {total_codes:,} total codes in the CSV. Would you like to proceed with creating this job?"
                 return JSONResponse(status_code=409, content={
                     "status": "duplicate_warning",
                     "message": warning_msg,
-                    "conflict_count": total_conflicts
+                    "conflict_count": total_conflicts,
+                    "total_codes": total_codes
                 })
 
             cur.execute("""
@@ -503,9 +504,7 @@ async def create_job(
 
             cur.copy_from(csv_buffer, 'codes', columns=('run_id', 'job_card_id', 'code_value', 'status'))
 
-            lifecycle_reason = "Initial full batch ingestion"
-            if conflicts and override_duplicate:
-                lifecycle_reason = "Ingested with overridden duplicate conflict warnings"
+            lifecycle_reason = f"Initial full batch ingestion ({total_codes} codes, {total_conflicts} conflicts overridden)"
 
             cur.execute("""
                 INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) 
@@ -513,7 +512,7 @@ async def create_job(
             """, (job_card_id, "CREATED", uploader["username"], lifecycle_reason))
 
             conn.commit()
-            return {"status": "success", "job_card_id": job_card_id, "total_extracted": len(raw_codes)}
+            return {"status": "success", "job_card_id": job_card_id, "total_extracted": total_codes}
     except HTTPException:
         conn.rollback()
         raise
