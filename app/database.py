@@ -80,6 +80,13 @@ def init_db():
                 );
             """)
 
+            # Performance Indexes for instant status toggling and verification lookups
+            cur.execute("""
+                CREATE INDEX IF NOT EXISTS idx_codes_run_status ON codes(run_id, status);
+                CREATE INDEX IF NOT EXISTS idx_codes_value ON codes(code_value);
+                CREATE INDEX IF NOT EXISTS idx_job_cards_status ON job_cards(status);
+            """)
+
             # Scan Logs Table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS scan_logs (

@@ -176,7 +176,6 @@ def change_password(
     finally:
         release_connection(conn)
 
-# --- User Management (Admin only) ---
 @app.get("/api/users")
 def list_users(admin: dict = Depends(require_admin)):
     conn = get_connection()
@@ -292,7 +291,6 @@ def toggle_user_upload(
     finally:
         release_connection(conn)
 
-# --- Job Search & Management ---
 @app.get("/api/jobs")
 def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
     conn = get_connection()
@@ -717,7 +715,6 @@ def verify_code(
 
             active_run_id, jc_status = active_jc
             
-            # STRICT CHECK: Only allow verification if job is ACTIVE
             if jc_status != 'ACTIVE':
                 return JSONResponse(status_code=200, content={
                     "result": "BLOCKED",
