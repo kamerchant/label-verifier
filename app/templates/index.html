@@ -70,19 +70,19 @@
             color: #ffffff;
         }
         .linear-badge-pass {
-            background-color: rgba(46, 213, 115, 0.12);
+            background-color: rgba(46, 213, 115, 0.15);
             color: #2ed573;
-            border: 1px solid rgba(46, 213, 115, 0.3);
+            border: 1px solid rgba(46, 213, 115, 0.35);
         }
         .linear-badge-fail {
-            background-color: rgba(255, 71, 87, 0.12);
+            background-color: rgba(255, 71, 87, 0.15);
             color: #ff4757;
-            border: 1px solid rgba(255, 71, 87, 0.3);
+            border: 1px solid rgba(255, 71, 87, 0.35);
         }
         .linear-badge-warn {
-            background-color: rgba(255, 165, 2, 0.12);
+            background-color: rgba(255, 165, 2, 0.15);
             color: #ffa502;
-            border: 1px solid rgba(255, 165, 2, 0.3);
+            border: 1px solid rgba(255, 165, 2, 0.35);
         }
 
         /* --- THEME 2: Parchment (Warm Paper Neutral) --- */
@@ -126,19 +126,19 @@
             color: #1a211e;
         }
         html.theme-parchment .linear-badge-pass {
-            background-color: rgba(47, 133, 90, 0.12);
+            background-color: rgba(47, 133, 90, 0.15);
             color: #2f855a;
-            border: 1px solid rgba(47, 133, 90, 0.3);
+            border: 1px solid rgba(47, 133, 90, 0.35);
         }
         html.theme-parchment .linear-badge-fail {
-            background-color: rgba(197, 48, 48, 0.12);
+            background-color: rgba(197, 48, 48, 0.15);
             color: #c53030;
-            border: 1px solid rgba(197, 48, 48, 0.3);
+            border: 1px solid rgba(197, 48, 48, 0.35);
         }
         html.theme-parchment .linear-badge-warn {
-            background-color: rgba(214, 158, 46, 0.15);
+            background-color: rgba(214, 158, 46, 0.18);
             color: #b7791f;
-            border: 1px solid rgba(214, 158, 46, 0.3);
+            border: 1px solid rgba(214, 158, 46, 0.35);
         }
         html.theme-parchment header, html.theme-parchment footer {
             background-color: #f7f5f0 !important;
@@ -507,11 +507,11 @@
                     </button>
                     <button onclick="filterStream('PASS')" id="stream-filter-pass" class="flex-1 md:flex-initial text-left px-2 py-1.5 rounded text-slate-400 hover:bg-white/10 transition-colors flex justify-between items-center text-[11px]">
                         <span>Pass Only</span>
-                        <span id="stream-count-pass" class="text-[10px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.2 rounded">0</span>
+                        <span id="stream-count-pass" class="text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold px-1.5 py-0.2 rounded">0</span>
                     </button>
                     <button onclick="filterStream('ERROR')" id="stream-filter-error" class="flex-1 md:flex-initial text-left px-2 py-1.5 rounded text-slate-400 hover:bg-white/10 transition-colors flex justify-between items-center text-[11px]">
                         <span>Errors Only</span>
-                        <span id="stream-count-error" class="text-[10px] bg-red-500/10 text-red-400 px-1.5 py-0.2 rounded">0</span>
+                        <span id="stream-count-error" class="text-[10px] bg-red-500/20 text-red-300 font-semibold px-1.5 py-0.2 rounded">0</span>
                     </button>
                 </div>
 
@@ -558,10 +558,175 @@
         </div>
     </footer>
 
+    <!-- Job Control Center Modal -->
+    <div id="master-jobs-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
+        <div class="linear-card p-4 sm:p-6 rounded-lg max-w-5xl w-full shadow-2xl flex flex-col max-h-[92vh]">
+            <div class="flex justify-between items-center mb-3 border-b border-white/[0.08] pb-3">
+                <div>
+                    <h3 class="text-base font-bold text-white">Job Control Center</h3>
+                    <p class="text-xs text-slate-400">View live status across active, inactive, completed, or deleted historical jobs</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btn-bulk-status" onclick="promptBulkStatusChange()" disabled class="linear-button-primary px-3 py-1.5 text-xs rounded font-medium opacity-30 pointer-events-none transition-opacity">Update Job Status</button>
+                    <button onclick="toggleModal('master-jobs-modal')" class="linear-button-secondary px-3.5 py-1.5 text-xs rounded font-medium">Close</button>
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-2.5 mb-3">
+                <div class="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 md:pb-0">
+                    <button onclick="filterMasterJobs('ALL')" id="filter-tab-all" class="linear-button-primary px-3 py-1.5 rounded text-xs font-medium">All Jobs</button>
+                    <button onclick="filterMasterJobs('ACTIVE')" id="filter-tab-active" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Active Only</button>
+                    <button onclick="filterMasterJobs('INACTIVE')" id="filter-tab-inactive" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Inactive Only</button>
+                    <button onclick="filterMasterJobs('COMPLETED')" id="filter-tab-completed" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Completed Only</button>
+                    <button onclick="filterMasterJobs('DELETED')" id="filter-tab-deleted" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Deleted Only</button>
+                </div>
+                <div class="relative w-full md:w-72">
+                    <input type="text" id="master-job-search" oninput="renderMasterJobsTable()" placeholder="Search in all jobs..." 
+                           class="linear-input w-full px-3 py-1.5 text-xs rounded placeholder-slate-500">
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto border border-white/[0.08] rounded">
+                <table class="w-full text-left text-xs whitespace-nowrap">
+                    <thead>
+                        <tr class="border-b border-white/[0.08] text-[10px] text-slate-400 font-semibold bg-[#161821] sticky top-0 z-10">
+                            <th class="p-3 w-10 text-center"><input type="checkbox" id="select-all-jobs" onclick="toggleSelectAllJobs(this)"></th>
+                            <th class="p-3">Job Card</th>
+                            <th class="p-3">Description</th>
+                            <th class="p-3">Timestamps</th>
+                            <th class="p-3 text-center">Status</th>
+                            <th class="p-3 text-right">Codes Verified</th>
+                            <th class="p-3 text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="master-jobs-rows" class="divide-y divide-white/[0.04]"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Administration Modal -->
+    <div id="user-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
+        <div class="linear-card p-4 sm:p-6 rounded-lg max-w-2xl w-full shadow-2xl flex flex-col max-h-[92vh]">
+            <div class="flex justify-between items-center mb-3 pb-2 border-b border-white/[0.08]">
+                <h3 class="text-base font-bold text-white">Operator & User Permissions</h3>
+                <button onclick="toggleModal('user-modal')" class="linear-button-secondary px-3 py-1 text-xs rounded">Close</button>
+            </div>
+            
+            <form onsubmit="createUser(event)" class="linear-subcard p-4 rounded mb-4 space-y-3">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <input type="text" id="new-user-name" placeholder="Username *" required class="linear-input p-2.5 text-xs rounded">
+                    <input type="password" id="new-user-pass" placeholder="Password *" title="Minimum 8 characters, at least 1 uppercase, 1 lowercase, and 1 number." required class="linear-input p-2.5 text-xs rounded">
+                    <select id="new-user-role" class="linear-input p-2.5 text-xs rounded">
+                        <option value="QC Incharge">QC Incharge</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <input type="text" id="new-employee-name" placeholder="Employee Name (Optional)" class="linear-input p-2.5 text-xs rounded">
+                    <input type="text" id="new-employee-id" placeholder="Employee ID (Optional)" class="linear-input p-2.5 text-xs rounded">
+                </div>
+                <div class="flex justify-between items-center pt-2 border-t border-white/[0.06]">
+                    <label class="flex items-center gap-1.5 text-xs cursor-pointer text-slate-300">
+                        <input type="checkbox" id="new-user-can-upload" class="rounded">
+                        <span>Allow creating new job cards</span>
+                    </label>
+                    <button type="submit" class="linear-button-primary px-4 py-2 rounded text-xs font-semibold">Create User</button>
+                </div>
+            </form>
+
+            <div class="max-h-64 overflow-y-auto text-xs border border-white/[0.08] rounded">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-white/[0.08] text-[10px] text-slate-400 bg-[#161821] sticky top-0">
+                            <th class="p-3">User & Employee Details</th>
+                            <th class="p-3 text-center">Can Create Jobs?</th>
+                            <th class="p-3 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table" class="divide-y divide-white/[0.04]"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- QC Report Modal -->
+    <div id="report-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
+        <div class="linear-card p-6 rounded-lg max-w-4xl w-full shadow-2xl flex flex-col max-h-[92vh]">
+            <div class="report-header-box flex justify-between items-start mb-3 border-b border-white/[0.08] pb-3">
+                <div class="flex flex-col">
+                    <div class="print-brand-box">
+                        <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
+                        <span class="print-brand-text">CCL Middle East – Pakistan</span>
+                    </div>
+                    <h3 id="report-job-id" class="print-title text-base font-bold text-white">QC Report</h3>
+                    <p id="report-desc" class="print-subtitle text-xs text-slate-400">VDV QC Report</p>
+                </div>
+                <div class="flex gap-2 no-print">
+                    <button onclick="window.print()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Print Report</button>
+                    <button id="download-csv-btn" class="linear-button-primary px-3 py-1.5 rounded text-xs font-medium">Download CSV</button>
+                    <button onclick="toggleModal('report-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Close</button>
+                </div>
+            </div>
+
+            <div id="report-stats" class="grid grid-cols-2 gap-3 mb-3 text-center"></div>
+
+            <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded">
+                <table class="w-full text-left text-xs whitespace-nowrap">
+                    <thead>
+                        <tr class="border-b border-white/[0.08] text-[10px] text-slate-400 bg-[#161821] sticky top-0">
+                            <th class="p-3">Timestamp</th>
+                            <th class="p-3">Inspector</th>
+                            <th class="p-3">Scanned Barcode</th>
+                            <th class="p-3">Evaluation</th>
+                        </tr>
+                    </thead>
+                    <tbody id="report-log-rows" class="divide-y divide-white/[0.04]"></tbody>
+                </table>
+            </div>
+            <div id="print-timestamp" class="print-timestamp-footer"></div>
+        </div>
+    </div>
+
+    <!-- Job Lifecycle Audit Trail Modal -->
+    <div id="lifecycle-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
+        <div class="linear-card p-6 rounded-lg max-w-3xl w-full shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="report-header-box flex justify-between items-start mb-3 border-b border-white/[0.08] pb-2">
+                <div>
+                    <div class="print-brand-box">
+                        <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
+                        <span class="print-brand-text">CCL Middle East – Pakistan</span>
+                    </div>
+                    <h3 id="lifecycle-job-id" class="print-title text-base font-bold text-white">Lifecycle Audit Log</h3>
+                    <p id="lifecycle-desc" class="print-subtitle text-xs text-slate-400"></p>
+                </div>
+                <div class="flex gap-2 no-print">
+                    <button onclick="window.print()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Print Log</button>
+                    <button onclick="toggleModal('lifecycle-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Close</button>
+                </div>
+            </div>
+
+            <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded">
+                <table class="w-full text-left text-xs whitespace-nowrap">
+                    <thead>
+                        <tr class="border-b border-white/[0.08] text-[10px] text-slate-400 bg-[#161821] sticky top-0">
+                            <th class="p-3">Timestamp</th>
+                            <th class="p-3">Authorized User</th>
+                            <th class="p-3">Action Performed</th>
+                            <th class="p-3">Reason / Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lifecycle-log-rows" class="divide-y divide-white/[0.04]"></tbody>
+                </table>
+            </div>
+            <div id="print-timestamp-audit" class="print-timestamp-footer"></div>
+        </div>
+    </div>
+
     <!-- Custom Alert Modal -->
     <div id="custom-alert-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/35 shadow-2xl text-center">
-            <h3 id="custom-alert-title" class="text-base font-bold mb-1">Please Verify!</h3>
+            <h3 id="custom-alert-title" class="text-base font-bold mb-1 text-white">Please Verify!</h3>
             <p id="custom-alert-msg" class="text-xs text-slate-300 mb-5 leading-relaxed"></p>
             <button type="button" onclick="closeCustomAlert()" class="linear-button-primary w-full py-2.5 rounded text-sm font-semibold min-h-[40px]">OK</button>
         </div>
@@ -594,7 +759,7 @@
     <!-- Admin Reset Password Modal -->
     <div id="admin-reset-pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[80]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/30 shadow-2xl">
-            <h3 class="text-base font-bold mb-1">Reset Operator Password</h3>
+            <h3 class="text-base font-bold mb-1 text-white">Reset Operator Password</h3>
             <p id="admin-reset-pw-subtitle" class="text-xs text-slate-400 mb-4">Enter a new temporary password for this user (Min 8 chars, 1 uppercase, 1 lowercase, 1 number).</p>
             <form onsubmit="submitAdminResetPassword(event)" class="space-y-3.5">
                 <div>
@@ -646,7 +811,7 @@
                 <div class="bg-white p-1 rounded shrink-0">
                     <img src="/static/logo.jpg" alt="CCL Logo" class="h-6 w-auto object-contain block" onerror="this.onerror=null; this.src='/logo.jpg';">
                 </div>
-                <span class="font-bold text-base">CCL ME - PK - Variable Data Verification</span>
+                <span class="font-bold text-base text-white">CCL ME - PK - Variable Data Verification</span>
             </div>
             <p class="text-xs text-slate-400 mb-4">Sign in to initialize serialization terminal</p>
             <form onsubmit="handleLogin(event)" class="space-y-3.5">
@@ -682,7 +847,7 @@
 
     <div id="pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full shadow-2xl">
-            <h3 id="pw-title" class="text-base font-bold mb-1">Change Password</h3>
+            <h3 id="pw-title" class="text-base font-bold mb-1 text-white">Change Password</h3>
             <p id="pw-subtitle" class="text-xs text-slate-400 mb-4">Enter current and new credentials</p>
             <form onsubmit="handleChangePassword(event)" class="space-y-3.5">
                 <div>
@@ -703,7 +868,7 @@
 
     <div id="upload-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full shadow-2xl">
-            <h3 class="text-base font-bold mb-3">Create New Job & Ingest Code Pool</h3>
+            <h3 class="text-base font-bold mb-3 text-white">Create New Job & Ingest Code Pool</h3>
             <form id="create-job-form" onsubmit="uploadJob(event, false)" class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Job Card # *</label>
@@ -723,170 +888,6 @@
                     <button type="submit" id="upload-btn" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold">Create Job</button>
                 </div>
             </form>
-        </div>
-    </div>
-
-    <div id="master-jobs-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
-        <div class="linear-card p-4 sm:p-6 rounded-lg max-w-5xl w-full shadow-2xl flex flex-col max-h-[92vh]">
-            <div class="flex justify-between items-center mb-3 border-b pb-3">
-                <div>
-                    <h3 class="text-base font-bold">All Jobs Status Report</h3>
-                    <p class="text-xs text-slate-400">View live status across active, inactive, completed, or deleted historical jobs</p>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button id="btn-bulk-status" onclick="promptBulkStatusChange()" disabled class="linear-button-primary px-3 py-1.5 text-xs rounded font-medium opacity-30 pointer-events-none transition-opacity">Update Job Status</button>
-                    <button onclick="toggleModal('master-jobs-modal')" class="linear-button-secondary px-3.5 py-1.5 text-xs rounded font-medium">Close</button>
-                </div>
-            </div>
-
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-2.5 mb-3">
-                <div class="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 md:pb-0">
-                    <button onclick="filterMasterJobs('ALL')" id="filter-tab-all" class="linear-button-primary px-3 py-1.5 rounded text-xs font-medium">All Jobs</button>
-                    <button onclick="filterMasterJobs('ACTIVE')" id="filter-tab-active" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Active Only</button>
-                    <button onclick="filterMasterJobs('INACTIVE')" id="filter-tab-inactive" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Inactive Only</button>
-                    <button onclick="filterMasterJobs('COMPLETED')" id="filter-tab-completed" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Completed Only</button>
-                    <button onclick="filterMasterJobs('DELETED')" id="filter-tab-deleted" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Deleted Only</button>
-                </div>
-                <div class="relative w-full md:w-72">
-                    <input type="text" id="master-job-search" oninput="renderMasterJobsTable()" placeholder="Search in all jobs..." 
-                           class="linear-input w-full px-3 py-1.5 text-xs rounded placeholder-slate-500">
-                </div>
-            </div>
-
-            <div class="flex-1 overflow-y-auto border rounded">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="border-b text-xs font-semibold">
-                            <th class="p-3 w-10 text-center"><input type="checkbox" id="select-all-jobs" onclick="toggleSelectAllJobs(this)"></th>
-                            <th class="p-3">Job Card</th>
-                            <th class="p-3">Description</th>
-                            <th class="p-3">Timestamps</th>
-                            <th class="p-3 text-center">Status</th>
-                            <th class="p-3 text-right">Codes Verified</th>
-                            <th class="p-3 text-center">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="master-jobs-rows" class="divide-y"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- User Management Modal -->
-    <div id="user-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
-        <div class="linear-card p-4 sm:p-6 rounded-lg max-w-2xl w-full shadow-2xl flex flex-col max-h-[92vh]">
-            <div class="flex justify-between items-center mb-3 pb-2 border-b">
-                <h3 class="text-base font-bold">Operator & User Permissions</h3>
-                <button onclick="toggleModal('user-modal')" class="text-slate-400 hover:text-white text-sm">✕</button>
-            </div>
-            
-            <form onsubmit="createUser(event)" class="linear-subcard p-4 rounded mb-4 space-y-3">
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                    <input type="text" id="new-user-name" placeholder="Username *" required class="linear-input p-2.5 text-xs rounded">
-                    <input type="password" id="new-user-pass" placeholder="Password *" title="Minimum 8 characters, at least 1 uppercase, 1 lowercase, and 1 number." required class="linear-input p-2.5 text-xs rounded">
-                    <select id="new-user-role" class="linear-input p-2.5 text-xs rounded">
-                        <option value="QC Incharge">QC Incharge</option>
-                        <option value="admin">Admin</option>
-                    </select>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <input type="text" id="new-employee-name" placeholder="Employee Name (Optional)" class="linear-input p-2.5 text-xs rounded">
-                    <input type="text" id="new-employee-id" placeholder="Employee ID (Optional)" class="linear-input p-2.5 text-xs rounded">
-                </div>
-                <div class="flex justify-between items-center pt-2 border-t">
-                    <label class="flex items-center gap-1.5 text-xs cursor-pointer">
-                        <input type="checkbox" id="new-user-can-upload" class="rounded">
-                        <span>Allow creating new job cards</span>
-                    </label>
-                    <button type="submit" class="linear-button-primary px-4 py-2 rounded text-xs font-semibold">Create User</button>
-                </div>
-            </form>
-
-            <div class="max-h-64 overflow-y-auto text-sm border rounded">
-                <table class="w-full text-left">
-                    <thead>
-                        <tr class="border-b text-xs">
-                            <th class="p-3">User & Employee Details</th>
-                            <th class="p-3 text-center">Can Create Jobs?</th>
-                            <th class="p-3 text-right">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="users-table" class="divide-y"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- QC Report Modal -->
-    <div id="report-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
-        <div class="linear-card p-6 rounded-lg max-w-4xl w-full shadow-2xl flex flex-col max-h-[92vh]">
-            <div class="report-header-box flex justify-between items-start mb-3 border-b pb-3">
-                <div class="flex flex-col">
-                    <div class="print-brand-box">
-                        <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
-                        <span class="print-brand-text">CCL Middle East – Pakistan</span>
-                    </div>
-                    <h3 id="report-job-id" class="print-title text-lg font-bold">QC Report</h3>
-                    <p id="report-desc" class="print-subtitle text-xs text-slate-400">VDV QC Report</p>
-                </div>
-                <div class="flex gap-2 no-print">
-                    <button onclick="window.print()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Print Report</button>
-                    <button id="download-csv-btn" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-medium">Download CSV</button>
-                    <button onclick="toggleModal('report-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Close</button>
-                </div>
-            </div>
-
-            <div id="report-stats" class="grid grid-cols-2 gap-3 mb-3 text-center"></div>
-
-            <div class="print-table-container flex-1 overflow-y-auto border rounded">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="border-b text-xs">
-                            <th class="p-3">Timestamp</th>
-                            <th class="p-3">Inspector</th>
-                            <th class="p-3">Scanned Barcode</th>
-                            <th class="p-3">Evaluation</th>
-                        </tr>
-                    </thead>
-                    <tbody id="report-log-rows" class="divide-y text-xs"></tbody>
-                </table>
-            </div>
-            <div id="print-timestamp" class="print-timestamp-footer"></div>
-        </div>
-    </div>
-
-    <!-- Job Lifecycle Audit Trail Modal -->
-    <div id="lifecycle-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
-        <div class="linear-card p-6 rounded-lg max-w-3xl w-full shadow-2xl flex flex-col max-h-[85vh]">
-            <div class="report-header-box flex justify-between items-start mb-3 border-b pb-2">
-                <div>
-                    <div class="print-brand-box">
-                        <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
-                        <span class="print-brand-text">CCL Middle East – Pakistan</span>
-                    </div>
-                    <h3 id="lifecycle-job-id" class="print-title text-lg font-bold">Lifecycle Audit Log</h3>
-                    <p id="lifecycle-desc" class="print-subtitle text-xs text-slate-400"></p>
-                </div>
-                <div class="flex gap-2 no-print">
-                    <button onclick="window.print()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Print Log</button>
-                    <button onclick="toggleModal('lifecycle-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Close</button>
-                </div>
-            </div>
-
-            <div class="print-table-container flex-1 overflow-y-auto border rounded">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="border-b text-xs">
-                            <th class="p-3">Timestamp</th>
-                            <th class="p-3">Authorized User</th>
-                            <th class="p-3">Action Performed</th>
-                            <th class="p-3">Reason / Details</th>
-                        </tr>
-                    </thead>
-                    <tbody id="lifecycle-log-rows" class="divide-y text-xs"></tbody>
-                </table>
-            </div>
-            <div id="print-timestamp-audit" class="print-timestamp-footer"></div>
         </div>
     </div>
 
@@ -1166,7 +1167,7 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `<span>Job Card: ${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
+            document.getElementById('active-title-card').innerHTML = `Job Card: ${id} <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
             
             const promptDesc = status === 'ACTIVE' 
                 ? (activeJobDesc ? `${activeJobDesc} - Ready for Validation` : `Ready for Validation`)
@@ -1237,7 +1238,7 @@
             allScans = [];
 
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `<span>Job Card: None</span>`;
+            document.getElementById('active-title-card').innerHTML = `Job Card: None`;
             document.getElementById('header-job-desc').innerText = "Search active production jobs using the search field.";
 
             const card = document.getElementById('status-card');
@@ -1445,7 +1446,7 @@
 
             const tbody = document.getElementById('master-jobs-rows');
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500 italic text-sm">No job cards found matching '${query}'</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500 italic text-xs">No job cards found matching '${query}'</td></tr>`;
                 updateBulkStatusButtonState();
                 return;
             }
@@ -1458,12 +1459,12 @@
                 else if (j.status === 'DELETED') badgeClass = "linear-badge-fail";
 
                 const descDetail = j.status === 'DELETED' 
-                    ? `<span class="text-red-400 font-medium block">Reason: ${j.deletion_reason}</span><span class="text-slate-500 block text-xs">Deleted by: ${j.deleted_by}</span>`
+                    ? `<span class="text-red-400 font-medium block">Reason: ${j.deletion_reason}</span><span class="text-slate-500 block text-[10px]">Deleted by: ${j.deleted_by}</span>`
                     : (j.description || '-');
 
                 const timeDetail = j.status === 'DELETED' 
-                    ? `<span class="text-slate-500 block text-xs">Created: ${j.created_at}</span><span class="text-red-400 block text-xs">Deleted: ${j.deleted_at}</span>`
-                    : `<span class="text-slate-400 block text-xs">${j.created_at}</span>`;
+                    ? `<span class="text-slate-500 block text-[10px]">Created: ${j.created_at}</span><span class="text-red-400 block text-[10px]">Deleted: ${j.deleted_at}</span>`
+                    : `<span class="text-slate-400 block text-[10px]">${j.created_at}</span>`;
 
                 return `
                     <tr class="hover:bg-black/[0.02]">
@@ -1474,22 +1475,22 @@
                             <div class="inline-flex items-center gap-1.5">
                                 <span class="truncate">${j.job_card_id}</span>
                                 <button onclick="copyJobCardNumber('${j.job_card_id}', this)" title="Copy Job Card Number" class="linear-button-secondary p-1 rounded transition-colors inline-flex items-center justify-center shrink-0">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                                     </svg>
                                 </button>
                             </div>
                         </td>
-                        <td class="p-3 max-w-[240px] text-sm">${descDetail}</td>
+                        <td class="p-3 max-w-[200px] text-xs">${descDetail}</td>
                         <td class="p-3">${timeDetail}</td>
                         <td class="p-3 text-center">
-                            <span class="px-2 py-0.5 rounded text-xs font-bold ${badgeClass}">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">
                                 ${j.status}
                             </span>
                         </td>
-                        <td class="p-3 text-right text-sm">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
+                        <td class="p-3 text-right text-xs">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
                         <td class="p-3 text-center">
-                            <span class="text-slate-500 italic text-xs">Active Record</span>
+                            <span class="text-slate-500 italic text-[11px]">Active Record</span>
                         </td>
                     </tr>
                 `;
@@ -1826,17 +1827,17 @@
                 <tr class="hover:bg-black/[0.02]">
                     <td class="p-3">
                         <div class="flex items-center gap-2">
-                            <span class="font-bold">${u.username}</span>
-                            <span class="text-xs uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-300">${u.role}</span>
+                            <span class="font-bold text-white">${u.username}</span>
+                            <span class="text-[10px] uppercase px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">${u.role}</span>
                         </div>
                         ${(u.employee_name || u.employee_id) ? `
-                            <div class="text-xs text-slate-400 mt-0.5">
+                            <div class="text-[11px] text-slate-400 mt-0.5">
                                 ${u.employee_name ? `<span>Name: ${u.employee_name}</span>` : ''}
                                 ${u.employee_id ? `<span class="ml-2">ID: ${u.employee_id}</span>` : ''}
                             </div>
                         ` : ''}
-                        ${!u.is_active ? '<span class="text-xs text-red-400 block mt-1">(Suspended)</span>' : ''}
-                        ${u.must_change_password ? '<span class="text-xs text-amber-400 block mt-1">(PW Reset Required)</span>' : ''}
+                        ${!u.is_active ? '<span class="text-[10px] text-red-400 block mt-0.5">(Suspended)</span>' : ''}
+                        ${u.must_change_password ? '<span class="text-[10px] text-amber-400 block mt-0.5">(PW Reset Required)</span>' : ''}
                     </td>
                     <td class="p-3 text-center">
                         <input type="checkbox" ${u.can_upload ? 'checked' : ''} 
@@ -1846,7 +1847,7 @@
                     <td class="p-3 text-right">
                         ${u.username !== currentUser.username ? `
                             <button onclick="promptAdminResetPassword('${u.username}')" class="text-indigo-400 hover:text-indigo-300 font-medium text-xs mr-2">Reset PW</button>
-                            <button onclick="toggleUserSuspension('${u.username}', ${u.is_active})" class="${u.is_active ? 'text-amber-400 hover:text-amber-300' : 'text-green-400 hover:text-green-300'} font-medium text-xs mr-2">${u.is_active ? 'Suspend' : 'Activate'}</button>
+                            <button onclick="toggleUserSuspension('${u.username}', ${u.is_active})" class="${u.is_active ? 'text-amber-400 hover:text-amber-300' : 'text-green-400 hover:text-green-300'} font-medium text-xs">${u.is_active ? 'Suspend' : 'Activate'}</button>
                         ` : '<span class="text-xs text-slate-500">Current User</span>'}
                     </td>
                 </tr>
