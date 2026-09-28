@@ -476,7 +476,7 @@
             <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center">
                 <span class="text-[11px] text-[#2ed573] block font-medium">Verified (Pass)</span>
                 <span id="kpi-consumed" class="text-2xl sm:text-4xl font-extrabold mt-1 mb-1 block text-[#2ed573]">0</span>
-                <span class="text-[10px] text-slate-500 block truncate">Consumed serials</span>
+                <span class="text-[10px] text-slate-500 block truncate">Consumed codes</span>
             </div>
 
             <span class="text-xl sm:text-3xl font-extrabold text-slate-400 text-center px-1">=</span>
@@ -517,27 +517,23 @@
 
         <!-- Verification Stream Table Container with Side Bar -->
         <div class="linear-card rounded overflow-hidden flex-1 flex flex-col min-h-[220px]">
-            <div class="px-3 py-2 border-b border-white/[0.08] flex items-center justify-between text-xs shrink-0 bg-[#12141a]">
-                <div class="flex items-center gap-2 font-semibold">
-                    <span class="text-xs sm:text-sm table-text-theme">Verification Stream</span>
-                    <span class="text-slate-600">|</span>
-                    <span class="text-[11px] text-slate-400 font-normal">Real-time scan audit log</span>
-                </div>
+            <div class="px-3 py-2.5 border-b border-white/[0.08] flex items-center justify-center text-xs shrink-0 bg-[#12141a]">
+                <span class="text-sm sm:text-base font-bold text-white tracking-wide text-center block">Verification Stream</span>
             </div>
 
             <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
                 <!-- Stream Sidebar Filters -->
                 <div class="w-full md:w-52 bg-black/20 border-b md:border-b-0 md:border-r border-white/[0.08] p-2.5 flex md:flex-col gap-2 shrink-0 text-sm">
                     <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1 mb-0.5 hidden md:block">Filter Stream</span>
-                    <button onclick="filterStream('ALL')" id="stream-filter-all" class="flex-1 md:flex-initial text-left px-3 py-2 rounded bg-white/10 table-text-theme font-semibold transition-colors hover:bg-white/15 flex justify-between items-center text-sm">
+                    <button onclick="filterStream('ALL')" id="stream-filter-all" class="flex-1 md:flex-initial text-left px-3 py-2 rounded bg-white/15 text-white font-bold transition-colors hover:bg-white/20 flex justify-between items-center text-sm">
                         <span>All Scans</span>
                         <span id="stream-count-all" class="text-xs bg-slate-800 px-2 py-0.5 rounded text-white font-bold">0</span>
                     </button>
-                    <button onclick="filterStream('PASS')" id="stream-filter-pass" class="flex-1 md:flex-initial text-left px-3 py-2 rounded table-text-theme hover:bg-white/10 transition-colors flex justify-between items-center text-sm">
+                    <button onclick="filterStream('PASS')" id="stream-filter-pass" class="flex-1 md:flex-initial text-left px-3 py-2 rounded text-slate-300 font-semibold hover:bg-white/10 transition-colors flex justify-between items-center text-sm">
                         <span class="font-semibold">Pass Only</span>
                         <span id="stream-count-pass" class="text-xs bg-emerald-400 text-black font-black px-2 py-0.5 rounded">0</span>
                     </button>
-                    <button onclick="filterStream('ERROR')" id="stream-filter-error" class="flex-1 md:flex-initial text-left px-3 py-2 rounded table-text-theme hover:bg-white/10 transition-colors flex justify-between items-center text-sm">
+                    <button onclick="filterStream('ERROR')" id="stream-filter-error" class="flex-1 md:flex-initial text-left px-3 py-2 rounded text-slate-300 font-semibold hover:bg-white/10 transition-colors flex justify-between items-center text-sm">
                         <span class="font-semibold">Errors Only</span>
                         <span id="stream-count-error" class="text-xs bg-red-400 text-black font-black px-2 py-0.5 rounded">0</span>
                     </button>
