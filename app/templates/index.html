@@ -463,21 +463,27 @@
             </div>
         </div>
 
-        <!-- Metric Figures (Centered) -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 shrink-0">
+        <!-- Metric Figures (Centered with Operators) -->
+        <div class="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2 shrink-0">
             <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center">
                 <span class="text-[11px] text-slate-400 block font-medium">Total Pool</span>
-                <span id="kpi-total" class="text-lg sm:text-2xl font-bold mt-0.5 block table-text-theme">0</span>
+                <span id="kpi-total" class="text-2xl sm:text-4xl font-extrabold mt-1 mb-1 block table-text-theme">0</span>
                 <span class="text-[10px] text-slate-500 block truncate">Assigned batch pool</span>
             </div>
+            
+            <span class="text-xl sm:text-3xl font-extrabold text-slate-400 text-center px-1">-</span>
+
             <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center">
                 <span class="text-[11px] text-[#2ed573] block font-medium">Verified (Pass)</span>
-                <span id="kpi-consumed" class="text-lg sm:text-2xl font-bold text-[#2ed573] mt-0.5 block">0</span>
+                <span id="kpi-consumed" class="text-2xl sm:text-4xl font-extrabold mt-1 mb-1 block text-[#2ed573]">0</span>
                 <span class="text-[10px] text-slate-500 block truncate">Consumed serials</span>
             </div>
+
+            <span class="text-xl sm:text-3xl font-extrabold text-slate-400 text-center px-1">=</span>
+
             <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center">
                 <span class="text-[11px] text-amber-400 block font-medium">Remaining Codes</span>
-                <span id="kpi-pending" class="text-lg sm:text-2xl font-bold text-slate-300 mt-0.5 block">0</span>
+                <span id="kpi-pending" class="text-2xl sm:text-4xl font-extrabold mt-1 mb-1 block text-slate-300">0</span>
                 <span class="text-[10px] text-slate-500 block truncate">Remaining in feed</span>
             </div>
         </div>
