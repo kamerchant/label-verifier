@@ -1143,11 +1143,11 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = id;
-            document.getElementById('active-title-card').innerHTML = `Job Card: ${id} <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>`;
+            document.getElementById('active-title-card').innerHTML = `<span>${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>`;
             
             const promptDesc = status === 'ACTIVE' 
-                ? (activeJobDesc ? `${activeJobDesc} - Ready for Validation` : `Job Card ${id} - Ready for Validation`)
-                : `Job Card ${id} - Job is ${status} (Scanning Disabled)`;
+                ? (activeJobDesc ? `${activeJobDesc} - Ready for Validation` : `Ready for Validation`)
+                : `Job is ${status} (Scanning Disabled)`;
             
             document.getElementById('header-job-desc').innerText = promptDesc;
 
@@ -1214,7 +1214,7 @@
             allScans = [];
 
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `Job Card: None`;
+            document.getElementById('active-title-card').innerHTML = `<span>Job Card: None</span>`;
             document.getElementById('header-job-desc').innerText = "Search active production jobs using the search field.";
 
             const card = document.getElementById('status-card');
