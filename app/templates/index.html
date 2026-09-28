@@ -378,163 +378,182 @@
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between selection:bg-[#5e6ad2] selection:text-white">
+<body class="h-screen overflow-hidden flex flex-col justify-between selection:bg-[#5e6ad2] selection:text-white">
 
     <!-- Top Command Navigation Bar -->
-    <header class="border-b border-white/[0.08] bg-[#0d0e11]/95 backdrop-blur-md px-3 sm:px-6 py-3 flex flex-wrap items-center justify-between text-sm sticky top-0 z-40 gap-2">
+    <header class="border-b border-white/[0.08] bg-[#0d0e11]/95 backdrop-blur-md px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between text-sm shrink-0 z-40 gap-2">
         <div class="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
             <div class="bg-white px-2 py-1 rounded shadow-sm flex items-center justify-center shrink-0">
-                <img src="/static/logo.jpg" alt="CCL Logo" class="h-6 sm:h-8 w-auto max-w-[90px] sm:max-w-[120px] object-contain block" onerror="this.onerror=null; this.src='/logo.jpg';">
+                <img src="/static/logo.jpg" alt="CCL Logo" class="h-5 sm:h-7 w-auto max-w-[80px] sm:max-w-[110px] object-contain block" onerror="this.onerror=null; this.src='/logo.jpg';">
             </div>
             <div class="flex flex-col">
-                <span class="font-bold text-white text-xs sm:text-base tracking-tight leading-tight">Variable Data Verification System</span>
+                <span class="font-bold text-white text-xs sm:text-sm tracking-tight leading-tight">Variable Data Verification System</span>
                 <span class="text-[10px] sm:text-xs text-indigo-300 font-medium tracking-wide uppercase opacity-90">CCL Middle East – Pakistan</span>
             </div>
         </div>
 
-        <div class="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar w-full sm:w-auto py-1 sm:py-0">
-            <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-3 py-1.5 rounded text-xs sm:text-sm font-semibold whitespace-nowrap min-h-[38px] flex items-center">Create Job</button>
-            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center">Job Control Center</button>
-            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center">User Admin</button>
-            <button onclick="toggleModal('pw-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs sm:text-sm font-medium whitespace-nowrap min-h-[38px] flex items-center">Change Password</button>
-            <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-3 py-1.5 rounded text-xs sm:text-sm font-medium transition-colors whitespace-nowrap min-h-[38px] flex items-center">Logout</button>
+        <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto py-0.5 sm:py-0">
+            <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-2.5 py-1.5 rounded text-xs font-semibold whitespace-nowrap min-h-[34px] flex items-center">Create Job</button>
+            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-2.5 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center">Job Control Center</button>
+            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-2.5 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center">User Admin</button>
+            <button onclick="toggleModal('pw-modal')" class="linear-button-secondary px-2.5 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center">Change Password</button>
+            <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-2.5 py-1.5 rounded text-xs font-medium transition-colors whitespace-nowrap min-h-[34px] flex items-center">Logout</button>
         </div>
     </header>
 
-    <!-- Main Workspace -->
-    <main class="max-w-6xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 flex-1 flex flex-col gap-4 sm:gap-6">
+    <!-- Main Workspace (Scrollable) -->
+    <main class="max-w-6xl w-full mx-auto px-3 sm:px-6 py-3 sm:py-4 flex-1 overflow-y-auto flex flex-col gap-3 sm:gap-4">
 
         <!-- Job Context Ribbon, Search Bar, & Action Buttons -->
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
-                    <h1 id="active-title-card" class="text-xl sm:text-3xl font-extrabold tracking-tight truncate flex items-center gap-2">
+                    <h1 id="active-title-card" class="text-lg sm:text-2xl font-extrabold tracking-tight truncate flex items-center gap-2">
                         <span>Job Card: None</span>
                         <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>
                     </h1>
                 </div>
-                <p id="header-job-desc" class="text-xs sm:text-sm text-slate-400 mt-1 truncate">Search active production jobs using the search field.</p>
+                <p id="header-job-desc" class="text-xs text-slate-400 mt-0.5 truncate">Search active production jobs using the search field.</p>
             </div>
 
             <!-- Action Buttons Group & Job Search Bar on the Right -->
             <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full lg:w-auto shrink-0">
                 <div class="flex items-center gap-1.5 shrink-0">
                     <button id="report-btn" onclick="openReportModal()" disabled 
-                            class="linear-button-secondary text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[44px] font-medium shadow-sm whitespace-nowrap">
+                            class="linear-button-secondary text-xs px-2.5 py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[38px] font-medium shadow-sm whitespace-nowrap">
                         QC Report
                     </button>
                     <button id="lifecycle-btn" onclick="openLifecycleModal()" disabled 
-                            class="linear-button-secondary text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[44px] font-medium shadow-sm whitespace-nowrap">
+                            class="linear-button-secondary text-xs px-2.5 py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[38px] font-medium shadow-sm whitespace-nowrap">
                         Lifecycle Audit
                     </button>
                     <button id="job-toggle-btn" onclick="handleJobStatusToggle()" disabled 
-                            class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded opacity-30 pointer-events-none transition-all min-h-[44px] font-semibold shadow-sm whitespace-nowrap">
+                            class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs px-2.5 py-2 rounded opacity-30 pointer-events-none transition-all min-h-[38px] font-semibold shadow-sm whitespace-nowrap">
                         Job Completed
                     </button>
                 </div>
 
-                <div class="relative w-full sm:w-72 flex-1 sm:flex-initial">
+                <div class="relative w-full sm:w-64 flex-1 sm:flex-initial">
                     <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Search active jobs..." 
-                           class="linear-input w-full px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm rounded placeholder-slate-500 shadow-inner min-h-[44px]">
-                    <div id="job-list" class="absolute left-0 right-0 top-full mt-1.5 linear-card rounded shadow-2xl max-h-64 overflow-y-auto z-30 hidden"></div>
+                           class="linear-input w-full px-3 py-2 text-xs sm:text-sm rounded placeholder-slate-500 shadow-inner min-h-[38px]">
+                    <div id="job-list" class="absolute left-0 right-0 top-full mt-1 linear-card rounded shadow-2xl max-h-60 overflow-y-auto z-30 hidden"></div>
                 </div>
             </div>
         </div>
 
         <!-- Metric Figures (Centered) -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-            <div class="linear-card p-3 sm:p-4 rounded text-center flex flex-col items-center justify-center">
-                <span class="text-xs text-slate-400 block font-medium">Total Pool</span>
-                <span id="kpi-total" class="text-xl sm:text-3xl font-bold mt-1 block">0</span>
-                <span class="text-[11px] sm:text-xs text-slate-500 mt-1 block truncate">Assigned batch pool</span>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 shrink-0">
+            <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center">
+                <span class="text-[11px] text-slate-400 block font-medium">Total Pool</span>
+                <span id="kpi-total" class="text-lg sm:text-2xl font-bold mt-0.5 block">0</span>
+                <span class="text-[10px] text-slate-500 block truncate">Assigned batch pool</span>
             </div>
-            <div class="linear-card p-3 sm:p-4 rounded text-center flex flex-col items-center justify-center">
-                <span class="text-xs text-[#2ed573] block font-medium">Verified (Pass)</span>
-                <span id="kpi-consumed" class="text-xl sm:text-3xl font-bold text-[#2ed573] mt-1 block">0</span>
-                <span class="text-[11px] sm:text-xs text-slate-500 mt-1 block truncate">Consumed serials</span>
+            <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center">
+                <span class="text-[11px] text-[#2ed573] block font-medium">Verified (Pass)</span>
+                <span id="kpi-consumed" class="text-lg sm:text-2xl font-bold text-[#2ed573] mt-0.5 block">0</span>
+                <span class="text-[10px] text-slate-500 block truncate">Consumed serials</span>
             </div>
-            <div class="linear-card p-3 sm:p-4 rounded text-center flex flex-col items-center justify-center">
-                <span class="text-xs text-amber-400 block font-medium">Remaining Codes</span>
-                <span id="kpi-pending" class="text-xl sm:text-3xl font-bold text-slate-300 mt-1 block">0</span>
-                <span class="text-[11px] sm:text-xs text-slate-500 mt-1 block truncate">Remaining in feed</span>
+            <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center">
+                <span class="text-[11px] text-amber-400 block font-medium">Remaining Codes</span>
+                <span id="kpi-pending" class="text-lg sm:text-2xl font-bold text-slate-300 mt-0.5 block">0</span>
+                <span class="text-[10px] text-slate-500 block truncate">Remaining in feed</span>
             </div>
         </div>
 
         <!-- Scanning Terminal Canvas -->
-        <div class="linear-card p-4 sm:p-6 rounded flex flex-col gap-3 sm:gap-4">
-            
-            <div id="status-card" class="px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-black">
-                <div class="flex items-center justify-center gap-2.5 sm:gap-3 min-w-0">
-                    <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-[#5e6ad2] shrink-0 hidden"></span>
+        <div class="linear-card p-3 sm:p-4 rounded flex flex-col gap-2.5 shrink-0">
+            <div id="status-card" class="px-3 py-2.5 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 status-state-black">
+                <div class="flex items-center justify-center gap-2 min-w-0">
+                    <span id="status-dot" class="w-2 h-2 rounded-full bg-[#5e6ad2] shrink-0 hidden"></span>
                     <div class="min-w-0">
-                        <span id="status-heading" class="text-sm sm:text-base font-bold tracking-wide leading-snug block">To Verify Code, Select the Job ID and Enter Code Below</span>
-                        <span id="status-detail" class="text-xs sm:text-sm block"></span>
+                        <span id="status-heading" class="text-xs sm:text-sm font-bold tracking-wide leading-snug block">To Verify Code, Select the Job ID and Enter Code Below</span>
+                        <span id="status-detail" class="text-[11px] sm:text-xs block"></span>
                     </div>
                 </div>
-                <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-                    <span id="status-last-code" class="text-xs sm:text-base max-w-[180px] sm:max-w-none truncate hidden"></span>
-                    <span id="status-badge" class="px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs font-bold hidden"></span>
+                <div class="flex items-center gap-2 shrink-0">
+                    <span id="status-last-code" class="text-xs sm:text-sm max-w-[150px] sm:max-w-none truncate hidden"></span>
+                    <span id="status-badge" class="px-2 py-0.5 rounded text-[10px] sm:text-xs font-bold hidden"></span>
                 </div>
             </div>
 
             <form id="scan-form" onsubmit="handleScan(event)" class="flex flex-col sm:flex-row gap-2">
                 <div class="relative flex-1">
                     <input type="text" id="barcode-input" placeholder="Select a job to enable scanning..." disabled autocomplete="off"
-                           class="linear-input w-full px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-lg rounded min-h-[48px] opacity-40 cursor-not-allowed">
+                           class="linear-input w-full px-3.5 py-2 text-xs sm:text-base rounded min-h-[42px] opacity-40 cursor-not-allowed">
                 </div>
-                <button type="submit" id="verify-btn" disabled class="linear-button-primary px-6 sm:px-7 py-2.5 sm:py-3 rounded text-sm sm:text-base font-semibold min-h-[48px] flex items-center justify-center opacity-30 pointer-events-none">
+                <button type="submit" id="verify-btn" disabled class="linear-button-primary px-5 py-2 rounded text-xs sm:text-sm font-semibold min-h-[42px] flex items-center justify-center opacity-30 pointer-events-none">
                     Verify
                 </button>
             </form>
         </div>
 
-        <!-- Verification Stream Table Container -->
-        <div class="linear-card rounded overflow-hidden flex-1 flex flex-col min-h-[350px]">
-            <div class="px-3.5 sm:px-5 py-3 sm:py-4 border-b border-white/[0.08] flex items-center justify-between text-sm shrink-0">
-                <div class="flex items-center gap-2 sm:gap-3 font-semibold">
-                    <span class="text-sm sm:text-lg">Verification Stream</span>
-                    <span class="text-slate-600 hidden sm:inline">|</span>
-                    <span class="text-xs text-slate-400 font-normal hidden sm:inline">All codes checked in this job card</span>
+        <!-- Verification Stream Table Container with Side Bar -->
+        <div class="linear-card rounded overflow-hidden flex-1 flex flex-col min-h-[220px]">
+            <div class="px-3 py-2 border-b border-white/[0.08] flex items-center justify-between text-xs shrink-0 bg-[#12141a]">
+                <div class="flex items-center gap-2 font-semibold">
+                    <span class="text-xs sm:text-sm">Verification Stream</span>
+                    <span class="text-slate-600">|</span>
+                    <span class="text-[11px] text-slate-400 font-normal">Real-time scan audit log</span>
                 </div>
             </div>
 
-            <div class="overflow-x-auto flex-1 overflow-y-auto">
-                <table class="w-full text-left text-xs sm:text-sm whitespace-nowrap sm:whitespace-normal">
-                    <thead>
-                        <tr class="border-b border-white/[0.08] text-[11px] sm:text-xs text-slate-400 font-semibold bg-[#161821] sticky top-0 z-10">
-                            <th class="px-3 sm:px-5 py-2.5 sm:py-3 w-16">Seq</th>
-                            <th class="px-3 sm:px-5 py-2.5 sm:py-3">Code</th>
-                            <th class="px-3 sm:px-5 py-2.5 sm:py-3">Evaluation</th>
-                            <th class="px-3 sm:px-5 py-2.5 sm:py-3">Recorded At</th>
-                            <th class="px-3 sm:px-5 py-2.5 sm:py-3">Inspector</th>
-                        </tr>
-                    </thead>
-                    <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] text-xs sm:text-sm">
-                        <tr>
-                            <td colspan="5" class="px-3 sm:px-5 py-8 sm:py-12 text-center text-slate-500 italic">No scan events recorded for this session</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+                <!-- Stream Sidebar Filters -->
+                <div class="w-full md:w-44 bg-black/20 border-b md:border-b-0 md:border-r border-white/[0.08] p-2 flex md:flex-col gap-1.5 shrink-0 text-xs">
+                    <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-1 mb-0.5 hidden md:block">Filter Stream</span>
+                    <button onclick="filterStream('ALL')" id="stream-filter-all" class="flex-1 md:flex-initial text-left px-2 py-1.5 rounded bg-white/10 text-white font-medium transition-colors hover:bg-white/15 flex justify-between items-center text-[11px]">
+                        <span>All Scans</span>
+                        <span id="stream-count-all" class="text-[10px] bg-slate-800 px-1.5 py-0.2 rounded text-slate-300">0</span>
+                    </button>
+                    <button onclick="filterStream('PASS')" id="stream-filter-pass" class="flex-1 md:flex-initial text-left px-2 py-1.5 rounded text-slate-400 hover:bg-white/10 transition-colors flex justify-between items-center text-[11px]">
+                        <span>Pass Only</span>
+                        <span id="stream-count-pass" class="text-[10px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.2 rounded">0</span>
+                    </button>
+                    <button onclick="filterStream('ERROR')" id="stream-filter-error" class="flex-1 md:flex-initial text-left px-2 py-1.5 rounded text-slate-400 hover:bg-white/10 transition-colors flex justify-between items-center text-[11px]">
+                        <span>Errors Only</span>
+                        <span id="stream-count-error" class="text-[10px] bg-red-500/10 text-red-400 px-1.5 py-0.2 rounded">0</span>
+                    </button>
+                </div>
+
+                <!-- Table Area -->
+                <div class="flex-1 overflow-x-auto overflow-y-auto">
+                    <table class="w-full text-left text-xs whitespace-nowrap">
+                        <thead>
+                            <tr class="border-b border-white/[0.08] text-[10px] text-slate-400 font-semibold bg-[#161821] sticky top-0 z-10">
+                                <th class="px-3 py-1.5 w-12">Seq</th>
+                                <th class="px-3 py-1.5">Code</th>
+                                <th class="px-3 py-1.5">Evaluation</th>
+                                <th class="px-3 py-1.5">Recorded At</th>
+                                <th class="px-3 py-1.5">Inspector</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04]">
+                            <tr>
+                                <td colspan="5" class="px-3 py-8 text-center text-slate-500 italic text-xs">No scan events recorded for this session</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
     </main>
 
-    <!-- Footer Information Bar -->
-    <footer class="border-t px-3 sm:px-6 py-2.5 sm:py-3 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-1">
+    <!-- Footer Information Bar (Pinned) -->
+    <footer class="border-t px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between text-xs text-slate-400 shrink-0 bg-[#0d0e11] z-40 gap-1">
         <div class="flex items-center gap-3">
             <div class="flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-[#2ed573]"></span>
                 <span>Online</span>
                 <span class="text-slate-600">&middot;</span>
-                <span id="user-display" class="truncate max-w-[200px] sm:max-w-none">Checking session...</span>
+                <span id="user-display" class="truncate max-w-[180px] sm:max-w-none">Checking session...</span>
             </div>
             <span class="text-slate-600">&middot;</span>
             <button onclick="toggleTheme()" class="text-slate-400 hover:text-indigo-400 underline cursor-pointer bg-transparent border-none p-0 text-xs transition-colors" title="Switch Theme">
                 Theme: <span id="theme-name-text">Obsidian</span>
             </button>
         </div>
-        <div class="text-slate-500 text-[11px] sm:text-xs hidden sm:block">
+        <div class="text-slate-500 text-[11px] hidden sm:block">
             Press <kbd class="bg-[#1e2029] text-slate-300 px-1.5 py-0.5 rounded">Enter</kbd> to submit
         </div>
     </footer>
@@ -882,6 +901,7 @@
         let currentMasterTab = 'ALL';
         let rawMasterJobs = [];
         let allScans = [];
+        let streamFilter = 'ALL';
         let alarmCount = 0;
         let alarmInterval = null;
 
@@ -1124,14 +1144,14 @@
 
             list.innerHTML = jobs.map(j => `
                 <div onclick="selectJob('${j.id}', '${escape(j.description)}', '${j.status}', ${j.consumed}, ${j.total})" 
-                     class="p-3 hover:bg-black/[0.02] border-b cursor-pointer flex justify-between items-center transition-colors">
+                     class="p-2.5 hover:bg-black/[0.02] border-b cursor-pointer flex justify-between items-center transition-colors">
                     <div class="min-w-0 pr-2">
-                        <span class="font-bold text-sm block truncate">${j.id}</span>
-                        ${j.description ? `<span class="text-xs text-slate-400 block truncate max-w-[200px]">${j.description}</span>` : ''}
+                        <span class="font-bold text-xs block truncate">${j.id}</span>
+                        ${j.description ? `<span class="text-[11px] text-slate-400 block truncate max-w-[180px]">${j.description}</span>` : ''}
                     </div>
                     <div class="text-right shrink-0">
-                        <span class="text-xs px-2 py-0.5 rounded linear-badge-pass">${j.status}</span>
-                        <span class="block text-xs text-slate-500 mt-0.5">${j.consumed} / ${j.total}</span>
+                        <span class="text-[10px] px-1.5 py-0.5 rounded linear-badge-pass">${j.status}</span>
+                        <span class="block text-[10px] text-slate-500 mt-0.5">${j.consumed} / ${j.total}</span>
                     </div>
                 </div>
             `).join('');
@@ -1146,7 +1166,7 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `Job Card: ${id} <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
+            document.getElementById('active-title-card').innerHTML = `<span>Job Card: ${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
             
             const promptDesc = status === 'ACTIVE' 
                 ? (activeJobDesc ? `${activeJobDesc} - Ready for Validation` : `Ready for Validation`)
@@ -1190,7 +1210,7 @@
                 verifyBtn.classList.remove('opacity-30', 'pointer-events-none');
 
                 toggleBtn.innerText = "Job Completed";
-                toggleBtn.className = "bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded transition-all min-h-[44px] font-semibold shadow-sm whitespace-nowrap";
+                toggleBtn.className = "bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs px-2.5 py-2 rounded transition-all min-h-[38px] font-semibold shadow-sm whitespace-nowrap";
                 toggleBtn.disabled = false;
                 toggleBtn.classList.remove('opacity-30', 'pointer-events-none');
             } else {
@@ -1202,7 +1222,7 @@
                 verifyBtn.classList.add('opacity-30', 'pointer-events-none');
 
                 toggleBtn.innerText = status;
-                toggleBtn.className = "linear-button-secondary text-slate-400 text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded min-h-[44px] font-medium shadow-sm whitespace-nowrap opacity-50 pointer-events-none";
+                toggleBtn.className = "linear-button-secondary text-slate-400 text-xs px-2.5 py-2 rounded min-h-[38px] font-medium shadow-sm whitespace-nowrap opacity-50 pointer-events-none";
                 toggleBtn.disabled = true;
             }
 
@@ -1217,7 +1237,7 @@
             allScans = [];
 
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `Job Card: None`;
+            document.getElementById('active-title-card').innerHTML = `<span>Job Card: None</span>`;
             document.getElementById('header-job-desc').innerText = "Search active production jobs using the search field.";
 
             const card = document.getElementById('status-card');
@@ -1586,23 +1606,54 @@
             pendingElem.innerText = pending.toLocaleString();
         }
 
+        function filterStream(type) {
+            streamFilter = type;
+            ['all', 'pass', 'error'].forEach(t => {
+                const btn = document.getElementById(`stream-filter-${t}`);
+                if (btn) {
+                    if (t === type.toLowerCase()) {
+                        btn.className = "flex-1 md:flex-initial text-left px-2 py-1.5 rounded bg-white/10 text-white font-medium transition-colors hover:bg-white/15 flex justify-between items-center text-[11px]";
+                    } else {
+                        btn.className = "flex-1 md:flex-initial text-left px-2 py-1.5 rounded text-slate-400 hover:bg-white/10 transition-colors flex justify-between items-center text-[11px]";
+                    }
+                }
+            });
+            renderStreamTable();
+        }
+
         function renderStreamTable() {
             const tbody = document.getElementById('recent-scans-rows');
-            if (allScans.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="px-3 sm:px-5 py-8 sm:py-12 text-center text-slate-500 italic">No scan events recorded for this session</td></tr>`;
+            
+            let countAll = allScans.length;
+            let countPass = allScans.filter(s => s.result === 'PASS').length;
+            let countError = allScans.filter(s => s.result !== 'PASS').length;
+
+            document.getElementById('stream-count-all').innerText = countAll;
+            document.getElementById('stream-count-pass').innerText = countPass;
+            document.getElementById('stream-count-error').innerText = countError;
+
+            let filteredScans = allScans;
+            if (streamFilter === 'PASS') {
+                filteredScans = allScans.filter(s => s.result === 'PASS');
+            } else if (streamFilter === 'ERROR') {
+                filteredScans = allScans.filter(s => s.result !== 'PASS');
+            }
+
+            if (filteredScans.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-6 text-center text-slate-500 italic text-xs">No scan events found for this filter</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = allScans.map((s, idx) => {
+            tbody.innerHTML = filteredScans.map((s, idx) => {
                 let badge = "linear-badge-pass";
                 if (s.result !== 'PASS') badge = "linear-badge-fail";
                 return `
                     <tr class="hover:bg-black/[0.02]">
-                        <td class="px-3 sm:px-5 py-2 sm:py-2.5 text-slate-500">#${allScans.length - idx}</td>
-                        <td class="px-3 sm:px-5 py-2 sm:py-2.5 font-bold">${s.code}</td>
-                        <td class="px-3 sm:px-5 py-2 sm:py-2.5"><span class="${badge} px-2.5 py-0.5 rounded text-xs font-bold">${s.result}</span></td>
-                        <td class="px-3 sm:px-5 py-2 sm:py-2.5 text-slate-400">${s.time}</td>
-                        <td class="px-3 sm:px-5 py-2 sm:py-2.5">${s.user}</td>
+                        <td class="px-3 py-1 text-slate-500 text-[11px]">#${allScans.length - allScans.indexOf(s)}</td>
+                        <td class="px-3 py-1 font-bold text-xs">${s.code}</td>
+                        <td class="px-3 py-1"><span class="${badge} px-2 py-0.2 rounded text-[10px] font-bold">${s.result}</span></td>
+                        <td class="px-3 py-1 text-slate-400 text-[11px]">${s.time}</td>
+                        <td class="px-3 py-1 text-[11px]">${s.user}</td>
                     </tr>
                 `;
             }).join('');
