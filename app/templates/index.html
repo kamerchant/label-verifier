@@ -402,7 +402,10 @@
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
-                    <h1 id="active-title-card" class="text-xl sm:text-3xl font-extrabold tracking-tight font-mono truncate">Job Card: None</h1>
+                    <h1 id="active-title-card" class="text-xl sm:text-3xl font-extrabold tracking-tight font-mono truncate flex items-center gap-2">
+                        <span>Job Card: None</span>
+                        <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs font-sans text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 hidden font-normal transition-colors">[Close]</button>
+                    </h1>
                 </div>
                 <p id="header-job-desc" class="text-xs sm:text-sm text-slate-400 mt-1 truncate">Search active production jobs using the search field.</p>
             </div>
@@ -1089,7 +1092,7 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = id;
-            document.getElementById('active-title-card').innerText = `Job Card: ${id}`;
+            document.getElementById('active-title-card').innerHTML = `Job Card: ${id} <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs font-sans text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
             
             const promptDesc = activeJobDesc ? `${activeJobDesc} - Ready for Validation` : `Job Card ${id} - Ready for Validation`;
             document.getElementById('header-job-desc').innerText = promptDesc;
@@ -1137,6 +1140,55 @@
             }
 
             await loadJobScanStream(id);
+            resetInput();
+        }
+
+        function clearLoadedJob() {
+            activeJobId = null;
+            activeJobDesc = "";
+            activeJobStatus = null;
+            allScans = [];
+
+            document.getElementById('job-search').value = "";
+            document.getElementById('active-title-card').innerHTML = `Job Card: None`;
+            document.getElementById('header-job-desc').innerText = "Search active production jobs using the search field.";
+
+            const card = document.getElementById('status-card');
+            card.className = "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-black";
+            document.getElementById('status-heading').innerText = "To Verify Code, Select the Job ID and Enter Code Below";
+            document.getElementById('status-detail').innerText = "";
+            document.getElementById('status-last-code').classList.add('hidden');
+            document.getElementById('status-badge').classList.add('hidden');
+
+            const rptBtn = document.getElementById('report-btn');
+            const lifeBtn = document.getElementById('lifecycle-btn');
+            const toggleBtn = document.getElementById('job-toggle-btn');
+            const barcodeInput = document.getElementById('barcode-input');
+            const verifyBtn = document.getElementById('verify-btn');
+
+            rptBtn.disabled = true;
+            rptBtn.classList.add('opacity-30', 'pointer-events-none');
+
+            lifeBtn.disabled = true;
+            lifeBtn.classList.add('opacity-30', 'pointer-events-none');
+
+            toggleBtn.disabled = true;
+            toggleBtn.classList.add('opacity-30', 'pointer-events-none');
+            toggleBtn.innerText = "Job Completed";
+
+            barcodeInput.disabled = true;
+            barcodeInput.placeholder = "Select a job to enable scanning...";
+            barcodeInput.value = "";
+            barcodeInput.classList.add('opacity-40', 'cursor-not-allowed');
+
+            verifyBtn.disabled = true;
+            verifyBtn.classList.add('opacity-30', 'pointer-events-none');
+
+            document.getElementById('kpi-total').innerText = "0";
+            document.getElementById('kpi-consumed').innerText = "0";
+            document.getElementById('kpi-pending').innerText = "0";
+
+            renderStreamTable();
             resetInput();
         }
 
