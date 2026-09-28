@@ -499,32 +499,32 @@
 
             <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
                 <!-- Stream Sidebar Filters -->
-                <div class="w-full md:w-44 bg-black/20 border-b md:border-b-0 md:border-r border-white/[0.08] p-2 flex md:flex-col gap-1.5 shrink-0 text-xs">
-                    <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-1 mb-0.5 hidden md:block">Filter Stream</span>
-                    <button onclick="filterStream('ALL')" id="stream-filter-all" class="flex-1 md:flex-initial text-left px-2 py-1.5 rounded bg-white/10 text-white font-medium transition-colors hover:bg-white/15 flex justify-between items-center text-[11px]">
+                <div class="w-full md:w-52 bg-black/20 border-b md:border-b-0 md:border-r border-white/[0.08] p-2.5 flex md:flex-col gap-2 shrink-0 text-sm">
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1 mb-0.5 hidden md:block">Filter Stream</span>
+                    <button onclick="filterStream('ALL')" id="stream-filter-all" class="flex-1 md:flex-initial text-left px-3 py-2 rounded bg-white/10 text-white font-semibold transition-colors hover:bg-white/15 flex justify-between items-center text-sm">
                         <span>All Scans</span>
-                        <span id="stream-count-all" class="text-[10px] bg-slate-800 px-1.5 py-0.2 rounded text-white font-bold">0</span>
+                        <span id="stream-count-all" class="text-xs bg-slate-800 px-2 py-0.5 rounded text-white font-bold">0</span>
                     </button>
-                    <button onclick="filterStream('PASS')" id="stream-filter-pass" class="flex-1 md:flex-initial text-left px-2 py-1.5 rounded text-white hover:bg-white/10 transition-colors flex justify-between items-center text-[11px]">
-                        <span class="font-medium">Pass Only</span>
-                        <span id="stream-count-pass" class="text-[10px] bg-emerald-300 text-black font-extrabold px-1.5 py-0.2 rounded">0</span>
+                    <button onclick="filterStream('PASS')" id="stream-filter-pass" class="flex-1 md:flex-initial text-left px-3 py-2 rounded text-white hover:bg-white/10 transition-colors flex justify-between items-center text-sm">
+                        <span class="font-semibold">Pass Only</span>
+                        <span id="stream-count-pass" class="text-xs bg-emerald-300 text-black font-black px-2 py-0.5 rounded">0</span>
                     </button>
-                    <button onclick="filterStream('ERROR')" id="stream-filter-error" class="flex-1 md:flex-initial text-left px-2 py-1.5 rounded text-white hover:bg-white/10 transition-colors flex justify-between items-center text-[11px]">
-                        <span class="font-medium">Errors Only</span>
-                        <span id="stream-count-error" class="text-[10px] bg-red-300 text-black font-extrabold px-1.5 py-0.2 rounded">0</span>
+                    <button onclick="filterStream('ERROR')" id="stream-filter-error" class="flex-1 md:flex-initial text-left px-3 py-2 rounded text-white hover:bg-white/10 transition-colors flex justify-between items-center text-sm">
+                        <span class="font-semibold">Errors Only</span>
+                        <span id="stream-count-error" class="text-xs bg-red-300 text-black font-black px-2 py-0.5 rounded">0</span>
                     </button>
                 </div>
 
                 <!-- Table Area -->
                 <div class="flex-1 overflow-x-auto overflow-y-auto">
-                    <table class="w-full text-left text-xs whitespace-nowrap">
+                    <table class="w-full text-left whitespace-nowrap">
                         <thead>
-                            <tr class="border-b border-white/[0.08] text-[10px] text-white font-semibold bg-[#161821] sticky top-0 z-10">
-                                <th class="px-3 py-1.5 w-12">Seq</th>
-                                <th class="px-3 py-1.5">Code</th>
-                                <th class="px-3 py-1.5">Evaluation</th>
-                                <th class="px-3 py-1.5">Recorded At</th>
-                                <th class="px-3 py-1.5">Inspector</th>
+                            <tr class="border-b border-white/[0.08] text-sm text-white font-bold bg-[#161821] sticky top-0 z-10">
+                                <th class="px-3.5 py-2.5 w-16">Seq</th>
+                                <th class="px-3.5 py-2.5">Code</th>
+                                <th class="px-3.5 py-2.5">Evaluation</th>
+                                <th class="px-3.5 py-2.5">Recorded At</th>
+                                <th class="px-3.5 py-2.5">Inspector</th>
                             </tr>
                         </thead>
                         <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] text-white">
@@ -587,19 +587,19 @@
             </div>
 
             <div class="flex-1 overflow-y-auto border border-white/[0.08] rounded">
-                <table class="w-full text-left text-xs whitespace-nowrap">
+                <table class="w-full text-left whitespace-nowrap">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-[10px] text-white font-semibold bg-[#161821] sticky top-0 z-10">
-                            <th class="p-3 w-10 text-center"><input type="checkbox" id="select-all-jobs" onclick="toggleSelectAllJobs(this)"></th>
-                            <th class="p-3">Job Card</th>
-                            <th class="p-3">Description</th>
-                            <th class="p-3">Timestamps</th>
-                            <th class="p-3 text-center">Status</th>
-                            <th class="p-3 text-right">Codes Verified</th>
-                            <th class="p-3 text-center">Action</th>
+                        <tr class="border-b border-white/[0.08] text-sm text-white font-bold bg-[#161821] sticky top-0 z-10">
+                            <th class="px-3.5 py-2.5 w-10 text-center"><input type="checkbox" id="select-all-jobs" onclick="toggleSelectAllJobs(this)"></th>
+                            <th class="px-3.5 py-2.5">Job Card</th>
+                            <th class="px-3.5 py-2.5">Description</th>
+                            <th class="px-3.5 py-2.5">Timestamps</th>
+                            <th class="px-3.5 py-2.5 text-center">Status</th>
+                            <th class="px-3.5 py-2.5 text-right">Codes Verified</th>
+                            <th class="px-3.5 py-2.5 text-center">Action</th>
                         </tr>
                     </thead>
-                    <tbody id="master-jobs-rows" class="divide-y divide-white/[0.04] text-white"></tbody>
+                    <tbody id="master-jobs-rows" class="divide-y divide-white/[0.04] text-white text-xs"></tbody>
                 </table>
             </div>
         </div>
@@ -638,10 +638,10 @@
             <div class="max-h-64 overflow-y-auto text-xs border border-white/[0.08] rounded">
                 <table class="w-full text-left">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-[10px] text-white bg-[#161821] sticky top-0">
-                            <th class="p-3">User Name</th>
-                            <th class="p-3 text-center">Can Create Jobs?</th>
-                            <th class="p-3 text-right">Action</th>
+                        <tr class="border-b border-white/[0.08] text-sm text-white font-bold bg-[#161821] sticky top-0">
+                            <th class="px-3.5 py-2.5">User Name</th>
+                            <th class="px-3.5 py-2.5 text-center">Can Create Jobs?</th>
+                            <th class="px-3.5 py-2.5 text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody id="users-table" class="divide-y divide-white/[0.04] text-white"></tbody>
@@ -672,16 +672,16 @@
             <div id="report-stats" class="grid grid-cols-2 gap-3 mb-3 text-center"></div>
 
             <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded">
-                <table class="w-full text-left text-xs whitespace-nowrap">
+                <table class="w-full text-left whitespace-nowrap">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-[10px] text-white bg-[#161821] sticky top-0">
-                            <th class="p-3">Timestamp</th>
-                            <th class="p-3">Inspector</th>
-                            <th class="p-3">Scanned Barcode</th>
-                            <th class="p-3">Evaluation</th>
+                        <tr class="border-b border-white/[0.08] text-sm text-white font-bold bg-[#161821] sticky top-0">
+                            <th class="px-3.5 py-2.5">Timestamp</th>
+                            <th class="px-3.5 py-2.5">Inspector</th>
+                            <th class="px-3.5 py-2.5">Scanned Barcode</th>
+                            <th class="px-3.5 py-2.5">Evaluation</th>
                         </tr>
                     </thead>
-                    <tbody id="report-log-rows" class="divide-y divide-white/[0.04] text-white"></tbody>
+                    <tbody id="report-log-rows" class="divide-y divide-white/[0.04] text-white text-xs"></tbody>
                 </table>
             </div>
             <div id="print-timestamp" class="print-timestamp-footer"></div>
@@ -707,16 +707,16 @@
             </div>
 
             <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded">
-                <table class="w-full text-left text-xs whitespace-nowrap">
+                <table class="w-full text-left whitespace-nowrap">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-[10px] text-white bg-[#161821] sticky top-0">
-                            <th class="p-3">Timestamp</th>
-                            <th class="p-3">Authorized User</th>
-                            <th class="p-3">Action Performed</th>
-                            <th class="p-3">Reason / Details</th>
+                        <tr class="border-b border-white/[0.08] text-sm text-white font-bold bg-[#161821] sticky top-0">
+                            <th class="px-3.5 py-2.5">Timestamp</th>
+                            <th class="px-3.5 py-2.5">Authorized User</th>
+                            <th class="px-3.5 py-2.5">Action Performed</th>
+                            <th class="px-3.5 py-2.5">Reason / Details</th>
                         </tr>
                     </thead>
-                    <tbody id="lifecycle-log-rows" class="divide-y divide-white/[0.04] text-white"></tbody>
+                    <tbody id="lifecycle-log-rows" class="divide-y divide-white/[0.04] text-white text-xs"></tbody>
                 </table>
             </div>
             <div id="print-timestamp" class="print-timestamp-footer"></div>
@@ -1070,7 +1070,7 @@
             document.getElementById('pw-title').innerText = "First Login Password Change Required";
             document.getElementById('pw-subtitle').innerText = "For security, you must update your password before proceeding.";
             document.getElementById('pw-cancel-btn').classList.add('hidden');
-            document.getElementById('pw-modal').classList.add('hidden');
+            document.getElementById('pw-modal').classList.remove('hidden');
         }
 
         async function handleLogin(e) {
@@ -1613,9 +1613,9 @@
                 const btn = document.getElementById(`stream-filter-${t}`);
                 if (btn) {
                     if (t === type.toLowerCase()) {
-                        btn.className = "flex-1 md:flex-initial text-left px-2 py-1.5 rounded bg-white/10 text-white font-medium transition-colors hover:bg-white/15 flex justify-between items-center text-[11px]";
+                        btn.className = "flex-1 md:flex-initial text-left px-3 py-2 rounded bg-white/15 text-white font-bold transition-colors hover:bg-white/20 flex justify-between items-center text-sm";
                     } else {
-                        btn.className = "flex-1 md:flex-initial text-left px-2 py-1.5 rounded text-white hover:bg-white/10 transition-colors flex justify-between items-center text-[11px]";
+                        btn.className = "flex-1 md:flex-initial text-left px-3 py-2 rounded text-slate-300 font-semibold hover:bg-white/10 transition-colors flex justify-between items-center text-sm";
                     }
                 }
             });
@@ -1650,11 +1650,11 @@
                 if (s.result !== 'PASS') badge = "linear-badge-fail";
                 return `
                     <tr class="hover:bg-black/[0.02]">
-                        <td class="px-3 py-1 text-slate-400 text-[11px]">#${allScans.length - allScans.indexOf(s)}</td>
-                        <td class="px-3 py-1 font-bold text-xs text-white">${s.code}</td>
-                        <td class="px-3 py-1"><span class="${badge} px-2 py-0.2 rounded text-[10px] font-bold">${s.result}</span></td>
-                        <td class="px-3 py-1 text-slate-300 text-[11px]">${s.time}</td>
-                        <td class="px-3 py-1 text-[11px] text-white">${s.user}</td>
+                        <td class="px-3.5 py-2 text-slate-300 text-xs font-medium">#${allScans.length - allScans.indexOf(s)}</td>
+                        <td class="px-3.5 py-2 font-bold text-sm text-white">${s.code}</td>
+                        <td class="px-3.5 py-2"><span class="${badge} px-2 py-0.5 rounded text-xs font-bold">${s.result}</span></td>
+                        <td class="px-3.5 py-2 text-slate-200 text-xs">${s.time}</td>
+                        <td class="px-3.5 py-2 text-xs text-white font-medium">${s.user}</td>
                     </tr>
                 `;
             }).join('');
@@ -1759,10 +1759,10 @@
             } else {
                 tbody.innerHTML = data.recent_logs.map(log => `
                     <tr class="hover:bg-black/[0.02]">
-                        <td class="p-2.5 text-xs text-slate-800">${log.time}</td>
-                        <td class="p-2.5 font-bold text-black">${log.user}</td>
-                        <td class="p-2.5 text-black font-semibold">${log.code}</td>
-                        <td class="p-2.5 font-bold ${log.result === 'PASS' ? 'text-emerald-700' : 'text-red-700'}">${log.result}</td>
+                        <td class="p-3 text-xs text-slate-200">${log.time}</td>
+                        <td class="p-3 font-bold text-white text-xs">${log.user}</td>
+                        <td class="p-3 text-white font-semibold text-xs">${log.code}</td>
+                        <td class="p-3 font-bold text-xs ${log.result === 'PASS' ? 'text-[#2ed573]' : 'text-red-400'}">${log.result}</td>
                     </tr>
                 `).join('');
             }
@@ -1789,27 +1789,27 @@
             } else {
                 tbody.innerHTML = data.logs.map(log => {
                     let label = log.action;
-                    let colorClass = "text-slate-800";
+                    let colorClass = "text-slate-200";
                     if (log.action === 'CREATED') {
                         label = "Job Created & Ingested";
-                        colorClass = "text-indigo-800 font-bold";
+                        colorClass = "text-indigo-300 font-bold";
                     } else if (log.action === 'REACTIVATED_AND_UNBLOCKED') {
                         label = "Reactivated & Unblocked";
-                        colorClass = "text-amber-800 font-bold";
+                        colorClass = "text-amber-400 font-bold";
                     } else if (log.action === 'COMPLETED_AND_BLOCKED') {
                         label = "Completed & Blocked";
-                        colorClass = "text-red-800 font-bold";
+                        colorClass = "text-red-400 font-bold";
                     } else if (log.action === 'DELETED') {
                         label = "Soft Deleted";
-                        colorClass = "text-red-800 font-bold";
+                        colorClass = "text-red-400 font-bold";
                     }
 
                     return `
                         <tr class="hover:bg-black/[0.02]">
-                            <td class="p-2.5 text-xs text-slate-800">${log.time}</td>
-                            <td class="p-2.5 font-bold text-black">${log.user}</td>
-                            <td class="p-2.5 ${colorClass}">${label}</td>
-                            <td class="p-2.5 text-xs text-slate-800">${log.reason || '-'}</td>
+                            <td class="p-3 text-xs text-slate-200">${log.time}</td>
+                            <td class="p-3 font-bold text-white text-xs">${log.user}</td>
+                            <td class="p-3 text-xs ${colorClass}">${label}</td>
+                            <td class="p-3 text-xs text-slate-200">${log.reason || '-'}</td>
                         </tr>
                     `;
                 }).join('');
@@ -1827,11 +1827,11 @@
                 <tr class="hover:bg-black/[0.02]">
                     <td class="p-3">
                         <div class="flex items-center gap-2">
-                            <span class="font-black text-black text-xs">${u.username}</span>
-                            <span class="text-[10px] uppercase px-1.5 py-0.2 rounded bg-slate-200 text-slate-800 font-semibold">${u.role}</span>
+                            <span class="font-bold text-white text-xs">${u.username}</span>
+                            <span class="text-[10px] uppercase px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 font-semibold">${u.role}</span>
                         </div>
-                        ${!u.is_active ? '<span class="text-[10px] text-red-700 font-bold block mt-0.5">(Suspended)</span>' : ''}
-                        ${u.must_change_password ? '<span class="text-[10px] text-amber-700 font-bold block mt-0.5">(PW Reset Required)</span>' : ''}
+                        ${!u.is_active ? '<span class="text-[10px] text-red-400 font-bold block mt-0.5">(Suspended)</span>' : ''}
+                        ${u.must_change_password ? '<span class="text-[10px] text-amber-400 font-bold block mt-0.5">(PW Reset Required)</span>' : ''}
                     </td>
                     <td class="p-3 text-center">
                         <input type="checkbox" ${u.can_upload ? 'checked' : ''} 
@@ -1840,9 +1840,9 @@
                     </td>
                     <td class="p-3 text-right">
                         ${u.username !== currentUser.username ? `
-                            <button onclick="promptAdminResetPassword('${u.username}')" class="text-indigo-700 hover:text-indigo-900 font-bold text-xs mr-2">Reset PW</button>
-                            <button onclick="toggleUserSuspension('${u.username}', ${u.is_active})" class="${u.is_active ? 'text-amber-700 hover:text-amber-900' : 'text-green-700 hover:text-green-900'} font-bold text-xs">${u.is_active ? 'Suspend' : 'Activate'}</button>
-                        ` : '<span class="text-xs text-slate-500 font-medium">Current User</span>'}
+                            <button onclick="promptAdminResetPassword('${u.username}')" class="text-indigo-400 hover:text-indigo-300 font-bold text-xs mr-2">Reset PW</button>
+                            <button onclick="toggleUserSuspension('${u.username}', ${u.is_active})" class="${u.is_active ? 'text-amber-400 hover:text-amber-300' : 'text-green-400 hover:text-green-300'} font-bold text-xs">${u.is_active ? 'Suspend' : 'Activate'}</button>
+                        ` : '<span class="text-xs text-slate-400 font-medium">Current User</span>'}
                     </td>
                 </tr>
             `).join('');
