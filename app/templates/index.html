@@ -631,7 +631,7 @@
     <div id="user-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
         <div class="linear-card p-4 sm:p-6 rounded-lg max-w-2xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="flex justify-between items-center mb-3 pb-2 border-b border-white/[0.08]">
-                <h3 class="text-lg font-black modal-title-theme">Operator & User Permissions</h3>
+                <h3 class="text-lg font-black modal-title-theme">User Administration</h3>
                 <button onclick="toggleModal('user-modal')" class="linear-button-secondary px-3 py-1 text-xs rounded">Close</button>
             </div>
             
@@ -644,12 +644,12 @@
                         <option value="admin">Admin</option>
                     </select>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 hidden">
                     <input type="text" id="new-employee-name" placeholder="Employee Name (Optional)" class="linear-input p-2.5 text-xs rounded">
                     <input type="text" id="new-employee-id" placeholder="Employee ID (Optional)" class="linear-input p-2.5 text-xs rounded">
                 </div>
                 <div class="flex justify-between items-center pt-2 border-t border-white/[0.06]">
-                    <label class="flex items-center gap-1.5 text-xs cursor-pointer text-slate-300">
+                    <label class="flex items-center gap-1.5 text-xs cursor-pointer table-text-theme">
                         <input type="checkbox" id="new-user-can-upload" class="rounded">
                         <span>Allow creating new job cards</span>
                     </label>
@@ -1771,8 +1771,8 @@
 
             const stats = document.getElementById('report-stats');
             stats.innerHTML = `
-                <div class="linear-card p-3 rounded" style="color: #0f172a;"><span class="block text-xs uppercase font-semibold" style="color: #475569;">TOTAL POOL</span><span class="font-black text-lg table-text-theme">${data.total_codes.toLocaleString()}</span></div>
-                <div class="linear-card p-3 rounded" style="color: #0f172a;"><span class="block text-xs uppercase font-semibold" style="color: #16a34a;">VERIFIED</span><span class="font-black text-lg table-text-theme">${data.consumed_codes.toLocaleString()}</span></div>
+                <div class="linear-card p-3 rounded"><span class="block text-xs uppercase font-semibold text-slate-400">TOTAL POOL</span><span class="font-black text-lg table-text-theme">${data.total_codes.toLocaleString()}</span></div>
+                <div class="linear-card p-3 rounded"><span class="block text-xs uppercase font-semibold text-[#2ed573]">VERIFIED</span><span class="font-black text-lg table-text-theme">${data.consumed_codes.toLocaleString()}</span></div>
             `;
 
             const tbody = document.getElementById('report-log-rows');
@@ -1781,7 +1781,7 @@
             } else {
                 tbody.innerHTML = data.recent_logs.map(log => `
                     <tr class="hover:bg-black/[0.02]">
-                        <td class="p-3 text-xs text-slate-200">${log.time}</td>
+                        <td class="p-3 text-xs text-slate-300">${log.time}</td>
                         <td class="p-3 font-bold table-text-theme text-xs">${log.user}</td>
                         <td class="p-3 table-text-theme font-semibold text-xs">${log.code}</td>
                         <td class="p-3 font-bold text-xs ${log.result === 'PASS' ? 'text-[#2ed573]' : 'text-red-400'}">${log.result}</td>
@@ -1811,10 +1811,10 @@
             } else {
                 tbody.innerHTML = data.logs.map(log => {
                     let label = log.action;
-                    let colorClass = "text-slate-200";
+                    let colorClass = "table-text-theme";
                     if (log.action === 'CREATED') {
                         label = "Job Created & Ingested";
-                        colorClass = "text-indigo-300 font-bold";
+                        colorClass = "text-indigo-400 font-bold";
                     } else if (log.action === 'REACTIVATED_AND_UNBLOCKED') {
                         label = "Reactivated & Unblocked";
                         colorClass = "text-amber-400 font-bold";
@@ -1828,10 +1828,10 @@
 
                     return `
                         <tr class="hover:bg-black/[0.02]">
-                            <td class="p-3 text-xs text-slate-200">${log.time}</td>
+                            <td class="p-3 text-xs text-slate-300">${log.time}</td>
                             <td class="p-3 font-bold table-text-theme text-xs">${log.user}</td>
                             <td class="p-3 text-xs ${colorClass}">${label}</td>
-                            <td class="p-3 text-xs text-slate-200">${log.reason || '-'}</td>
+                            <td class="p-3 text-xs text-slate-300">${log.reason || '-'}</td>
                         </tr>
                     `;
                 }).join('');
