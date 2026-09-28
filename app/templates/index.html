@@ -551,8 +551,8 @@
             <h3 id="duplicate-modal-title" class="text-base font-bold mb-1">Batch Uniqueness Report</h3>
             <p id="duplicate-warning-msg" class="text-xs mb-5 leading-relaxed"></p>
             <div class="flex justify-end gap-2">
-                <button type="button" onclick="cancelDuplicateUpload()" class="px-4 py-2 rounded text-xs font-medium min-h-[40px]">Cancel / Stop</button>
-                <button type="button" onclick="confirmDuplicateUpload()" class="px-4 py-2 rounded text-xs font-medium min-h-[40px]">Proceed Anyway</button>
+                <button type="button" onclick="cancelDuplicateUpload()" id="duplicate-cancel-btn" class="px-4 py-2 rounded text-xs font-medium min-h-[40px]">Cancel / Stop</button>
+                <button type="button" onclick="confirmDuplicateUpload()" id="duplicate-proceed-btn" class="px-4 py-2 rounded text-xs font-medium min-h-[40px]">Proceed Anyway</button>
             </div>
         </div>
     </div>
@@ -879,6 +879,7 @@
         let currentMasterTab = 'ALL';
         let rawMasterJobs = [];
         let allScans = [];
+        let alarmCount = 0;
         let alarmInterval = null;
 
         let confirmCallback = null;
@@ -981,22 +982,28 @@
         }
 
         function playAlarmSiren() {
+            if (alarmCount >= 10) {
+                stopAlarm();
+                return;
+            }
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'square';
             osc.frequency.setValueAtTime(880, audioCtx.currentTime);
             osc.frequency.linearRampToValueAtTime(440, audioCtx.currentTime + 0.25);
-            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start();
             osc.stop(audioCtx.currentTime + 0.25);
+            alarmCount++;
         }
 
         function startAlarm() {
             stopAlarm();
+            alarmCount = 0;
             playAlarmSiren();
             alarmInterval = setInterval(playAlarmSiren, 400);
         }
@@ -1616,16 +1623,22 @@
             if (res.status === 409 && data.status === "duplicate_warning") {
                 const modalTitle = document.getElementById('duplicate-modal-title');
                 const modalCard = document.getElementById('duplicate-modal-card');
-                
+                const cancelBtn = document.getElementById('duplicate-cancel-btn');
+                const proceedBtn = document.getElementById('duplicate-proceed-btn');
+
                 if (data.conflict_count > 0) {
                     modalTitle.innerText = "Batch Uniqueness Report (Conflict Detected)";
                     modalTitle.className = "text-base font-bold mb-1 text-white uppercase tracking-wider";
-                    modalCard.className = "p-5 sm:p-6 rounded-lg max-w-sm w-full border border-red-400 bg-red-600 text-white shadow-2xl text-center transition-colors";
+                    modalCard.className = "p-5 sm:p-6 rounded-lg max-w-sm w-full border border-white/20 bg-red-600 text-white shadow-2xl text-center transition-colors";
+                    cancelBtn.className = "bg-black/30 hover:bg-black/40 text-white px-4 py-2 rounded text-xs font-semibold min-h-[40px] transition-colors";
+                    proceedBtn.className = "bg-black hover:bg-black/80 text-white px-4 py-2 rounded text-xs font-semibold min-h-[40px] transition-colors";
                     startAlarm();
                 } else {
                     modalTitle.innerText = "Batch Uniqueness Report (No Conflict Detected)";
                     modalTitle.className = "text-base font-bold mb-1 text-emerald-400 uppercase tracking-wider";
                     modalCard.className = "linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-emerald-500/50 shadow-2xl text-center transition-colors";
+                    cancelBtn.className = "linear-button-secondary px-4 py-2 rounded text-xs font-medium min-h-[40px]";
+                    proceedBtn.className = "linear-button-primary px-4 py-2 rounded text-xs font-medium min-h-[40px]";
                     stopAlarm();
                 }
 
