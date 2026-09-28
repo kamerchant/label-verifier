@@ -408,7 +408,7 @@
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
-                    <h1 id="active-title-card" class="text-lg sm:text-2xl font-extrabold tracking-tight truncate flex items-center gap-2">
+                    <h1 id="active-title-card" class="text-lg sm:text-2xl font-extrabold tracking-tight truncate flex items-center gap-2 text-white">
                         <span>Job Card: None</span>
                         <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>
                     </h1>
@@ -445,7 +445,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 shrink-0">
             <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center">
                 <span class="text-[11px] text-slate-400 block font-medium">Total Pool</span>
-                <span id="kpi-total" class="text-lg sm:text-2xl font-bold mt-0.5 block">0</span>
+                <span id="kpi-total" class="text-lg sm:text-2xl font-bold mt-0.5 block text-white">0</span>
                 <span class="text-[10px] text-slate-500 block truncate">Assigned batch pool</span>
             </div>
             <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center">
@@ -491,7 +491,7 @@
         <div class="linear-card rounded overflow-hidden flex-1 flex flex-col min-h-[220px]">
             <div class="px-3 py-2 border-b border-white/[0.08] flex items-center justify-between text-xs shrink-0 bg-[#12141a]">
                 <div class="flex items-center gap-2 font-semibold">
-                    <span class="text-xs sm:text-sm">Verification Stream</span>
+                    <span class="text-xs sm:text-sm text-white">Verification Stream</span>
                     <span class="text-slate-600">|</span>
                     <span class="text-[11px] text-slate-400 font-normal">Real-time scan audit log</span>
                 </div>
@@ -505,11 +505,11 @@
                         <span>All Scans</span>
                         <span id="stream-count-all" class="text-[10px] bg-slate-800 px-1.5 py-0.2 rounded text-slate-300">0</span>
                     </button>
-                    <button onclick="filterStream('PASS')" id="stream-filter-pass" class="flex-1 md:flex-initial text-left px-2 py-1.5 rounded text-slate-400 hover:bg-white/10 transition-colors flex justify-between items-center text-[11px]">
+                    <button onclick="filterStream('PASS')" id="stream-filter-pass" class="flex-1 md:flex-initial text-left px-2 py-1.5 rounded text-slate-300 hover:bg-white/10 transition-colors flex justify-between items-center text-[11px]">
                         <span>Pass Only</span>
                         <span id="stream-count-pass" class="text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold px-1.5 py-0.2 rounded">0</span>
                     </button>
-                    <button onclick="filterStream('ERROR')" id="stream-filter-error" class="flex-1 md:flex-initial text-left px-2 py-1.5 rounded text-slate-400 hover:bg-white/10 transition-colors flex justify-between items-center text-[11px]">
+                    <button onclick="filterStream('ERROR')" id="stream-filter-error" class="flex-1 md:flex-initial text-left px-2 py-1.5 rounded text-slate-300 hover:bg-white/10 transition-colors flex justify-between items-center text-[11px]">
                         <span>Errors Only</span>
                         <span id="stream-count-error" class="text-[10px] bg-red-500/20 text-red-300 font-semibold px-1.5 py-0.2 rounded">0</span>
                     </button>
@@ -519,7 +519,7 @@
                 <div class="flex-1 overflow-x-auto overflow-y-auto">
                     <table class="w-full text-left text-xs whitespace-nowrap">
                         <thead>
-                            <tr class="border-b border-white/[0.08] text-[10px] text-slate-400 font-semibold bg-[#161821] sticky top-0 z-10">
+                            <tr class="border-b border-white/[0.08] text-[10px] text-slate-300 font-semibold bg-[#161821] sticky top-0 z-10">
                                 <th class="px-3 py-1.5 w-12">Seq</th>
                                 <th class="px-3 py-1.5">Code</th>
                                 <th class="px-3 py-1.5">Evaluation</th>
@@ -527,9 +527,9 @@
                                 <th class="px-3 py-1.5">Inspector</th>
                             </tr>
                         </thead>
-                        <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04]">
+                        <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] text-white">
                             <tr>
-                                <td colspan="5" class="px-3 py-8 text-center text-slate-500 italic text-xs">No scan events recorded for this session</td>
+                                <td colspan="5" class="px-3 py-8 text-center text-slate-400 italic text-xs">No scan events recorded for this session</td>
                             </tr>
                         </tbody>
                     </table>
@@ -540,21 +540,21 @@
     </main>
 
     <!-- Footer Information Bar (Pinned) -->
-    <footer class="border-t px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between text-xs text-slate-400 shrink-0 bg-[#0d0e11] z-40 gap-1">
+    <footer class="border-t px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between text-xs text-slate-300 shrink-0 bg-[#0d0e11] z-40 gap-1">
         <div class="flex items-center gap-3">
             <div class="flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-[#2ed573]"></span>
-                <span>Online</span>
+                <span class="text-white">Online</span>
                 <span class="text-slate-600">&middot;</span>
-                <span id="user-display" class="truncate max-w-[180px] sm:max-w-none">Checking session...</span>
+                <span id="user-display" class="truncate max-w-[180px] sm:max-w-none text-white font-medium">Checking session...</span>
             </div>
             <span class="text-slate-600">&middot;</span>
-            <button onclick="toggleTheme()" class="text-slate-400 hover:text-indigo-400 underline cursor-pointer bg-transparent border-none p-0 text-xs transition-colors" title="Switch Theme">
-                Theme: <span id="theme-name-text">Obsidian</span>
+            <button onclick="toggleTheme()" class="text-slate-300 hover:text-indigo-400 underline cursor-pointer bg-transparent border-none p-0 text-xs transition-colors" title="Switch Theme">
+                Theme: <span id="theme-name-text" class="text-white font-semibold">Obsidian</span>
             </button>
         </div>
-        <div class="text-slate-500 text-[11px] hidden sm:block">
-            Press <kbd class="bg-[#1e2029] text-slate-300 px-1.5 py-0.5 rounded">Enter</kbd> to submit
+        <div class="text-slate-400 text-[11px] hidden sm:block">
+            Press <kbd class="bg-[#1e2029] text-white px-1.5 py-0.5 rounded">Enter</kbd> to submit
         </div>
     </footer>
 
@@ -564,7 +564,7 @@
             <div class="flex justify-between items-center mb-3 border-b border-white/[0.08] pb-3">
                 <div>
                     <h3 class="text-base font-bold text-white">Job Control Center</h3>
-                    <p class="text-xs text-slate-400">View live status across active, inactive, completed, or deleted historical jobs</p>
+                    <p class="text-xs text-slate-300">View live status across active, inactive, completed, or deleted historical jobs</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <button id="btn-bulk-status" onclick="promptBulkStatusChange()" disabled class="linear-button-primary px-3 py-1.5 text-xs rounded font-medium opacity-30 pointer-events-none transition-opacity">Update Job Status</button>
@@ -589,7 +589,7 @@
             <div class="flex-1 overflow-y-auto border border-white/[0.08] rounded">
                 <table class="w-full text-left text-xs whitespace-nowrap">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-[10px] text-slate-400 font-semibold bg-[#161821] sticky top-0 z-10">
+                        <tr class="border-b border-white/[0.08] text-[10px] text-slate-300 font-semibold bg-[#161821] sticky top-0 z-10">
                             <th class="p-3 w-10 text-center"><input type="checkbox" id="select-all-jobs" onclick="toggleSelectAllJobs(this)"></th>
                             <th class="p-3">Job Card</th>
                             <th class="p-3">Description</th>
@@ -599,7 +599,7 @@
                             <th class="p-3 text-center">Action</th>
                         </tr>
                     </thead>
-                    <tbody id="master-jobs-rows" class="divide-y divide-white/[0.04]"></tbody>
+                    <tbody id="master-jobs-rows" class="divide-y divide-white/[0.04] text-white"></tbody>
                 </table>
             </div>
         </div>
@@ -638,13 +638,13 @@
             <div class="max-h-64 overflow-y-auto text-xs border border-white/[0.08] rounded">
                 <table class="w-full text-left">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-[10px] text-slate-400 bg-[#161821] sticky top-0">
+                        <tr class="border-b border-white/[0.08] text-[10px] text-slate-300 bg-[#161821] sticky top-0">
                             <th class="p-3">User & Employee Details</th>
                             <th class="p-3 text-center">Can Create Jobs?</th>
                             <th class="p-3 text-right">Action</th>
                         </tr>
                     </thead>
-                    <tbody id="users-table" class="divide-y divide-white/[0.04]"></tbody>
+                    <tbody id="users-table" class="divide-y divide-white/[0.04] text-white"></tbody>
                 </table>
             </div>
         </div>
@@ -674,14 +674,14 @@
             <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded">
                 <table class="w-full text-left text-xs whitespace-nowrap">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-[10px] text-slate-400 bg-[#161821] sticky top-0">
+                        <tr class="border-b border-white/[0.08] text-[10px] text-slate-300 bg-[#161821] sticky top-0">
                             <th class="p-3">Timestamp</th>
                             <th class="p-3">Inspector</th>
                             <th class="p-3">Scanned Barcode</th>
                             <th class="p-3">Evaluation</th>
                         </tr>
                     </thead>
-                    <tbody id="report-log-rows" class="divide-y divide-white/[0.04]"></tbody>
+                    <tbody id="report-log-rows" class="divide-y divide-white/[0.04] text-white"></tbody>
                 </table>
             </div>
             <div id="print-timestamp" class="print-timestamp-footer"></div>
@@ -709,14 +709,14 @@
             <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded">
                 <table class="w-full text-left text-xs whitespace-nowrap">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-[10px] text-slate-400 bg-[#161821] sticky top-0">
+                        <tr class="border-b border-white/[0.08] text-[10px] text-slate-300 bg-[#161821] sticky top-0">
                             <th class="p-3">Timestamp</th>
                             <th class="p-3">Authorized User</th>
                             <th class="p-3">Action Performed</th>
                             <th class="p-3">Reason / Details</th>
                         </tr>
                     </thead>
-                    <tbody id="lifecycle-log-rows" class="divide-y divide-white/[0.04]"></tbody>
+                    <tbody id="lifecycle-log-rows" class="divide-y divide-white/[0.04] text-white"></tbody>
                 </table>
             </div>
             <div id="print-timestamp-audit" class="print-timestamp-footer"></div>
@@ -1167,7 +1167,7 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `Job Card: ${id} <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
+            document.getElementById('active-title-card').innerHTML = `Job Card: ${id} <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>`;
             
             const promptDesc = status === 'ACTIVE' 
                 ? (activeJobDesc ? `${activeJobDesc} - Ready for Validation` : `Ready for Validation`)
@@ -1446,7 +1446,7 @@
 
             const tbody = document.getElementById('master-jobs-rows');
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500 italic text-xs">No job cards found matching '${query}'</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400 italic text-xs">No job cards found matching '${query}'</td></tr>`;
                 updateBulkStatusButtonState();
                 return;
             }
@@ -1459,19 +1459,19 @@
                 else if (j.status === 'DELETED') badgeClass = "linear-badge-fail";
 
                 const descDetail = j.status === 'DELETED' 
-                    ? `<span class="text-red-400 font-medium block">Reason: ${j.deletion_reason}</span><span class="text-slate-500 block text-[10px]">Deleted by: ${j.deleted_by}</span>`
+                    ? `<span class="text-red-400 font-medium block">Reason: ${j.deletion_reason}</span><span class="text-slate-400 block text-[10px]">Deleted by: ${j.deleted_by}</span>`
                     : (j.description || '-');
 
                 const timeDetail = j.status === 'DELETED' 
-                    ? `<span class="text-slate-500 block text-[10px]">Created: ${j.created_at}</span><span class="text-red-400 block text-[10px]">Deleted: ${j.deleted_at}</span>`
-                    : `<span class="text-slate-400 block text-[10px]">${j.created_at}</span>`;
+                    ? `<span class="text-slate-400 block text-[10px]">Created: ${j.created_at}</span><span class="text-red-400 block text-[10px]">Deleted: ${j.deleted_at}</span>`
+                    : `<span class="text-slate-300 block text-[10px]">${j.created_at}</span>`;
 
                 return `
                     <tr class="hover:bg-black/[0.02]">
                         <td class="p-3 text-center">
                             ${j.status !== 'DELETED' ? `<input type="checkbox" value="${j.job_card_id}" onchange="updateBulkStatusButtonState()" class="job-select-checkbox rounded w-4 h-4 cursor-pointer">` : ''}
                         </td>
-                        <td class="p-3 font-bold">
+                        <td class="p-3 font-bold text-white">
                             <div class="inline-flex items-center gap-1.5">
                                 <span class="truncate">${j.job_card_id}</span>
                                 <button onclick="copyJobCardNumber('${j.job_card_id}', this)" title="Copy Job Card Number" class="linear-button-secondary p-1 rounded transition-colors inline-flex items-center justify-center shrink-0">
@@ -1481,16 +1481,16 @@
                                 </button>
                             </div>
                         </td>
-                        <td class="p-3 max-w-[200px] text-xs">${descDetail}</td>
+                        <td class="p-3 max-w-[200px] text-xs text-slate-200">${descDetail}</td>
                         <td class="p-3">${timeDetail}</td>
                         <td class="p-3 text-center">
                             <span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">
                                 ${j.status}
                             </span>
                         </td>
-                        <td class="p-3 text-right text-xs">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
+                        <td class="p-3 text-right text-xs text-white">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
                         <td class="p-3 text-center">
-                            <span class="text-slate-500 italic text-[11px]">Active Record</span>
+                            <span class="text-slate-400 italic text-[11px]">Active Record</span>
                         </td>
                     </tr>
                 `;
@@ -1615,7 +1615,7 @@
                     if (t === type.toLowerCase()) {
                         btn.className = "flex-1 md:flex-initial text-left px-2 py-1.5 rounded bg-white/10 text-white font-medium transition-colors hover:bg-white/15 flex justify-between items-center text-[11px]";
                     } else {
-                        btn.className = "flex-1 md:flex-initial text-left px-2 py-1.5 rounded text-slate-400 hover:bg-white/10 transition-colors flex justify-between items-center text-[11px]";
+                        btn.className = "flex-1 md:flex-initial text-left px-2 py-1.5 rounded text-slate-300 hover:bg-white/10 transition-colors flex justify-between items-center text-[11px]";
                     }
                 }
             });
@@ -1641,7 +1641,7 @@
             }
 
             if (filteredScans.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-6 text-center text-slate-500 italic text-xs">No scan events found for this filter</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-6 text-center text-slate-400 italic text-xs">No scan events found for this filter</td></tr>`;
                 return;
             }
 
@@ -1650,11 +1650,11 @@
                 if (s.result !== 'PASS') badge = "linear-badge-fail";
                 return `
                     <tr class="hover:bg-black/[0.02]">
-                        <td class="px-3 py-1 text-slate-500 text-[11px]">#${allScans.length - allScans.indexOf(s)}</td>
-                        <td class="px-3 py-1 font-bold text-xs">${s.code}</td>
+                        <td class="px-3 py-1 text-slate-400 text-[11px]">#${allScans.length - allScans.indexOf(s)}</td>
+                        <td class="px-3 py-1 font-bold text-xs text-white">${s.code}</td>
                         <td class="px-3 py-1"><span class="${badge} px-2 py-0.2 rounded text-[10px] font-bold">${s.result}</span></td>
-                        <td class="px-3 py-1 text-slate-400 text-[11px]">${s.time}</td>
-                        <td class="px-3 py-1 text-[11px]">${s.user}</td>
+                        <td class="px-3 py-1 text-slate-300 text-[11px]">${s.time}</td>
+                        <td class="px-3 py-1 text-[11px] text-white">${s.user}</td>
                     </tr>
                 `;
             }).join('');
@@ -1755,13 +1755,13 @@
 
             const tbody = document.getElementById('report-log-rows');
             if (data.recent_logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-500 italic">No inspection logs recorded yet</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-400 italic">No inspection logs recorded yet</td></tr>`;
             } else {
                 tbody.innerHTML = data.recent_logs.map(log => `
                     <tr class="hover:bg-black/[0.02]">
-                        <td class="p-2.5 text-xs text-slate-400">${log.time}</td>
-                        <td class="p-2.5 font-bold">${log.user}</td>
-                        <td class="p-2.5">${log.code}</td>
+                        <td class="p-2.5 text-xs text-slate-300">${log.time}</td>
+                        <td class="p-2.5 font-bold text-white">${log.user}</td>
+                        <td class="p-2.5 text-white">${log.code}</td>
                         <td class="p-2.5 font-bold ${log.result === 'PASS' ? 'text-[#2ed573]' : 'text-red-400'}">${log.result}</td>
                     </tr>
                 `).join('');
@@ -1785,14 +1785,14 @@
 
             const tbody = document.getElementById('lifecycle-log-rows');
             if (data.logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-500 italic">No state changes recorded</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-400 italic">No state changes recorded</td></tr>`;
             } else {
                 tbody.innerHTML = data.logs.map(log => {
                     let label = log.action;
-                    let colorClass = "text-slate-300";
+                    let colorClass = "text-slate-200";
                     if (log.action === 'CREATED') {
                         label = "Job Created & Ingested";
-                        colorClass = "text-[#5e6ad2] font-semibold";
+                        colorClass = "text-indigo-300 font-semibold";
                     } else if (log.action === 'REACTIVATED_AND_UNBLOCKED') {
                         label = "Reactivated & Unblocked";
                         colorClass = "text-amber-400 font-semibold";
@@ -1806,10 +1806,10 @@
 
                     return `
                         <tr class="hover:bg-black/[0.02]">
-                            <td class="p-2.5 text-xs text-slate-400">${log.time}</td>
-                            <td class="p-2.5 font-bold">${log.user}</td>
+                            <td class="p-2.5 text-xs text-slate-300">${log.time}</td>
+                            <td class="p-2.5 font-bold text-white">${log.user}</td>
                             <td class="p-2.5 ${colorClass}">${label}</td>
-                            <td class="p-2.5 text-xs">${log.reason || '-'}</td>
+                            <td class="p-2.5 text-xs text-slate-300">${log.reason || '-'}</td>
                         </tr>
                     `;
                 }).join('');
@@ -1831,7 +1831,7 @@
                             <span class="text-[10px] uppercase px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">${u.role}</span>
                         </div>
                         ${(u.employee_name || u.employee_id) ? `
-                            <div class="text-[11px] text-slate-400 mt-0.5">
+                            <div class="text-[11px] text-slate-300 mt-0.5">
                                 ${u.employee_name ? `<span>Name: ${u.employee_name}</span>` : ''}
                                 ${u.employee_id ? `<span class="ml-2">ID: ${u.employee_id}</span>` : ''}
                             </div>
@@ -1848,7 +1848,7 @@
                         ${u.username !== currentUser.username ? `
                             <button onclick="promptAdminResetPassword('${u.username}')" class="text-indigo-400 hover:text-indigo-300 font-medium text-xs mr-2">Reset PW</button>
                             <button onclick="toggleUserSuspension('${u.username}', ${u.is_active})" class="${u.is_active ? 'text-amber-400 hover:text-amber-300' : 'text-green-400 hover:text-green-300'} font-medium text-xs">${u.is_active ? 'Suspend' : 'Activate'}</button>
-                        ` : '<span class="text-xs text-slate-500">Current User</span>'}
+                        ` : '<span class="text-xs text-slate-400">Current User</span>'}
                     </td>
                 </tr>
             `).join('');
