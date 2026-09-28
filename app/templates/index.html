@@ -545,6 +545,18 @@
         </div>
     </div>
 
+    <!-- Duplicate Warning Modal for Job Creation -->
+    <div id="duplicate-warning-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
+        <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-amber-500/35 shadow-2xl text-center">
+            <h3 class="text-base font-bold mb-1 text-amber-400">Duplicate Code Found!</h3>
+            <p id="duplicate-warning-msg" class="text-xs text-slate-300 mb-5 leading-relaxed"></p>
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="cancelDuplicateUpload()" class="linear-button-secondary px-4 py-2 rounded text-xs font-medium min-h-[40px]">Cancel / Stop</button>
+                <button type="button" onclick="confirmDuplicateUpload()" class="linear-button-primary px-4 py-2 rounded text-xs font-medium min-h-[40px]">Continue Anyway</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Custom Confirm Modal -->
     <div id="custom-confirm-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-amber-500/35 shadow-2xl text-center">
@@ -682,7 +694,7 @@
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Batch Data File (CSV / TXT) *</label>
                     <input type="file" id="new-job-file" accept=".csv,.txt" required class="linear-input w-full p-2.5 text-xs rounded text-slate-400">
-                    <p class="text-xs text-slate-500 mt-1">Codes are checked against active and deleted jobs.</p>
+                    <p class="text-xs text-slate-500 mt-1">Codes are checked against active and completed jobs.</p>
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" onclick="toggleModal('upload-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
@@ -1557,7 +1569,7 @@
             }).join('');
         }
 
-        async function uploadJob(e, overrideDeletedWarning = false) {
+        async function uploadJob(e, overrideDuplicate = false) {
             if (e) e.preventDefault();
             const btn = document.getElementById('upload-btn');
             btn.disabled = true;
@@ -1567,15 +1579,14 @@
             body.append("job_card_id", document.getElementById('new-job-id').value.trim());
             body.append("description", document.getElementById('new-job-desc').value.trim());
             body.append("file", document.getElementById('new-job-file').files[0]);
-            body.append("override_deleted_warning", overrideDeletedWarning);
+            body.append("override_duplicate", overrideDuplicate);
 
             const res = await fetch('/api/jobs/create', { method: 'POST', body });
             const data = await res.json();
 
-            if (res.status === 409 && data.status === "deleted_duplicate_warning") {
-                document.getElementById('deleted-dup-warning-msg').innerText = 
-                    `Code '${data.code}' exists in deleted Job Card '${data.deleted_job_card}'. Would you like to continue creating this job anyway?`;
-                document.getElementById('deleted-dup-warning-modal').classList.remove('hidden');
+            if (res.status === 409 && data.status === "duplicate_warning") {
+                document.getElementById('duplicate-warning-msg').innerText = data.message;
+                document.getElementById('duplicate-warning-modal').classList.remove('hidden');
                 btn.disabled = false;
                 btn.innerText = "Create Job";
                 return;
@@ -1584,7 +1595,7 @@
             if (res.ok) {
                 showCustomAlert(`Job Card ${data.job_card_id} created with ${data.total_extracted.toLocaleString()} serial codes.`, "Success");
                 toggleModal('upload-modal');
-                document.getElementById('deleted-dup-warning-modal').classList.add('hidden');
+                document.getElementById('duplicate-warning-modal').classList.add('hidden');
                 document.getElementById('create-job-form').reset();
                 selectJob(data.job_card_id, escape(document.getElementById('new-job-desc').value.trim()), 'ACTIVE', 0, data.total_extracted);
             } else {
@@ -1595,8 +1606,13 @@
             btn.innerText = "Create Job";
         }
 
-        function confirmOverrideAndCreate() {
+        function confirmDuplicateUpload() {
+            document.getElementById('duplicate-warning-modal').classList.add('hidden');
             uploadJob(null, true);
+        }
+
+        function cancelDuplicateUpload() {
+            document.getElementById('duplicate-warning-modal').classList.add('hidden');
         }
 
         async function openReportModal() {

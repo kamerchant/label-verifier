@@ -428,7 +428,7 @@ async def create_job(
     job_card_id: str = Form(...),
     description: str = Form(""),
     file: UploadFile = File(...),
-    override_deleted_warning: bool = Form(False),
+    override_duplicate: bool = Form(False),
     uploader: dict = Depends(require_uploader)
 ):
     job_card_id = job_card_id.strip()
@@ -446,7 +446,6 @@ async def create_job(
 
             raw_codes = []
             seen_in_batch = set()
-            sample_codes = []
 
             for row in csv_reader:
                 if not row:
@@ -461,33 +460,36 @@ async def create_job(
                     if item not in seen_in_batch:
                         seen_in_batch.add(item)
                         raw_codes.append(item)
-                        if len(sample_codes) < 100:
-                            sample_codes.append(item)
 
-            if not seen_in_batch:
+            if not raw_codes:
                 raise HTTPException(status_code=400, detail="No valid codes found in the file.")
 
-            deleted_job_matches = []
-            if sample_codes:
-                cur.execute("""
-                    SELECT j.job_card_id, c.code_value, j.status 
-                    FROM codes c
-                    JOIN job_cards j ON c.run_id = j.run_id
-                    WHERE c.code_value = ANY(%s) AND j.status = 'DELETED'
-                    LIMIT 20
-                """, (sample_codes,))
-                matches = cur.fetchall()
-                deleted_job_matches = matches
+            # Full Batch Uniqueness Check across all active/completed jobs
+            conflict_found = None
+            if not override_duplicate:
+                chunk_size = 5000
+                for i in range(0, len(raw_codes), chunk_size):
+                    chunk = raw_codes[i:i + chunk_size]
+                    cur.execute("""
+                        SELECT c.code_value, j.job_card_id 
+                        FROM codes c
+                        JOIN job_cards j ON c.run_id = j.run_id
+                        WHERE c.code_value = ANY(%s) AND j.status != 'DELETED'
+                        LIMIT 1
+                    """, (chunk,))
+                    conflict = cur.fetchone()
+                    if conflict:
+                        conflict_found = conflict
+                        break
 
-                if deleted_job_matches and not override_deleted_warning:
-                    sample_dup = deleted_job_matches[0][1]
-                    conflicting_jc = deleted_job_matches[0][0]
-                    return JSONResponse(status_code=409, content={
-                        "status": "deleted_duplicate_warning",
-                        "message": f"Code '{sample_dup}' already exists in a deleted Job Card '{conflicting_jc}'. Do you want to proceed with creating this job?",
-                        "code": sample_dup,
-                        "deleted_job_card": conflicting_jc
-                    })
+            if conflict_found and not override_duplicate:
+                conflicting_code, conflicting_job = conflict_found
+                return JSONResponse(status_code=409, content={
+                    "status": "duplicate_warning",
+                    "message": f"Code '{conflicting_code}' already exists in Job Card '{conflicting_job}'. Would you like to continue creating this job anyway?",
+                    "code": conflicting_code,
+                    "existing_job": conflicting_job
+                })
 
             cur.execute("""
                 INSERT INTO job_cards (job_card_id, description, status) 
@@ -503,10 +505,9 @@ async def create_job(
 
             cur.copy_from(csv_buffer, 'codes', columns=('run_id', 'job_card_id', 'code_value', 'status'))
 
-            lifecycle_reason = "Initial batch ingestion"
-            if deleted_job_matches and override_deleted_warning:
-                conflicting_jc = deleted_job_matches[0][0]
-                lifecycle_reason = f"Reused codes from deleted Job Card '{conflicting_jc}'"
+            lifecycle_reason = "Initial full batch ingestion"
+            if conflict_found and override_duplicate:
+                lifecycle_reason = "Ingested with overridden duplicate warning"
 
             cur.execute("""
                 INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) 
@@ -514,7 +515,7 @@ async def create_job(
             """, (job_card_id, "CREATED", uploader["username"], lifecycle_reason))
 
             conn.commit()
-            return {"status": "success", "job_card_id": job_card_id, "total_extracted": len(seen_in_batch)}
+            return {"status": "success", "job_card_id": job_card_id, "total_extracted": len(raw_codes)}
     except HTTPException:
         conn.rollback()
         raise
