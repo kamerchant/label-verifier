@@ -205,22 +205,22 @@
             display: none;
         }
 
-        /* Strict A4 Print Styles - Exactly 5mm Left & Right Margins, Zero Blank Pages */
+        /* Strict Chromium / Opera Print Styles - Exact 5mm Margins, Single Page Lock */
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 8mm 5mm;
+                margin: 6mm 5mm;
             }
             body, html {
                 background: #ffffff !important;
                 color: #0f172a !important;
-                height: auto !important;
+                height: 100% !important;
                 width: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                overflow: visible !important;
-                page-break-after: avoid !important;
-                break-after: avoid !important;
+                overflow: hidden !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
             body * {
                 visibility: hidden !important;
@@ -267,16 +267,16 @@
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: flex-start !important;
-                margin-bottom: 6px !important;
+                margin-bottom: 4px !important;
             }
             .print-brand-logo {
-                height: 26px !important;
+                height: 24px !important;
                 width: auto !important;
                 object-fit: contain !important;
                 margin-bottom: 2px !important;
             }
             .print-brand-text {
-                font-size: 8.5pt !important;
+                font-size: 8pt !important;
                 font-weight: 800 !important;
                 color: #0f172a !important;
                 letter-spacing: 0.03em !important;
@@ -284,32 +284,32 @@
             .report-header-box {
                 background: #ffffff !important;
                 border-bottom: 2px solid #0f172a !important;
-                padding-bottom: 4px !important;
-                margin-bottom: 8px !important;
+                padding-bottom: 3px !important;
+                margin-bottom: 6px !important;
             }
             .print-title {
-                font-size: 13pt !important;
+                font-size: 12pt !important;
                 color: #0f172a !important;
                 font-weight: 800 !important;
                 background: #ffffff !important;
                 margin-bottom: 2px !important;
             }
             .print-subtitle {
-                font-size: 9.5pt !important;
+                font-size: 9pt !important;
                 color: #334155 !important;
                 background: #ffffff !important;
             }
             #report-stats {
                 display: grid !important;
                 grid-template-columns: repeat(2, 1fr) !important;
-                gap: 6px !important;
-                margin-bottom: 10px !important;
+                gap: 5px !important;
+                margin-bottom: 8px !important;
                 background: #ffffff !important;
             }
             #report-stats div {
                 background: #f8fafc !important;
                 border: 1px solid #94a3b8 !important;
-                padding: 6px !important;
+                padding: 5px !important;
                 border-radius: 4px !important;
                 color: #0f172a !important;
                 -webkit-print-color-adjust: exact !important;
@@ -338,33 +338,36 @@
                 color: #0f172a !important;
                 font-weight: 700 !important;
                 border: 1px solid #94a3b8 !important;
-                padding: 5px 6px !important;
-                font-size: 8.5pt !important;
+                padding: 4px 5px !important;
+                font-size: 8pt !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
             td {
                 color: #0f172a !important;
                 border: 1px solid #cbd5e1 !important;
-                padding: 4px 6px !important;
-                font-size: 8pt !important;
+                padding: 3px 5px !important;
+                font-size: 7.5pt !important;
                 background: #ffffff !important;
             }
             tr {
                 page-break-inside: avoid !important;
+                break-inside: avoid !important;
                 background: #ffffff !important;
             }
             .print-timestamp-footer {
                 display: block !important;
-                margin-top: 8mm !important;
-                padding-top: 4px !important;
-                font-size: 7.5pt !important;
+                margin-top: 6mm !important;
+                padding-top: 3px !important;
+                font-size: 7pt !important;
                 color: #64748b !important;
                 text-align: right !important;
                 font-family: monospace !important;
                 border-top: 1px solid #cbd5e1 !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
             }
         }
         .print-timestamp-footer {
@@ -443,7 +446,7 @@
             </div>
             <div class="linear-card p-3 sm:p-4 rounded text-center flex flex-col items-center justify-center">
                 <span class="text-xs text-amber-400 block font-medium">Remaining Codes</span>
-                <span id="kpi-pending" class="text-xl sm:text-3xl font-bold font-mono mt-1 block">0</span>
+                <span id="kpi-pending" class="text-xl sm:text-3xl font-bold font-mono text-slate-300 mt-1 block">0</span>
                 <span class="text-[11px] sm:text-xs text-slate-500 mt-1 block truncate">Remaining in feed</span>
             </div>
         </div>
