@@ -525,16 +525,16 @@
                 <!-- Stream Sidebar Filters -->
                 <div class="w-full md:w-52 bg-black/20 border-b md:border-b-0 md:border-r border-white/[0.08] p-2.5 flex md:flex-col gap-2 shrink-0 text-sm">
                     <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1 mb-0.5 hidden md:block">Filter Stream</span>
-                    <button onclick="filterStream('ALL')" id="stream-filter-all" class="flex-1 md:flex-initial text-left px-3 py-2 rounded bg-white/15 text-white font-bold transition-colors hover:bg-white/20 flex justify-between items-center text-sm">
-                        <span>All Scans</span>
+                    <button onclick="filterStream('ALL')" id="stream-filter-all" class="flex-1 md:flex-initial text-left px-3 py-2 rounded bg-white/15 text-black font-bold transition-colors hover:bg-white/20 flex justify-between items-center text-sm">
+                        <span class="text-black font-bold">All Scans</span>
                         <span id="stream-count-all" class="text-xs bg-slate-800 px-2 py-0.5 rounded text-white font-bold">0</span>
                     </button>
-                    <button onclick="filterStream('PASS')" id="stream-filter-pass" class="flex-1 md:flex-initial text-left px-3 py-2 rounded text-slate-300 font-semibold hover:bg-white/10 transition-colors flex justify-between items-center text-sm">
-                        <span class="font-semibold">Pass Only</span>
+                    <button onclick="filterStream('PASS')" id="stream-filter-pass" class="flex-1 md:flex-initial text-left px-3 py-2 rounded text-black font-bold hover:bg-white/10 transition-colors flex justify-between items-center text-sm">
+                        <span class="text-black font-bold">Pass Only</span>
                         <span id="stream-count-pass" class="text-xs bg-emerald-400 text-black font-black px-2 py-0.5 rounded">0</span>
                     </button>
-                    <button onclick="filterStream('ERROR')" id="stream-filter-error" class="flex-1 md:flex-initial text-left px-3 py-2 rounded text-slate-300 font-semibold hover:bg-white/10 transition-colors flex justify-between items-center text-sm">
-                        <span class="font-semibold">Errors Only</span>
+                    <button onclick="filterStream('ERROR')" id="stream-filter-error" class="flex-1 md:flex-initial text-left px-3 py-2 rounded text-black font-bold hover:bg-white/10 transition-colors flex justify-between items-center text-sm">
+                        <span class="text-black font-bold">Errors Only</span>
                         <span id="stream-count-error" class="text-xs bg-red-400 text-black font-black px-2 py-0.5 rounded">0</span>
                     </button>
                 </div>
@@ -1191,7 +1191,7 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `Job Card: ${id} <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>`;
+            document.getElementById('active-title-card').innerHTML = `Job Card: ${id} <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
             
             const promptDesc = status === 'ACTIVE' 
                 ? (activeJobDesc ? `${activeJobDesc} - Ready for Validation` : `Ready for Validation`)
@@ -1262,7 +1262,7 @@
             allScans = [];
 
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `Job Card: None`;
+            document.getElementById('active-title-card').innerHTML = `Job Card: None <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>`;
             document.getElementById('header-job-desc').innerText = "Search active production jobs using the search field.";
 
             const card = document.getElementById('status-card');
@@ -1637,9 +1637,9 @@
                 const btn = document.getElementById(`stream-filter-${t}`);
                 if (btn) {
                     if (t === type.toLowerCase()) {
-                        btn.className = "flex-1 md:flex-initial text-left px-3 py-2 rounded bg-white/15 table-text-theme font-bold transition-colors hover:bg-white/20 flex justify-between items-center text-sm";
+                        btn.className = "flex-1 md:flex-initial text-left px-3 py-2 rounded bg-white/20 text-black font-bold transition-colors hover:bg-white/25 flex justify-between items-center text-sm";
                     } else {
-                        btn.className = "flex-1 md:flex-initial text-left px-3 py-2 rounded table-text-theme font-semibold hover:bg-white/10 transition-colors flex justify-between items-center text-sm";
+                        btn.className = "flex-1 md:flex-initial text-left px-3 py-2 rounded text-black font-semibold hover:bg-white/10 transition-colors flex justify-between items-center text-sm";
                     }
                 }
             });
