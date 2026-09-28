@@ -85,6 +85,18 @@
             border: 1px solid rgba(255, 165, 2, 0.35);
         }
 
+        /* Obsidian Theme Headings and Table Text Adaptation */
+        .modal-title-theme {
+            color: #f8fafc !important;
+        }
+        .table-text-theme {
+            color: #f1f5f9 !important;
+        }
+        .table-header-theme {
+            color: #ffffff !important;
+            background-color: #161821 !important;
+        }
+
         /* --- THEME 2: Parchment (Warm Paper Neutral) --- */
         html.theme-parchment body {
             background-color: #f7f5f0;
@@ -155,6 +167,16 @@
         html.theme-parchment table td {
             border-color: #e3decb !important;
             color: #2c3531 !important;
+        }
+        html.theme-parchment .modal-title-theme {
+            color: #1a211e !important;
+        }
+        html.theme-parchment .table-text-theme {
+            color: #2c3531 !important;
+        }
+        html.theme-parchment .table-header-theme {
+            color: #3d4a45 !important;
+            background-color: #f0ece1 !important;
         }
 
         /* Status Bar Dynamic Color States */
@@ -408,12 +430,12 @@
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
-                    <h1 id="active-title-card" class="text-lg sm:text-2xl font-extrabold tracking-tight truncate flex items-center gap-2 text-black">
+                    <h1 id="active-title-card" class="text-lg sm:text-2xl font-extrabold tracking-tight truncate flex items-center gap-2 table-text-theme">
                         <span>Job Card: None</span>
-                        <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-700 hover:text-red-600 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>
+                        <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>
                     </h1>
                 </div>
-                <p id="header-job-desc" class="text-xs text-slate-700 mt-0.5 truncate">Search active production jobs using the search field.</p>
+                <p id="header-job-desc" class="text-xs text-slate-400 mt-0.5 truncate">Search active production jobs using the search field.</p>
             </div>
 
             <!-- Action Buttons Group & Job Search Bar on the Right -->
@@ -443,19 +465,19 @@
 
         <!-- Metric Figures (Centered) -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 shrink-0">
-            <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center bg-white border border-slate-300">
-                <span class="text-[11px] text-slate-700 block font-medium">Total Pool</span>
-                <span id="kpi-total" class="text-lg sm:text-2xl font-black mt-0.5 block text-black">0</span>
+            <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center">
+                <span class="text-[11px] text-slate-400 block font-medium">Total Pool</span>
+                <span id="kpi-total" class="text-lg sm:text-2xl font-bold mt-0.5 block table-text-theme">0</span>
                 <span class="text-[10px] text-slate-500 block truncate">Assigned batch pool</span>
             </div>
-            <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center bg-white border border-slate-300">
-                <span class="text-[11px] text-emerald-800 block font-medium">Verified (Pass)</span>
-                <span id="kpi-consumed" class="text-lg sm:text-2xl font-black text-black mt-0.5 block">0</span>
+            <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center">
+                <span class="text-[11px] text-[#2ed573] block font-medium">Verified (Pass)</span>
+                <span id="kpi-consumed" class="text-lg sm:text-2xl font-bold text-[#2ed573] mt-0.5 block">0</span>
                 <span class="text-[10px] text-slate-500 block truncate">Consumed serials</span>
             </div>
-            <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center bg-white border border-slate-300">
-                <span class="text-[11px] text-amber-800 block font-medium">Remaining Codes</span>
-                <span id="kpi-pending" class="text-lg sm:text-2xl font-black text-black mt-0.5 block">0</span>
+            <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center">
+                <span class="text-[11px] text-amber-400 block font-medium">Remaining Codes</span>
+                <span id="kpi-pending" class="text-lg sm:text-2xl font-bold text-slate-300 mt-0.5 block">0</span>
                 <span class="text-[10px] text-slate-500 block truncate">Remaining in feed</span>
             </div>
         </div>
@@ -491,7 +513,7 @@
         <div class="linear-card rounded overflow-hidden flex-1 flex flex-col min-h-[220px]">
             <div class="px-3 py-2 border-b border-white/[0.08] flex items-center justify-between text-xs shrink-0 bg-[#12141a]">
                 <div class="flex items-center gap-2 font-semibold">
-                    <span class="text-xs sm:text-sm text-white">Verification Stream</span>
+                    <span class="text-xs sm:text-sm table-text-theme">Verification Stream</span>
                     <span class="text-slate-600">|</span>
                     <span class="text-[11px] text-slate-400 font-normal">Real-time scan audit log</span>
                 </div>
@@ -501,17 +523,17 @@
                 <!-- Stream Sidebar Filters -->
                 <div class="w-full md:w-52 bg-black/20 border-b md:border-b-0 md:border-r border-white/[0.08] p-2.5 flex md:flex-col gap-2 shrink-0 text-sm">
                     <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1 mb-0.5 hidden md:block">Filter Stream</span>
-                    <button onclick="filterStream('ALL')" id="stream-filter-all" class="flex-1 md:flex-initial text-left px-3 py-2 rounded bg-white/10 text-white font-semibold transition-colors hover:bg-white/15 flex justify-between items-center text-sm">
+                    <button onclick="filterStream('ALL')" id="stream-filter-all" class="flex-1 md:flex-initial text-left px-3 py-2 rounded bg-white/10 table-text-theme font-semibold transition-colors hover:bg-white/15 flex justify-between items-center text-sm">
                         <span>All Scans</span>
                         <span id="stream-count-all" class="text-xs bg-slate-800 px-2 py-0.5 rounded text-white font-bold">0</span>
                     </button>
-                    <button onclick="filterStream('PASS')" id="stream-filter-pass" class="flex-1 md:flex-initial text-left px-3 py-2 rounded text-white hover:bg-white/10 transition-colors flex justify-between items-center text-sm">
+                    <button onclick="filterStream('PASS')" id="stream-filter-pass" class="flex-1 md:flex-initial text-left px-3 py-2 rounded table-text-theme hover:bg-white/10 transition-colors flex justify-between items-center text-sm">
                         <span class="font-semibold">Pass Only</span>
-                        <span id="stream-count-pass" class="text-xs bg-emerald-300 text-black font-black px-2 py-0.5 rounded">0</span>
+                        <span id="stream-count-pass" class="text-xs bg-emerald-400 text-black font-black px-2 py-0.5 rounded">0</span>
                     </button>
-                    <button onclick="filterStream('ERROR')" id="stream-filter-error" class="flex-1 md:flex-initial text-left px-3 py-2 rounded text-white hover:bg-white/10 transition-colors flex justify-between items-center text-sm">
+                    <button onclick="filterStream('ERROR')" id="stream-filter-error" class="flex-1 md:flex-initial text-left px-3 py-2 rounded table-text-theme hover:bg-white/10 transition-colors flex justify-between items-center text-sm">
                         <span class="font-semibold">Errors Only</span>
-                        <span id="stream-count-error" class="text-xs bg-red-300 text-black font-black px-2 py-0.5 rounded">0</span>
+                        <span id="stream-count-error" class="text-xs bg-red-400 text-black font-black px-2 py-0.5 rounded">0</span>
                     </button>
                 </div>
 
@@ -519,7 +541,7 @@
                 <div class="flex-1 overflow-x-auto overflow-y-auto">
                     <table class="w-full text-left whitespace-nowrap">
                         <thead>
-                            <tr class="border-b border-white/[0.08] text-sm text-white font-bold bg-[#161821] sticky top-0 z-10">
+                            <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0 z-10">
                                 <th class="px-3.5 py-2.5 w-16">Seq</th>
                                 <th class="px-3.5 py-2.5">Code</th>
                                 <th class="px-3.5 py-2.5">Evaluation</th>
@@ -527,7 +549,7 @@
                                 <th class="px-3.5 py-2.5">Inspector</th>
                             </tr>
                         </thead>
-                        <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] text-white">
+                        <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] table-text-theme">
                             <tr>
                                 <td colspan="5" class="px-3 py-8 text-center text-slate-400 italic text-xs">No scan events recorded for this session</td>
                             </tr>
@@ -544,13 +566,13 @@
         <div class="flex items-center gap-3">
             <div class="flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-[#2ed573]"></span>
-                <span class="text-white">Online</span>
+                <span class="table-text-theme">Online</span>
                 <span class="text-slate-600">&middot;</span>
-                <span id="user-display" class="truncate max-w-[180px] sm:max-w-none text-white font-medium">Checking session...</span>
+                <span id="user-display" class="truncate max-w-[180px] sm:max-w-none table-text-theme font-medium">Checking session...</span>
             </div>
             <span class="text-slate-600">&middot;</span>
             <button onclick="toggleTheme()" class="text-slate-300 hover:text-indigo-400 underline cursor-pointer bg-transparent border-none p-0 text-xs transition-colors" title="Switch Theme">
-                Theme: <span id="theme-name-text" class="text-white font-semibold">Obsidian</span>
+                Theme: <span id="theme-name-text" class="table-text-theme font-semibold">Obsidian</span>
             </button>
         </div>
         <div class="text-slate-400 text-[11px] hidden sm:block">
@@ -563,8 +585,8 @@
         <div class="linear-card p-4 sm:p-6 rounded-lg max-w-5xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="flex justify-between items-center mb-3 border-b border-white/[0.08] pb-3">
                 <div>
-                    <h3 class="text-lg font-black text-black">Job Control Center</h3>
-                    <p class="text-xs text-slate-700">View live status across active, inactive, completed, or deleted historical jobs</p>
+                    <h3 class="text-lg font-black modal-title-theme">Job Control Center</h3>
+                    <p class="text-xs text-slate-400">View live status across active, inactive, completed, or deleted historical jobs</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <button id="btn-bulk-status" onclick="promptBulkStatusChange()" disabled class="linear-button-primary px-3 py-1.5 text-xs rounded font-medium opacity-30 pointer-events-none transition-opacity">Update Job Status</button>
@@ -589,7 +611,7 @@
             <div class="flex-1 overflow-y-auto border border-white/[0.08] rounded">
                 <table class="w-full text-left whitespace-nowrap">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-sm text-white font-bold bg-[#161821] sticky top-0 z-10">
+                        <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0 z-10">
                             <th class="px-3.5 py-2.5 w-10 text-center"><input type="checkbox" id="select-all-jobs" onclick="toggleSelectAllJobs(this)"></th>
                             <th class="px-3.5 py-2.5">Job Card</th>
                             <th class="px-3.5 py-2.5">Description</th>
@@ -599,7 +621,7 @@
                             <th class="px-3.5 py-2.5 text-center">Action</th>
                         </tr>
                     </thead>
-                    <tbody id="master-jobs-rows" class="divide-y divide-white/[0.04] text-white text-xs"></tbody>
+                    <tbody id="master-jobs-rows" class="divide-y divide-white/[0.04] table-text-theme text-xs"></tbody>
                 </table>
             </div>
         </div>
@@ -609,7 +631,7 @@
     <div id="user-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
         <div class="linear-card p-4 sm:p-6 rounded-lg max-w-2xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="flex justify-between items-center mb-3 pb-2 border-b border-white/[0.08]">
-                <h3 class="text-lg font-black text-black">Operator & User Permissions</h3>
+                <h3 class="text-lg font-black modal-title-theme">Operator & User Permissions</h3>
                 <button onclick="toggleModal('user-modal')" class="linear-button-secondary px-3 py-1 text-xs rounded">Close</button>
             </div>
             
@@ -638,13 +660,13 @@
             <div class="max-h-64 overflow-y-auto text-xs border border-white/[0.08] rounded">
                 <table class="w-full text-left">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-sm text-white font-bold bg-[#161821] sticky top-0">
+                        <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0">
                             <th class="px-3.5 py-2.5">User Name</th>
                             <th class="px-3.5 py-2.5 text-center">Can Create Jobs?</th>
                             <th class="px-3.5 py-2.5 text-right">Action</th>
                         </tr>
                     </thead>
-                    <tbody id="users-table" class="divide-y divide-white/[0.04] text-white"></tbody>
+                    <tbody id="users-table" class="divide-y divide-white/[0.04] table-text-theme"></tbody>
                 </table>
             </div>
         </div>
@@ -659,8 +681,8 @@
                         <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
                         <span class="print-brand-text">CCL Middle East – Pakistan</span>
                     </div>
-                    <h3 id="report-job-id" class="print-title text-lg font-black text-black">QC Report</h3>
-                    <p id="report-desc" class="print-subtitle text-xs text-slate-700">VDV QC Report</p>
+                    <h3 id="report-job-id" class="print-title text-lg font-black modal-title-theme">QC Report</h3>
+                    <p id="report-desc" class="print-subtitle text-xs text-slate-400">VDV QC Report</p>
                 </div>
                 <div class="flex gap-2 no-print">
                     <button onclick="window.print()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Print Report</button>
@@ -674,14 +696,14 @@
             <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded">
                 <table class="w-full text-left whitespace-nowrap">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-sm text-white font-bold bg-[#161821] sticky top-0">
+                        <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0">
                             <th class="px-3.5 py-2.5">Timestamp</th>
                             <th class="px-3.5 py-2.5">Inspector</th>
                             <th class="px-3.5 py-2.5">Scanned Barcode</th>
                             <th class="px-3.5 py-2.5">Evaluation</th>
                         </tr>
                     </thead>
-                    <tbody id="report-log-rows" class="divide-y divide-white/[0.04] text-white text-xs"></tbody>
+                    <tbody id="report-log-rows" class="divide-y divide-white/[0.04] table-text-theme text-xs"></tbody>
                 </table>
             </div>
             <div id="print-timestamp" class="print-timestamp-footer"></div>
@@ -697,8 +719,8 @@
                         <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
                         <span class="print-brand-text">CCL Middle East – Pakistan</span>
                     </div>
-                    <h3 id="lifecycle-job-id" class="print-title text-lg font-black text-black">Lifecycle Audit Log</h3>
-                    <p id="lifecycle-desc" class="print-subtitle text-xs text-slate-700"></p>
+                    <h3 id="lifecycle-job-id" class="print-title text-lg font-black modal-title-theme">Lifecycle Audit Log</h3>
+                    <p id="lifecycle-desc" class="print-subtitle text-xs text-slate-400"></p>
                 </div>
                 <div class="flex gap-2 no-print">
                     <button onclick="window.print()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Print Log</button>
@@ -709,14 +731,14 @@
             <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded">
                 <table class="w-full text-left whitespace-nowrap">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-sm text-white font-bold bg-[#161821] sticky top-0">
+                        <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0">
                             <th class="px-3.5 py-2.5">Timestamp</th>
                             <th class="px-3.5 py-2.5">Authorized User</th>
                             <th class="px-3.5 py-2.5">Action Performed</th>
                             <th class="px-3.5 py-2.5">Reason / Details</th>
                         </tr>
                     </thead>
-                    <tbody id="lifecycle-log-rows" class="divide-y divide-white/[0.04] text-white text-xs"></tbody>
+                    <tbody id="lifecycle-log-rows" class="divide-y divide-white/[0.04] table-text-theme text-xs"></tbody>
                 </table>
             </div>
             <div id="print-timestamp" class="print-timestamp-footer"></div>
@@ -726,7 +748,7 @@
     <!-- Custom Alert Modal -->
     <div id="custom-alert-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/35 shadow-2xl text-center">
-            <h3 id="custom-alert-title" class="text-base font-bold mb-1 text-white">Please Verify!</h3>
+            <h3 id="custom-alert-title" class="text-base font-bold mb-1 table-text-theme">Please Verify!</h3>
             <p id="custom-alert-msg" class="text-xs text-slate-300 mb-5 leading-relaxed"></p>
             <button type="button" onclick="closeCustomAlert()" class="linear-button-primary w-full py-2.5 rounded text-sm font-semibold min-h-[40px]">OK</button>
         </div>
@@ -759,7 +781,7 @@
     <!-- Admin Reset Password Modal -->
     <div id="admin-reset-pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[80]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/30 shadow-2xl">
-            <h3 class="text-base font-bold mb-1 text-white">Reset Operator Password</h3>
+            <h3 class="text-base font-bold mb-1 table-text-theme">Reset Operator Password</h3>
             <p id="admin-reset-pw-subtitle" class="text-xs text-slate-400 mb-4">Enter a new temporary password for this user (Min 8 chars, 1 uppercase, 1 lowercase, 1 number).</p>
             <form onsubmit="submitAdminResetPassword(event)" class="space-y-3.5">
                 <div>
@@ -811,7 +833,7 @@
                 <div class="bg-white p-1 rounded shrink-0">
                     <img src="/static/logo.jpg" alt="CCL Logo" class="h-6 w-auto object-contain block" onerror="this.onerror=null; this.src='/logo.jpg';">
                 </div>
-                <span class="font-bold text-base text-white">CCL ME - PK - Variable Data Verification</span>
+                <span class="font-bold text-base table-text-theme">CCL ME - PK - Variable Data Verification</span>
             </div>
             <p class="text-xs text-slate-400 mb-4">Sign in to initialize serialization terminal</p>
             <form onsubmit="handleLogin(event)" class="space-y-3.5">
@@ -847,7 +869,7 @@
 
     <div id="pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full shadow-2xl">
-            <h3 id="pw-title" class="text-base font-bold mb-1 text-white">Change Password</h3>
+            <h3 id="pw-title" class="text-base font-bold mb-1 table-text-theme">Change Password</h3>
             <p id="pw-subtitle" class="text-xs text-slate-400 mb-4">Enter current and new credentials</p>
             <form onsubmit="handleChangePassword(event)" class="space-y-3.5">
                 <div>
@@ -868,7 +890,7 @@
 
     <div id="upload-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full shadow-2xl">
-            <h3 class="text-base font-bold mb-3 text-white">Create New Job & Ingest Code Pool</h3>
+            <h3 class="text-base font-bold mb-3 table-text-theme">Create New Job & Ingest Code Pool</h3>
             <form id="create-job-form" onsubmit="uploadJob(event, false)" class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Job Card # *</label>
@@ -1167,7 +1189,7 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `Job Card: ${id} <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-700 hover:text-red-600 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>`;
+            document.getElementById('active-title-card').innerHTML = `Job Card: ${id} <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>`;
             
             const promptDesc = status === 'ACTIVE' 
                 ? (activeJobDesc ? `${activeJobDesc} - Ready for Validation` : `Ready for Validation`)
@@ -1446,7 +1468,7 @@
 
             const tbody = document.getElementById('master-jobs-rows');
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500 italic text-xs">No job cards found matching '${query}'</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400 italic text-xs">No job cards found matching '${query}'</td></tr>`;
                 updateBulkStatusButtonState();
                 return;
             }
@@ -1459,19 +1481,19 @@
                 else if (j.status === 'DELETED') badgeClass = "linear-badge-fail";
 
                 const descDetail = j.status === 'DELETED' 
-                    ? `<span class="text-red-400 font-medium block">Reason: ${j.deletion_reason}</span><span class="text-slate-500 block text-[10px]">Deleted by: ${j.deleted_by}</span>`
+                    ? `<span class="text-red-400 font-medium block">Reason: ${j.deletion_reason}</span><span class="text-slate-400 block text-[10px]">Deleted by: ${j.deleted_by}</span>`
                     : (j.description || '-');
 
                 const timeDetail = j.status === 'DELETED' 
-                    ? `<span class="text-slate-500 block text-[10px]">Created: ${j.created_at}</span><span class="text-red-400 block text-[10px]">Deleted: ${j.deleted_at}</span>`
-                    : `<span class="text-slate-700 block text-[10px]">${j.created_at}</span>`;
+                    ? `<span class="text-slate-400 block text-[10px]">Created: ${j.created_at}</span><span class="text-red-400 block text-[10px]">Deleted: ${j.deleted_at}</span>`
+                    : `<span class="table-text-theme block text-[10px]">${j.created_at}</span>`;
 
                 return `
                     <tr class="hover:bg-black/[0.02]">
                         <td class="p-3 text-center">
                             ${j.status !== 'DELETED' ? `<input type="checkbox" value="${j.job_card_id}" onchange="updateBulkStatusButtonState()" class="job-select-checkbox rounded w-4 h-4 cursor-pointer">` : ''}
                         </td>
-                        <td class="p-3 font-bold text-black">
+                        <td class="p-3 font-bold table-text-theme">
                             <div class="inline-flex items-center gap-1.5">
                                 <span class="truncate">${j.job_card_id}</span>
                                 <button onclick="copyJobCardNumber('${j.job_card_id}', this)" title="Copy Job Card Number" class="linear-button-secondary p-1 rounded transition-colors inline-flex items-center justify-center shrink-0">
@@ -1481,16 +1503,16 @@
                                 </button>
                             </div>
                         </td>
-                        <td class="p-3 max-w-[200px] text-xs text-slate-800">${descDetail}</td>
+                        <td class="p-3 max-w-[200px] text-xs table-text-theme opacity-90">${descDetail}</td>
                         <td class="p-3">${timeDetail}</td>
                         <td class="p-3 text-center">
                             <span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">
                                 ${j.status}
                             </span>
                         </td>
-                        <td class="p-3 text-right text-xs text-black font-semibold">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
+                        <td class="p-3 text-right text-xs table-text-theme font-semibold">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
                         <td class="p-3 text-center">
-                            <span class="text-slate-500 italic text-[11px]">Active Record</span>
+                            <span class="text-slate-400 italic text-[11px]">Active Record</span>
                         </td>
                     </tr>
                 `;
@@ -1651,10 +1673,10 @@
                 return `
                     <tr class="hover:bg-black/[0.02]">
                         <td class="px-3.5 py-2 text-slate-300 text-xs font-medium">#${allScans.length - allScans.indexOf(s)}</td>
-                        <td class="px-3.5 py-2 font-bold text-sm text-white">${s.code}</td>
+                        <td class="px-3.5 py-2 font-bold text-sm table-text-theme">${s.code}</td>
                         <td class="px-3.5 py-2"><span class="${badge} px-2 py-0.5 rounded text-xs font-bold">${s.result}</span></td>
                         <td class="px-3.5 py-2 text-slate-200 text-xs">${s.time}</td>
-                        <td class="px-3.5 py-2 text-xs text-white font-medium">${s.user}</td>
+                        <td class="px-3.5 py-2 text-xs table-text-theme font-medium">${s.user}</td>
                     </tr>
                 `;
             }).join('');
@@ -1734,6 +1756,7 @@
         async function openReportModal() {
             if (!activeJobId) return;
             const res = await fetch(`/api/reports/${activeJobId}`);
+            if (!res.ok) return;
             const data = await res.json();
 
             document.getElementById('report-job-id').innerText = `QC Report: ${data.job_card_id} (${data.status})`;
@@ -1741,7 +1764,6 @@
             
             const printTimestampStr = `Report Generated On: ${new Date().toLocaleString()}`;
             document.getElementById('print-timestamp').innerText = printTimestampStr;
-            document.getElementById('print-timestamp-audit').innerText = printTimestampStr;
 
             document.getElementById('download-csv-btn').onclick = () => {
                 window.location.href = `/api/reports/${activeJobId}/csv`;
@@ -1749,19 +1771,19 @@
 
             const stats = document.getElementById('report-stats');
             stats.innerHTML = `
-                <div class="linear-card p-3 rounded bg-white border border-slate-300" style="color: #0f172a;"><span class="block text-xs uppercase font-semibold" style="color: #475569;">TOTAL POOL</span><span class="font-black text-lg text-black">${data.total_codes.toLocaleString()}</span></div>
-                <div class="linear-card p-3 rounded bg-white border border-slate-300" style="color: #0f172a;"><span class="block text-xs uppercase font-semibold" style="color: #16a34a;">VERIFIED</span><span class="font-black text-lg text-black">${data.consumed_codes.toLocaleString()}</span></div>
+                <div class="linear-card p-3 rounded" style="color: #0f172a;"><span class="block text-xs uppercase font-semibold" style="color: #475569;">TOTAL POOL</span><span class="font-black text-lg table-text-theme">${data.total_codes.toLocaleString()}</span></div>
+                <div class="linear-card p-3 rounded" style="color: #0f172a;"><span class="block text-xs uppercase font-semibold" style="color: #16a34a;">VERIFIED</span><span class="font-black text-lg table-text-theme">${data.consumed_codes.toLocaleString()}</span></div>
             `;
 
             const tbody = document.getElementById('report-log-rows');
             if (data.recent_logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-500 italic">No inspection logs recorded yet</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-400 italic">No inspection logs recorded yet</td></tr>`;
             } else {
                 tbody.innerHTML = data.recent_logs.map(log => `
                     <tr class="hover:bg-black/[0.02]">
                         <td class="p-3 text-xs text-slate-200">${log.time}</td>
-                        <td class="p-3 font-bold text-white text-xs">${log.user}</td>
-                        <td class="p-3 text-white font-semibold text-xs">${log.code}</td>
+                        <td class="p-3 font-bold table-text-theme text-xs">${log.user}</td>
+                        <td class="p-3 table-text-theme font-semibold text-xs">${log.code}</td>
                         <td class="p-3 font-bold text-xs ${log.result === 'PASS' ? 'text-[#2ed573]' : 'text-red-400'}">${log.result}</td>
                     </tr>
                 `).join('');
@@ -1773,11 +1795,11 @@
         async function openLifecycleModal() {
             if (!activeJobId) return;
             const res = await fetch(`/api/jobs/${activeJobId}/lifecycle-logs`);
+            if (!res.ok) return;
             const data = await res.json();
 
             document.getElementById('lifecycle-job-id').innerText = `Lifecycle Audit Log: ${data.job_card_id} (${data.status})`;
             const printTimestampStr = `Report Generated On: ${new Date().toLocaleString()}`;
-            document.getElementById('print-timestamp-audit').innerText = printTimestampStr;
 
             const descText = data.description ? `Job: ${data.description}` : 'Serialized Production Batch';
             const createdText = data.created_at ? ` | Date Created: ${data.created_at}` : '';
@@ -1785,7 +1807,7 @@
 
             const tbody = document.getElementById('lifecycle-log-rows');
             if (data.logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-500 italic">No state changes recorded</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-400 italic">No state changes recorded</td></tr>`;
             } else {
                 tbody.innerHTML = data.logs.map(log => {
                     let label = log.action;
@@ -1807,7 +1829,7 @@
                     return `
                         <tr class="hover:bg-black/[0.02]">
                             <td class="p-3 text-xs text-slate-200">${log.time}</td>
-                            <td class="p-3 font-bold text-white text-xs">${log.user}</td>
+                            <td class="p-3 font-bold table-text-theme text-xs">${log.user}</td>
                             <td class="p-3 text-xs ${colorClass}">${label}</td>
                             <td class="p-3 text-xs text-slate-200">${log.reason || '-'}</td>
                         </tr>
@@ -1821,13 +1843,14 @@
         async function openUserModal() {
             toggleModal('user-modal');
             const res = await fetch('/api/users');
+            if (!res.ok) return;
             const users = await res.json();
             const container = document.getElementById('users-table');
             container.innerHTML = users.map(u => `
                 <tr class="hover:bg-black/[0.02]">
                     <td class="p-3">
                         <div class="flex items-center gap-2">
-                            <span class="font-bold text-white text-xs">${u.username}</span>
+                            <span class="font-bold table-text-theme text-xs">${u.username}</span>
                             <span class="text-[10px] uppercase px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 font-semibold">${u.role}</span>
                         </div>
                         ${!u.is_active ? '<span class="text-[10px] text-red-400 font-bold block mt-0.5">(Suspended)</span>' : ''}
