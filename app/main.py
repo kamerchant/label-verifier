@@ -465,22 +465,22 @@ async def create_job(
             if total_codes == 0:
                 raise HTTPException(status_code=400, detail="No valid codes found in the file.")
 
-            conflicts = []
+            conflicting_codes_set = set()
             if not override_duplicate:
                 chunk_size = 5000
                 for i in range(0, total_codes, chunk_size):
                     chunk = raw_codes[i:i + chunk_size]
                     cur.execute("""
-                        SELECT c.code_value, j.job_card_id 
+                        SELECT DISTINCT c.code_value 
                         FROM codes c
                         JOIN job_cards j ON c.run_id = j.run_id
                         WHERE c.code_value = ANY(%s) AND j.status != 'DELETED'
                     """, (chunk,))
                     matches = cur.fetchall()
                     for m in matches:
-                        conflicts.append({"code": m[0], "job": m[1]})
+                        conflicting_codes_set.add(m[0])
 
-            total_conflicts = len(conflicts)
+            total_conflicts = len(conflicting_codes_set)
             if not override_duplicate:
                 warning_msg = f"There are {total_conflicts} conflicting code(s) out of {total_codes:,} total codes in the CSV. Would you like to proceed with creating this job?"
                 return JSONResponse(status_code=409, content={
