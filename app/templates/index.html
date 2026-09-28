@@ -205,11 +205,11 @@
             display: none;
         }
 
-        /* Strict A4 Print Styles - Zero Offset, Pure White, No Extra Blank Pages */
+        /* Strict A4 Print Styles - Exactly 5mm Left & Right Margins, Zero Blank Pages */
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 10mm;
+                margin: 8mm 5mm;
             }
             body, html {
                 background: #ffffff !important;
@@ -218,9 +218,9 @@
                 width: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                display: block !important;
-                position: static !important;
                 overflow: visible !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
             }
             body * {
                 visibility: hidden !important;
@@ -243,6 +243,8 @@
                 box-shadow: none !important;
                 backdrop-filter: none !important;
                 overflow: visible !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
             }
             .printable-modal:not(.hidden) > div {
                 background: #ffffff !important;
@@ -254,8 +256,9 @@
                 margin: 0 !important;
                 max-height: none !important;
                 display: block !important;
-                position: static !important;
                 overflow: visible !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
             }
             .no-print, button, header, footer {
                 display: none !important;
@@ -264,10 +267,10 @@
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: flex-start !important;
-                margin-bottom: 8px !important;
+                margin-bottom: 6px !important;
             }
             .print-brand-logo {
-                height: 28px !important;
+                height: 26px !important;
                 width: auto !important;
                 object-fit: contain !important;
                 margin-bottom: 2px !important;
@@ -281,32 +284,32 @@
             .report-header-box {
                 background: #ffffff !important;
                 border-bottom: 2px solid #0f172a !important;
-                padding-bottom: 6px !important;
-                margin-bottom: 10px !important;
+                padding-bottom: 4px !important;
+                margin-bottom: 8px !important;
             }
             .print-title {
-                font-size: 14pt !important;
+                font-size: 13pt !important;
                 color: #0f172a !important;
                 font-weight: 800 !important;
                 background: #ffffff !important;
                 margin-bottom: 2px !important;
             }
             .print-subtitle {
-                font-size: 10pt !important;
+                font-size: 9.5pt !important;
                 color: #334155 !important;
                 background: #ffffff !important;
             }
             #report-stats {
                 display: grid !important;
                 grid-template-columns: repeat(2, 1fr) !important;
-                gap: 8px !important;
-                margin-bottom: 12px !important;
+                gap: 6px !important;
+                margin-bottom: 10px !important;
                 background: #ffffff !important;
             }
             #report-stats div {
                 background: #f8fafc !important;
                 border: 1px solid #94a3b8 !important;
-                padding: 8px !important;
+                padding: 6px !important;
                 border-radius: 4px !important;
                 color: #0f172a !important;
                 -webkit-print-color-adjust: exact !important;
@@ -335,16 +338,16 @@
                 color: #0f172a !important;
                 font-weight: 700 !important;
                 border: 1px solid #94a3b8 !important;
-                padding: 6px 8px !important;
-                font-size: 9pt !important;
+                padding: 5px 6px !important;
+                font-size: 8.5pt !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
             td {
                 color: #0f172a !important;
                 border: 1px solid #cbd5e1 !important;
-                padding: 5px 8px !important;
-                font-size: 8.5pt !important;
+                padding: 4px 6px !important;
+                font-size: 8pt !important;
                 background: #ffffff !important;
             }
             tr {
@@ -353,13 +356,15 @@
             }
             .print-timestamp-footer {
                 display: block !important;
-                margin-top: 10mm !important;
-                padding-top: 6px !important;
-                font-size: 8pt !important;
+                margin-top: 8mm !important;
+                padding-top: 4px !important;
+                font-size: 7.5pt !important;
                 color: #64748b !important;
                 text-align: right !important;
                 font-family: monospace !important;
                 border-top: 1px solid #cbd5e1 !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
             }
         }
         .print-timestamp-footer {
@@ -632,7 +637,7 @@
         </div>
     </div>
 
-    <div id="pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
+    <div id="pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full shadow-2xl">
             <h3 id="pw-title" class="text-base font-bold mb-1">Change Password</h3>
             <p id="pw-subtitle" class="text-xs text-slate-400 mb-4">Enter current and new credentials</p>
