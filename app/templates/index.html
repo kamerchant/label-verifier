@@ -1097,11 +1097,17 @@
             document.getElementById('job-search').value = id;
             document.getElementById('active-title-card').innerHTML = `Job Card: ${id} <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
             
-            const promptDesc = activeJobDesc ? `${activeJobDesc} - Ready for Validation` : `Job Card ${id} - Ready for Validation`;
+            const promptDesc = status === 'ACTIVE' 
+                ? (activeJobDesc ? `${activeJobDesc} - Ready for Validation` : `Job Card ${id} - Ready for Validation`)
+                : `Job Card ${id} - Job is ${status} (Scanning Disabled)`;
+            
             document.getElementById('header-job-desc').innerText = promptDesc;
 
             const card = document.getElementById('status-card');
-            card.className = "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-yellow";
+            card.className = status === 'ACTIVE' 
+                ? "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-yellow"
+                : "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-red";
+            
             document.getElementById('status-heading').innerText = promptDesc;
             document.getElementById('status-detail').innerText = "";
             document.getElementById('status-last-code').classList.add('hidden');
@@ -1137,7 +1143,6 @@
                 toggleBtn.disabled = false;
                 toggleBtn.classList.remove('opacity-30', 'pointer-events-none');
             } else {
-                // COMPLETED or INACTIVE jobs: Lock scanning input and verify button
                 barcodeInput.disabled = true;
                 barcodeInput.placeholder = "Job is completed. Scanning disabled.";
                 barcodeInput.classList.add('opacity-40', 'cursor-not-allowed');
@@ -1776,3 +1781,6 @@
     </script>
 </body>
 </html>
+EOF
+
+
