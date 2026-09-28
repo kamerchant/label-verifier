@@ -413,14 +413,8 @@
                 <p id="header-job-desc" class="text-xs sm:text-sm text-slate-400 mt-1 truncate">Search active production jobs using the search field.</p>
             </div>
 
-            <!-- Job Search Bar and Adjacent Action Buttons Group -->
+            <!-- Action Buttons Group & Job Search Bar on the Right -->
             <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full lg:w-auto shrink-0">
-                <div class="relative w-full sm:w-72 flex-1 sm:flex-initial">
-                    <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Search active jobs..." 
-                           class="linear-input w-full px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm rounded placeholder-slate-500 shadow-inner min-h-[44px]">
-                    <div id="job-list" class="absolute left-0 right-0 top-full mt-1.5 linear-card rounded shadow-2xl max-h-64 overflow-y-auto z-30 hidden"></div>
-                </div>
-
                 <div class="flex items-center gap-1.5 shrink-0">
                     <button id="report-btn" onclick="openReportModal()" disabled 
                             class="linear-button-secondary text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[44px] font-medium shadow-sm whitespace-nowrap">
@@ -434,6 +428,12 @@
                             class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs sm:text-sm px-3 sm:px-3.5 py-2 rounded opacity-30 pointer-events-none transition-all min-h-[44px] font-semibold shadow-sm whitespace-nowrap">
                         Job Completed
                     </button>
+                </div>
+
+                <div class="relative w-full sm:w-72 flex-1 sm:flex-initial">
+                    <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Search active jobs..." 
+                           class="linear-input w-full px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm rounded placeholder-slate-500 shadow-inner min-h-[44px]">
+                    <div id="job-list" class="absolute left-0 right-0 top-full mt-1.5 linear-card rounded shadow-2xl max-h-64 overflow-y-auto z-30 hidden"></div>
                 </div>
             </div>
         </div>
@@ -1143,7 +1143,7 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `<span>${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
+            document.getElementById('active-title-card').innerHTML = `<span>${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>`;
             
             const promptDesc = status === 'ACTIVE' 
                 ? (activeJobDesc ? `${activeJobDesc} - Ready for Validation` : `Ready for Validation`)
