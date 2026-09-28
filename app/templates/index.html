@@ -6,6 +6,12 @@
     <title>CCL ME - PK - Variable Data Verification</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* Universal Font Standardization across all elements */
+        *, body, input, button, select, textarea, table, th, td {
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+            letter-spacing: -0.01em;
+        }
+
         /* Responsive base typography & iOS zoom prevention */
         html {
             font-size: 16px;
@@ -18,10 +24,8 @@
 
         /* --- THEME 1: Titanium Obsidian (Default Dark) --- */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", sans-serif;
             background-color: #0d0e11;
             color: #d0d6e0;
-            letter-spacing: -0.01em;
             font-size: 1rem;
             -webkit-tap-highlight-color: transparent;
             transition: background-color 0.2s ease, color 0.2s ease;
@@ -362,7 +366,6 @@
                 font-size: 7pt !important;
                 color: #64748b !important;
                 text-align: right !important;
-                font-family: monospace !important;
                 border-top: 1px solid #cbd5e1 !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
@@ -402,9 +405,9 @@
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
-                    <h1 id="active-title-card" class="text-xl sm:text-3xl font-extrabold tracking-tight font-mono truncate flex items-center gap-2">
+                    <h1 id="active-title-card" class="text-xl sm:text-3xl font-extrabold tracking-tight truncate flex items-center gap-2">
                         <span>Job Card: None</span>
-                        <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs font-sans text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 hidden font-normal transition-colors">[Close]</button>
+                        <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>
                     </h1>
                 </div>
                 <p id="header-job-desc" class="text-xs sm:text-sm text-slate-400 mt-1 truncate">Search active production jobs using the search field.</p>
@@ -414,7 +417,7 @@
             <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full lg:w-auto shrink-0">
                 <div class="relative w-full sm:w-72 flex-1 sm:flex-initial">
                     <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Search active jobs..." 
-                           class="linear-input w-full px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm font-mono rounded placeholder-slate-500 shadow-inner min-h-[44px]">
+                           class="linear-input w-full px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm rounded placeholder-slate-500 shadow-inner min-h-[44px]">
                     <div id="job-list" class="absolute left-0 right-0 top-full mt-1.5 linear-card rounded shadow-2xl max-h-64 overflow-y-auto z-30 hidden"></div>
                 </div>
 
@@ -439,17 +442,17 @@
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
             <div class="linear-card p-3 sm:p-4 rounded text-center flex flex-col items-center justify-center">
                 <span class="text-xs text-slate-400 block font-medium">Total Pool</span>
-                <span id="kpi-total" class="text-xl sm:text-3xl font-bold font-mono mt-1 block">0</span>
+                <span id="kpi-total" class="text-xl sm:text-3xl font-bold mt-1 block">0</span>
                 <span class="text-[11px] sm:text-xs text-slate-500 mt-1 block truncate">Assigned batch pool</span>
             </div>
             <div class="linear-card p-3 sm:p-4 rounded text-center flex flex-col items-center justify-center">
                 <span class="text-xs text-[#2ed573] block font-medium">Verified (Pass)</span>
-                <span id="kpi-consumed" class="text-xl sm:text-3xl font-bold font-mono text-[#2ed573] mt-1 block">0</span>
+                <span id="kpi-consumed" class="text-xl sm:text-3xl font-bold text-[#2ed573] mt-1 block">0</span>
                 <span class="text-[11px] sm:text-xs text-slate-500 mt-1 block truncate">Consumed serials</span>
             </div>
             <div class="linear-card p-3 sm:p-4 rounded text-center flex flex-col items-center justify-center">
                 <span class="text-xs text-amber-400 block font-medium">Remaining Codes</span>
-                <span id="kpi-pending" class="text-xl sm:text-3xl font-bold font-mono text-slate-300 mt-1 block">0</span>
+                <span id="kpi-pending" class="text-xl sm:text-3xl font-bold text-slate-300 mt-1 block">0</span>
                 <span class="text-[11px] sm:text-xs text-slate-500 mt-1 block truncate">Remaining in feed</span>
             </div>
         </div>
@@ -461,22 +464,22 @@
                 <div class="flex items-center justify-center gap-2.5 sm:gap-3 min-w-0">
                     <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-[#5e6ad2] shrink-0 hidden"></span>
                     <div class="min-w-0">
-                        <span id="status-heading" class="text-sm sm:text-base font-bold font-mono tracking-wide leading-snug block">To Verify Code, Select the Job ID and Enter Code Below</span>
+                        <span id="status-heading" class="text-sm sm:text-base font-bold tracking-wide leading-snug block">To Verify Code, Select the Job ID and Enter Code Below</span>
                         <span id="status-detail" class="text-xs sm:text-sm block"></span>
                     </div>
                 </div>
                 <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-                    <span id="status-last-code" class="text-xs sm:text-base font-mono max-w-[180px] sm:max-w-none truncate hidden"></span>
-                    <span id="status-badge" class="px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs font-mono font-bold hidden"></span>
+                    <span id="status-last-code" class="text-xs sm:text-base max-w-[180px] sm:max-w-none truncate hidden"></span>
+                    <span id="status-badge" class="px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs font-bold hidden"></span>
                 </div>
             </div>
 
             <form id="scan-form" onsubmit="handleScan(event)" class="flex flex-col sm:flex-row gap-2">
                 <div class="relative flex-1">
                     <input type="text" id="barcode-input" placeholder="Select a job to enable scanning..." disabled autocomplete="off"
-                           class="linear-input w-full px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-lg font-mono rounded min-h-[48px] opacity-40 cursor-not-allowed">
+                           class="linear-input w-full px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-lg rounded min-h-[48px] opacity-40 cursor-not-allowed">
                 </div>
-                <button type="submit" id="verify-btn" disabled class="linear-button-primary px-6 sm:px-7 py-2.5 sm:py-3 rounded text-sm sm:text-base font-semibold font-mono min-h-[48px] flex items-center justify-center opacity-30 pointer-events-none">
+                <button type="submit" id="verify-btn" disabled class="linear-button-primary px-6 sm:px-7 py-2.5 sm:py-3 rounded text-sm sm:text-base font-semibold min-h-[48px] flex items-center justify-center opacity-30 pointer-events-none">
                     Verify
                 </button>
             </form>
@@ -488,7 +491,7 @@
                 <div class="flex items-center gap-2 sm:gap-3 font-semibold">
                     <span class="text-sm sm:text-lg">Verification Stream</span>
                     <span class="text-slate-600 hidden sm:inline">|</span>
-                    <span class="text-xs text-slate-400 font-mono font-normal hidden sm:inline">All codes checked in this job card</span>
+                    <span class="text-xs text-slate-400 font-normal hidden sm:inline">All codes checked in this job card</span>
                 </div>
             </div>
 
@@ -503,9 +506,9 @@
                             <th class="px-3 sm:px-5 py-2.5 sm:py-3">Inspector</th>
                         </tr>
                     </thead>
-                    <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] font-mono text-xs sm:text-sm">
+                    <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] text-xs sm:text-sm">
                         <tr>
-                            <td colspan="5" class="px-3 sm:px-5 py-8 sm:py-12 text-center text-slate-500 font-sans italic">No scan events recorded for this session</td>
+                            <td colspan="5" class="px-3 sm:px-5 py-8 sm:py-12 text-center text-slate-500 italic">No scan events recorded for this session</td>
                         </tr>
                     </tbody>
                 </table>
@@ -528,8 +531,8 @@
                 Theme: <span id="theme-name-text">Obsidian</span>
             </button>
         </div>
-        <div class="font-mono text-slate-500 text-[11px] sm:text-xs hidden sm:block">
-            Press <kbd class="bg-[#1e2029] text-slate-300 px-1.5 py-0.5 rounded font-mono">Enter</kbd> to submit
+        <div class="text-slate-500 text-[11px] sm:text-xs hidden sm:block">
+            Press <kbd class="bg-[#1e2029] text-slate-300 px-1.5 py-0.5 rounded">Enter</kbd> to submit
         </div>
     </footer>
 
@@ -670,7 +673,7 @@
             <form id="create-job-form" onsubmit="uploadJob(event, false)" class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Job Card # *</label>
-                    <input type="text" id="new-job-id" required placeholder="e.g. JC-2026-99" class="linear-input w-full p-2.5 text-sm rounded font-mono">
+                    <input type="text" id="new-job-id" required placeholder="e.g. JC-2026-99" class="linear-input w-full p-2.5 text-sm rounded">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Job Description (Optional)</label>
@@ -712,7 +715,7 @@
                 </div>
                 <div class="relative w-full md:w-72">
                     <input type="text" id="master-job-search" oninput="renderMasterJobsTable()" placeholder="Search in all jobs..." 
-                           class="linear-input w-full px-3 py-1.5 text-xs font-mono rounded placeholder-slate-500">
+                           class="linear-input w-full px-3 py-1.5 text-xs rounded placeholder-slate-500">
                 </div>
             </div>
 
@@ -811,7 +814,7 @@
                             <th class="p-3">Evaluation</th>
                         </tr>
                     </thead>
-                    <tbody id="report-log-rows" class="divide-y font-mono text-xs"></tbody>
+                    <tbody id="report-log-rows" class="divide-y text-xs"></tbody>
                 </table>
             </div>
             <div id="print-timestamp" class="print-timestamp-footer"></div>
@@ -846,7 +849,7 @@
                             <th class="p-3">Reason / Details</th>
                         </tr>
                     </thead>
-                    <tbody id="lifecycle-log-rows" class="divide-y font-mono text-xs"></tbody>
+                    <tbody id="lifecycle-log-rows" class="divide-y text-xs"></tbody>
                 </table>
             </div>
             <div id="print-timestamp-audit" class="print-timestamp-footer"></div>
@@ -1072,12 +1075,12 @@
                 <div onclick="selectJob('${j.id}', '${escape(j.description)}', '${j.status}', ${j.consumed}, ${j.total})" 
                      class="p-3 hover:bg-black/[0.02] border-b cursor-pointer flex justify-between items-center transition-colors">
                     <div class="min-w-0 pr-2">
-                        <span class="font-bold font-mono text-sm block truncate">${j.id}</span>
+                        <span class="font-bold text-sm block truncate">${j.id}</span>
                         ${j.description ? `<span class="text-xs text-slate-400 block truncate max-w-[200px]">${j.description}</span>` : ''}
                     </div>
                     <div class="text-right shrink-0">
-                        <span class="text-xs px-2 py-0.5 rounded font-mono linear-badge-pass">${j.status}</span>
-                        <span class="block text-xs text-slate-500 font-mono mt-0.5">${j.consumed} / ${j.total}</span>
+                        <span class="text-xs px-2 py-0.5 rounded linear-badge-pass">${j.status}</span>
+                        <span class="block text-xs text-slate-500 mt-0.5">${j.consumed} / ${j.total}</span>
                     </div>
                 </div>
             `).join('');
@@ -1092,7 +1095,7 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = id;
-            document.getElementById('active-title-card').innerHTML = `Job Card: ${id} <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs font-sans text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
+            document.getElementById('active-title-card').innerHTML = `Job Card: ${id} <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
             
             const promptDesc = activeJobDesc ? `${activeJobDesc} - Ready for Validation` : `Job Card ${id} - Ready for Validation`;
             document.getElementById('header-job-desc').innerText = promptDesc;
@@ -1375,15 +1378,15 @@
                     : (j.description || '-');
 
                 const timeDetail = j.status === 'DELETED' 
-                    ? `<span class="text-slate-500 block font-mono text-xs">Created: ${j.created_at}</span><span class="text-red-400 block font-mono text-xs">Deleted: ${j.deleted_at}</span>`
-                    : `<span class="text-slate-400 block font-mono text-xs">${j.created_at}</span>`;
+                    ? `<span class="text-slate-500 block text-xs">Created: ${j.created_at}</span><span class="text-red-400 block text-xs">Deleted: ${j.deleted_at}</span>`
+                    : `<span class="text-slate-400 block text-xs">${j.created_at}</span>`;
 
                 return `
                     <tr class="hover:bg-black/[0.02]">
                         <td class="p-3 text-center">
                             ${j.status !== 'DELETED' ? `<input type="checkbox" value="${j.job_card_id}" onchange="updateBulkStatusButtonState()" class="job-select-checkbox rounded w-4 h-4 cursor-pointer">` : ''}
                         </td>
-                        <td class="p-3 font-mono font-bold">
+                        <td class="p-3 font-bold">
                             <div class="inline-flex items-center gap-1.5">
                                 <span class="truncate">${j.job_card_id}</span>
                                 <button onclick="copyJobCardNumber('${j.job_card_id}', this)" title="Copy Job Card Number" class="linear-button-secondary p-1 rounded transition-colors inline-flex items-center justify-center shrink-0">
@@ -1396,11 +1399,11 @@
                         <td class="p-3 max-w-[240px] text-sm">${descDetail}</td>
                         <td class="p-3">${timeDetail}</td>
                         <td class="p-3 text-center">
-                            <span class="px-2 py-0.5 rounded text-xs font-mono font-bold ${badgeClass}">
+                            <span class="px-2 py-0.5 rounded text-xs font-bold ${badgeClass}">
                                 ${j.status}
                             </span>
                         </td>
-                        <td class="p-3 text-right font-mono text-sm">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
+                        <td class="p-3 text-right text-sm">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
                         <td class="p-3 text-center">
                             <span class="text-slate-500 italic text-xs">Active Record</span>
                         </td>
@@ -1485,7 +1488,7 @@
             if (result === 'PASS') {
                 playTone('PASS');
                 card.className = "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-green";
-                badge.className = "px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs font-mono font-bold bg-black text-[#2ed573]";
+                badge.className = "px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs font-bold bg-black text-[#2ed573]";
                 badge.innerText = "PASS";
                 heading.innerText = "VALIDATED";
                 detail.innerText = msg;
@@ -1494,7 +1497,7 @@
             } else {
                 playTone('FAIL');
                 card.className = "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-red";
-                badge.className = "px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs font-mono font-bold bg-black text-[#ff4757]";
+                badge.className = "px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs font-bold bg-black text-[#ff4757]";
                 badge.innerText = "ERROR";
                 heading.innerText = msg;
                 detail.innerText = "";
@@ -1522,7 +1525,7 @@
         function renderStreamTable() {
             const tbody = document.getElementById('recent-scans-rows');
             if (allScans.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="px-3 sm:px-5 py-8 sm:py-12 text-center text-slate-500 font-sans italic">No scan events recorded for this session</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="px-3 sm:px-5 py-8 sm:py-12 text-center text-slate-500 italic">No scan events recorded for this session</td></tr>`;
                 return;
             }
 
@@ -1531,11 +1534,11 @@
                 if (s.result !== 'PASS') badge = "linear-badge-fail";
                 return `
                     <tr class="hover:bg-black/[0.02]">
-                        <td class="px-3 sm:px-5 py-2 sm:py-2.5 text-slate-500 font-mono">#${allScans.length - idx}</td>
+                        <td class="px-3 sm:px-5 py-2 sm:py-2.5 text-slate-500">#${allScans.length - idx}</td>
                         <td class="px-3 sm:px-5 py-2 sm:py-2.5 font-bold">${s.code}</td>
-                        <td class="px-3 sm:px-5 py-2 sm:py-2.5"><span class="${badge} px-2.5 py-0.5 rounded text-xs font-mono font-bold">${s.result}</span></td>
-                        <td class="px-3 sm:px-5 py-2 sm:py-2.5 text-slate-400 font-mono">${s.time}</td>
-                        <td class="px-3 sm:px-5 py-2 sm:py-2.5 font-sans">${s.user}</td>
+                        <td class="px-3 sm:px-5 py-2 sm:py-2.5"><span class="${badge} px-2.5 py-0.5 rounded text-xs font-bold">${s.result}</span></td>
+                        <td class="px-3 sm:px-5 py-2 sm:py-2.5 text-slate-400">${s.time}</td>
+                        <td class="px-3 sm:px-5 py-2 sm:py-2.5">${s.user}</td>
                     </tr>
                 `;
             }).join('');
@@ -1601,8 +1604,8 @@
 
             const stats = document.getElementById('report-stats');
             stats.innerHTML = `
-                <div class="linear-card p-3 rounded" style="color: #0f172a;"><span class="block text-xs font-mono uppercase" style="color: #475569;">TOTAL POOL</span><span class="font-bold text-lg font-mono" style="color: #0f172a;">${data.total_codes.toLocaleString()}</span></div>
-                <div class="linear-card p-3 rounded" style="color: #0f172a;"><span class="block text-xs font-mono uppercase" style="color: #16a34a;">VERIFIED</span><span class="font-bold text-lg font-mono" style="color: #16a34a;">${data.consumed_codes.toLocaleString()}</span></div>
+                <div class="linear-card p-3 rounded" style="color: #0f172a;"><span class="block text-xs uppercase" style="color: #475569;">TOTAL POOL</span><span class="font-bold text-lg" style="color: #0f172a;">${data.total_codes.toLocaleString()}</span></div>
+                <div class="linear-card p-3 rounded" style="color: #0f172a;"><span class="block text-xs uppercase" style="color: #16a34a;">VERIFIED</span><span class="font-bold text-lg" style="color: #16a34a;">${data.consumed_codes.toLocaleString()}</span></div>
             `;
 
             const tbody = document.getElementById('report-log-rows');
@@ -1611,10 +1614,10 @@
             } else {
                 tbody.innerHTML = data.recent_logs.map(log => `
                     <tr class="hover:bg-black/[0.02]">
-                        <td class="p-2.5 font-mono text-xs text-slate-400">${log.time}</td>
-                        <td class="p-2.5 font-bold font-sans">${log.user}</td>
-                        <td class="p-2.5 font-mono">${log.code}</td>
-                        <td class="p-2.5 font-bold font-mono ${log.result === 'PASS' ? 'text-[#2ed573]' : 'text-red-400'}">${log.result}</td>
+                        <td class="p-2.5 text-xs text-slate-400">${log.time}</td>
+                        <td class="p-2.5 font-bold">${log.user}</td>
+                        <td class="p-2.5">${log.code}</td>
+                        <td class="p-2.5 font-bold ${log.result === 'PASS' ? 'text-[#2ed573]' : 'text-red-400'}">${log.result}</td>
                     </tr>
                 `).join('');
             }
@@ -1658,10 +1661,10 @@
 
                     return `
                         <tr class="hover:bg-black/[0.02]">
-                            <td class="p-2.5 font-mono text-xs text-slate-400">${log.time}</td>
-                            <td class="p-2.5 font-bold font-sans">${log.user}</td>
-                            <td class="p-2.5 font-mono ${colorClass}">${label}</td>
-                            <td class="p-2.5 text-xs font-sans">${log.reason || '-'}</td>
+                            <td class="p-2.5 text-xs text-slate-400">${log.time}</td>
+                            <td class="p-2.5 font-bold">${log.user}</td>
+                            <td class="p-2.5 ${colorClass}">${label}</td>
+                            <td class="p-2.5 text-xs">${log.reason || '-'}</td>
                         </tr>
                     `;
                 }).join('');
@@ -1677,7 +1680,7 @@
             const container = document.getElementById('users-table');
             container.innerHTML = users.map(u => `
                 <tr class="hover:bg-black/[0.02]">
-                    <td class="p-3 font-sans">
+                    <td class="p-3">
                         <div class="flex items-center gap-2">
                             <span class="font-bold">${u.username}</span>
                             <span class="text-xs uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-300">${u.role}</span>
