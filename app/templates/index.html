@@ -1131,7 +1131,7 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `<span>Job Card: ${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>`;
+            document.getElementById('active-title-card').innerHTML = `<span>Job Card: ${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
             
             const promptDesc = status === 'ACTIVE' 
                 ? (activeJobDesc ? `${activeJobDesc} - Ready for Validation` : `Ready for Validation`)
@@ -1284,20 +1284,43 @@
         let currentPackingQCJob = "";
         let currentPackingQCDesc = "";
 
-        async function openPackingQCModal() {
+        async function openPackingQCModal(prefillJobId = null) {
             document.getElementById('packing-qc-modal').classList.remove('hidden');
-            document.getElementById('packing-qc-job').value = "";
-            document.getElementById('packing-qc-job').disabled = false;
-            document.getElementById('packing-qc-code').value = "";
+            const jcInput = document.getElementById('packing-qc-job');
+            jcInput.value = prefillJobId || "";
+            document.getElementById('packing-qc-code.value') || (document.getElementById('packing-qc-code').value = "");
             document.getElementById('packing-qc-result-box').classList.add('hidden');
             currentPackingQCLogs = [];
-            currentPackingQCJob = "";
+            currentPackingQCJob = prefillJobId || "";
             currentPackingQCDesc = "";
             renderPackingQCChart();
 
             const printBtn = document.getElementById('packing-qc-print-btn');
             printBtn.disabled = true;
             printBtn.classList.add('opacity-30', 'pointer-events-none');
+
+            if (prefillJobId) {
+                jcInput.disabled = true;
+                try {
+                    const res = await fetch(`/api/admin/packing-qc/${prefillJobId}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        currentPackingQCDesc = data.description || "";
+                        currentPackingQCLogs = data.logs.map(l => ({
+                            code: l.code,
+                            tested_by: l.tested_by,
+                            tested_at: l.tested_at
+                        }));
+                        renderPackingQCChart();
+                        if (currentPackingQCLogs.length > 0) {
+                            printBtn.disabled = false;
+                            printBtn.classList.remove('opacity-30', 'pointer-events-none');
+                        }
+                    }
+                } catch(e) {}
+            } else {
+                jcInput.disabled = false;
+            }
         }
 
         async function handlePackingQCJobInput() {
@@ -1418,26 +1441,8 @@
         }
 
         async function openPackingQCReportFromAdmin(jobCardId) {
-            try {
-                const res = await fetch(`/api/admin/packing-qc/${jobCardId}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    currentPackingQCJob = data.job_card_id;
-                    currentPackingQCDesc = data.description;
-                    currentPackingQCLogs = data.logs.map(l => ({
-                        code: l.code,
-                        tested_by: l.tested_by,
-                        tested_at: l.tested_at
-                    }));
-                    if (currentPackingQCLogs.length > 0) {
-                        printPackingQC();
-                    } else {
-                        showCustomAlert(`No Packing QC records found for job ${jobCardId}.`);
-                    }
-                }
-            } catch(e) {
-                showCustomAlert("Failed to load Packing QC report.");
-            }
+            toggleModal('master-jobs-modal');
+            await openPackingQCModal(jobCardId);
         }
 
         async function toggleUserRole(username, newRole) {
@@ -1633,7 +1638,7 @@
                         </td>
                         <td class="p-3 text-right text-xs table-text-theme font-semibold">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
                         <td class="p-3 text-center">
-                            <button onclick="openPackingQCReportFromAdmin('${j.job_card_id}')" class="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded text-xs font-bold transition-colors">
+                            <button onclick="openPackingQCReportFromAdmin('${j.job_card_id}')" class="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded text-xs font-bold transition-colors cursor-pointer">
                                 Tested: ${j.packing_qc_count || 0}
                             </button>
                         </td>
