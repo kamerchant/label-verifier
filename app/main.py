@@ -57,11 +57,12 @@ def get_current_user(request: Request):
         conn = get_connection()
         try:
             with conn.cursor() as cur:
-                cur.execute("SELECT is_active, username FROM users WHERE LOWER(username) = LOWER(%s)", (data["username"],))
+                cur.execute("SELECT is_active, username, role FROM users WHERE LOWER(username) = LOWER(%s)", (data["username"],))
                 row = cur.fetchone()
                 if not row or not row[0]:
                     raise HTTPException(status_code=403, detail="Account is suspended or deactivated.")
                 data["username"] = row[1]  # Preserve exact original casing from DB
+                data["role"] = row[2]      # Ensure live role from DB
         finally:
             release_connection(conn)
         return data
@@ -135,17 +136,18 @@ def get_me(request: Request):
         conn = get_connection()
         try:
             with conn.cursor() as cur:
-                cur.execute("SELECT must_change_password, can_upload FROM users WHERE LOWER(username) = LOWER(%s)", (user["username"],))
+                cur.execute("SELECT must_change_password, can_upload, role FROM users WHERE LOWER(username) = LOWER(%s)", (user["username"],))
                 row = cur.fetchone()
                 must_change = row[0] if row else False
                 can_upload = row[1] if row else False
+                role = row[2] if row else user["role"]
         finally:
             release_connection(conn)
 
         return {
             "authenticated": True,
             "username": user["username"],
-            "role": user["role"],
+            "role": role,
             "must_change_password": must_change,
             "can_upload": can_upload
         }
@@ -202,7 +204,7 @@ def list_users(admin: dict = Depends(require_admin)):
 def create_user(
     username: str = Form(...),
     password: str = Form(...),
-    role: str = Form("QC Incharge"),
+    role: str = Form("QC operator"),
     can_upload: bool = Form(False),
     employee_name: str = Form(""),
     employee_id: str = Form(""),
@@ -224,6 +226,27 @@ def create_user(
                    VALUES (%s, %s, %s, TRUE, %s, TRUE, %s, %s)""",
                 (clean_username, pw_hash, role, can_upload, employee_name.strip(), employee_id.strip())
             )
+            conn.commit()
+            return {"status": "success"}
+    finally:
+        release_connection(conn)
+
+@app.post("/api/users/{username}/role")
+def update_user_role(
+    username: str,
+    role: str = Form(...),
+    admin: dict = Depends(require_admin)
+):
+    if role not in ["QC operator", "admin"]:
+        raise HTTPException(status_code=400, detail="Invalid role specified.")
+
+    if username.lower() == admin["username"].lower() and role != "admin":
+        raise HTTPException(status_code=400, detail="Cannot downgrade your own admin account.")
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE users SET role = %s WHERE LOWER(username) = LOWER(%s)", (role, username))
             conn.commit()
             return {"status": "success"}
     finally:
@@ -524,167 +547,53 @@ async def create_job(
     finally:
         release_connection(conn)
 
-@app.post("/api/jobs/{job_card_id}/delete")
-def soft_delete_job(
-    job_card_id: str,
-    admin_password: str = Form(...),
-    deletion_reason: str = Form(...),
-    admin: dict = Depends(require_admin)
+@app.post("/api/packing-qc/verify")
+def packing_qc_verify(
+    job_card_id: str = Form(...),
+    code: str = Form(...),
+    user: dict = Depends(get_current_user)
 ):
-    reason = deletion_reason.strip()
-    if not reason:
-        raise HTTPException(status_code=400, detail="A reason for deleting the job must be provided.")
+    jc_id = job_card_id.strip()
+    scanned_code = code.strip().replace('\r', '').replace('\n', '')
 
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT password_hash FROM users WHERE LOWER(username) = LOWER(%s)", (admin["username"],))
-            row = cur.fetchone()
-            if not row or not verify_password(admin_password, row[0]):
-                raise HTTPException(status_code=403, detail="Invalid password. Deletion aborted.")
-
             cur.execute("""
-                UPDATE job_cards 
-                SET status = 'DELETED', 
-                    deletion_reason = %s, 
-                    deleted_by = %s, 
-                    deleted_at = NOW() 
-                WHERE job_card_id = %s AND status != 'DELETED'
-                RETURNING run_id
-            """, (reason, admin["username"], job_card_id))
-            updated = cur.fetchone()
-            if not updated:
-                raise HTTPException(status_code=404, detail="Active/Open Job Card not found or already deleted.")
-            
-            run_id = updated[0]
-
-            cur.execute("UPDATE codes SET status = 'DELETED' WHERE run_id = %s", (run_id,))
-
-            cur.execute("""
-                INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) 
-                VALUES (%s, 'DELETED', %s, %s)
-            """, (job_card_id, admin["username"], reason))
-
-            conn.commit()
-            return {"status": "success", "message": f"Job {job_card_id} moved to deleted status."}
-    finally:
-        release_connection(conn)
-
-@app.post("/api/jobs/{job_card_id}/complete")
-def complete_job(job_card_id: str, user: dict = Depends(get_current_user)):
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                UPDATE job_cards 
-                SET status = 'COMPLETED' 
-                WHERE job_card_id = %s AND status = 'ACTIVE'
-                RETURNING run_id
-            """, (job_card_id,))
-            row = cur.fetchone()
-            if not row:
-                raise HTTPException(status_code=404, detail="Active Job Card not found.")
-            
-            run_id = row[0]
-            cur.execute("UPDATE codes SET status = 'BLOCKED' WHERE run_id = %s AND status = 'PENDING'", (run_id,))
-            
-            cur.execute(
-                "INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by) VALUES (%s, %s, %s)",
-                (job_card_id, "COMPLETED_AND_BLOCKED", user["username"])
-            )
-            conn.commit()
-            return {"status": "success"}
-    finally:
-        release_connection(conn)
-
-@app.post("/api/jobs/{job_card_id}/unblock")
-def unblock_job(
-    job_card_id: str,
-    admin_password: str = Form(...),
-    admin: dict = Depends(require_admin)
-):
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("SELECT password_hash FROM users WHERE LOWER(username) = LOWER(%s)", (admin["username"],))
-            row = cur.fetchone()
-            if not row or not verify_password(admin_password, row[0]):
-                raise HTTPException(status_code=403, detail="Invalid password. Unblocking denied.")
-
-            cur.execute("""
-                UPDATE job_cards 
-                SET status = 'ACTIVE' 
-                WHERE job_card_id = %s AND status IN ('COMPLETED', 'INACTIVE')
-                RETURNING run_id
-            """, (job_card_id,))
-            jc_row = cur.fetchone()
-            if not jc_row:
-                raise HTTPException(status_code=404, detail="Job Card not found.")
-
-            run_id = jc_row[0]
-            cur.execute("UPDATE codes SET status = 'PENDING' WHERE run_id = %s AND status = 'BLOCKED'", (run_id,))
-
-            cur.execute(
-                "INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by) VALUES (%s, %s, %s)",
-                (job_card_id, "REACTIVATED_AND_UNBLOCKED", admin["username"])
-            )
-            conn.commit()
-            return {"status": "success"}
-    finally:
-        release_connection(conn)
-
-@app.get("/api/jobs/{job_card_id}/lifecycle-logs")
-def get_lifecycle_logs(job_card_id: str, user: dict = Depends(get_current_user)):
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT description, status, deletion_reason, deleted_by, deleted_at, created_at 
-                FROM job_cards 
-                WHERE job_card_id = %s 
-                ORDER BY created_at DESC 
-                LIMIT 1
-            """, (job_card_id,))
-            job = cur.fetchone()
-            if not job:
-                raise HTTPException(status_code=404, detail="Job Card not found")
-
-            job_desc, job_status, del_reason, del_by, del_at, created_at = job
-
-            cur.execute("""
-                SELECT action, performed_by, reason, timestamp 
-                FROM job_lifecycle_logs 
-                WHERE job_card_id = %s 
-                ORDER BY timestamp ASC
-            """, (job_card_id,))
-            rows = cur.fetchall()
-
-            logs = [{
-                "action": r[0],
-                "user": r[1],
-                "reason": r[2] or "",
-                "time": r[3].strftime("%Y-%m-%d %H:%M:%S") if r[3] else ""
-            } for r in rows]
-
-            has_created = any(log["action"] == "CREATED" for log in logs)
-            if not has_created and created_at:
-                logs.insert(0, {
-                    "action": "CREATED",
-                    "user": "System / Admin",
-                    "reason": "Job created and batch ingested",
-                    "time": created_at.strftime("%Y-%m-%d %H:%M:%S")
+                SELECT j.run_id, j.status, j.description 
+                FROM job_cards j 
+                WHERE j.job_card_id = %s AND j.status != 'DELETED'
+            """, (jc_id,))
+            jc = cur.fetchone()
+            if not jc:
+                return JSONResponse(status_code=200, content={
+                    "matched": False,
+                    "message": f"Job Card '{jc_id}' does not exist or is deleted."
                 })
 
-            return {
-                "job_card_id": job_card_id,
-                "description": job_desc or "",
-                "status": job_status,
-                "created_at": created_at.strftime("%Y-%m-%d %H:%M:%S") if created_at else "",
-                "deletion_reason": del_reason or "",
-                "deleted_by": del_by or "",
-                "deleted_at": del_at.strftime("%Y-%m-%d %H:%M:%S") if del_at else "",
-                "logs": logs
-            }
+            run_id, status, description = jc
+
+            cur.execute("""
+                SELECT code_value, status 
+                FROM codes 
+                WHERE run_id = %s AND code_value = %s AND status != 'DELETED'
+            """, (run_id, scanned_code))
+            match_row = cur.fetchone()
+
+            if not match_row:
+                return JSONResponse(status_code=200, content={
+                    "matched": False,
+                    "message": f"Code '{scanned_code}' does not belong to Job Card '{jc_id}'."
+                })
+
+            return JSONResponse(status_code=200, content={
+                "matched": True,
+                "job_card_id": jc_id,
+                "description": description or "Serialized Production Batch",
+                "code": scanned_code,
+                "status": status,
+                "message": "QC approved, OK to Pack"
+            })
     finally:
         release_connection(conn)
 

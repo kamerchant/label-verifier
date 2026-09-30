@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CCL ME - PK - Variable Data Verification</title>
     <!-- Browser Tab Favicon / System Logo -->
-    <link rel="icon" type="image/jpeg" href="/static/logo.jpg">
+    <link rel="icon" type="image/png" href="/static/ico.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Universal Font Standardization across all elements */
@@ -13,8 +13,6 @@
             font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
             letter-spacing: -0.01em;
         }
-        /* ... (rest of your styles remain unchanged) ... */
-
 
         /* Responsive base typography & iOS zoom prevention */
         html {
@@ -235,172 +233,36 @@
             display: none;
         }
 
-        /* Strict Chromium / Opera Print Styles - Exact 5mm Margins, Single Page Lock */
+        /* Packing QC Print Styles */
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 6mm 5mm;
+                margin: 10mm;
             }
             body, html {
                 background: #ffffff !important;
                 color: #0f172a !important;
-                height: 100% !important;
-                width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                overflow: hidden !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
             }
             body * {
                 visibility: hidden !important;
                 background: transparent !important;
             }
-            .printable-modal:not(.hidden), .printable-modal:not(.hidden) * {
+            #packing-qc-printable, #packing-qc-printable * {
                 visibility: visible !important;
             }
-            .printable-modal:not(.hidden) {
+            #packing-qc-printable {
                 position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
                 width: 100% !important;
-                max-width: 100% !important;
                 background: #ffffff !important;
                 color: #0f172a !important;
-                padding: 0 !important;
-                margin: 0 !important;
+                padding: 20px !important;
                 display: block !important;
-                box-shadow: none !important;
-                backdrop-filter: none !important;
-                overflow: visible !important;
-                page-break-after: avoid !important;
-                break-after: avoid !important;
             }
-            .printable-modal:not(.hidden) > div {
-                background: #ffffff !important;
-                border: none !important;
-                box-shadow: none !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                max-height: none !important;
-                display: block !important;
-                overflow: visible !important;
-                page-break-after: avoid !important;
-                break-after: avoid !important;
-            }
-            .no-print, button, header, footer {
+            .no-print {
                 display: none !important;
             }
-            .print-brand-box {
-                display: flex !important;
-                flex-direction: column !important;
-                align-items: flex-start !important;
-                margin-bottom: 4px !important;
-            }
-            .print-brand-logo {
-                height: 24px !important;
-                width: auto !important;
-                object-fit: contain !important;
-                margin-bottom: 2px !important;
-            }
-            .print-brand-text {
-                font-size: 8pt !important;
-                font-weight: 800 !important;
-                color: #0f172a !important;
-                letter-spacing: 0.03em !important;
-            }
-            .report-header-box {
-                background: #ffffff !important;
-                border-bottom: 2px solid #0f172a !important;
-                padding-bottom: 3px !important;
-                margin-bottom: 6mm !important;
-            }
-            .print-title {
-                font-size: 12pt !important;
-                color: #0f172a !important;
-                font-weight: 800 !important;
-                background: #ffffff !important;
-                margin-bottom: 2px !important;
-            }
-            .print-subtitle {
-                font-size: 9pt !important;
-                color: #334155 !important;
-                background: #ffffff !important;
-            }
-            #report-stats {
-                display: grid !important;
-                grid-template-columns: repeat(2, 1fr) !important;
-                gap: 5px !important;
-                margin-bottom: 8px !important;
-                background: #ffffff !important;
-            }
-            #report-stats div {
-                background: #f8fafc !important;
-                border: 1px solid #94a3b8 !important;
-                padding: 5px !important;
-                border-radius: 4px !important;
-                color: #0f172a !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-            #report-stats span {
-                color: #0f172a !important;
-            }
-            .print-table-container {
-                max-height: none !important;
-                overflow: visible !important;
-                border: 1px solid #cbd5e1 !important;
-                background: #ffffff !important;
-            }
-            table {
-                width: 100% !important;
-                border-collapse: collapse !important;
-                background: #ffffff !important;
-            }
-            thead {
-                display: table-header-group !important;
-                background-color: #f1f5f9 !important;
-            }
-            th {
-                background-color: #f1f5f9 !important;
-                color: #0f172a !important;
-                font-weight: 700 !important;
-                border: 1px solid #94a3b8 !important;
-                padding: 4px 5px !important;
-                font-size: 8pt !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-            td {
-                color: #0f172a !important;
-                border: 1px solid #cbd5e1 !important;
-                padding: 3px 5px !important;
-                font-size: 7.5pt !important;
-                background: #ffffff !important;
-            }
-            tr {
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-                background: #ffffff !important;
-            }
-            .print-timestamp-footer {
-                display: block !important;
-                margin-top: 6mm !important;
-                padding-top: 3px !important;
-                font-size: 7pt !important;
-                color: #64748b !important;
-                text-align: right !important;
-                border-top: 1px solid #cbd5e1 !important;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-                page-break-after: avoid !important;
-                break-after: avoid !important;
-            }
-        }
-        .print-timestamp-footer {
-            display: none;
         }
     </style>
 </head>
@@ -419,6 +281,7 @@
         </div>
 
         <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto py-0.5 sm:py-0">
+            <button onclick="openPackingQCModal()" class="linear-button-primary px-2.5 py-1.5 rounded text-xs font-semibold whitespace-nowrap min-h-[34px] flex items-center bg-emerald-600 hover:bg-emerald-500">Packing QC</button>
             <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-2.5 py-1.5 rounded text-xs font-semibold whitespace-nowrap min-h-[34px] flex items-center">Create Job</button>
             <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-2.5 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center">Job Control Center</button>
             <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-2.5 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center">User Admin</button>
@@ -586,6 +449,55 @@
         </div>
     </footer>
 
+    <!-- Packing QC Modal -->
+    <div id="packing-qc-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
+        <div class="linear-card p-5 sm:p-6 rounded-lg max-w-lg w-full shadow-2xl flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b border-white/[0.08] pb-3">
+                <h3 class="text-lg font-bold table-text-theme">Final Packing QC Check</h3>
+                <button onclick="toggleModal('packing-qc-modal')" class="linear-button-secondary px-3 py-1 text-xs rounded">Close Window</button>
+            </div>
+            
+            <form onsubmit="handlePackingQCVerify(event)" class="space-y-3.5 mb-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Job Card Number *</label>
+                    <input type="text" id="packing-qc-job" required placeholder="e.g. JC-2026-99" class="linear-input w-full p-2.5 text-sm rounded">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Scan or Enter Code *</label>
+                    <input type="text" id="packing-qc-code" required placeholder="Scan barcode/serial code..." class="linear-input w-full p-2.5 text-sm rounded">
+                </div>
+                <div class="flex gap-2 pt-1">
+                    <button type="submit" class="linear-button-primary flex-1 py-2.5 rounded text-sm font-semibold">Verify Match</button>
+                </div>
+            </form>
+
+            <div id="packing-qc-result-box" class="p-4 rounded mb-4 hidden border text-center">
+                <span id="packing-qc-status-text" class="font-bold block text-base mb-1"></span>
+                <span id="packing-qc-detail-text" class="text-xs block"></span>
+            </div>
+
+            <!-- Printable report container hidden normally -->
+            <div id="packing-qc-printable" class="hidden">
+                <div style="font-family: Arial, sans-serif; padding: 20px; color: #0f172a;">
+                    <h2 style="font-size: 16pt; font-weight: bold; margin-bottom: 5px;">CCL Middle East – Pakistan</h2>
+                    <h3 style="font-size: 12pt; font-weight: bold; margin-bottom: 15px;">Final Packing QC Certificate</h3>
+                    <p style="font-size: 10pt; margin-bottom: 8px;"><strong>Job Card ID:</strong> <span id="print-qc-job"></span></p>
+                    <p style="font-size: 10pt; margin-bottom: 8px;"><strong>Job Description:</strong> <span id="print-qc-desc"></span></p>
+                    <p style="font-size: 10pt; margin-bottom: 8px;"><strong>Tested Code:</strong> <span id="print-qc-code"></span></p>
+                    <p style="font-size: 10pt; margin-bottom: 8px;"><strong>Tested At:</strong> <span id="print-qc-time"></span></p>
+                    <div style="margin-top: 20px; padding: 15px; background: #f0fdf4; border: 2px solid #16a34a; border-radius: 6px; text-align: center;">
+                        <span style="font-size: 14pt; font-weight: bold; color: #16a34a;">QC approved, OK to Pack</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2 border-t border-white/[0.08]">
+                <button type="button" onclick="toggleModal('packing-qc-modal')" class="linear-button-secondary px-4 py-2 rounded text-xs font-medium">Close</button>
+                <button type="button" id="packing-qc-print-btn" onclick="printPackingQC()" disabled class="linear-button-primary px-4 py-2 rounded text-xs font-semibold opacity-30 pointer-events-none">Print Report</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Job Control Center Modal -->
     <div id="master-jobs-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
         <div class="linear-card p-4 sm:p-6 rounded-lg max-w-5xl w-full shadow-2xl flex flex-col max-h-[92vh]">
@@ -646,8 +558,8 @@
                     <input type="text" id="new-user-name" placeholder="Username *" required class="linear-input p-2.5 text-xs rounded">
                     <input type="password" id="new-user-pass" placeholder="Password *" title="Minimum 8 characters, at least 1 uppercase, 1 lowercase, and 1 number." required class="linear-input p-2.5 text-xs rounded">
                     <select id="new-user-role" class="linear-input p-2.5 text-xs rounded">
-                        <option value="QC Incharge">QC Incharge</option>
-                        <option value="admin">Admin</option>
+                        <option value="QC operator">QC operator</option>
+                        <option value="admin">admin</option>
                     </select>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -668,6 +580,7 @@
                     <thead>
                         <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0">
                             <th class="px-3.5 py-2.5">User Name</th>
+                            <th class="px-3.5 py-2.5 text-center">User Type</th>
                             <th class="px-3.5 py-2.5 text-center">Can Create Jobs?</th>
                             <th class="px-3.5 py-2.5 text-right">Action</th>
                         </tr>
@@ -841,7 +754,7 @@
                 </div>
                 <span class="font-bold text-base table-text-theme">CCL ME - PK - Variable Data Verification</span>
             </div>
-            <p class="text-xs text-slate-400 mb-4">Sign in to initialize serialization terminal</p>
+            <p class="text-xs text-slate-400 mb-4">Please enter username and password to access system</p>
             <form onsubmit="handleLogin(event)" class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Username</label>
@@ -1340,6 +1253,90 @@
                     const err = await res.json();
                     showCustomAlert(err.detail || "Action failed");
                 }
+            }
+        }
+
+        // --- Packing QC Window Functions ---
+        let currentPackingQCData = null;
+
+        function openPackingQCModal() {
+            document.getElementById('packing-qc-modal').classList.remove('hidden');
+            document.getElementById('packing-qc-job').value = "";
+            document.getElementById('packing-qc-code').value = "";
+            document.getElementById('packing-qc-result-box').classList.add('hidden');
+            const printBtn = document.getElementById('packing-qc-print-btn');
+            printBtn.disabled = true;
+            printBtn.classList.add('opacity-30', 'pointer-events-none');
+            currentPackingQCData = null;
+        }
+
+        async function handlePackingQCVerify(e) {
+            e.preventDefault();
+            const jcId = document.getElementById('packing-qc-job').value.trim();
+            const code = document.getElementById('packing-qc-code').value.trim();
+            if (!jcId || !code) return;
+
+            const body = new FormData();
+            body.append("job_card_id", jcId);
+            body.append("code", code);
+
+            try {
+                const res = await fetch('/api/packing-qc/verify', { method: 'POST', body });
+                const data = await res.json();
+
+                const resultBox = document.getElementById('packing-qc-result-box');
+                const statusText = document.getElementById('packing-qc-status-text');
+                const detailText = document.getElementById('packing-qc-detail-text');
+                const printBtn = document.getElementById('packing-qc-print-btn');
+
+                resultBox.classList.remove('hidden');
+
+                if (data.matched) {
+                    resultBox.className = "p-4 rounded mb-4 border bg-emerald-500/10 border-emerald-500/30 text-emerald-400 text-center";
+                    statusText.innerText = "MATCH CONFIRMED: QC approved, OK to Pack";
+                    detailText.innerText = `Job Card ${data.job_card_id} matches code ${data.code}.`;
+                    
+                    currentPackingQCData = data;
+                    printBtn.disabled = false;
+                    printBtn.classList.remove('opacity-30', 'pointer-events-none');
+                } else {
+                    resultBox.className = "p-4 rounded mb-4 border bg-red-500/10 border-red-500/25 text-red-400 text-center";
+                    statusText.innerText = "MISMATCH / ERROR";
+                    detailText.innerText = data.message;
+
+                    currentPackingQCData = null;
+                    printBtn.disabled = true;
+                    printBtn.classList.add('opacity-30', 'pointer-events-none');
+                }
+            } catch (ex) {
+                showCustomAlert("Server error during Packing QC verification.");
+            }
+        }
+
+        function printPackingQC() {
+            if (!currentPackingQCData) return;
+            document.getElementById('print-qc-job').innerText = currentPackingQCData.job_card_id;
+            document.getElementById('print-qc-desc').innerText = currentPackingQCData.description;
+            document.getElementById('print-qc-code').innerText = currentPackingQCData.code;
+            document.getElementById('print-qc-time').innerText = new Date().toLocaleString();
+            window.print();
+        }
+
+        async function toggleUserRole(username, newRole) {
+            const body = new FormData();
+            body.append("role", newRole);
+
+            const res = await fetch(`/api/users/${username}/role`, {
+                method: 'POST',
+                body: body
+            });
+
+            if (res.ok) {
+                showCustomAlert(`User ${username} role updated to ${newRole}.`, "Success");
+                openUserModal();
+            } else {
+                const err = await res.json();
+                showCustomAlert(err.detail || "Failed to update user role.");
             }
         }
 
@@ -1857,10 +1854,15 @@
                     <td class="p-3">
                         <div class="flex items-center gap-2">
                             <span class="font-bold table-text-theme text-xs">${u.username}</span>
-                            <span class="text-[10px] uppercase px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 font-semibold">${u.role}</span>
+                            ${!u.is_active ? '<span class="text-[10px] text-red-400 font-bold block mt-0.5">(Suspended)</span>' : ''}
+                            ${u.must_change_password ? '<span class="text-[10px] text-amber-400 font-bold block mt-0.5">(PW Reset Required)</span>' : ''}
                         </div>
-                        ${!u.is_active ? '<span class="text-[10px] text-red-400 font-bold block mt-0.5">(Suspended)</span>' : ''}
-                        ${u.must_change_password ? '<span class="text-[10px] text-amber-400 font-bold block mt-0.5">(PW Reset Required)</span>' : ''}
+                    </td>
+                    <td class="p-3 text-center">
+                        <select onchange="toggleUserRole('${u.username}', this.value)" class="linear-input text-xs px-2 py-1 rounded cursor-pointer">
+                            <option value="QC operator" ${u.role === 'QC operator' ? 'selected' : ''}>QC operator</option>
+                            <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
+                        </select>
                     </td>
                     <td class="p-3 text-center">
                         <input type="checkbox" ${u.can_upload ? 'checked' : ''} 
