@@ -1,123 +1,114 @@
 import os
 import psycopg2
-from passlib.context import CryptContext
+from passlib.hash import bcrypt
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-def get_database_url():
-    url = os.environ.get("DATABASE_URL")
-    if url:
-        return url
-    return "postgresql://postgres:postgres@localhost:5432/vdv_db"
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL", 
+    "postgres://postgres:postgres@localhost:5432/ccl_vdv"
+)
 
 def get_connection():
-    return psycopg2.connect(get_database_url())
+    return psycopg2.connect(DATABASE_URL)
 
 def release_connection(conn):
     if conn:
         conn.close()
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hash(password)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    return bcrypt.verify(plain_password, hashed_password)
 
 def init_db():
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # Users Table with Employee Name and Employee ID
+            # Users table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
-                    username VARCHAR(100) PRIMARY KEY,
-                    password_hash VARCHAR(255) NOT NULL,
-                    role VARCHAR(50) NOT NULL DEFAULT 'QC Incharge',
-                    must_change_password BOOLEAN NOT NULL DEFAULT TRUE,
-                    can_upload BOOLEAN NOT NULL DEFAULT FALSE,
-                    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                    id SERIAL PRIMARY KEY,
+                    username VARCHAR(150) UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    role VARCHAR(50) DEFAULT 'QC operator',
+                    must_change_password BOOLEAN DEFAULT TRUE,
+                    can_upload BOOLEAN DEFAULT FALSE,
+                    is_active BOOLEAN DEFAULT TRUE,
                     employee_name VARCHAR(150),
                     employee_id VARCHAR(50),
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
 
-            # Safely add columns if they don't exist in older DB instances
-            cur.execute("""
-                DO $$ 
-                BEGIN 
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' and column_name='employee_name') THEN
-                        ALTER TABLE users ADD COLUMN employee_name VARCHAR(150);
-                    END IF;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' and column_name='employee_id') THEN
-                        ALTER TABLE users ADD COLUMN employee_id VARCHAR(50);
-                    END IF;
-                END $$;
-            """)
-
-            # Job Cards Table
+            # Job Cards table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS job_cards (
                     run_id SERIAL PRIMARY KEY,
-                    job_card_id VARCHAR(100) NOT NULL,
+                    job_card_id VARCHAR(100) UNIQUE NOT NULL,
                     description TEXT,
-                    status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
-                    deletion_reason TEXT,
-                    deleted_by VARCHAR(100),
+                    status VARCHAR(50) DEFAULT 'ACTIVE',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    deleted_by VARCHAR(150),
                     deleted_at TIMESTAMP,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    deletion_reason TEXT
                 );
             """)
 
-            # Codes Table
+            # Codes pool table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS codes (
-                    run_id INT REFERENCES job_cards(run_id) ON DELETE CASCADE,
+                    id SERIAL PRIMARY KEY,
+                    run_id INTEGER REFERENCES job_cards(run_id) ON DELETE CASCADE,
                     job_card_id VARCHAR(100) NOT NULL,
                     code_value TEXT NOT NULL,
-                    status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+                    status VARCHAR(50) DEFAULT 'PENDING',
                     scanned_at TIMESTAMP
                 );
             """)
 
-            # Performance Indexes for instant status toggling and verification lookups
-            cur.execute("""
-                CREATE INDEX IF NOT EXISTS idx_codes_run_status ON codes(run_id, status);
-                CREATE INDEX IF NOT EXISTS idx_codes_value ON codes(code_value);
-                CREATE INDEX IF NOT EXISTS idx_job_cards_status ON job_cards(status);
-            """)
-
-            # Scan Logs Table
+            # Scan logs table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS scan_logs (
                     id SERIAL PRIMARY KEY,
                     job_card_id VARCHAR(100) NOT NULL,
                     code_scanned TEXT NOT NULL,
                     result VARCHAR(50) NOT NULL,
-                    scanned_by VARCHAR(100) NOT NULL,
+                    scanned_by VARCHAR(150),
                     scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
 
-            # Job Lifecycle Logs Table
+            # Job lifecycle logs table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS job_lifecycle_logs (
                     id SERIAL PRIMARY KEY,
                     job_card_id VARCHAR(100) NOT NULL,
                     action VARCHAR(100) NOT NULL,
-                    performed_by VARCHAR(100) NOT NULL,
+                    performed_by VARCHAR(150),
                     reason TEXT,
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
 
-            # Create default admin if not exists
-            cur.execute("SELECT username FROM users WHERE username = 'admin'")
-            if not cur.fetchone():
-                admin_hash = hash_password("Admin@123")
+            # Packing QC logs table
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS packing_qc_logs (
+                    id SERIAL PRIMARY KEY,
+                    job_card_id VARCHAR(100) NOT NULL,
+                    code_scanned TEXT NOT NULL,
+                    tested_by VARCHAR(150),
+                    tested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+
+            # Seed default admin user if none exists
+            cur.execute("SELECT COUNT(*) FROM users;")
+            if cur.fetchone()[0] == 0:
+                default_hash = hash_password("Admin@123")
                 cur.execute(
-                    "INSERT INTO users (username, password_hash, role, must_change_password, can_upload, is_active, employee_name, employee_id) VALUES (%s, %s, %s, FALSE, TRUE, TRUE, %s, %s)",
-                    ("admin", admin_hash, "admin", "System Administrator", "ADM-001")
+                    """INSERT INTO users (username, password_hash, role, must_change_password, can_upload, is_active) 
+                       VALUES (%s, %s, %s, FALSE, TRUE, TRUE)""",
+                    ("Admin", default_hash, "admin")
                 )
 
             conn.commit()

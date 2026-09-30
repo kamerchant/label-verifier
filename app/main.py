@@ -617,7 +617,6 @@ def packing_qc_verify(
                     "message": f"Code '{scanned_code}' does not belong to Job Card '{jc_id}'."
                 })
 
-            # Save to packing_qc_logs
             cur.execute("""
                 INSERT INTO packing_qc_logs (job_card_id, code_scanned, tested_by) 
                 VALUES (%s, %s, %s)
