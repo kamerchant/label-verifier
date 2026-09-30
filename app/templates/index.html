@@ -279,7 +279,7 @@
                 padding-top: 6px !important;
             }
             
-            /* Hide regular modal chrome, show only printable modals or packing printable */
+            /* Target any open printable modal and force absolute top alignment */
             .printable-modal:not(.hidden) {
                 position: absolute !important;
                 left: 0 !important;
@@ -591,11 +591,16 @@
                         <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.style.display='none';">
                         <span class="print-brand-text">CCL Middle East – Pakistan</span>
                     </div>
-                    <h3 style="font-size: 11pt; font-weight: bold; margin-bottom: 10px; color: #0f172a;">Final Packing QC Certificate</h3>
-                    <p style="font-size: 9pt; margin-bottom: 4px;"><strong>Job Card ID:</strong> <span id="print-qc-job"></span></p>
-                    <p style="font-size: 9pt; margin-bottom: 4px;"><strong>Job Description:</strong> <span id="print-qc-desc"></span></p>
-                    <p style="font-size: 9pt; margin-bottom: 4px;"><strong>Total Codes Verified:</strong> <span id="print-qc-count"></span></p>
-                    <p style="font-size: 9pt; margin-bottom: 12px;"><strong>Report Generated At:</strong> <span id="print-qc-time"></span></p>
+                    <h3 style="font-size: 14pt; font-weight: bold; text-align: center; margin-bottom: 12px; color: #0f172a;">Final Packing QC Certificate</h3>
+                    
+                    <div style="border: 1px solid #cbd5e1; padding: 10px; border-radius: 4px; margin-bottom: 12px; background: #f8fafc;">
+                        <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Job Card:</strong> <span id="print-qc-job"></span></p>
+                        <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Description:</strong> <span id="print-qc-desc"></span></p>
+                        <p style="font-size: 9.5pt; margin-bottom: 2px;"><strong>Status:</strong> <span id="print-qc-status">Completed</span></p>
+                    </div>
+
+                    <p style="font-size: 9.5pt; margin-bottom: 10px;"><strong>Total Codes Verified:</strong> <span id="print-qc-count"></span></p>
+                    <p style="font-size: 9pt; margin-bottom: 12px; color: #475569;"><span id="print-qc-time"></span></p>
 
                     <div style="margin-bottom: 12px;">
                         <h4 style="font-size: 9.5pt; font-weight: bold; margin-bottom: 5px; color: #0f172a;">Verified Codes Audit Summary:</h4>
@@ -723,19 +728,27 @@
     <!-- QC Report Modal -->
     <div id="report-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
         <div class="linear-card p-6 rounded-lg max-w-4xl w-full shadow-2xl flex flex-col max-h-[92vh]">
-            <div class="report-header-box flex justify-between items-start mb-3 border-b border-white/[0.08] pb-3">
-                <div class="flex flex-col">
-                    <div class="print-brand-box">
-                        <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
-                        <span class="print-brand-text">CCL Middle East – Pakistan</span>
-                    </div>
-                    <h3 id="report-job-id" class="print-title text-lg font-black modal-title-theme">QC Report</h3>
-                    <p id="report-desc" class="print-subtitle text-xs text-slate-400">VDV QC Report</p>
+            <div class="report-header-box mb-3 border-b border-white/[0.08] pb-3">
+                <div class="print-brand-box">
+                    <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
+                    <span class="print-brand-text">CCL Middle East – Pakistan</span>
                 </div>
-                <div class="flex gap-2 no-print">
-                    <button onclick="window.print()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Print Report</button>
-                    <button id="download-csv-btn" class="linear-button-primary px-3 py-1.5 rounded text-xs font-medium">Download CSV</button>
-                    <button onclick="toggleModal('report-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Close</button>
+                <div class="flex justify-between items-start no-print mb-2">
+                    <div></div>
+                    <div class="flex gap-2">
+                        <button onclick="window.print()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Print Report</button>
+                        <button id="download-csv-btn" class="linear-button-primary px-3 py-1.5 rounded text-xs font-medium">Download CSV</button>
+                        <button onclick="toggleModal('report-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Close</button>
+                    </div>
+                </div>
+                <!-- Requested QC Report Header: Horizontally centered title +5 points larger -->
+                <h3 class="text-2xl font-black modal-title-theme text-center mb-3">QC Report</h3>
+                
+                <!-- Single Box for Job Card Number, Description, Status (Left-aligned) -->
+                <div class="linear-subcard p-3 rounded text-xs space-y-1 text-left">
+                    <p><strong>Job Card:</strong> <span id="report-job-num"></span></p>
+                    <p><strong>Description:</strong> <span id="report-desc-text"></span></p>
+                    <p><strong>Status:</strong> <span id="report-status-text"></span></p>
                 </div>
             </div>
 
@@ -761,18 +774,26 @@
     <!-- Job Lifecycle Audit Trail Modal -->
     <div id="lifecycle-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
         <div class="linear-card p-6 rounded-lg max-w-3xl w-full shadow-2xl flex flex-col max-h-[85vh]">
-            <div class="report-header-box flex justify-between items-start mb-3 border-b border-white/[0.08] pb-2">
-                <div>
-                    <div class="print-brand-box">
-                        <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
-                        <span class="print-brand-text">CCL Middle East – Pakistan</span>
-                    </div>
-                    <h3 id="lifecycle-job-id" class="print-title text-lg font-black modal-title-theme">Lifecycle Audit Log</h3>
-                    <p id="lifecycle-desc" class="print-subtitle text-xs text-slate-400"></p>
+            <div class="report-header-box mb-3 border-b border-white/[0.08] pb-2">
+                <div class="print-brand-box">
+                    <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
+                    <span class="print-brand-text">CCL Middle East – Pakistan</span>
                 </div>
-                <div class="flex gap-2 no-print">
-                    <button onclick="window.print()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Print Log</button>
-                    <button onclick="toggleModal('lifecycle-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Close</button>
+                <div class="flex justify-between items-start no-print mb-2">
+                    <div></div>
+                    <div class="flex gap-2">
+                        <button onclick="window.print()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Print Log</button>
+                        <button onclick="toggleModal('lifecycle-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Close</button>
+                    </div>
+                </div>
+                <!-- Requested Lifecycle Report Header: Horizontally centered title +5 points larger -->
+                <h3 class="text-2xl font-black modal-title-theme text-center mb-3">LIFE CYCLE AUDIT REPORT</h3>
+                
+                <!-- Single Box for Job Card Number, Status, Description (Left-aligned, no creation date) -->
+                <div class="linear-subcard p-3 rounded text-xs space-y-1 text-left">
+                    <p><strong>Job Card:</strong> <span id="lifecycle-job-num"></span></p>
+                    <p><strong>Status:</strong> <span id="lifecycle-status-text"></span></p>
+                    <p><strong>Description:</strong> <span id="lifecycle-desc-text"></span></p>
                 </div>
             </div>
 
@@ -1746,8 +1767,9 @@
             if (currentPackingQCLogs.length === 0) return;
             document.getElementById('print-qc-job').innerText = currentPackingQCJob;
             document.getElementById('print-qc-desc').innerText = currentPackingQCDesc || "Serialized Production Batch";
+            document.getElementById('print-qc-status').innerText = "Completed";
             document.getElementById('print-qc-count').innerText = currentPackingQCLogs.length.toLocaleString();
-            document.getElementById('print-qc-time').innerText = new Date().toLocaleString();
+            document.getElementById('print-qc-time').innerText = `Report Generated On: ${new Date().toLocaleString()}`;
 
             const printTableBody = document.getElementById('print-qc-table-rows');
             printTableBody.innerHTML = currentPackingQCLogs.map(l => `
@@ -1773,8 +1795,9 @@
             if (!res.ok) return;
             const data = await res.json();
 
-            document.getElementById('report-job-id').innerText = `QC Report: ${data.job_card_id} (${data.status})`;
-            document.getElementById('report-desc').innerText = "VDV QC Report";
+            document.getElementById('report-job-num').innerText = data.job_card_id;
+            document.getElementById('report-desc-text').innerText = data.description || '-';
+            document.getElementById('report-status-text').innerText = data.status;
             
             const printTimestampStr = `Report Generated On: ${new Date().toLocaleString()}`;
             document.getElementById('print-timestamp').innerText = printTimestampStr;
@@ -1812,10 +1835,12 @@
             if (!res.ok) return;
             const data = await res.json();
 
-            document.getElementById('lifecycle-job-id').innerText = `Lifecycle Audit Log: ${data.job_card_id} (${data.status})`;
-            const descText = data.description ? `Job: ${data.description}` : 'Serialized Production Batch';
-            const createdText = data.created_at ? ` | Date Created: ${data.created_at}` : '';
-            document.getElementById('lifecycle-desc').innerText = `${descText}${createdText}`;
+            document.getElementById('lifecycle-job-num').innerText = data.job_card_id;
+            document.getElementById('lifecycle-status-text').innerText = data.status;
+            document.getElementById('lifecycle-desc-text').innerText = data.description || '-';
+            
+            const printTimestampStr = `Report Generated On: ${new Date().toLocaleString()}`;
+            document.getElementById('print-timestamp').innerText = printTimestampStr;
 
             const tbody = document.getElementById('lifecycle-log-rows');
             if (data.logs.length === 0) {
