@@ -764,7 +764,8 @@ def verify_code(
                 max_consumed_row = cur.fetchone()
                 max_consumed_id = max_consumed_row[0] if max_consumed_row and max_consumed_row[0] is not None else 0
 
-                # Out of sequence check: if current code's ID is lower than the highest previously consumed ID
+                # STEP 1: PRIORITIZE FILE RESTART / OUT OF SEQUENCE CHECK
+                # If current code's row ID is lower than the highest previously consumed row ID
                 out_of_sequence = max_consumed_id > 0 and code_id < max_consumed_id
 
                 if out_of_sequence:
@@ -777,7 +778,7 @@ def verify_code(
                         conn.commit()
 
                     eval_result = "Pass (Potential Restart)"
-                    msg = f"Potential file restart detected: row of code ({code_id}) is lower than the row of a previously scanned code ({max_consumed_id})."
+                    msg = f"Potential file restart: row of code ({code_id}) is lower than the row of a previously scanned code ({max_consumed_id})."
                     log_scan(eval_result, msg)
                     return JSONResponse(status_code=200, content={
                         "result": eval_result,
@@ -785,7 +786,7 @@ def verify_code(
                         "sequence_warning": True
                     })
 
-                # Normal PENDING check
+                # STEP 2: NORMAL PENDING SCAN
                 if current_status == 'PENDING':
                     cur.execute("""
                         UPDATE codes 
@@ -802,6 +803,8 @@ def verify_code(
                         "message": msg,
                         "sequence_warning": False
                     })
+                
+                # STEP 3: DUPLICATE SCAN (Already Consumed in correct sequence)
                 elif current_status == 'CONSUMED':
                     eval_result = "DUPLICATE"
                     msg = f"Code {exact_code} was verified earlier!"
