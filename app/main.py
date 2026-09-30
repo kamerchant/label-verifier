@@ -743,7 +743,7 @@ def verify_code(
                 )
                 conn.commit()
 
-            # Find the code in the active run regardless of its current status
+            # Find the code in the active run
             cur.execute("""
                 SELECT id, code_value, status 
                 FROM codes 
@@ -756,7 +756,7 @@ def verify_code(
                 exact_code = code_row[1]
                 current_status = code_row[2]
 
-                # Check for sequence regression: is this code's row ID lower than the max row ID of previously consumed codes?
+                # Find the maximum row ID of previously consumed codes in this job
                 cur.execute("""
                     SELECT MAX(id) FROM codes 
                     WHERE run_id = %s AND status = 'CONSUMED'
@@ -764,6 +764,7 @@ def verify_code(
                 max_consumed_row = cur.fetchone()
                 max_consumed_id = max_consumed_row[0] if max_consumed_row and max_consumed_row[0] is not None else 0
 
+                # Out of sequence check: if current code's ID is lower than the highest previously consumed ID
                 out_of_sequence = max_consumed_id > 0 and code_id < max_consumed_id
 
                 if out_of_sequence:
@@ -776,7 +777,7 @@ def verify_code(
                         conn.commit()
 
                     eval_result = "Pass (Potential Restart)"
-                    msg = f"Verified: {exact_code} | Potential file restart: row of code lower than row of a previously scanned code."
+                    msg = f"Potential file restart detected: row of code ({code_id}) is lower than the row of a previously scanned code ({max_consumed_id})."
                     log_scan(eval_result, msg)
                     return JSONResponse(status_code=200, content={
                         "result": eval_result,
@@ -793,22 +794,24 @@ def verify_code(
                     """, (active_run_id, code_id))
                     conn.commit()
 
+                    eval_result = "PASS"
                     msg = f"Verified: {exact_code}"
-                    log_scan("PASS", msg)
+                    log_scan(eval_result, msg)
                     return JSONResponse(status_code=200, content={
-                        "result": "PASS",
+                        "result": eval_result,
                         "message": msg,
                         "sequence_warning": False
                     })
                 elif current_status == 'CONSUMED':
+                    eval_result = "DUPLICATE"
                     msg = f"Code {exact_code} was verified earlier!"
-                    log_scan("DUPLICATE", msg)
+                    log_scan(eval_result, msg)
                     return JSONResponse(status_code=200, content={
-                        "result": "DUPLICATE",
+                        "result": eval_result,
                         "message": msg
                     })
 
-            # If code not found in active run, check other runs for mismatch/unknown
+            # Check other runs for mismatch / unknown
             cur.execute("""
                 SELECT c.run_id, j.job_card_id, c.status, c.code_value 
                 FROM codes c
