@@ -20,7 +20,6 @@ def init_db():
             # Users table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
-                    id SERIAL PRIMARY KEY,
                     username VARCHAR(150) UNIQUE NOT NULL,
                     password_hash VARCHAR(255) NOT NULL,
                     role VARCHAR(50) NOT NULL DEFAULT 'QC operator',
@@ -32,6 +31,15 @@ def init_db():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
+            # Safe column additions if table already existed without them
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS id SERIAL;")
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'QC operator';")
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT TRUE;")
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS can_upload BOOLEAN DEFAULT FALSE;")
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;")
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS employee_name VARCHAR(150);")
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS employee_id VARCHAR(50);")
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;")
 
             # Job Cards table
             cur.execute("""
@@ -46,6 +54,12 @@ def init_db():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
+            cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS description TEXT;")
+            cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'ACTIVE';")
+            cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS deleted_by VARCHAR(150);")
+            cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;")
+            cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS deletion_reason TEXT;")
+            cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;")
 
             # Codes table
             cur.execute("""
@@ -101,8 +115,8 @@ def init_db():
             cur.execute("CREATE INDEX IF NOT EXISTS idx_packing_qc_job ON packing_qc_logs(job_card_id);")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_job_cards_id ON job_cards(job_card_id);")
 
-            # Default Admin User Check
-            cur.execute("SELECT id FROM users WHERE username = 'admin'")
+            # Default Admin User Check (Querying by username to avoid ID dependency issues)
+            cur.execute("SELECT 1 FROM users WHERE username = 'admin'")
             if not cur.fetchone():
                 default_hash = hash_password("Admin123!")
                 cur.execute("""
