@@ -1175,6 +1175,9 @@
             if (jobList && searchInput && !searchInput.contains(e.target) && !jobList.contains(e.target)) {
                 jobList.classList.add('hidden');
             }
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'SELECT' && e.target.tagName !== 'TEXTAREA') {
+                resetInput();
+            }
         });
 
         async function selectJob(id, descEncoded, status, consumed, total) {
