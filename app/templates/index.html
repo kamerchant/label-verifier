@@ -265,11 +265,6 @@
                 width: auto !important;
                 object-fit: contain !important;
             }
-            .print-brand-text {
-                font-size: 11pt !important;
-                font-weight: bold !important;
-                color: #0f172a !important;
-            }
             .print-timestamp-footer {
                 display: block !important;
                 visibility: visible !important;
@@ -430,15 +425,15 @@
             <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center">
                 <span class="text-[11px] text-slate-400 block font-medium">Total Pool</span>
                 <span id="kpi-total" class="text-2xl sm:text-4xl font-extrabold mt-1 mb-1 block table-text-theme">0</span>
-                <span class="text-[10px] text-slate-500 block truncate">Assigned batch pool</span>
+                <span class="text-[10px] text-slate-500 block truncate">Assigned code pool</span>
             </div>
             
             <span class="text-xl sm:text-3xl font-extrabold text-slate-400 text-center px-1">-</span>
 
             <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center">
-                <span class="text-[11px] text-[#2ed573] block font-medium">Verified (Pass)</span>
+                <span class="text-[11px] text-[#2ed573] block font-medium">Verified</span>
                 <span id="kpi-consumed" class="text-2xl sm:text-4xl font-extrabold mt-1 mb-1 block text-[#2ed573]">0</span>
-                <span class="text-[10px] text-slate-500 block truncate">Consumed codes</span>
+                <span class="text-[10px] text-slate-500 block truncate">Verified codes</span>
             </div>
 
             <span class="text-xl sm:text-3xl font-extrabold text-slate-400 text-center px-1">=</span>
@@ -446,7 +441,7 @@
             <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center">
                 <span class="text-[11px] text-amber-400 block font-medium">Remaining Codes</span>
                 <span id="kpi-pending" class="text-2xl sm:text-4xl font-extrabold mt-1 mb-1 block text-slate-300">0</span>
-                <span class="text-[10px] text-slate-500 block truncate">Remaining in feed</span>
+                <span class="text-[10px] text-slate-500 block truncate">Remaining in pool</span>
             </div>
         </div>
 
@@ -556,7 +551,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1">Job Card Number *</label>
-                        <input type="text" id="packing-qc-job" required onblur="lockPackingQCJobCard()" oninput="handlePackingQCJobInput()" placeholder="e.g. JC-2026-99" class="linear-input w-full p-2.5 text-xs rounded">
+                        <input type="text" id="packing-qc-job" required onblur="lockPackingQCJobCard()" oninput="handlePackingQCJobInput()" placeholder="" class="linear-input w-full p-2.5 text-xs rounded">
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1">Scan or Enter Code *</label>
