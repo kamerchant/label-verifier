@@ -12,13 +12,11 @@ def init_db():
     if not DATABASE_URL:
         raise RuntimeError("DATABASE_URL environment variable is not set.")
     
-    # Thread-safe connection pool for concurrent worker threads
     db_pool = ThreadedConnectionPool(2, 25, DATABASE_URL)
     
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # Users table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     username VARCHAR(150) UNIQUE NOT NULL,
@@ -32,7 +30,6 @@ def init_db():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
-            # Safe column additions if table already existed without them
             cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS id SERIAL;")
             cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'QC operator';")
             cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT TRUE;")
@@ -42,7 +39,6 @@ def init_db():
             cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS employee_id VARCHAR(50);")
             cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;")
 
-            # Job Cards table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS job_cards (
                     run_id SERIAL PRIMARY KEY,
@@ -62,7 +58,6 @@ def init_db():
             cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS deletion_reason TEXT;")
             cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;")
 
-            # Codes table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS codes (
                     id SERIAL PRIMARY KEY,
@@ -74,7 +69,6 @@ def init_db():
                 );
             """)
 
-            # Scan Logs table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS scan_logs (
                     id SERIAL PRIMARY KEY,
@@ -86,7 +80,6 @@ def init_db():
                 );
             """)
 
-            # Packing QC Logs table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS packing_qc_logs (
                     id SERIAL PRIMARY KEY,
@@ -97,7 +90,6 @@ def init_db():
                 );
             """)
 
-            # Job Lifecycle Logs table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS job_lifecycle_logs (
                     id SERIAL PRIMARY KEY,
@@ -109,7 +101,6 @@ def init_db():
                 );
             """)
 
-            # HIGH-PERFORMANCE INDEXES & COMPOSITE LOOKUP INDEXES
             cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_code_value ON codes(code_value);")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_id ON codes(run_id);")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_code ON codes(run_id, code_value);")
@@ -118,7 +109,6 @@ def init_db():
             cur.execute("CREATE INDEX IF NOT EXISTS idx_packing_qc_job ON packing_qc_logs(job_card_id);")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_job_cards_id ON job_cards(job_card_id);")
 
-            # Default Admin User Check
             cur.execute("SELECT 1 FROM users WHERE username = 'admin'")
             if not cur.fetchone():
                 default_hash = hash_password("Admin123!")

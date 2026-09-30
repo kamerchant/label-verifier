@@ -768,13 +768,16 @@ def verify_code(
                 """, (active_run_id, scanned))
                 conn.commit()
 
-                msg = f"Verified: {exact_code}"
                 if out_of_sequence:
-                    msg += " | Potential file restart: row of code lower than row of a previously scanned code."
+                    eval_result = "Pass (Potential Restart)"
+                    msg = f"Verified: {exact_code} | Potential file restart: row of code lower than row of a previously scanned code."
+                else:
+                    eval_result = "PASS"
+                    msg = f"Verified: {exact_code}"
 
-                log_scan("PASS", msg)
+                log_scan(eval_result, msg)
                 return JSONResponse(status_code=200, content={
-                    "result": "PASS", 
+                    "result": eval_result, 
                     "message": msg,
                     "sequence_warning": out_of_sequence
                 })

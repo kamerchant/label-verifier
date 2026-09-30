@@ -177,7 +177,7 @@
             background-color: #f0ece1 !important;
         }
 
-        /* Status Bar Dynamic Color States (Accent borders removed) */
+        /* Status Bar Dynamic Color States */
         .status-state-black {
             background-color: #000000 !important;
             color: #f8fafc !important;
@@ -208,6 +208,12 @@
         html.theme-parchment .status-state-red {
             background-color: #c53030 !important;
             color: #ffffff !important;
+        }
+        /* Dedicated Pink state for potential file restart warnings */
+        .status-state-pink {
+            background-color: #ff69b4 !important;
+            color: #000000 !important;
+            font-weight: 700;
         }
 
         .no-scrollbar::-webkit-scrollbar {
@@ -1282,7 +1288,7 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `<span>Job Card: ${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
+            document.getElementById('active-title-card').innerHTML = `<span>Job Card: ${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>`;
             
             const displayDesc = activeJobDesc ? `${activeJobDesc} | Status: ${status}` : `Status: ${status}`;
             document.getElementById('header-job-desc').innerText = displayDesc;
@@ -1460,7 +1466,7 @@
             codeDisplay.classList.remove('hidden');
             badge.classList.remove('hidden');
 
-            if (result === 'PASS') {
+            if (result.startsWith('Pass')) {
                 if (sequenceWarning) {
                     startAlarm();
                 } else {
@@ -1468,15 +1474,15 @@
                 }
 
                 card.className = sequenceWarning 
-                    ? "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-red"
+                    ? "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-pink"
                     : "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-green";
                 
                 badge.className = sequenceWarning
-                    ? "px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs font-bold bg-black text-[#ff4757]"
+                    ? "px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs font-bold bg-black text-pink-600"
                     : "px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs font-bold bg-black text-[#2ed573]";
                 
                 badge.innerText = sequenceWarning ? "WARNING" : "PASS";
-                heading.innerText = sequenceWarning ? "VERIFIED (POTENTIAL FILE RESTART)" : "VALIDATED";
+                heading.innerText = sequenceWarning ? "POTENTIAL FILE RESTART DETECTED" : "VALIDATED";
                 detail.innerText = msg;
                 
                 incrementVerifiedKPI();
@@ -1523,8 +1529,8 @@
             const tbody = document.getElementById('recent-scans-rows');
             
             let countAll = allScans.length;
-            let countPass = allScans.filter(s => s.result === 'PASS').length;
-            let countError = allScans.filter(s => s.result !== 'PASS').length;
+            let countPass = allScans.filter(s => s.result.startsWith('Pass')).length;
+            let countError = allScans.filter(s => !s.result.startsWith('Pass')).length;
 
             document.getElementById('stream-count-all').innerText = countAll;
             document.getElementById('stream-count-pass').innerText = countPass;
@@ -1532,9 +1538,9 @@
 
             let filteredScans = allScans;
             if (streamFilter === 'PASS') {
-                filteredScans = allScans.filter(s => s.result === 'PASS');
+                filteredScans = allScans.filter(s => s.result.startsWith('Pass'));
             } else if (streamFilter === 'ERROR') {
-                filteredScans = allScans.filter(s => s.result !== 'PASS');
+                filteredScans = allScans.filter(s => !s.result.startsWith('Pass'));
             }
 
             if (filteredScans.length === 0) {
@@ -1545,7 +1551,7 @@
             const visibleScans = filteredScans.slice(0, 50);
 
             tbody.innerHTML = visibleScans.map((s, idx) => {
-                let badge = s.result === 'PASS' ? "linear-badge-pass" : "linear-badge-fail";
+                let badge = s.result.startsWith('Pass') ? "linear-badge-pass" : "linear-badge-fail";
                 return `
                     <tr class="hover:bg-black/[0.02]">
                         <td class="px-3.5 py-2 text-slate-300 text-xs font-medium">#${allScans.length - idx}</td>
@@ -1820,7 +1826,7 @@
                         <td class="p-3 text-xs text-slate-300">${log.time}</td>
                         <td class="p-3 font-bold table-text-theme text-xs">${log.user}</td>
                         <td class="p-3 table-text-theme font-semibold text-xs">${log.code}</td>
-                        <td class="p-3 font-bold text-xs ${log.result === 'PASS' ? 'text-[#2ed573]' : 'text-red-400'}">${log.result}</td>
+                        <td class="p-3 font-bold text-xs ${log.result.startsWith('Pass') ? 'text-[#2ed573]' : 'text-red-400'}">${log.result}</td>
                     </tr>
                 `).join('');
             }
