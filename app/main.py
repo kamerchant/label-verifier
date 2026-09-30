@@ -472,6 +472,24 @@ def get_job_lifecycle_logs(job_card_id: str, user: dict = Depends(get_current_us
     finally:
         release_connection(conn)
 
+@app.post("/api/jobs/{job_card_id}/complete")
+def complete_job(job_card_id: str, user: dict = Depends(get_current_user)):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE job_cards SET status = 'COMPLETED' WHERE job_card_id = %s RETURNING run_id", (job_card_id,))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Job Card not found")
+            run_id = row[0]
+            cur.execute("UPDATE codes SET status = 'BLOCKED' WHERE run_id = %s AND status = 'PENDING'", (run_id,))
+            cur.execute("INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) VALUES (%s, %s, %s, %s)",
+                        (job_card_id, "COMPLETED_AND_BLOCKED", user["username"], "Marked completed by operator"))
+            conn.commit()
+            return {"status": "success"}
+    finally:
+        release_connection(conn)
+
 @app.post("/api/admin/jobs/bulk-status")
 def bulk_status_change(
     job_card_ids: str = Form(...),
@@ -680,7 +698,7 @@ def packing_qc_verify(
                 "description": description or "Serialized Production Batch",
                 "code": scanned_code,
                 "status": status,
-                "message": "QC approved, OK to Pack"
+                "message": "Audit Approved, OK to Pack"
             })
     finally:
         release_connection(conn)
@@ -725,6 +743,24 @@ def verify_code(
                 )
                 conn.commit()
 
+            # ULTRA-FAST ATOMIC CLAIM: Try to claim and consume the pending code in a single atomic database operation
+            cur.execute("""
+                UPDATE codes 
+                SET status = 'CONSUMED', scanned_at = NOW() 
+                WHERE run_id = %s AND code_value = %s AND status = 'PENDING'
+                RETURNING code_value
+            """, (active_run_id, scanned))
+            consumed_row = cur.fetchone()
+
+            if consumed_row:
+                msg = f"Verified: {consumed_row[0]}"
+                log_scan("PASS", msg)
+                return JSONResponse(status_code=200, content={
+                    "result": "PASS", 
+                    "message": msg
+                })
+
+            # If atomic claim failed, inspect why (Duplicate, Mismatch, or Unknown)
             cur.execute("""
                 SELECT c.run_id, j.job_card_id, c.status, c.code_value 
                 FROM codes c
@@ -768,18 +804,28 @@ def verify_code(
                     "result": "BLOCKED", 
                     "message": msg
                 })
-            elif status == "PENDING":
-                cur.execute("""
-                    UPDATE codes 
-                    SET status = 'CONSUMED', scanned_at = NOW() 
-                    WHERE run_id = %s AND code_value = %s
-                """, (active_run_id, scanned))
-                msg = f"Verified: {exact_code}"
-                log_scan("PASS", msg)
-                return JSONResponse(status_code=200, content={
-                    "result": "PASS", 
-                    "message": msg
-                })
+    finally:
+        release_connection(conn)
+
+@app.get("/api/jobs/{job_card_id}/recent-scans")
+def get_recent_scans(job_card_id: str, limit: int = 50, user: dict = Depends(get_current_user)):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT code_scanned, result, scanned_by, scanned_at 
+                FROM scan_logs 
+                WHERE job_card_id = %s 
+                ORDER BY scanned_at DESC 
+                LIMIT %s
+            """, (job_card_id, limit))
+            logs = [{
+                "code": r[0],
+                "result": r[1],
+                "user": r[2],
+                "time": r[3].strftime("%Y-%m-%d %H:%M:%S") if r[3] else ""
+            } for r in cur.fetchall()]
+            return {"recent_logs": logs}
     finally:
         release_connection(conn)
 

@@ -1,6 +1,6 @@
 import os
 import bcrypt
-from psycopg2 import pool
+from psycopg2.pool import ThreadedConnectionPool
 from contextlib import contextmanager
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -12,7 +12,8 @@ def init_db():
     if not DATABASE_URL:
         raise RuntimeError("DATABASE_URL environment variable is not set.")
     
-    db_pool = pool.SimpleConnectionPool(1, 20, DATABASE_URL)
+    # Thread-safe connection pool for concurrent worker threads
+    db_pool = ThreadedConnectionPool(2, 25, DATABASE_URL)
     
     conn = get_connection()
     try:
@@ -108,14 +109,16 @@ def init_db():
                 );
             """)
 
-            # HIGH-PERFORMANCE INDEXES (Prevents system hangs & table locks during validation)
+            # HIGH-PERFORMANCE INDEXES & COMPOSITE LOOKUP INDEXES
             cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_code_value ON codes(code_value);")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_id ON codes(run_id);")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_code ON codes(run_id, code_value);")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_scan_logs_job_card ON scan_logs(job_card_id);")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_scan_logs_jc_time ON scan_logs(job_card_id, scanned_at DESC);")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_packing_qc_job ON packing_qc_logs(job_card_id);")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_job_cards_id ON job_cards(job_card_id);")
 
-            # Default Admin User Check (Querying by username to avoid ID dependency issues)
+            # Default Admin User Check
             cur.execute("SELECT 1 FROM users WHERE username = 'admin'")
             if not cur.fetchone():
                 default_hash = hash_password("Admin123!")
@@ -131,7 +134,7 @@ def init_db():
 def get_connection():
     global db_pool
     if not db_pool:
-        db_pool = pool.SimpleConnectionPool(1, 20, DATABASE_URL)
+        db_pool = ThreadedConnectionPool(2, 25, DATABASE_URL)
     return db_pool.getconn()
 
 def release_connection(conn):

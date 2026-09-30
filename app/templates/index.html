@@ -315,6 +315,14 @@
                 margin: 0 !important;
             }
 
+            /* Explicitly box-border stats blocks in print mode */
+            #report-stats > div {
+                border: 1px solid #cbd5e1 !important;
+                background: #f8fafc !important;
+                padding: 8px !important;
+                border-radius: 4px !important;
+            }
+
             /* Specifically handle Packing QC terminal print container */
             #packing-qc-printable {
                 display: block !important;
@@ -373,7 +381,7 @@
         </div>
 
         <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto py-0.5 sm:py-0">
-            <button onclick="openPackingQCModal()" class="linear-button-primary px-2.5 py-1.5 rounded text-xs font-semibold whitespace-nowrap min-h-[34px] flex items-center bg-emerald-600 hover:bg-emerald-500">Packing QC</button>
+            <button onclick="openPackingQCModal()" class="linear-button-primary px-2.5 py-1.5 rounded text-xs font-semibold whitespace-nowrap min-h-[34px] flex items-center bg-emerald-600 hover:bg-emerald-500">Batch Audit</button>
             <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-2.5 py-1.5 rounded text-xs font-semibold whitespace-nowrap min-h-[34px] flex items-center">Create Job</button>
             <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-2.5 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center">Job Control Center</button>
             <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-2.5 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center">User Admin</button>
@@ -541,11 +549,11 @@
         </div>
     </footer>
 
-    <!-- Packing QC Modal -->
+    <!-- Batch Audit Modal -->
     <div id="packing-qc-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-2xl w-full shadow-2xl flex flex-col max-h-[90vh]">
             <div class="flex justify-between items-center mb-4 border-b border-white/[0.08] pb-3 shrink-0">
-                <h3 class="text-lg font-bold table-text-theme">Final Packing QC Terminal</h3>
+                <h3 class="text-lg font-bold table-text-theme">Batch Audit Console</h3>
                 <button onclick="toggleModal('packing-qc-modal')" class="linear-button-secondary px-3 py-1 text-xs rounded no-print">Close</button>
             </div>
             
@@ -597,7 +605,7 @@
                         <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.style.display='none';">
                         <span class="print-brand-text">CCL Middle East – Pakistan</span>
                     </div>
-                    <h3 style="font-size: 14pt; font-weight: bold; text-align: center; margin-bottom: 12px; color: #0f172a;">Final Packing QC Certificate</h3>
+                    <h3 style="font-size: 14pt; font-weight: bold; text-align: center; margin-bottom: 12px; color: #0f172a;">Batch Audit Certificate</h3>
                     
                     <div style="border: 1px solid #cbd5e1; padding: 10px; border-radius: 4px; margin-bottom: 12px; background: #f8fafc;">
                         <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Job Card:</strong> <span id="print-qc-job"></span></p>
@@ -625,7 +633,7 @@
                     </div>
 
                     <div style="margin-top: 10px; padding: 10px; background: #f0fdf4; border: 2px solid #16a34a; border-radius: 6px; text-align: center;">
-                        <span style="font-size: 11pt; font-weight: bold; color: #16a34a;">QC approved, OK to Pack</span>
+                        <span style="font-size: 11pt; font-weight: bold; color: #16a34a;">Audit Approved, OK to Pack</span>
                     </div>
                 </div>
             </div>
@@ -675,7 +683,7 @@
                             <th class="px-3.5 py-2.5">Timestamps</th>
                             <th class="px-3.5 py-2.5 text-center">Status</th>
                             <th class="px-3.5 py-2.5 text-right">Codes Verified</th>
-                            <th class="px-3.5 py-2.5 text-center">Packing QC</th>
+                            <th class="px-3.5 py-2.5 text-center">Batch Audit</th>
                             <th class="px-3.5 py-2.5 text-center">Action</th>
                         </tr>
                     </thead>
@@ -747,10 +755,8 @@
                         <button onclick="toggleModal('report-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Close</button>
                     </div>
                 </div>
-                <!-- Requested QC Report Header: Horizontally centered title +5 points larger -->
                 <h3 class="text-2xl font-black modal-title-theme text-center mb-3">QC Report</h3>
                 
-                <!-- Single Box for Job Card Number, Description, Status (Left-aligned) -->
                 <div class="linear-subcard p-3 rounded text-xs space-y-1 text-left">
                     <p><strong>Job Card:</strong> <span id="report-job-num"></span></p>
                     <p><strong>Description:</strong> <span id="report-desc-text"></span></p>
@@ -792,10 +798,8 @@
                         <button onclick="toggleModal('lifecycle-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Close</button>
                     </div>
                 </div>
-                <!-- Requested Lifecycle Report Header: Horizontally centered title +5 points larger -->
                 <h3 class="text-2xl font-black modal-title-theme text-center mb-3">LIFE CYCLE AUDIT REPORT</h3>
                 
-                <!-- Single Box for Job Card Number, Status, Description (Left-aligned, no creation date) -->
                 <div class="linear-subcard p-3 rounded text-xs space-y-1 text-left">
                     <p><strong>Job Card:</strong> <span id="lifecycle-job-num"></span></p>
                     <p><strong>Status:</strong> <span id="lifecycle-status-text"></span></p>
@@ -1412,7 +1416,8 @@
 
         async function loadJobScanStream(jobCardId) {
             try {
-                const res = await fetch(`/api/reports/${encodeURIComponent(jobCardId)}`);
+                // Uses the lightweight recent-scans endpoint to keep verification fast
+                const res = await fetch(`/api/jobs/${encodeURIComponent(jobCardId)}/recent-scans?limit=50`);
                 if (res.ok) {
                     const data = await res.json();
                     allScans = (data.recent_logs || []).map(l => ({
@@ -1549,12 +1554,14 @@
                 return;
             }
 
-            tbody.innerHTML = filteredScans.map((s, idx) => {
-                let badge = "linear-badge-pass";
-                if (s.result !== 'PASS') badge = "linear-badge-fail";
+            // Slice to top 50 rows to keep DOM lightweight and eliminate table rendering lag
+            const visibleScans = filteredScans.slice(0, 50);
+
+            tbody.innerHTML = visibleScans.map((s, idx) => {
+                let badge = s.result === 'PASS' ? "linear-badge-pass" : "linear-badge-fail";
                 return `
                     <tr class="hover:bg-black/[0.02]">
-                        <td class="px-3.5 py-2 text-slate-300 text-xs font-medium">#${allScans.length - idx}</td>
+                        <td class="px-3.5 py-2 text-slate-300 text-xs font-medium">#${allScans.length - allScans.indexOf(s)}</td>
                         <td class="px-3.5 py-2 font-bold text-sm table-text-theme">${s.code}</td>
                         <td class="px-3.5 py-2"><span class="${badge} px-2 py-0.5 rounded text-xs font-bold">${s.result}</span></td>
                         <td class="px-3.5 py-2 text-slate-200 text-xs">${s.time}</td>
@@ -1564,7 +1571,7 @@
             }).join('');
         }
 
-        // --- Packing QC Terminal Functions ---
+        // --- Batch Audit Terminal Functions ---
         let currentPackingQCLogs = [];
         let currentPackingQCJob = "";
         let currentPackingQCDesc = "";
@@ -1723,7 +1730,7 @@
 
                 if (data.matched) {
                     resultBox.className = "p-3 rounded mb-3 border bg-emerald-500/10 border-emerald-500/30 text-emerald-400 text-center";
-                    statusText.innerText = "MATCH CONFIRMED: QC approved, OK to Pack";
+                    statusText.innerText = "MATCH CONFIRMED: Audit approved, OK to Pack";
                     detailText.innerText = `Job Card ${data.job_card_id} verified with code ${data.code}.`;
                     
                     currentPackingQCJob = data.job_card_id;
@@ -1745,7 +1752,7 @@
                     detailText.innerText = data.message;
                 }
             } catch (ex) {
-                showCustomAlert("Server error during Packing QC Test.");
+                showCustomAlert("Server error during Batch Audit Test.");
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalBtnText;
