@@ -623,14 +623,15 @@
                 </div>
             </form>
 
+            <!-- User table with reduced spacing (py-1.5) to show more rows -->
             <div class="max-h-64 overflow-y-auto text-xs border border-white/[0.08] rounded">
                 <table class="w-full text-left">
                     <thead>
                         <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0">
-                            <th class="px-3.5 py-2.5">User Name</th>
-                            <th class="px-3.5 py-2.5 text-center">User Type</th>
-                            <th class="px-3.5 py-2.5 text-center">Can Create Jobs?</th>
-                            <th class="px-3.5 py-2.5 text-right">Action</th>
+                            <th class="px-3 py-2">User Name</th>
+                            <th class="px-3 py-2 text-center">User Type</th>
+                            <th class="px-3 py-2 text-center">Can Create Jobs?</th>
+                            <th class="px-3 py-2 text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody id="users-table" class="divide-y divide-white/[0.04] table-text-theme"></tbody>
@@ -1660,25 +1661,25 @@
             const container = document.getElementById('users-table');
             container.innerHTML = users.map(u => `
                 <tr class="hover:bg-black/[0.02]">
-                    <td class="p-3">
+                    <td class="px-3 py-1.5">
                         <div class="flex items-center gap-2">
                             <span class="font-bold table-text-theme text-xs">${u.username}</span>
                         </div>
                         ${!u.is_active ? '<span class="text-[10px] text-red-400 font-bold block mt-0.5">(Suspended)</span>' : ''}
                         ${u.must_change_password ? '<span class="text-[10px] text-amber-400 font-bold block mt-0.5">(PW Reset Required)</span>' : ''}
                     </td>
-                    <td class="p-3 text-center">
+                    <td class="px-3 py-1.5 text-center">
                         <select onchange="toggleUserRole('${u.username}', this.value)" class="linear-input text-xs px-2 py-1 rounded cursor-pointer">
                             <option value="QC operator" ${u.role === 'QC operator' ? 'selected' : ''}>QC operator</option>
                             <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
                         </select>
                     </td>
-                    <td class="p-3 text-center">
+                    <td class="px-3 py-1.5 text-center">
                         <input type="checkbox" ${u.can_upload ? 'checked' : ''} 
                                onchange="toggleUploadPermission('${u.username}', this.checked)"
                                class="rounded cursor-pointer w-4 h-4">
                     </td>
-                    <td class="p-3 text-right">
+                    <td class="px-3 py-1.5 text-right">
                         ${u.username !== currentUser.username ? `
                             <button onclick="promptAdminResetPassword('${u.username}')" class="text-indigo-400 hover:text-indigo-300 font-bold text-xs mr-2">Reset PW</button>
                             <button onclick="toggleUserSuspension('${u.username}', ${u.is_active})" class="${u.is_active ? 'text-amber-400 hover:text-amber-300' : 'text-green-400 hover:text-green-300'} font-bold text-xs">${u.is_active ? 'Suspend' : 'Activate'}</button>
