@@ -698,7 +698,7 @@ def packing_qc_verify(
                 "description": description or "Serialized Production Batch",
                 "code": scanned_code,
                 "status": status,
-                "message": "Audit Approved, OK to Pack"
+                "message": "Final QC Approved, OK to Pack"
             })
     finally:
         release_connection(conn)
@@ -743,24 +743,46 @@ def verify_code(
                 )
                 conn.commit()
 
-            # ULTRA-FAST ATOMIC CLAIM: Try to claim and consume the pending code in a single atomic database operation
+            # 1. First, check if the code exists for this active run and is PENDING
             cur.execute("""
-                UPDATE codes 
-                SET status = 'CONSUMED', scanned_at = NOW() 
+                SELECT id, code_value 
+                FROM codes 
                 WHERE run_id = %s AND code_value = %s AND status = 'PENDING'
-                RETURNING code_value
             """, (active_run_id, scanned))
-            consumed_row = cur.fetchone()
+            pending_row = cur.fetchone()
 
-            if consumed_row:
-                msg = f"Verified: {consumed_row[0]}"
+            if pending_row:
+                code_id = pending_row[0]
+                exact_code = pending_row[1]
+
+                # Check for sequence regression (row number less than a previously scanned code)
+                cur.execute("""
+                    SELECT 1 FROM codes 
+                    WHERE run_id = %s AND status = 'CONSUMED' AND id > %s 
+                    LIMIT 1
+                """, (active_run_id, code_id))
+                out_of_sequence = cur.fetchone() is not None
+
+                # Atomically claim and consume the code
+                cur.execute("""
+                    UPDATE codes 
+                    SET status = 'CONSUMED', scanned_at = NOW() 
+                    WHERE run_id = %s AND code_value = %s AND status = 'PENDING'
+                """, (active_run_id, scanned))
+                conn.commit()
+
+                msg = f"Verified: {exact_code}"
+                if out_of_sequence:
+                    msg += " | Error: Potential file restart detected"
+
                 log_scan("PASS", msg)
                 return JSONResponse(status_code=200, content={
                     "result": "PASS", 
-                    "message": msg
+                    "message": msg,
+                    "sequence_warning": out_of_sequence
                 })
 
-            # If atomic claim failed, inspect why (Duplicate, Mismatch, or Unknown)
+            # 2. If not pending, inspect why (Duplicate, Mismatch, Blocked, or Unknown)
             cur.execute("""
                 SELECT c.run_id, j.job_card_id, c.status, c.code_value 
                 FROM codes c

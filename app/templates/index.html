@@ -1444,12 +1444,12 @@
 
             const res = await fetch('/api/verify', { method: 'POST', body });
             const data = await res.json();
-            renderResult(data.result, data.message, code);
+            renderResult(data.result, data.message, code, data.sequence_warning);
             input.value = "";
             await loadJobScanStream(activeJobId);
         }
 
-        function renderResult(result, msg, code) {
+        function renderResult(result, msg, code, sequenceWarning = false) {
             const card = document.getElementById('status-card');
             const heading = document.getElementById('status-heading');
             const detail = document.getElementById('status-detail');
@@ -1461,11 +1461,22 @@
             badge.classList.remove('hidden');
 
             if (result === 'PASS') {
-                playTone('PASS');
-                card.className = "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-green";
-                badge.className = "px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs font-bold bg-black text-[#2ed573]";
-                badge.innerText = "PASS";
-                heading.innerText = "VALIDATED";
+                if (sequenceWarning) {
+                    startAlarm();
+                } else {
+                    playTone('PASS');
+                }
+
+                card.className = sequenceWarning 
+                    ? "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-red"
+                    : "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-green";
+                
+                badge.className = sequenceWarning
+                    ? "px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs font-bold bg-black text-[#ff4757]"
+                    : "px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs font-bold bg-black text-[#2ed573]";
+                
+                badge.innerText = sequenceWarning ? "WARNING" : "PASS";
+                heading.innerText = sequenceWarning ? "VERIFIED (POTENTIAL FILE RESTART)" : "VALIDATED";
                 detail.innerText = msg;
                 
                 incrementVerifiedKPI();
