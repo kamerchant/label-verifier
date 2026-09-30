@@ -257,7 +257,7 @@
                 width: 100% !important;
                 background: #ffffff !important;
                 color: #0f172a !important;
-                padding: 20px !important;
+                padding: 15mm !important;
                 display: block !important;
             }
             .no-print {
@@ -500,15 +500,40 @@
 
             <!-- Printable report container hidden normally -->
             <div id="packing-qc-printable" class="hidden">
-                <div style="font-family: Arial, sans-serif; padding: 20px; color: #0f172a;">
-                    <h2 style="font-size: 16pt; font-weight: bold; margin-bottom: 5px;">CCL Middle East – Pakistan</h2>
-                    <h3 style="font-size: 12pt; font-weight: bold; margin-bottom: 15px;">Final Packing QC Certificate</h3>
-                    <p style="font-size: 10pt; margin-bottom: 8px;"><strong>Job Card ID:</strong> <span id="print-qc-job"></span></p>
-                    <p style="font-size: 10pt; margin-bottom: 8px;"><strong>Job Description:</strong> <span id="print-qc-desc"></span></p>
-                    <p style="font-size: 10pt; margin-bottom: 8px;"><strong>Total Codes Verified:</strong> <span id="print-qc-count"></span></p>
-                    <p style="font-size: 10pt; margin-bottom: 8px;"><strong>Report Generated At:</strong> <span id="print-qc-time"></span></p>
-                    <div style="margin-top: 20px; padding: 15px; background: #f0fdf4; border: 2px solid #16a34a; border-radius: 6px; text-align: center;">
-                        <span style="font-size: 14pt; font-weight: bold; color: #16a34a;">QC approved, OK to Pack</span>
+                <div style="font-family: Arial, sans-serif; padding: 25px; color: #0f172a; background: #ffffff;">
+                    <div style="display: flex; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #0f172a; padding-bottom: 10px;">
+                        <img src="/static/logo.jpg" alt="CCL Logo" style="height: 30px; width: auto; object-fit: contain; margin-right: 15px;" onerror="this.style.display='none';">
+                        <div>
+                            <h2 style="font-size: 14pt; font-weight: bold; margin: 0; color: #0f172a;">CCL Middle East – Pakistan</h2>
+                            <p style="font-size: 9pt; margin: 2px 0 0 0; color: #475569; font-weight: 600;">Variable Data Verification System</p>
+                        </div>
+                    </div>
+                    <h3 style="font-size: 12pt; font-weight: bold; margin-bottom: 12px; color: #0f172a;">Final Packing QC Certificate</h3>
+                    <p style="font-size: 9.5pt; margin-bottom: 5px;"><strong>Job Card ID:</strong> <span id="print-qc-job"></span></p>
+                    <p style="font-size: 9.5pt; margin-bottom: 5px;"><strong>Job Description:</strong> <span id="print-qc-desc"></span></p>
+                    <p style="font-size: 9.5pt; margin-bottom: 5px;"><strong>Total Codes Verified:</strong> <span id="print-qc-count"></span></p>
+                    <p style="font-size: 9.5pt; margin-bottom: 15px;"><strong>Report Generated At:</strong> <span id="print-qc-time"></span></p>
+
+                    <!-- Summary Chart inside Certificate -->
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="font-size: 10pt; font-weight: bold; margin-bottom: 6px; color: #0f172a;">Verified Codes Audit Summary:</h4>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 8.5pt;">
+                            <thead>
+                                <tr style="background-color: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
+                                    <th style="padding: 6px; border: 1px solid #cbd5e1; text-align: left;">Tested Code</th>
+                                    <th style="padding: 6px; border: 1px solid #cbd5e1; text-align: left;">Job Card</th>
+                                    <th style="padding: 6px; border: 1px solid #cbd5e1; text-align: left;">Inspector</th>
+                                    <th style="padding: 6px; border: 1px solid #cbd5e1; text-align: left;">Test Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody id="print-qc-table-rows">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div style="margin-top: 15px; padding: 12px; background: #f0fdf4; border: 2px solid #16a34a; border-radius: 6px; text-align: center;">
+                        <span style="font-size: 13pt; font-weight: bold; color: #16a34a;">QC approved, OK to Pack</span>
                     </div>
                 </div>
             </div>
@@ -1288,7 +1313,7 @@
             document.getElementById('packing-qc-modal').classList.remove('hidden');
             const jcInput = document.getElementById('packing-qc-job');
             jcInput.value = prefillJobId || "";
-            document.getElementById('packing-qc-code.value') || (document.getElementById('packing-qc-code').value = "");
+            document.getElementById('packing-qc-code').value = "";
             document.getElementById('packing-qc-result-box').classList.add('hidden');
             currentPackingQCLogs = [];
             currentPackingQCJob = prefillJobId || "";
@@ -1437,6 +1462,18 @@
             document.getElementById('print-qc-desc').innerText = currentPackingQCDesc || "Serialized Production Batch";
             document.getElementById('print-qc-count').innerText = currentPackingQCLogs.length.toLocaleString();
             document.getElementById('print-qc-time').innerText = new Date().toLocaleString();
+
+            // Populate summary table in print view
+            const printTableBody = document.getElementById('print-qc-table-rows');
+            printTableBody.innerHTML = currentPackingQCLogs.map(l => `
+                <tr style="border-bottom: 1px solid #cbd5e1;">
+                    <td style="padding: 5px; border: 1px solid #cbd5e1; font-weight: bold;">${l.code}</td>
+                    <td style="padding: 5px; border: 1px solid #cbd5e1;">${currentPackingQCJob}</td>
+                    <td style="padding: 5px; border: 1px solid #cbd5e1;">${l.tested_by}</td>
+                    <td style="padding: 5px; border: 1px solid #cbd5e1;">${l.tested_at}</td>
+                </tr>
+            `).join('');
+
             window.print();
         }
 
@@ -1639,7 +1676,7 @@
                         <td class="p-3 text-right text-xs table-text-theme font-semibold">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
                         <td class="p-3 text-center">
                             <button onclick="openPackingQCReportFromAdmin('${j.job_card_id}')" class="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded text-xs font-bold transition-colors cursor-pointer">
-                                Tested: ${j.packing_qc_count || 0}
+                                Verified: ${j.packing_qc_count || 0}
                             </button>
                         </td>
                         <td class="p-3 text-center">
