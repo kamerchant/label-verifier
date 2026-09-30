@@ -1031,29 +1031,33 @@
         }
 
         async function checkSession() {
-            const res = await fetch('/api/auth/me');
-            const data = await res.json();
-            if (data.authenticated) {
-                currentUser = data;
-                document.getElementById('login-modal').classList.add('hidden');
-                document.getElementById('user-display').innerText = `${data.username} (${data.role})`;
-                
-                if (data.role === 'admin') {
-                    document.getElementById('btn-users').classList.remove('hidden');
-                    document.getElementById('btn-all-jobs').classList.remove('hidden');
-                }
+            try {
+                const res = await fetch('/api/auth/me');
+                const data = await res.json();
+                if (data.authenticated) {
+                    currentUser = data;
+                    document.getElementById('login-modal').classList.add('hidden');
+                    document.getElementById('user-display').innerText = `${data.username} (${data.role})`;
+                    
+                    if (data.role === 'admin') {
+                        document.getElementById('btn-users').classList.remove('hidden');
+                        document.getElementById('btn-all-jobs').classList.remove('hidden');
+                    }
 
-                if (data.can_upload || data.role === 'admin') {
-                    document.getElementById('btn-upload').classList.remove('hidden');
+                    if (data.can_upload || data.role === 'admin') {
+                        document.getElementById('btn-upload').classList.remove('hidden');
+                    } else {
+                        document.getElementById('btn-upload').classList.add('hidden');
+                    }
+
+                    if (data.must_change_password) {
+                        forcePasswordChange();
+                    }
                 } else {
-                    document.getElementById('btn-upload').classList.add('hidden');
+                    document.getElementById('login-modal').classList.remove('hidden');
                 }
-
-                if (data.must_change_password) {
-                    forcePasswordChange();
-                }
-            } else {
-                document.getElementById('login-modal').classList.remove('hidden');
+            } catch(e) {
+                console.error("Session check failed", e);
             }
         }
 
@@ -1188,7 +1192,7 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `<span>Job Card: ${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
+            document.getElementById('active-title-card').innerHTML = `<span>Job Card: ${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>`;
             
             const displayDesc = activeJobDesc ? `${activeJobDesc} | Status: ${status}` : `Status: ${status}`;
             document.getElementById('header-job-desc').innerText = displayDesc;
@@ -1563,259 +1567,183 @@
             await openPackingQCModal(jobCardId);
         }
 
-        async function toggleUserRole(username, newRole) {
-            const body = new FormData();
-            body.append("role", newRole);
+        async function openReportModal() {
+            if (!activeJobId) return;
+            const res = await fetch(`/api/reports/${activeJobId}`);
+            if (!res.ok) return;
+            const data = await res.json();
 
-            const res = await fetch(`/api/users/${username}/role`, {
+            document.getElementById('report-job-id').innerText = `QC Report: ${data.job_card_id} (${data.status})`;
+            document.getElementById('report-desc').innerText = "VDV QC Report";
+            
+            const printTimestampStr = `Report Generated On: ${new Date().toLocaleString()}`;
+            document.getElementById('print-timestamp').innerText = printTimestampStr;
+
+            document.getElementById('download-csv-btn').onclick = () => {
+                window.location.href = `/api/reports/${activeJobId}/csv`;
+            };
+
+            const stats = document.getElementById('report-stats');
+            stats.innerHTML = `
+                <div class="linear-card p-3 rounded"><span class="block text-xs uppercase font-semibold text-slate-400">TOTAL POOL</span><span class="font-black text-lg table-text-theme">${data.total_codes.toLocaleString()}</span></div>
+                <div class="linear-card p-3 rounded"><span class="block text-xs uppercase font-semibold text-[#2ed573]">VERIFIED</span><span class="font-black text-lg table-text-theme">${data.consumed_codes.toLocaleString()}</span></div>
+            `;
+
+            const tbody = document.getElementById('report-log-rows');
+            if (data.recent_logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-400 italic">No inspection logs recorded yet</td></tr>`;
+            } else {
+                tbody.innerHTML = data.recent_logs.map(log => `
+                    <tr class="hover:bg-black/[0.02]">
+                        <td class="p-3 text-xs text-slate-300">${log.time}</td>
+                        <td class="p-3 font-bold table-text-theme text-xs">${log.user}</td>
+                        <td class="p-3 table-text-theme font-semibold text-xs">${log.code}</td>
+                        <td class="p-3 font-bold text-xs ${log.result === 'PASS' ? 'text-[#2ed573]' : 'text-red-400'}">${log.result}</td>
+                    </tr>
+                `).join('');
+            }
+
+            toggleModal('report-modal');
+        }
+
+        async function openLifecycleModal() {
+            if (!activeJobId) return;
+            const res = await fetch(`/api/jobs/${activeJobId}/lifecycle-logs`);
+            if (!res.ok) return;
+            const data = await res.json();
+
+            document.getElementById('lifecycle-job-id').innerText = `Lifecycle Audit Log: ${data.job_card_id} (${data.status})`;
+            const descText = data.description ? `Job: ${data.description}` : 'Serialized Production Batch';
+            const createdText = data.created_at ? ` | Date Created: ${data.created_at}` : '';
+            document.getElementById('lifecycle-desc').innerText = `${descText}${createdText}`;
+
+            const tbody = document.getElementById('lifecycle-log-rows');
+            if (data.logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-400 italic">No state changes recorded</td></tr>`;
+            } else {
+                tbody.innerHTML = data.logs.map(log => {
+                    let label = log.action;
+                    let colorClass = "table-text-theme";
+                    if (log.action === 'CREATED') {
+                        label = "Job Created & Ingested";
+                        colorClass = "text-indigo-400 font-bold";
+                    } else if (log.action === 'REACTIVATED_AND_UNBLOCKED') {
+                        label = "Reactivated & Unblocked";
+                        colorClass = "text-amber-400 font-bold";
+                    } else if (log.action === 'COMPLETED_AND_BLOCKED') {
+                        label = "Completed & Blocked";
+                        colorClass = "text-red-400 font-bold";
+                    } else if (log.action === 'DELETED') {
+                        label = "Soft Deleted";
+                        colorClass = "text-red-400 font-bold";
+                    }
+
+                    return `
+                        <tr class="hover:bg-black/[0.02]">
+                            <td class="p-3 text-xs text-slate-300">${log.time}</td>
+                            <td class="p-3 font-bold table-text-theme text-xs">${log.user}</td>
+                            <td class="p-3 text-xs ${colorClass}">${label}</td>
+                            <td class="p-3 text-xs text-slate-300">${log.reason || '-'}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            toggleModal('lifecycle-modal');
+        }
+
+        async function openUserModal() {
+            toggleModal('user-modal');
+            const res = await fetch('/api/users');
+            if (!res.ok) return;
+            const users = await res.json();
+            const container = document.getElementById('users-table');
+            container.innerHTML = users.map(u => `
+                <tr class="hover:bg-black/[0.02]">
+                    <td class="p-3">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold table-text-theme text-xs">${u.username}</span>
+                        </div>
+                        ${!u.is_active ? '<span class="text-[10px] text-red-400 font-bold block mt-0.5">(Suspended)</span>' : ''}
+                        ${u.must_change_password ? '<span class="text-[10px] text-amber-400 font-bold block mt-0.5">(PW Reset Required)</span>' : ''}
+                    </td>
+                    <td class="p-3 text-center">
+                        <select onchange="toggleUserRole('${u.username}', this.value)" class="linear-input text-xs px-2 py-1 rounded cursor-pointer">
+                            <option value="QC operator" ${u.role === 'QC operator' ? 'selected' : ''}>QC operator</option>
+                            <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
+                        </select>
+                    </td>
+                    <td class="p-3 text-center">
+                        <input type="checkbox" ${u.can_upload ? 'checked' : ''} 
+                               onchange="toggleUploadPermission('${u.username}', this.checked)"
+                               class="rounded cursor-pointer w-4 h-4">
+                    </td>
+                    <td class="p-3 text-right">
+                        ${u.username !== currentUser.username ? `
+                            <button onclick="promptAdminResetPassword('${u.username}')" class="text-indigo-400 hover:text-indigo-300 font-bold text-xs mr-2">Reset PW</button>
+                            <button onclick="toggleUserSuspension('${u.username}', ${u.is_active})" class="${u.is_active ? 'text-amber-400 hover:text-amber-300' : 'text-green-400 hover:text-green-300'} font-bold text-xs">${u.is_active ? 'Suspend' : 'Activate'}</button>
+                        ` : '<span class="text-xs text-slate-400 font-medium">Current User</span>'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function toggleUploadPermission(username, allowed) {
+            const body = new FormData();
+            body.append("can_upload", allowed);
+
+            const res = await fetch(`/api/users/${username}/toggle-upload`, {
                 method: 'POST',
                 body: body
             });
 
             if (res.ok) {
-                showCustomAlert(`User ${username} role updated to ${newRole}.`, "Success");
+                if (username === currentUser.username) checkSession();
                 openUserModal();
             } else {
-                const err = await res.json();
-                showCustomAlert(err.detail || "Failed to update user role.");
+                showCustomAlert("Failed to update user authorization.");
             }
         }
 
-        async function toggleUserSuspension(username, isSuspend) {
-            const actionText = isSuspend ? "suspend" : "activate";
-            const confirmed = await showCustomConfirm(`Are you sure you want to ${actionText} user '${username}'?`);
-            if (!confirmed) return;
-
-            const body = new FormData();
-            body.append("is_active", !isSuspend);
-
-            const res = await fetch(`/api/users/${username}/toggle-active`, {
-                method: 'POST',
-                body: body
-            });
-
-            if (res.ok) {
-                showCustomAlert(`User ${username} status updated.`, "Success");
-                openUserModal();
-            } else {
-                const err = await res.json();
-                showCustomAlert(err.detail || "Failed to update user status.");
-            }
-        }
-
-        function toggleSelectAllJobs(masterCheckbox) {
-            const checkboxes = document.querySelectorAll('.job-select-checkbox');
-            checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
-            updateBulkStatusButtonState();
-        }
-
-        function updateBulkStatusButtonState() {
-            const selectedCount = document.querySelectorAll('.job-select-checkbox:checked').length;
-            const btn = document.getElementById('btn-bulk-status');
-            if (selectedCount > 0) {
-                btn.disabled = false;
-                btn.classList.remove('opacity-30', 'pointer-events-none');
-            } else {
-                btn.disabled = true;
-                btn.classList.add('opacity-30', 'pointer-events-none');
-            }
-        }
-
-        function promptBulkStatusChange() {
-            const selected = Array.from(document.querySelectorAll('.job-select-checkbox:checked')).map(cb => cb.value);
-            if (selected.length === 0) {
-                showCustomAlert("Please select at least one job card to update.");
-                return;
-            }
-            document.getElementById('bulk-status-subtitle').innerText = 
-                `You are about to update the status for ${selected.length} selected job(s). Enter password to confirm.`;
-            document.getElementById('bulk-status-admin-pass').value = "";
-            document.getElementById('bulk-status-modal').classList.remove('hidden');
-        }
-
-        function closeBulkStatusModal() {
-            document.getElementById('bulk-status-modal').classList.add('hidden');
-        }
-
-        async function submitBulkStatusChange(e) {
+        async function createUser(e) {
             e.preventDefault();
-            const bulkBtn = document.getElementById('bulk-status-submit-btn');
-            const originalText = bulkBtn.innerHTML;
-            bulkBtn.disabled = true;
-            bulkBtn.innerHTML = `${spinnerSvg} Updating...`;
-
-            const selected = Array.from(document.querySelectorAll('.job-select-checkbox:checked')).map(cb => cb.value);
-            const targetStatus = document.getElementById('bulk-target-status').value;
-            const password = document.getElementById('bulk-status-admin-pass').value;
+            const userBtn = document.getElementById('create-user-btn');
+            const originalText = userBtn.innerHTML;
+            userBtn.disabled = true;
+            userBtn.innerHTML = `${spinnerSvg} Creating...`;
 
             const body = new FormData();
-            body.append("job_card_ids", JSON.stringify(selected));
-            body.append("target_status", targetStatus);
-            body.append("admin_password", password);
+            body.append("username", document.getElementById('new-user-name').value);
+            body.append("password", document.getElementById('new-user-pass').value);
+            body.append("role", document.getElementById('new-user-role').value);
+            body.append("can_upload", document.getElementById('new-user-can-upload').checked);
+            body.append("employee_name", document.getElementById('new-employee-name').value);
+            body.append("employee_id", document.getElementById('new-employee-id').value);
 
             try {
-                const res = await fetch('/api/admin/jobs/bulk-status', {
-                    method: 'POST',
-                    body: body
-                });
-
+                const res = await fetch('/api/users/create', { method: 'POST', body });
                 if (res.ok) {
-                    closeBulkStatusModal();
-                    showCustomAlert("Job statuses updated successfully.", "Success");
-                    if (activeJobId && selected.includes(activeJobId)) {
-                        selectJob(activeJobId, escape(activeJobDesc), targetStatus, 0, 0);
-                    }
-                    loadMasterJobs(currentMasterTab);
+                    e.target.reset();
+                    openUserModal();
+                    showCustomAlert("User created successfully.", "Success");
                 } else {
                     const err = await res.json();
-                    showCustomAlert(err.detail || "Job status update failed.");
+                    showCustomAlert(err.detail || "Failed to create user");
                 }
             } finally {
-                bulkBtn.disabled = false;
-                bulkBtn.innerHTML = originalText;
+                userBtn.disabled = false;
+                userBtn.innerHTML = originalText;
             }
         }
 
-        async function openMasterJobsModal() {
-            document.getElementById('master-jobs-modal').classList.remove('hidden');
-            document.getElementById('master-job-search').value = "";
-            document.getElementById('select-all-jobs').checked = false;
-            loadMasterJobs('ALL');
+        function toggleModal(id) {
+            document.getElementById(id).classList.toggle('hidden');
         }
 
-        async function loadMasterJobs(filterType) {
-            currentMasterTab = filterType;
-            ['all', 'active', 'inactive', 'completed', 'deleted'].forEach(t => {
-                const btn = document.getElementById(`filter-tab-${t}`);
-                if (btn) {
-                    if (t === filterType.toLowerCase()) {
-                        btn.className = "linear-button-primary px-3 py-1.5 rounded text-xs font-medium";
-                    } else {
-                        btn.className = "linear-button-secondary px-3 py-1.5 rounded text-xs font-medium";
-                    }
-                }
-            });
-
-            const searchInput = document.getElementById('master-job-search');
-            if (filterType === 'ALL') searchInput.placeholder = "Search in all jobs...";
-            else if (filterType === 'ACTIVE') searchInput.placeholder = "Search in active jobs...";
-            else if (filterType === 'INACTIVE') searchInput.placeholder = "Search in inactive jobs...";
-            else if (filterType === 'COMPLETED') searchInput.placeholder = "Search in completed jobs...";
-            else if (filterType === 'DELETED') searchInput.placeholder = "Search in deleted jobs...";
-
-            const res = await fetch(`/api/admin/master-jobs?status_filter=${filterType}`);
-            rawMasterJobs = await res.json();
-            renderMasterJobsTable();
-        }
-
-        function filterMasterJobs(filterType) {
-            loadMasterJobs(filterType);
-        }
-
-        function renderMasterJobsTable() {
-            const query = (document.getElementById('master-job-search').value || "").toLowerCase().trim();
-            const filtered = rawMasterJobs.filter(j => 
-                j.job_card_id.toLowerCase().includes(query) ||
-                (j.description && j.description.toLowerCase().includes(query)) ||
-                (j.status && j.status.toLowerCase().includes(query))
-            );
-
-            const tbody = document.getElementById('master-jobs-rows');
-            if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400 italic text-xs">No job cards found matching '${query}'</td></tr>`;
-                updateBulkStatusButtonState();
-                return;
-            }
-
-            tbody.innerHTML = filtered.map(j => {
-                let badgeClass = "bg-slate-800 text-slate-400 border border-slate-700";
-                if (j.status === 'ACTIVE') badgeClass = "linear-badge-pass";
-                else if (j.status === 'INACTIVE') badgeClass = "linear-badge-warn";
-                else if (j.status === 'COMPLETED') badgeClass = "bg-blue-500/10 text-blue-400 border border-blue-500/25";
-                else if (j.status === 'DELETED') badgeClass = "linear-badge-fail";
-
-                const descDetail = j.status === 'DELETED' 
-                    ? `<span class="text-red-400 font-medium block">Reason: ${j.deletion_reason}</span><span class="text-slate-400 block text-[10px]">Deleted by: ${j.deleted_by}</span>`
-                    : (j.description || '-');
-
-                const timeDetail = j.status === 'DELETED' 
-                    ? `<span class="text-slate-400 block text-[10px]">Created: ${j.created_at}</span><span class="text-red-400 block text-[10px]">Deleted: ${j.deleted_at}</span>`
-                    : `<span class="table-text-theme block text-[10px]">${j.created_at}</span>`;
-
-                return `
-                    <tr class="hover:bg-black/[0.02]">
-                        <td class="p-3 text-center">
-                            ${j.status !== 'DELETED' ? `<input type="checkbox" value="${j.job_card_id}" onchange="updateBulkStatusButtonState()" class="job-select-checkbox rounded w-4 h-4 cursor-pointer">` : ''}
-                        </td>
-                        <td class="p-3 font-bold table-text-theme">
-                            <div class="inline-flex items-center gap-1.5">
-                                <span class="truncate">${j.job_card_id}</span>
-                                <button onclick="copyJobCardNumber('${j.job_card_id}', this)" title="Copy Job Card Number" class="linear-button-secondary p-1 rounded transition-colors inline-flex items-center justify-center shrink-0">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                                    </svg>
-                                </button>
-                            </div>
-                        </td>
-                        <td class="p-3 max-w-[180px] text-xs table-text-theme opacity-90">${descDetail}</td>
-                        <td class="p-3">${timeDetail}</td>
-                        <td class="p-3 text-center">
-                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">
-                                ${j.status}
-                            </span>
-                        </td>
-                        <td class="p-3 text-right text-xs table-text-theme font-semibold">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
-                        <td class="p-3 text-center">
-                            <button onclick="openPackingQCReportFromAdmin('${j.job_card_id}')" class="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded text-xs font-bold transition-colors cursor-pointer">
-                                Verified: ${j.packing_qc_count || 0}
-                            </button>
-                        </td>
-                        <td class="p-3 text-center">
-                            <span class="text-slate-400 italic text-[11px]">Active Record</span>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-            updateBulkStatusButtonState();
-        }
-
-        // Admin Reset User Password Functions
-        function promptAdminResetPassword(username) {
-            targetResetUsername = username;
-            document.getElementById('admin-reset-pw-subtitle').innerText = `Enter a new temporary password for user '${username}'. (Min 8 chars, 1 uppercase, 1 lowercase, 1 number).`;
-            document.getElementById('admin-new-pw').value = "";
-            document.getElementById('admin-confirm-pw').value = "";
-            document.getElementById('admin-reset-pw-modal').classList.remove('hidden');
-        }
-
-        function closeAdminResetModal() {
-            targetResetUsername = null;
-            document.getElementById('admin-reset-pw-modal').classList.add('hidden');
-        }
-
-        async function submitAdminResetPassword(e) {
-            e.preventDefault();
-            if (!targetResetUsername) return;
-
-            const newPassword = document.getElementById('admin-new-pw').value;
-            const adminPassword = document.getElementById('admin-confirm-pw').value;
-
-            const body = new FormData();
-            body.append("new_password", newPassword);
-            body.append("admin_password", adminPassword);
-
-            const res = await fetch(`/api/users/${targetResetUsername}/reset-password`, {
-                method: 'POST',
-                body: body
-            });
-
-            if (res.ok) {
-                closeAdminResetModal();
-                showCustomAlert(`Password for user '${targetResetUsername}' reset successfully.`, "Success");
-                openUserModal();
-            } else {
-                const err = await res.json();
-                showCustomAlert(err.detail || "Failed to reset password.");
+        function resetInput() {
+            const input = document.getElementById('barcode-input');
+            if (input && !input.disabled) {
+                input.focus();
             }
         }
 
