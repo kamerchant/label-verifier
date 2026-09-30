@@ -743,45 +743,72 @@ def verify_code(
                 )
                 conn.commit()
 
+            # Find the code in the active run regardless of its current status
             cur.execute("""
-                SELECT id, code_value 
+                SELECT id, code_value, status 
                 FROM codes 
-                WHERE run_id = %s AND code_value = %s AND status = 'PENDING'
+                WHERE run_id = %s AND code_value = %s
             """, (active_run_id, scanned))
-            pending_row = cur.fetchone()
+            code_row = cur.fetchone()
 
-            if pending_row:
-                code_id = pending_row[0]
-                exact_code = pending_row[1]
+            if code_row:
+                code_id = code_row[0]
+                exact_code = code_row[1]
+                current_status = code_row[2]
 
+                # Check for sequence regression: is this code's row ID lower than the max row ID of previously consumed codes?
                 cur.execute("""
-                    SELECT 1 FROM codes 
-                    WHERE run_id = %s AND status = 'CONSUMED' AND id > %s 
-                    LIMIT 1
-                """, (active_run_id, code_id))
-                out_of_sequence = cur.fetchone() is not None
+                    SELECT MAX(id) FROM codes 
+                    WHERE run_id = %s AND status = 'CONSUMED'
+                """, (active_run_id,))
+                max_consumed_row = cur.fetchone()
+                max_consumed_id = max_consumed_row[0] if max_consumed_row and max_consumed_row[0] is not None else 0
 
-                cur.execute("""
-                    UPDATE codes 
-                    SET status = 'CONSUMED', scanned_at = NOW() 
-                    WHERE run_id = %s AND code_value = %s AND status = 'PENDING'
-                """, (active_run_id, scanned))
-                conn.commit()
+                out_of_sequence = max_consumed_id > 0 and code_id < max_consumed_id
 
                 if out_of_sequence:
+                    if current_status == 'PENDING':
+                        cur.execute("""
+                            UPDATE codes 
+                            SET status = 'CONSUMED', scanned_at = NOW() 
+                            WHERE run_id = %s AND id = %s
+                        """, (active_run_id, code_id))
+                        conn.commit()
+
                     eval_result = "Pass (Potential Restart)"
                     msg = f"Verified: {exact_code} | Potential file restart: row of code lower than row of a previously scanned code."
-                else:
-                    eval_result = "PASS"
+                    log_scan(eval_result, msg)
+                    return JSONResponse(status_code=200, content={
+                        "result": eval_result,
+                        "message": msg,
+                        "sequence_warning": True
+                    })
+
+                # Normal PENDING check
+                if current_status == 'PENDING':
+                    cur.execute("""
+                        UPDATE codes 
+                        SET status = 'CONSUMED', scanned_at = NOW() 
+                        WHERE run_id = %s AND id = %s
+                    """, (active_run_id, code_id))
+                    conn.commit()
+
                     msg = f"Verified: {exact_code}"
+                    log_scan("PASS", msg)
+                    return JSONResponse(status_code=200, content={
+                        "result": "PASS",
+                        "message": msg,
+                        "sequence_warning": False
+                    })
+                elif current_status == 'CONSUMED':
+                    msg = f"Code {exact_code} was verified earlier!"
+                    log_scan("DUPLICATE", msg)
+                    return JSONResponse(status_code=200, content={
+                        "result": "DUPLICATE",
+                        "message": msg
+                    })
 
-                log_scan(eval_result, msg)
-                return JSONResponse(status_code=200, content={
-                    "result": eval_result, 
-                    "message": msg,
-                    "sequence_warning": out_of_sequence
-                })
-
+            # If code not found in active run, check other runs for mismatch/unknown
             cur.execute("""
                 SELECT c.run_id, j.job_card_id, c.status, c.code_value 
                 FROM codes c
@@ -798,33 +825,13 @@ def verify_code(
                     "message": msg
                 })
 
-            matched_current = next((r for r in rows if r[0] == active_run_id), None)
-
-            if not matched_current:
-                owning_jobs = ", ".join(list(set([r[1] for r in rows])))
-                msg = f"Code Belongs to Another Job Card: {owning_jobs}"
-                log_scan("MISMATCH", msg)
-                return JSONResponse(status_code=200, content={
-                    "result": "MISMATCH", 
-                    "message": msg
-                })
-
-            run_id, owning_jc, status, exact_code = matched_current
-
-            if status == "CONSUMED":
-                msg = f"Code {exact_code} was verified earlier!"
-                log_scan("DUPLICATE", msg)
-                return JSONResponse(status_code=200, content={
-                    "result": "DUPLICATE", 
-                    "message": msg
-                })
-            elif status == "BLOCKED":
-                msg = f"Code belongs to completed/blocked job '{owning_jc}'!"
-                log_scan("BLOCKED", msg)
-                return JSONResponse(status_code=200, content={
-                    "result": "BLOCKED", 
-                    "message": msg
-                })
+            owning_jobs = ", ".join(list(set([r[1] for r in rows])))
+            msg = f"Code Belongs to Another Job Card: {owning_jobs}"
+            log_scan("MISMATCH", msg)
+            return JSONResponse(status_code=200, content={
+                "result": "MISMATCH", 
+                "message": msg
+            })
     finally:
         release_connection(conn)
 
