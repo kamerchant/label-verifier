@@ -432,6 +432,46 @@ def get_packing_qc_logs(job_card_id: str, user: dict = Depends(get_current_user)
     finally:
         release_connection(conn)
 
+@app.get("/api/jobs/{job_card_id}/lifecycle-logs")
+def get_job_lifecycle_logs(job_card_id: str, user: dict = Depends(get_current_user)):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT job_card_id, description, status, created_at 
+                FROM job_cards 
+                WHERE job_card_id = %s 
+                LIMIT 1
+            """, (job_card_id,))
+            job = cur.fetchone()
+            if not job:
+                raise HTTPException(status_code=404, detail="Job Card not found")
+
+            jc_id, description, status, created_at = job
+
+            cur.execute("""
+                SELECT action, performed_by, reason, timestamp 
+                FROM job_lifecycle_logs 
+                WHERE job_card_id = %s 
+                ORDER BY timestamp DESC
+            """, (jc_id,))
+            logs = [{
+                "action": r[0],
+                "user": r[1] or "System",
+                "reason": r[2] or "-",
+                "time": r[3].strftime("%Y-%m-%d %H:%M:%S") if r[3] else ""
+            } for r in cur.fetchall()]
+
+            return {
+                "job_card_id": jc_id,
+                "description": description or "",
+                "status": status,
+                "created_at": created_at.strftime("%Y-%m-%d %H:%M") if created_at else "",
+                "logs": logs
+            }
+    finally:
+        release_connection(conn)
+
 @app.post("/api/admin/jobs/bulk-status")
 def bulk_status_change(
     job_card_ids: str = Form(...),
@@ -617,7 +657,6 @@ def packing_qc_verify(
                     "message": f"Code '{scanned_code}' does not belong to Job Card '{jc_id}'."
                 })
 
-            # Check if this code was already validated for this job card in packing QC
             cur.execute("""
                 SELECT id FROM packing_qc_logs 
                 WHERE job_card_id = %s AND code_scanned = %s 
