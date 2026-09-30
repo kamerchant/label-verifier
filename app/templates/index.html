@@ -233,6 +233,11 @@
             display: none;
         }
 
+        /* Hide timestamp on screen by default */
+        .print-timestamp-footer {
+            display: none !important;
+        }
+
         /* Flawless Single-Page A4 Print Alignment Rules */
         @media print {
             @page {
@@ -272,6 +277,7 @@
             }
             .print-timestamp-footer {
                 display: block !important;
+                visibility: visible !important;
                 margin-top: 10px !important;
                 font-size: 8pt !important;
                 color: #475569 !important;
