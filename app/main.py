@@ -355,7 +355,7 @@ def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
         release_connection(conn)
 
 @app.get("/api/admin/master-jobs")
-def get_master_jobs_report(status_filter: str = "ALL", admin: dict = Depends(require_admin)):
+def get_master_jobs_report(status_filter: str = "ALL", user: dict = Depends(get_current_user)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -404,7 +404,7 @@ def get_master_jobs_report(status_filter: str = "ALL", admin: dict = Depends(req
         release_connection(conn)
 
 @app.get("/api/admin/packing-qc/{job_card_id}")
-def get_packing_qc_logs(job_card_id: str, admin: dict = Depends(require_admin)):
+def get_packing_qc_logs(job_card_id: str, user: dict = Depends(get_current_user)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -615,6 +615,18 @@ def packing_qc_verify(
                 return JSONResponse(status_code=200, content={
                     "matched": False,
                     "message": f"Code '{scanned_code}' does not belong to Job Card '{jc_id}'."
+                })
+
+            # Check if this code was already validated for this job card in packing QC
+            cur.execute("""
+                SELECT id FROM packing_qc_logs 
+                WHERE job_card_id = %s AND code_scanned = %s 
+                LIMIT 1
+            """, (jc_id, scanned_code))
+            if cur.fetchone():
+                return JSONResponse(status_code=200, content={
+                    "matched": False,
+                    "message": "Code was already validated against this job card"
                 })
 
             cur.execute("""

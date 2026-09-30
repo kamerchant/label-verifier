@@ -392,7 +392,7 @@
                 <!-- Stream Sidebar Filters -->
                 <div class="w-full md:w-52 bg-black/20 border-b md:border-b-0 md:border-r border-white/[0.08] p-2.5 flex md:flex-col gap-2 shrink-0 text-sm">
                     <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1 mb-0.5 hidden md:block">Filter Stream</span>
-                    <button onclick="filterStream('ALL')" id="stream-filter-all" class="flex-1 md:flex-initial text-left px-3 py-2 rounded bg-white/15 text-black font-bold transition-colors hover:bg-white/20 flex justify-between items-center text-sm">
+                    <button onclick="filterStream('ALL')" id="stream-filter-all" class="flex-1 md:flex-initial text-left px-3 py-2 rounded bg-white/20 text-black font-bold transition-colors hover:bg-white/25 flex justify-between items-center text-sm">
                         <span class="text-black font-bold">All Scans</span>
                         <span id="stream-count-all" class="text-xs bg-slate-800 px-2 py-0.5 rounded text-white font-bold">0</span>
                     </button>
@@ -461,14 +461,15 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1">Job Card Number *</label>
-                        <input type="text" id="packing-qc-job" required placeholder="e.g. JC-2026-99" class="linear-input w-full p-2.5 text-xs rounded">
+                        <input type="text" id="packing-qc-job" required oninput="handlePackingQCJobInput()" placeholder="e.g. JC-2026-99" class="linear-input w-full p-2.5 text-xs rounded">
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1">Scan or Enter Code *</label>
                         <input type="text" id="packing-qc-code" required placeholder="Scan barcode/serial code..." class="linear-input w-full p-2.5 text-xs rounded">
                     </div>
                 </div>
-                <div class="flex justify-end">
+                <div class="flex justify-between items-center">
+                    <button type="button" onclick="resetPackingQCJobLock()" class="text-xs text-slate-400 hover:text-indigo-300 underline bg-transparent border-none p-0 cursor-pointer">Unlock / Change Job Card</button>
                     <button type="submit" class="linear-button-primary px-5 py-2 rounded text-xs font-semibold">Verify & Add Code</button>
                 </div>
             </form>
@@ -1130,7 +1131,7 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `<span>Job Card: ${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
+            document.getElementById('active-title-card').innerHTML = `<span>Job Card: ${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>`;
             
             const promptDesc = status === 'ACTIVE' 
                 ? (activeJobDesc ? `${activeJobDesc} - Ready for Validation` : `Ready for Validation`)
@@ -1278,50 +1279,69 @@
             }
         }
 
-        // --- Packing QC Window Functions ---
+        // --- Packing QC Terminal Functions ---
         let currentPackingQCLogs = [];
         let currentPackingQCJob = "";
         let currentPackingQCDesc = "";
 
-        async function openPackingQCModal(prefillJobId = null) {
+        async function openPackingQCModal() {
             document.getElementById('packing-qc-modal').classList.remove('hidden');
-            document.getElementById('packing-qc-job').value = prefillJobId || "";
+            document.getElementById('packing-qc-job').value = "";
+            document.getElementById('packing-qc-job').disabled = false;
             document.getElementById('packing-qc-code').value = "";
             document.getElementById('packing-qc-result-box').classList.add('hidden');
             currentPackingQCLogs = [];
-            currentPackingQCJob = prefillJobId || "";
+            currentPackingQCJob = "";
             currentPackingQCDesc = "";
             renderPackingQCChart();
 
             const printBtn = document.getElementById('packing-qc-print-btn');
             printBtn.disabled = true;
             printBtn.classList.add('opacity-30', 'pointer-events-none');
+        }
 
-            if (prefillJobId) {
-                // Fetch existing logs for this job
-                try {
-                    const res = await fetch(`/api/admin/packing-qc/${prefillJobId}`);
-                    if (res.ok) {
-                        const data = await res.json();
-                        currentPackingQCDesc = data.description || "";
-                        currentPackingQCLogs = data.logs.map(l => ({
-                            code: l.code,
-                            tested_by: l.tested_by,
-                            tested_at: l.tested_at
-                        }));
-                        renderPackingQCChart();
-                        if (currentPackingQCLogs.length > 0) {
-                            printBtn.disabled = false;
-                            printBtn.classList.remove('opacity-30', 'pointer-events-none');
-                        }
+        async function handlePackingQCJobInput() {
+            const jcId = document.getElementById('packing-qc-job').value.trim();
+            if (!jcId) return;
+            try {
+                const res = await fetch(`/api/admin/packing-qc/${jcId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    currentPackingQCJob = jcId;
+                    currentPackingQCDesc = data.description || "";
+                    currentPackingQCLogs = data.logs.map(l => ({
+                        code: l.code,
+                        tested_by: l.tested_by,
+                        tested_at: l.tested_at
+                    }));
+                    renderPackingQCChart();
+                    if (currentPackingQCLogs.length > 0) {
+                        const printBtn = document.getElementById('packing-qc-print-btn');
+                        printBtn.disabled = false;
+                        printBtn.classList.remove('opacity-30', 'pointer-events-none');
                     }
-                } catch(e) {}
-            }
+                }
+            } catch(e) {}
+        }
+
+        function resetPackingQCJobLock() {
+            const jcInput = document.getElementById('packing-qc-job');
+            jcInput.disabled = false;
+            jcInput.value = "";
+            currentPackingQCLogs = [];
+            currentPackingQCJob = "";
+            renderPackingQCChart();
+            document.getElementById('packing-qc-result-box').classList.add('hidden');
+            const printBtn = document.getElementById('packing-qc-print-btn');
+            printBtn.disabled = true;
+            printBtn.classList.add('opacity-30', 'pointer-events-none');
+            jcInput.focus();
         }
 
         async function handlePackingQCVerify(e) {
             e.preventDefault();
-            const jcId = document.getElementById('packing-qc-job').value.trim();
+            const jcInput = document.getElementById('packing-qc-job');
+            const jcId = jcInput.value.trim();
             const code = document.getElementById('packing-qc-code').value.trim();
             if (!jcId || !code) return;
 
@@ -1345,6 +1365,9 @@
                     statusText.innerText = "MATCH CONFIRMED: QC approved, OK to Pack";
                     detailText.innerText = `Job Card ${data.job_card_id} verified with code ${data.code}.`;
                     
+                    // Lock job card input after first successful verification
+                    jcInput.disabled = true;
+
                     currentPackingQCJob = data.job_card_id;
                     currentPackingQCDesc = data.description;
                     currentPackingQCLogs.unshift({
@@ -1360,11 +1383,11 @@
                     document.getElementById('packing-qc-code').focus();
                 } else {
                     resultBox.className = "p-3 rounded mb-3 border bg-red-500/10 border-red-500/25 text-red-400 text-center";
-                    statusText.innerText = "MISMATCH / ERROR";
+                    statusText.innerText = data.message === "Code was already validated against this job card" ? "DUPLICATE VALIDATION" : "MISMATCH / ERROR";
                     detailText.innerText = data.message;
                 }
             } catch (ex) {
-                showCustomAlert("Server error during Packing QC verification.");
+                showCustomAlert("Server error during Packing QC Test.");
             }
         }
 
