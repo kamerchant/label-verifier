@@ -461,16 +461,16 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1">Job Card Number *</label>
-                        <input type="text" id="packing-qc-job" required oninput="handlePackingQCJobInput()" placeholder="e.g. JC-2026-99" class="linear-input w-full p-2.5 text-xs rounded">
+                        <input type="text" id="packing-qc-job" required onblur="lockPackingQCJobCard()" oninput="handlePackingQCJobInput()" placeholder="e.g. JC-2026-99" class="linear-input w-full p-2.5 text-xs rounded">
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1">Scan or Enter Code *</label>
-                        <input type="text" id="packing-qc-code" required placeholder="Scan barcode/serial code..." class="linear-input w-full p-2.5 text-xs rounded">
+                        <input type="text" id="packing-qc-code" required onfocus="lockPackingQCJobCard()" placeholder="" class="linear-input w-full p-2.5 text-xs rounded">
                     </div>
                 </div>
                 <div class="flex justify-between items-center">
-                    <button type="button" onclick="resetPackingQCJobLock()" class="text-xs text-slate-400 hover:text-indigo-300 underline bg-transparent border-none p-0 cursor-pointer">Unlock / Change Job Card</button>
-                    <button type="submit" class="linear-button-primary px-5 py-2 rounded text-xs font-semibold">Verify & Add Code</button>
+                    <button type="button" id="packing-qc-unlock-btn" onclick="resetPackingQCJobLock()" class="text-xs text-indigo-400 hover:text-indigo-300 underline bg-transparent border-none p-0 cursor-pointer hidden">Unlock / Change Job Card</button>
+                    <button type="submit" class="linear-button-primary px-5 py-2 rounded text-xs font-semibold ml-auto">Verify & Add Code</button>
                 </div>
             </form>
 
@@ -1321,11 +1321,13 @@
             renderPackingQCChart();
 
             const printBtn = document.getElementById('packing-qc-print-btn');
+            const unlockBtn = document.getElementById('packing-qc-unlock-btn');
             printBtn.disabled = true;
             printBtn.classList.add('opacity-30', 'pointer-events-none');
 
             if (prefillJobId) {
                 jcInput.disabled = true;
+                unlockBtn.classList.remove('hidden');
                 try {
                     const res = await fetch(`/api/admin/packing-qc/${prefillJobId}`);
                     if (res.ok) {
@@ -1345,12 +1347,16 @@
                 } catch(e) {}
             } else {
                 jcInput.disabled = false;
+                unlockBtn.classList.add('hidden');
             }
         }
 
         async function handlePackingQCJobInput() {
-            const jcId = document.getElementById('packing-qc-job').value.trim();
+            const jcInput = document.getElementById('packing-qc-job');
+            const unlockBtn = document.getElementById('packing-qc-unlock-btn');
+            const jcId = jcInput.value.trim();
             if (!jcId) return;
+            
             try {
                 const res = await fetch(`/api/admin/packing-qc/${jcId}`);
                 if (res.ok) {
@@ -1372,10 +1378,22 @@
             } catch(e) {}
         }
 
+        function lockPackingQCJobCard() {
+            const jcInput = document.getElementById('packing-qc-job');
+            const unlockBtn = document.getElementById('packing-qc-unlock-btn');
+            if (jcInput.value.trim() !== "") {
+                jcInput.disabled = true;
+                unlockBtn.classList.remove('hidden');
+                currentPackingQCJob = jcInput.value.trim();
+            }
+        }
+
         function resetPackingQCJobLock() {
             const jcInput = document.getElementById('packing-qc-job');
+            const unlockBtn = document.getElementById('packing-qc-unlock-btn');
             jcInput.disabled = false;
             jcInput.value = "";
+            unlockBtn.classList.add('hidden');
             currentPackingQCLogs = [];
             currentPackingQCJob = "";
             renderPackingQCChart();
@@ -1389,9 +1407,14 @@
         async function handlePackingQCVerify(e) {
             e.preventDefault();
             const jcInput = document.getElementById('packing-qc-job');
+            const unlockBtn = document.getElementById('packing-qc-unlock-btn');
             const jcId = jcInput.value.trim();
             const code = document.getElementById('packing-qc-code').value.trim();
             if (!jcId || !code) return;
+
+            // Ensure job card is locked upon verification
+            jcInput.disabled = true;
+            unlockBtn.classList.remove('hidden');
 
             const body = new FormData();
             body.append("job_card_id", jcId);
@@ -1413,9 +1436,6 @@
                     statusText.innerText = "MATCH CONFIRMED: QC approved, OK to Pack";
                     detailText.innerText = `Job Card ${data.job_card_id} verified with code ${data.code}.`;
                     
-                    // Lock job card input after first successful verification
-                    jcInput.disabled = true;
-
                     currentPackingQCJob = data.job_card_id;
                     currentPackingQCDesc = data.description;
                     currentPackingQCLogs.unshift({
@@ -1463,7 +1483,6 @@
             document.getElementById('print-qc-count').innerText = currentPackingQCLogs.length.toLocaleString();
             document.getElementById('print-qc-time').innerText = new Date().toLocaleString();
 
-            // Populate summary table in print view
             const printTableBody = document.getElementById('print-qc-table-rows');
             printTableBody.innerHTML = currentPackingQCLogs.map(l => `
                 <tr style="border-bottom: 1px solid #cbd5e1;">
