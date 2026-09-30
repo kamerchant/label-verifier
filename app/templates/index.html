@@ -233,18 +233,22 @@
             display: none;
         }
 
-        /* Universal Clean Printing Rules - Ensures A4 Fit */
+        /* Perfect Single-Page A4 Print Alignment Rules */
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 10mm;
+                margin: 8mm;
             }
             body, html {
                 background: #ffffff !important;
                 color: #0f172a !important;
                 height: auto !important;
+                min-height: auto !important;
+                max-height: none !important;
                 overflow: visible !important;
-                font-size: 10pt !important;
+                font-size: 9pt !important;
+                margin: 0 !important;
+                padding: 0 !important;
             }
             body * {
                 visibility: hidden !important;
@@ -253,29 +257,29 @@
             .print-brand-box {
                 display: flex !important;
                 align-items: center !important;
-                gap: 10px !important;
-                margin-bottom: 10px !important;
+                gap: 8px !important;
+                margin-bottom: 8px !important;
             }
             .print-brand-logo {
-                height: 28px !important;
+                height: 24px !important;
                 width: auto !important;
                 object-fit: contain !important;
             }
             .print-brand-text {
-                font-size: 11pt !important;
+                font-size: 10pt !important;
                 font-weight: bold !important;
                 color: #0f172a !important;
             }
             .print-timestamp-footer {
                 display: block !important;
-                margin-top: 10px !important;
-                font-size: 8.5pt !important;
+                margin-top: 8px !important;
+                font-size: 7.5pt !important;
                 color: #475569 !important;
                 border-top: 1px solid #cbd5e1 !important;
-                padding-top: 6px !important;
+                padding-top: 4px !important;
             }
             
-            /* Target any open printable modal and fit to A4 */
+            /* Target any open printable modal and force absolute top alignment */
             .printable-modal:not(.hidden), .printable-modal:not(.hidden) * {
                 visibility: visible !important;
             }
@@ -286,12 +290,16 @@
                 width: 100% !important;
                 max-width: 100% !important;
                 height: auto !important;
+                max-height: none !important;
                 background: #ffffff !important;
                 color: #0f172a !important;
-                padding: 5mm !important;
+                padding: 0 !important;
+                margin: 0 !important;
                 box-shadow: none !important;
                 border: none !important;
-                margin: 0 !important;
+                display: block !important;
+                align-items: flex-start !important;
+                justify-content: flex-start !important;
             }
             .printable-modal:not(.hidden) .linear-card {
                 background: #ffffff !important;
@@ -299,18 +307,25 @@
                 box-shadow: none !important;
                 padding: 0 !important;
                 max-height: none !important;
+                height: auto !important;
+                margin: 0 !important;
             }
             .print-table-container, .printable-modal .overflow-y-auto {
                 max-height: none !important;
                 overflow: visible !important;
             }
             table {
-                font-size: 8.5pt !important;
+                font-size: 8pt !important;
                 width: 100% !important;
                 border-collapse: collapse !important;
+                page-break-inside: auto !important;
+            }
+            tr {
+                page-break-inside: avoid !important;
+                page-break-after: auto !important;
             }
             th, td {
-                padding: 4px 6px !important;
+                padding: 3px 5px !important;
                 border: 1px solid #cbd5e1 !important;
                 color: #0f172a !important;
             }
@@ -1241,7 +1256,7 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `<span>Job Card: ${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>`;
+            document.getElementById('active-title-card').innerHTML = `<span>Job Card: ${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
             
             const displayDesc = activeJobDesc ? `${activeJobDesc} | Status: ${status}` : `Status: ${status}`;
             document.getElementById('header-job-desc').innerText = displayDesc;
