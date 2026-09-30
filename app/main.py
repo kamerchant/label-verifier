@@ -830,14 +830,14 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
                 "code": r[0],
                 "result": r[1],
                 "user": r[2],
-                "time": r[3].strftime("%Y-%m-%d %H:%M:%S")
+                "time": r[3].strftime("%Y-%m-%d %H:%M:%S") if r[3] else ""
             } for r in cur.fetchall()]
 
             return {
                 "job_card_id": jc_id,
                 "description": jc_desc or "",
                 "status": jc_status,
-                "created_at": jc_created.strftime("%Y-%m-%d %H:%M"),
+                "created_at": jc_created.strftime("%Y-%m-%d %H:%M") if jc_created else "",
                 "total_codes": totals[0],
                 "consumed_codes": totals[1],
                 "blocked_codes": totals[2],
@@ -865,7 +865,7 @@ def export_report_csv(job_card_id: str, user: dict = Depends(get_current_user)):
             writer = csv.writer(output)
             writer.writerow(["Job Card ID", "Scanned Code", "Result", "Tested By", "Timestamp"])
             for r in rows:
-                writer.writerow([job_card_id, r[0], r[1], r[2], r[3].strftime("%Y-%m-%d %H:%M:%S")])
+                writer.writerow([job_card_id, r[0], r[1], r[2], r[3].strftime("%Y-%m-%d %H:%M:%S") if r[3] else ""])
 
             output.seek(0)
             return StreamingResponse(
