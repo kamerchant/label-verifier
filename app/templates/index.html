@@ -465,12 +465,12 @@
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1">Scan or Enter Code *</label>
-                        <input type="text" id="packing-qc-code" required onfocus="lockPackingQCJobCard()" placeholder="" class="linear-input w-full p-2.5 text-xs rounded">
+                        <input type="text" id="packing-qc-code" required disabled placeholder="" class="linear-input w-full p-2.5 text-xs rounded opacity-40 cursor-not-allowed">
                     </div>
                 </div>
                 <div class="flex justify-between items-center">
                     <button type="button" id="packing-qc-unlock-btn" onclick="resetPackingQCJobLock()" class="text-xs text-indigo-400 hover:text-indigo-300 underline bg-transparent border-none p-0 cursor-pointer hidden">Unlock / Change Job Card</button>
-                    <button type="submit" class="linear-button-primary px-5 py-2 rounded text-xs font-semibold ml-auto">Verify & Add Code</button>
+                    <button type="submit" id="packing-qc-submit-btn" class="linear-button-primary px-5 py-2 rounded text-xs font-semibold ml-auto">Verify & Add Code</button>
                 </div>
             </form>
 
@@ -483,7 +483,7 @@
             <div class="flex-1 overflow-y-auto border border-white/[0.08] rounded mb-4">
                 <table class="w-full text-left text-xs whitespace-nowrap">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-[10px] table-header-theme sticky top-0">
+                        <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0">
                             <th class="p-2.5">Tested Code</th>
                             <th class="p-2.5">Job Card</th>
                             <th class="p-2.5">Inspector</th>
@@ -619,7 +619,7 @@
                         <input type="checkbox" id="new-user-can-upload" class="rounded">
                         <span>Allow creating new job cards</span>
                     </label>
-                    <button type="submit" class="linear-button-primary px-4 py-2 rounded text-xs font-semibold">Create User</button>
+                    <button type="submit" id="create-user-btn" class="linear-button-primary px-4 py-2 rounded text-xs font-semibold">Create User</button>
                 </div>
             </form>
 
@@ -787,7 +787,7 @@
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" onclick="closeBulkStatusModal()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
-                    <button type="submit" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-medium">Update Status</button>
+                    <button type="submit" id="bulk-status-submit-btn" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-medium">Update Status</button>
                 </div>
             </form>
         </div>
@@ -812,7 +812,7 @@
                     <label class="block text-xs font-medium text-slate-400 mb-1">Password</label>
                     <input type="password" id="login-pass" required class="linear-input w-full p-2.5 text-sm rounded">
                 </div>
-                <button type="submit" class="linear-button-primary w-full py-2.5 rounded text-sm font-semibold mt-2">Sign In</button>
+                <button type="submit" id="login-submit-btn" class="linear-button-primary w-full py-2.5 rounded text-sm font-semibold mt-2">Sign In</button>
             </form>
         </div>
     </div>
@@ -849,7 +849,7 @@
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" id="pw-cancel-btn" onclick="toggleModal('pw-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
-                    <button type="submit" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold">Save Password</button>
+                    <button type="submit" id="pw-submit-btn" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold">Save Password</button>
                 </div>
             </form>
         </div>
@@ -898,6 +898,8 @@
         let confirmCallback = null;
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        const spinnerSvg = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
 
         // --- Theme Initializer & Toggle ---
         function initTheme() {
@@ -1064,6 +1066,11 @@
 
         async function handleLogin(e) {
             e.preventDefault();
+            const loginBtn = document.getElementById('login-submit-btn');
+            const originalText = loginBtn.innerHTML;
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = `${spinnerSvg} Signing In...`;
+
             const body = new FormData();
             body.append("username", document.getElementById('login-user').value);
             body.append("password", document.getElementById('login-pass').value);
@@ -1086,25 +1093,38 @@
                 }
             } catch (ex) {
                 showCustomAlert("Network error or server unreachable");
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = originalText;
             }
         }
 
         async function handleChangePassword(e) {
             e.preventDefault();
+            const pwBtn = document.getElementById('pw-submit-btn');
+            const originalText = pwBtn.innerHTML;
+            pwBtn.disabled = true;
+            pwBtn.innerHTML = `${spinnerSvg} Saving...`;
+
             const body = new FormData();
             body.append("old_password", document.getElementById('pw-current').value);
             body.append("new_password", document.getElementById('pw-new').value);
 
-            const res = await fetch('/api/auth/change-password', { method: 'POST', body });
-            if (res.ok) {
-                showCustomAlert("Password updated successfully!", "Success");
-                document.getElementById('pw-modal').classList.add('hidden');
-                document.getElementById('pw-current').value = "";
-                document.getElementById('pw-new').value = "";
-                checkSession();
-            } else {
-                const err = await res.json();
-                showCustomAlert(err.detail || "Password change failed");
+            try {
+                const res = await fetch('/api/auth/change-password', { method: 'POST', body });
+                if (res.ok) {
+                    showCustomAlert("Password updated successfully!", "Success");
+                    document.getElementById('pw-modal').classList.add('hidden');
+                    document.getElementById('pw-current').value = "";
+                    document.getElementById('pw-new').value = "";
+                    checkSession();
+                } else {
+                    const err = await res.json();
+                    showCustomAlert(err.detail || "Password change failed");
+                }
+            } finally {
+                pwBtn.disabled = false;
+                pwBtn.innerHTML = originalText;
             }
         }
 
@@ -1312,8 +1332,11 @@
         async function openPackingQCModal(prefillJobId = null) {
             document.getElementById('packing-qc-modal').classList.remove('hidden');
             const jcInput = document.getElementById('packing-qc-job');
+            const codeInput = document.getElementById('packing-qc-code');
+            const unlockBtn = document.getElementById('packing-qc-unlock-btn');
+
             jcInput.value = prefillJobId || "";
-            document.getElementById('packing-qc-code').value = "";
+            codeInput.value = "";
             document.getElementById('packing-qc-result-box').classList.add('hidden');
             currentPackingQCLogs = [];
             currentPackingQCJob = prefillJobId || "";
@@ -1321,13 +1344,14 @@
             renderPackingQCChart();
 
             const printBtn = document.getElementById('packing-qc-print-btn');
-            const unlockBtn = document.getElementById('packing-qc-unlock-btn');
             printBtn.disabled = true;
             printBtn.classList.add('opacity-30', 'pointer-events-none');
 
             if (prefillJobId) {
                 jcInput.disabled = true;
                 unlockBtn.classList.remove('hidden');
+                codeInput.disabled = false;
+                codeInput.classList.remove('opacity-40', 'cursor-not-allowed');
                 try {
                     const res = await fetch(`/api/admin/packing-qc/${prefillJobId}`);
                     if (res.ok) {
@@ -1348,14 +1372,21 @@
             } else {
                 jcInput.disabled = false;
                 unlockBtn.classList.add('hidden');
+                codeInput.disabled = true;
+                codeInput.classList.add('opacity-40', 'cursor-not-allowed');
             }
         }
 
         async function handlePackingQCJobInput() {
             const jcInput = document.getElementById('packing-qc-job');
+            const codeInput = document.getElementById('packing-qc-code');
             const unlockBtn = document.getElementById('packing-qc-unlock-btn');
             const jcId = jcInput.value.trim();
-            if (!jcId) return;
+            if (!jcId) {
+                codeInput.disabled = true;
+                codeInput.classList.add('opacity-40', 'cursor-not-allowed');
+                return;
+            }
             
             try {
                 const res = await fetch(`/api/admin/packing-qc/${jcId}`);
@@ -1373,6 +1404,12 @@
                         const printBtn = document.getElementById('packing-qc-print-btn');
                         printBtn.disabled = false;
                         printBtn.classList.remove('opacity-30', 'pointer-events-none');
+                        
+                        jcInput.disabled = true;
+                        unlockBtn.classList.remove('hidden');
+                        codeInput.disabled = false;
+                        codeInput.classList.remove('opacity-40', 'cursor-not-allowed');
+                        codeInput.focus();
                     }
                 }
             } catch(e) {}
@@ -1380,20 +1417,28 @@
 
         function lockPackingQCJobCard() {
             const jcInput = document.getElementById('packing-qc-job');
+            const codeInput = document.getElementById('packing-qc-code');
             const unlockBtn = document.getElementById('packing-qc-unlock-btn');
             if (jcInput.value.trim() !== "") {
                 jcInput.disabled = true;
                 unlockBtn.classList.remove('hidden');
                 currentPackingQCJob = jcInput.value.trim();
+                codeInput.disabled = false;
+                codeInput.classList.remove('opacity-40', 'cursor-not-allowed');
+                codeInput.focus();
             }
         }
 
         function resetPackingQCJobLock() {
             const jcInput = document.getElementById('packing-qc-job');
+            const codeInput = document.getElementById('packing-qc-code');
             const unlockBtn = document.getElementById('packing-qc-unlock-btn');
             jcInput.disabled = false;
             jcInput.value = "";
             unlockBtn.classList.add('hidden');
+            codeInput.disabled = true;
+            codeInput.classList.add('opacity-40', 'cursor-not-allowed');
+            codeInput.value = "";
             currentPackingQCLogs = [];
             currentPackingQCJob = "";
             renderPackingQCChart();
@@ -1407,10 +1452,16 @@
         async function handlePackingQCVerify(e) {
             e.preventDefault();
             const jcInput = document.getElementById('packing-qc-job');
+            const codeInput = document.getElementById('packing-qc-code');
             const unlockBtn = document.getElementById('packing-qc-unlock-btn');
+            const submitBtn = document.getElementById('packing-qc-submit-btn');
             const jcId = jcInput.value.trim();
-            const code = document.getElementById('packing-qc-code').value.trim();
+            const code = codeInput.value.trim();
             if (!jcId || !code) return;
+
+            const originalBtnText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `${spinnerSvg} Verifying...`;
 
             // Ensure job card is locked upon verification
             jcInput.disabled = true;
@@ -1447,8 +1498,8 @@
 
                     printBtn.disabled = false;
                     printBtn.classList.remove('opacity-30', 'pointer-events-none');
-                    document.getElementById('packing-qc-code').value = "";
-                    document.getElementById('packing-qc-code').focus();
+                    codeInput.value = "";
+                    codeInput.focus();
                 } else {
                     resultBox.className = "p-3 rounded mb-3 border bg-red-500/10 border-red-500/25 text-red-400 text-center";
                     statusText.innerText = data.message === "Code was already validated against this job card" ? "DUPLICATE VALIDATION" : "MISMATCH / ERROR";
@@ -1456,6 +1507,9 @@
                 }
             } catch (ex) {
                 showCustomAlert("Server error during Packing QC Test.");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
             }
         }
 
@@ -1577,6 +1631,11 @@
 
         async function submitBulkStatusChange(e) {
             e.preventDefault();
+            const bulkBtn = document.getElementById('bulk-status-submit-btn');
+            const originalText = bulkBtn.innerHTML;
+            bulkBtn.disabled = true;
+            bulkBtn.innerHTML = `${spinnerSvg} Updating...`;
+
             const selected = Array.from(document.querySelectorAll('.job-select-checkbox:checked')).map(cb => cb.value);
             const targetStatus = document.getElementById('bulk-target-status').value;
             const password = document.getElementById('bulk-status-admin-pass').value;
@@ -1586,21 +1645,26 @@
             body.append("target_status", targetStatus);
             body.append("admin_password", password);
 
-            const res = await fetch('/api/admin/jobs/bulk-status', {
-                method: 'POST',
-                body: body
-            });
+            try {
+                const res = await fetch('/api/admin/jobs/bulk-status', {
+                    method: 'POST',
+                    body: body
+                });
 
-            if (res.ok) {
-                closeBulkStatusModal();
-                showCustomAlert("Job statuses updated successfully.", "Success");
-                if (activeJobId && selected.includes(activeJobId)) {
-                    selectJob(activeJobId, escape(activeJobDesc), targetStatus, 0, 0);
+                if (res.ok) {
+                    closeBulkStatusModal();
+                    showCustomAlert("Job statuses updated successfully.", "Success");
+                    if (activeJobId && selected.includes(activeJobId)) {
+                        selectJob(activeJobId, escape(activeJobDesc), targetStatus, 0, 0);
+                    }
+                    loadMasterJobs(currentMasterTab);
+                } else {
+                    const err = await res.json();
+                    showCustomAlert(err.detail || "Job status update failed.");
                 }
-                loadMasterJobs(currentMasterTab);
-            } else {
-                const err = await res.json();
-                showCustomAlert(err.detail || "Job status update failed.");
+            } finally {
+                bulkBtn.disabled = false;
+                bulkBtn.innerHTML = originalText;
             }
         }
 
@@ -2082,6 +2146,11 @@
 
         async function createUser(e) {
             e.preventDefault();
+            const userBtn = document.getElementById('create-user-btn');
+            const originalText = userBtn.innerHTML;
+            userBtn.disabled = true;
+            userBtn.innerHTML = `${spinnerSvg} Creating...`;
+
             const body = new FormData();
             body.append("username", document.getElementById('new-user-name').value);
             body.append("password", document.getElementById('new-user-pass').value);
@@ -2090,14 +2159,19 @@
             body.append("employee_name", document.getElementById('new-employee-name').value);
             body.append("employee_id", document.getElementById('new-employee-id').value);
 
-            const res = await fetch('/api/users/create', { method: 'POST', body });
-            if (res.ok) {
-                e.target.reset();
-                openUserModal();
-                showCustomAlert("User created successfully.", "Success");
-            } else {
-                const err = await res.json();
-                showCustomAlert(err.detail || "Failed to create user");
+            try {
+                const res = await fetch('/api/users/create', { method: 'POST', body });
+                if (res.ok) {
+                    e.target.reset();
+                    openUserModal();
+                    showCustomAlert("User created successfully.", "Success");
+                } else {
+                    const err = await res.json();
+                    showCustomAlert(err.detail || "Failed to create user");
+                }
+            } finally {
+                userBtn.disabled = false;
+                userBtn.innerHTML = originalText;
             }
         }
 
