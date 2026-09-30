@@ -61,8 +61,8 @@ def get_current_user(request: Request):
                 row = cur.fetchone()
                 if not row or not row[0]:
                     raise HTTPException(status_code=403, detail="Account is suspended or deactivated.")
-                data["username"] = row[1]  # Preserve exact original casing from DB
-                data["role"] = row[2]      # Ensure live role from DB
+                data["username"] = row[1]
+                data["role"] = row[2]
         finally:
             release_connection(conn)
         return data
@@ -366,7 +366,8 @@ def get_master_jobs_report(status_filter: str = "ALL", admin: dict = Depends(req
                        j.created_at,
                        j.deleted_by,
                        j.deleted_at,
-                       j.deletion_reason
+                       j.deletion_reason,
+                       (SELECT COUNT(*) FROM packing_qc_logs p WHERE p.job_card_id = j.job_card_id) as packing_qc_count
                 FROM job_cards j
                 LEFT JOIN codes c ON j.run_id = c.run_id
             """
@@ -396,8 +397,38 @@ def get_master_jobs_report(status_filter: str = "ALL", admin: dict = Depends(req
                 "created_at": r[6].strftime("%Y-%m-%d %H:%M") if r[6] else "",
                 "deleted_by": r[7] or "",
                 "deleted_at": r[8].strftime("%Y-%m-%d %H:%M") if r[8] else "",
-                "deletion_reason": r[9] or ""
+                "deletion_reason": r[9] or "",
+                "packing_qc_count": r[10] or 0
             } for r in rows]
+    finally:
+        release_connection(conn)
+
+@app.get("/api/admin/packing-qc/{job_card_id}")
+def get_packing_qc_logs(job_card_id: str, admin: dict = Depends(require_admin)):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT job_card_id, code_scanned, tested_by, tested_at 
+                FROM packing_qc_logs 
+                WHERE job_card_id = %s 
+                ORDER BY tested_at DESC
+            """, (job_card_id,))
+            rows = cur.fetchall()
+            
+            cur.execute("SELECT description FROM job_cards WHERE job_card_id = %s LIMIT 1", (job_card_id,))
+            jc_row = cur.fetchone()
+            desc = jc_row[0] if jc_row else ""
+
+            return {
+                "job_card_id": job_card_id,
+                "description": desc or "Serialized Production Batch",
+                "logs": [{
+                    "code": r[1],
+                    "tested_by": r[2],
+                    "tested_at": r[3].strftime("%Y-%m-%d %H:%M:%S") if r[3] else ""
+                } for r in rows]
+            }
     finally:
         release_connection(conn)
 
@@ -585,6 +616,13 @@ def packing_qc_verify(
                     "matched": False,
                     "message": f"Code '{scanned_code}' does not belong to Job Card '{jc_id}'."
                 })
+
+            # Save to packing_qc_logs
+            cur.execute("""
+                INSERT INTO packing_qc_logs (job_card_id, code_scanned, tested_by) 
+                VALUES (%s, %s, %s)
+            """, (jc_id, scanned_code, user["username"]))
+            conn.commit()
 
             return JSONResponse(status_code=200, content={
                 "matched": True,

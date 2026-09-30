@@ -451,29 +451,50 @@
 
     <!-- Packing QC Modal -->
     <div id="packing-qc-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
-        <div class="linear-card p-5 sm:p-6 rounded-lg max-w-lg w-full shadow-2xl flex flex-col">
-            <div class="flex justify-between items-center mb-4 border-b border-white/[0.08] pb-3">
-                <h3 class="text-lg font-bold table-text-theme">Final Packing QC Check</h3>
-                <button onclick="toggleModal('packing-qc-modal')" class="linear-button-secondary px-3 py-1 text-xs rounded">Close Window</button>
+        <div class="linear-card p-5 sm:p-6 rounded-lg max-w-2xl w-full shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center mb-4 border-b border-white/[0.08] pb-3 shrink-0">
+                <h3 class="text-lg font-bold table-text-theme">Final Packing QC Terminal</h3>
+                <button onclick="toggleModal('packing-qc-modal')" class="linear-button-secondary px-3 py-1 text-xs rounded">Close</button>
             </div>
             
-            <form onsubmit="handlePackingQCVerify(event)" class="space-y-3.5 mb-4">
-                <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Job Card Number *</label>
-                    <input type="text" id="packing-qc-job" required placeholder="e.g. JC-2026-99" class="linear-input w-full p-2.5 text-sm rounded">
+            <form onsubmit="handlePackingQCVerify(event)" class="space-y-3 mb-4 shrink-0">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Job Card Number *</label>
+                        <input type="text" id="packing-qc-job" required placeholder="e.g. JC-2026-99" class="linear-input w-full p-2.5 text-xs rounded">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Scan or Enter Code *</label>
+                        <input type="text" id="packing-qc-code" required placeholder="Scan barcode/serial code..." class="linear-input w-full p-2.5 text-xs rounded">
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Scan or Enter Code *</label>
-                    <input type="text" id="packing-qc-code" required placeholder="Scan barcode/serial code..." class="linear-input w-full p-2.5 text-sm rounded">
-                </div>
-                <div class="flex gap-2 pt-1">
-                    <button type="submit" class="linear-button-primary flex-1 py-2.5 rounded text-sm font-semibold">Verify Match</button>
+                <div class="flex justify-end">
+                    <button type="submit" class="linear-button-primary px-5 py-2 rounded text-xs font-semibold">Verify & Add Code</button>
                 </div>
             </form>
 
-            <div id="packing-qc-result-box" class="p-4 rounded mb-4 hidden border text-center">
-                <span id="packing-qc-status-text" class="font-bold block text-base mb-1"></span>
+            <div id="packing-qc-result-box" class="p-3 rounded mb-3 hidden border text-center shrink-0">
+                <span id="packing-qc-status-text" class="font-bold block text-sm mb-0.5"></span>
                 <span id="packing-qc-detail-text" class="text-xs block"></span>
+            </div>
+
+            <!-- Tested Codes Audit Chart / Table -->
+            <div class="flex-1 overflow-y-auto border border-white/[0.08] rounded mb-4">
+                <table class="w-full text-left text-xs whitespace-nowrap">
+                    <thead>
+                        <tr class="border-b border-white/[0.08] text-[10px] table-header-theme sticky top-0">
+                            <th class="p-2.5">Tested Code</th>
+                            <th class="p-2.5">Job Card</th>
+                            <th class="p-2.5">Inspector</th>
+                            <th class="p-2.5">Test Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody id="packing-qc-chart-rows" class="divide-y divide-white/[0.04] table-text-theme">
+                        <tr>
+                            <td colspan="4" class="p-4 text-center text-slate-400 italic">No codes verified in this session yet</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
 
             <!-- Printable report container hidden normally -->
@@ -483,15 +504,15 @@
                     <h3 style="font-size: 12pt; font-weight: bold; margin-bottom: 15px;">Final Packing QC Certificate</h3>
                     <p style="font-size: 10pt; margin-bottom: 8px;"><strong>Job Card ID:</strong> <span id="print-qc-job"></span></p>
                     <p style="font-size: 10pt; margin-bottom: 8px;"><strong>Job Description:</strong> <span id="print-qc-desc"></span></p>
-                    <p style="font-size: 10pt; margin-bottom: 8px;"><strong>Tested Code:</strong> <span id="print-qc-code"></span></p>
-                    <p style="font-size: 10pt; margin-bottom: 8px;"><strong>Tested At:</strong> <span id="print-qc-time"></span></p>
+                    <p style="font-size: 10pt; margin-bottom: 8px;"><strong>Total Codes Verified:</strong> <span id="print-qc-count"></span></p>
+                    <p style="font-size: 10pt; margin-bottom: 8px;"><strong>Report Generated At:</strong> <span id="print-qc-time"></span></p>
                     <div style="margin-top: 20px; padding: 15px; background: #f0fdf4; border: 2px solid #16a34a; border-radius: 6px; text-align: center;">
                         <span style="font-size: 14pt; font-weight: bold; color: #16a34a;">QC approved, OK to Pack</span>
                     </div>
                 </div>
             </div>
 
-            <div class="flex justify-end gap-2 pt-2 border-t border-white/[0.08]">
+            <div class="flex justify-end gap-2 pt-2 border-t border-white/[0.08] shrink-0">
                 <button type="button" onclick="toggleModal('packing-qc-modal')" class="linear-button-secondary px-4 py-2 rounded text-xs font-medium">Close</button>
                 <button type="button" id="packing-qc-print-btn" onclick="printPackingQC()" disabled class="linear-button-primary px-4 py-2 rounded text-xs font-semibold opacity-30 pointer-events-none">Print Report</button>
             </div>
@@ -500,7 +521,7 @@
 
     <!-- Job Control Center Modal -->
     <div id="master-jobs-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
-        <div class="linear-card p-4 sm:p-6 rounded-lg max-w-5xl w-full shadow-2xl flex flex-col max-h-[92vh]">
+        <div class="linear-card p-4 sm:p-6 rounded-lg max-w-6xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="flex justify-between items-center mb-3 border-b border-white/[0.08] pb-3">
                 <div>
                     <h3 class="text-lg font-black modal-title-theme">Job Control Center</h3>
@@ -536,6 +557,7 @@
                             <th class="px-3.5 py-2.5">Timestamps</th>
                             <th class="px-3.5 py-2.5 text-center">Status</th>
                             <th class="px-3.5 py-2.5 text-right">Codes Verified</th>
+                            <th class="px-3.5 py-2.5 text-center">Packing QC</th>
                             <th class="px-3.5 py-2.5 text-center">Action</th>
                         </tr>
                     </thead>
@@ -1257,17 +1279,44 @@
         }
 
         // --- Packing QC Window Functions ---
-        let currentPackingQCData = null;
+        let currentPackingQCLogs = [];
+        let currentPackingQCJob = "";
+        let currentPackingQCDesc = "";
 
-        function openPackingQCModal() {
+        async function openPackingQCModal(prefillJobId = null) {
             document.getElementById('packing-qc-modal').classList.remove('hidden');
-            document.getElementById('packing-qc-job').value = "";
+            document.getElementById('packing-qc-job').value = prefillJobId || "";
             document.getElementById('packing-qc-code').value = "";
             document.getElementById('packing-qc-result-box').classList.add('hidden');
+            currentPackingQCLogs = [];
+            currentPackingQCJob = prefillJobId || "";
+            currentPackingQCDesc = "";
+            renderPackingQCChart();
+
             const printBtn = document.getElementById('packing-qc-print-btn');
             printBtn.disabled = true;
             printBtn.classList.add('opacity-30', 'pointer-events-none');
-            currentPackingQCData = null;
+
+            if (prefillJobId) {
+                // Fetch existing logs for this job
+                try {
+                    const res = await fetch(`/api/admin/packing-qc/${prefillJobId}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        currentPackingQCDesc = data.description || "";
+                        currentPackingQCLogs = data.logs.map(l => ({
+                            code: l.code,
+                            tested_by: l.tested_by,
+                            tested_at: l.tested_at
+                        }));
+                        renderPackingQCChart();
+                        if (currentPackingQCLogs.length > 0) {
+                            printBtn.disabled = false;
+                            printBtn.classList.remove('opacity-30', 'pointer-events-none');
+                        }
+                    }
+                } catch(e) {}
+            }
         }
 
         async function handlePackingQCVerify(e) {
@@ -1292,34 +1341,80 @@
                 resultBox.classList.remove('hidden');
 
                 if (data.matched) {
-                    resultBox.className = "p-4 rounded mb-4 border bg-emerald-500/10 border-emerald-500/30 text-emerald-400 text-center";
+                    resultBox.className = "p-3 rounded mb-3 border bg-emerald-500/10 border-emerald-500/30 text-emerald-400 text-center";
                     statusText.innerText = "MATCH CONFIRMED: QC approved, OK to Pack";
-                    detailText.innerText = `Job Card ${data.job_card_id} matches code ${data.code}.`;
+                    detailText.innerText = `Job Card ${data.job_card_id} verified with code ${data.code}.`;
                     
-                    currentPackingQCData = data;
+                    currentPackingQCJob = data.job_card_id;
+                    currentPackingQCDesc = data.description;
+                    currentPackingQCLogs.unshift({
+                        code: data.code,
+                        tested_by: currentUser ? currentUser.username : "Operator",
+                        tested_at: new Date().toLocaleString()
+                    });
+                    renderPackingQCChart();
+
                     printBtn.disabled = false;
                     printBtn.classList.remove('opacity-30', 'pointer-events-none');
+                    document.getElementById('packing-qc-code').value = "";
+                    document.getElementById('packing-qc-code').focus();
                 } else {
-                    resultBox.className = "p-4 rounded mb-4 border bg-red-500/10 border-red-500/25 text-red-400 text-center";
+                    resultBox.className = "p-3 rounded mb-3 border bg-red-500/10 border-red-500/25 text-red-400 text-center";
                     statusText.innerText = "MISMATCH / ERROR";
                     detailText.innerText = data.message;
-
-                    currentPackingQCData = null;
-                    printBtn.disabled = true;
-                    printBtn.classList.add('opacity-30', 'pointer-events-none');
                 }
             } catch (ex) {
                 showCustomAlert("Server error during Packing QC verification.");
             }
         }
 
+        function renderPackingQCChart() {
+            const tbody = document.getElementById('packing-qc-chart-rows');
+            if (currentPackingQCLogs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">No codes verified in this session yet</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = currentPackingQCLogs.map(l => `
+                <tr class="hover:bg-black/[0.02]">
+                    <td class="p-2.5 font-bold table-text-theme">${l.code}</td>
+                    <td class="p-2.5 table-text-theme">${currentPackingQCJob}</td>
+                    <td class="p-2.5 table-text-theme">${l.tested_by}</td>
+                    <td class="p-2.5 text-slate-400">${l.tested_at}</td>
+                </tr>
+            `).join('');
+        }
+
         function printPackingQC() {
-            if (!currentPackingQCData) return;
-            document.getElementById('print-qc-job').innerText = currentPackingQCData.job_card_id;
-            document.getElementById('print-qc-desc').innerText = currentPackingQCData.description;
-            document.getElementById('print-qc-code').innerText = currentPackingQCData.code;
+            if (currentPackingQCLogs.length === 0) return;
+            document.getElementById('print-qc-job').innerText = currentPackingQCJob;
+            document.getElementById('print-qc-desc').innerText = currentPackingQCDesc || "Serialized Production Batch";
+            document.getElementById('print-qc-count').innerText = currentPackingQCLogs.length.toLocaleString();
             document.getElementById('print-qc-time').innerText = new Date().toLocaleString();
             window.print();
+        }
+
+        async function openPackingQCReportFromAdmin(jobCardId) {
+            try {
+                const res = await fetch(`/api/admin/packing-qc/${jobCardId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    currentPackingQCJob = data.job_card_id;
+                    currentPackingQCDesc = data.description;
+                    currentPackingQCLogs = data.logs.map(l => ({
+                        code: l.code,
+                        tested_by: l.tested_by,
+                        tested_at: l.tested_at
+                    }));
+                    if (currentPackingQCLogs.length > 0) {
+                        printPackingQC();
+                    } else {
+                        showCustomAlert(`No Packing QC records found for job ${jobCardId}.`);
+                    }
+                }
+            } catch(e) {
+                showCustomAlert("Failed to load Packing QC report.");
+            }
         }
 
         async function toggleUserRole(username, newRole) {
@@ -1471,7 +1566,7 @@
 
             const tbody = document.getElementById('master-jobs-rows');
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400 italic text-xs">No job cards found matching '${query}'</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400 italic text-xs">No job cards found matching '${query}'</td></tr>`;
                 updateBulkStatusButtonState();
                 return;
             }
@@ -1506,7 +1601,7 @@
                                 </button>
                             </div>
                         </td>
-                        <td class="p-3 max-w-[200px] text-xs table-text-theme opacity-90">${descDetail}</td>
+                        <td class="p-3 max-w-[180px] text-xs table-text-theme opacity-90">${descDetail}</td>
                         <td class="p-3">${timeDetail}</td>
                         <td class="p-3 text-center">
                             <span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">
@@ -1514,6 +1609,11 @@
                             </span>
                         </td>
                         <td class="p-3 text-right text-xs table-text-theme font-semibold">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
+                        <td class="p-3 text-center">
+                            <button onclick="openPackingQCReportFromAdmin('${j.job_card_id}')" class="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded text-xs font-bold transition-colors">
+                                Tested: ${j.packing_qc_count || 0}
+                            </button>
+                        </td>
                         <td class="p-3 text-center">
                             <span class="text-slate-400 italic text-[11px]">Active Record</span>
                         </td>
@@ -1854,9 +1954,9 @@
                     <td class="p-3">
                         <div class="flex items-center gap-2">
                             <span class="font-bold table-text-theme text-xs">${u.username}</span>
-                            ${!u.is_active ? '<span class="text-[10px] text-red-400 font-bold block mt-0.5">(Suspended)</span>' : ''}
-                            ${u.must_change_password ? '<span class="text-[10px] text-amber-400 font-bold block mt-0.5">(PW Reset Required)</span>' : ''}
                         </div>
+                        ${!u.is_active ? '<span class="text-[10px] text-red-400 font-bold block mt-0.5">(Suspended)</span>' : ''}
+                        ${u.must_change_password ? '<span class="text-[10px] text-amber-400 font-bold block mt-0.5">(PW Reset Required)</span>' : ''}
                     </td>
                     <td class="p-3 text-center">
                         <select onchange="toggleUserRole('${u.username}', this.value)" class="linear-input text-xs px-2 py-1 rounded cursor-pointer">
