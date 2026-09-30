@@ -764,8 +764,7 @@ def verify_code(
                 max_consumed_row = cur.fetchone()
                 max_consumed_id = max_consumed_row[0] if max_consumed_row and max_consumed_row[0] is not None else 0
 
-                # STEP 1: PRIORITIZE FILE RESTART / OUT OF SEQUENCE CHECK
-                # If current code's row ID is lower than the highest previously consumed row ID
+                # STEP 1: CHECK IF ROW IS LOWER THAN PREVIOUSLY SCANNED ROW (POTENTIAL FILE RESTART)
                 out_of_sequence = max_consumed_id > 0 and code_id < max_consumed_id
 
                 if out_of_sequence:
@@ -804,7 +803,7 @@ def verify_code(
                         "sequence_warning": False
                     })
                 
-                # STEP 3: DUPLICATE SCAN (Already Consumed in correct sequence)
+                # STEP 3: DUPLICATE SCAN
                 elif current_status == 'CONSUMED':
                     eval_result = "DUPLICATE"
                     msg = f"Code {exact_code} was verified earlier!"
