@@ -233,11 +233,11 @@
             display: none;
         }
 
-        /* Perfect Single-Page A4 Print Alignment Rules */
+        /* Flawless Single-Page A4 Print Alignment Rules */
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 8mm;
+                margin: 10mm;
             }
             html, body {
                 background: #ffffff !important;
@@ -246,7 +246,7 @@
                 min-height: 0 !important;
                 max-height: none !important;
                 overflow: visible !important;
-                font-size: 9pt !important;
+                font-size: 9.5pt !important;
                 margin: 0 !important;
                 padding: 0 !important;
             }
@@ -266,23 +266,20 @@
                 object-fit: contain !important;
             }
             .print-brand-text {
-                font-size: 10pt !important;
+                font-size: 11pt !important;
                 font-weight: bold !important;
                 color: #0f172a !important;
             }
             .print-timestamp-footer {
                 display: block !important;
-                margin-top: 8px !important;
-                font-size: 7.5pt !important;
+                margin-top: 10px !important;
+                font-size: 8pt !important;
                 color: #475569 !important;
                 border-top: 1px solid #cbd5e1 !important;
-                padding-top: 4px !important;
+                padding-top: 6px !important;
             }
             
-            /* Target any open printable modal and force absolute top alignment */
-            .printable-modal:not(.hidden), .printable-modal:not(.hidden) * {
-                visibility: visible !important;
-            }
+            /* Hide regular modal chrome, show only printable modals or packing printable */
             .printable-modal:not(.hidden) {
                 position: absolute !important;
                 left: 0 !important;
@@ -290,14 +287,17 @@
                 width: 100% !important;
                 max-width: 100% !important;
                 height: auto !important;
-                max-height: none !important;
                 background: #ffffff !important;
                 color: #0f172a !important;
                 padding: 0 !important;
                 margin: 0 !important;
                 box-shadow: none !important;
                 border: none !important;
+                visibility: visible !important;
                 display: block !important;
+            }
+            .printable-modal:not(.hidden) * {
+                visibility: visible !important;
             }
             .printable-modal:not(.hidden) .linear-card {
                 background: #ffffff !important;
@@ -308,12 +308,31 @@
                 height: auto !important;
                 margin: 0 !important;
             }
+
+            /* Specifically handle Packing QC terminal print container */
+            #packing-qc-printable {
+                display: block !important;
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                visibility: visible !important;
+                background: #ffffff !important;
+                color: #0f172a !important;
+            }
+            #packing-qc-printable * {
+                visibility: visible !important;
+            }
+            #packing-qc-modal:not(.hidden) > div > *:not(#packing-qc-printable) {
+                display: none !important;
+            }
+
             .print-table-container, .printable-modal .overflow-y-auto {
                 max-height: none !important;
                 overflow: visible !important;
             }
             table {
-                font-size: 8pt !important;
+                font-size: 8.5pt !important;
                 width: 100% !important;
                 border-collapse: collapse !important;
                 page-break-inside: auto !important;
@@ -323,7 +342,7 @@
                 page-break-after: auto !important;
             }
             th, td {
-                padding: 3px 5px !important;
+                padding: 4px 6px !important;
                 border: 1px solid #cbd5e1 !important;
                 color: #0f172a !important;
             }
@@ -547,7 +566,7 @@
             </div>
 
             <!-- Tested Codes Audit Chart / Table -->
-            <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded mb-4">
+            <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded mb-4 no-print">
                 <table class="w-full text-left text-xs whitespace-nowrap">
                     <thead>
                         <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0">
