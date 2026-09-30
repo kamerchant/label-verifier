@@ -743,7 +743,6 @@ def verify_code(
                 )
                 conn.commit()
 
-            # 1. First, check if the code exists for this active run and is PENDING
             cur.execute("""
                 SELECT id, code_value 
                 FROM codes 
@@ -755,7 +754,6 @@ def verify_code(
                 code_id = pending_row[0]
                 exact_code = pending_row[1]
 
-                # Check for sequence regression (row number less than a previously scanned code)
                 cur.execute("""
                     SELECT 1 FROM codes 
                     WHERE run_id = %s AND status = 'CONSUMED' AND id > %s 
@@ -763,7 +761,6 @@ def verify_code(
                 """, (active_run_id, code_id))
                 out_of_sequence = cur.fetchone() is not None
 
-                # Atomically claim and consume the code
                 cur.execute("""
                     UPDATE codes 
                     SET status = 'CONSUMED', scanned_at = NOW() 
@@ -773,7 +770,7 @@ def verify_code(
 
                 msg = f"Verified: {exact_code}"
                 if out_of_sequence:
-                    msg += " | Error: Potential file restart detected"
+                    msg += " | Potential file restart: row of code lower than row of a previously scanned code."
 
                 log_scan("PASS", msg)
                 return JSONResponse(status_code=200, content={
@@ -782,7 +779,6 @@ def verify_code(
                     "sequence_warning": out_of_sequence
                 })
 
-            # 2. If not pending, inspect why (Duplicate, Mismatch, Blocked, or Unknown)
             cur.execute("""
                 SELECT c.run_id, j.job_card_id, c.status, c.code_value 
                 FROM codes c
