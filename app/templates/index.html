@@ -1178,18 +1178,16 @@
             document.getElementById('job-search').value = "";
             document.getElementById('active-title-card').innerHTML = `<span>Job Card: ${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
             
-            const promptDesc = status === 'ACTIVE' 
-                ? (activeJobDesc ? `${activeJobDesc} - Ready for Validation` : `Ready for Validation`)
-                : `Job is ${status} (Scanning Disabled)`;
-            
-            document.getElementById('header-job-desc').innerText = promptDesc;
+            // Display description and status under Job ID
+            const displayDesc = activeJobDesc ? `${activeJobDesc} | Status: ${status}` : `Status: ${status}`;
+            document.getElementById('header-job-desc').innerText = displayDesc;
 
             const card = document.getElementById('status-card');
             card.className = status === 'ACTIVE' 
                 ? "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-yellow"
                 : "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-red";
             
-            document.getElementById('status-heading').innerText = promptDesc;
+            document.getElementById('status-heading').innerText = status === 'ACTIVE' ? "Ready for Validation" : `Job is ${status} (Scanning Disabled)`;
             document.getElementById('status-detail').innerText = "";
             document.getElementById('status-last-code').classList.add('hidden');
             document.getElementById('status-badge').classList.add('hidden');
@@ -1463,7 +1461,6 @@
             submitBtn.disabled = true;
             submitBtn.innerHTML = `${spinnerSvg} Verifying...`;
 
-            // Ensure job card is locked upon verification
             jcInput.disabled = true;
             unlockBtn.classList.remove('hidden');
 
