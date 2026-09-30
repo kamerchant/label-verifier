@@ -355,7 +355,7 @@ def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
         release_connection(conn)
 
 @app.get("/api/admin/master-jobs")
-def get_master_jobs_report(status_filter: str = "ALL", user: dict = Depends(get_current_user)):
+def get_master_jobs_report(status_filter: str = "ALL", admin: dict = Depends(require_admin)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:

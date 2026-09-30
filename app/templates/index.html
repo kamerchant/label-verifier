@@ -233,7 +233,7 @@
             display: none;
         }
 
-        /* Packing QC Print Styles */
+        /* Universal Clean Printing Rules */
         @media print {
             @page {
                 size: A4 portrait;
@@ -242,23 +242,54 @@
             body, html {
                 background: #ffffff !important;
                 color: #0f172a !important;
+                height: auto !important;
+                overflow: visible !important;
             }
             body * {
                 visibility: hidden !important;
                 background: transparent !important;
             }
-            #packing-qc-printable, #packing-qc-printable * {
+            .print-brand-box {
+                display: flex !important;
+                align-items: center !important;
+                gap: 10px !important;
+                margin-bottom: 12px !important;
+            }
+            .print-brand-logo {
+                height: 32px !important;
+                width: auto !important;
+                object-fit: contain !important;
+            }
+            .print-brand-text {
+                font-size: 11pt !important;
+                font-weight: bold !important;
+                color: #0f172a !important;
+            }
+            .print-timestamp-footer {
+                display: block !important;
+                margin-top: 15px !important;
+                font-size: 9pt !important;
+                color: #475569 !important;
+                border-top: 1px solid #cbd5e1 !important;
+                padding-top: 8px !important;
+            }
+            
+            /* Target any open printable modal */
+            .printable-modal:not(.hidden), .printable-modal:not(.hidden) * {
                 visibility: visible !important;
             }
-            #packing-qc-printable {
+            .printable-modal:not(.hidden) {
                 position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
                 width: 100% !important;
+                height: auto !important;
                 background: #ffffff !important;
                 color: #0f172a !important;
-                padding: 15mm !important;
+                padding: 10mm !important;
                 display: block !important;
+                box-shadow: none !important;
+                border: none !important;
             }
             .no-print {
                 display: none !important;
@@ -450,14 +481,14 @@
     </footer>
 
     <!-- Packing QC Modal -->
-    <div id="packing-qc-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
+    <div id="packing-qc-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-2xl w-full shadow-2xl flex flex-col max-h-[90vh]">
             <div class="flex justify-between items-center mb-4 border-b border-white/[0.08] pb-3 shrink-0">
                 <h3 class="text-lg font-bold table-text-theme">Final Packing QC Terminal</h3>
-                <button onclick="toggleModal('packing-qc-modal')" class="linear-button-secondary px-3 py-1 text-xs rounded">Close</button>
+                <button onclick="toggleModal('packing-qc-modal')" class="linear-button-secondary px-3 py-1 text-xs rounded no-print">Close</button>
             </div>
             
-            <form onsubmit="handlePackingQCVerify(event)" class="space-y-3 mb-4 shrink-0">
+            <form onsubmit="handlePackingQCVerify(event)" class="space-y-3 mb-4 shrink-0 no-print">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1">Job Card Number *</label>
@@ -474,7 +505,7 @@
                 </div>
             </form>
 
-            <div id="packing-qc-result-box" class="p-3 rounded mb-3 hidden border text-center shrink-0">
+            <div id="packing-qc-result-box" class="p-3 rounded mb-3 hidden border text-center shrink-0 no-print">
                 <span id="packing-qc-status-text" class="font-bold block text-sm mb-0.5"></span>
                 <span id="packing-qc-detail-text" class="text-xs block"></span>
             </div>
@@ -500,13 +531,10 @@
 
             <!-- Printable report container hidden normally -->
             <div id="packing-qc-printable" class="hidden">
-                <div style="font-family: Arial, sans-serif; padding: 25px; color: #0f172a; background: #ffffff;">
-                    <div style="display: flex; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #0f172a; padding-bottom: 10px;">
-                        <img src="/static/logo.jpg" alt="CCL Logo" style="height: 30px; width: auto; object-fit: contain; margin-right: 15px;" onerror="this.style.display='none';">
-                        <div>
-                            <h2 style="font-size: 14pt; font-weight: bold; margin: 0; color: #0f172a;">CCL Middle East – Pakistan</h2>
-                            <p style="font-size: 9pt; margin: 2px 0 0 0; color: #475569; font-weight: 600;">Variable Data Verification System</p>
-                        </div>
+                <div style="font-family: Arial, sans-serif; padding: 20px; color: #0f172a; background: #ffffff;">
+                    <div class="print-brand-box">
+                        <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.style.display='none';">
+                        <span class="print-brand-text">CCL Middle East – Pakistan</span>
                     </div>
                     <h3 style="font-size: 12pt; font-weight: bold; margin-bottom: 12px; color: #0f172a;">Final Packing QC Certificate</h3>
                     <p style="font-size: 9.5pt; margin-bottom: 5px;"><strong>Job Card ID:</strong> <span id="print-qc-job"></span></p>
@@ -514,7 +542,6 @@
                     <p style="font-size: 9.5pt; margin-bottom: 5px;"><strong>Total Codes Verified:</strong> <span id="print-qc-count"></span></p>
                     <p style="font-size: 9.5pt; margin-bottom: 15px;"><strong>Report Generated At:</strong> <span id="print-qc-time"></span></p>
 
-                    <!-- Summary Chart inside Certificate -->
                     <div style="margin-bottom: 15px;">
                         <h4 style="font-size: 10pt; font-weight: bold; margin-bottom: 6px; color: #0f172a;">Verified Codes Audit Summary:</h4>
                         <table style="width: 100%; border-collapse: collapse; font-size: 8.5pt;">
@@ -527,7 +554,6 @@
                                 </tr>
                             </thead>
                             <tbody id="print-qc-table-rows">
-                                <!-- Populated dynamically -->
                             </tbody>
                         </table>
                     </div>
@@ -538,7 +564,7 @@
                 </div>
             </div>
 
-            <div class="flex justify-end gap-2 pt-2 border-t border-white/[0.08] shrink-0">
+            <div class="flex justify-end gap-2 pt-2 border-t border-white/[0.08] shrink-0 no-print">
                 <button type="button" onclick="toggleModal('packing-qc-modal')" class="linear-button-secondary px-4 py-2 rounded text-xs font-medium">Close</button>
                 <button type="button" id="packing-qc-print-btn" onclick="printPackingQC()" disabled class="linear-button-primary px-4 py-2 rounded text-xs font-semibold opacity-30 pointer-events-none">Print Report</button>
             </div>
@@ -1335,128 +1361,6 @@
                     showCustomAlert(err.detail || "Action failed");
                 }
             }
-        }
-
-        async function handleScan(e) {
-            e.preventDefault();
-            const input = document.getElementById('barcode-input');
-            const code = input.value.trim();
-            if (!code) return;
-            if (!activeJobId) {
-                showCustomAlert("Please select an active Job Card from the search bar first.");
-                input.value = "";
-                return;
-            }
-
-            const body = new FormData();
-            body.append("job_card_id", activeJobId);
-            body.append("code", code);
-
-            const res = await fetch('/api/verify', { method: 'POST', body });
-            const data = await res.json();
-            renderResult(data.result, data.message, code);
-            input.value = "";
-        }
-
-        function renderResult(result, msg, code) {
-            const card = document.getElementById('status-card');
-            const heading = document.getElementById('status-heading');
-            const detail = document.getElementById('status-detail');
-            const badge = document.getElementById('status-badge');
-            const codeDisplay = document.getElementById('status-last-code');
-
-            codeDisplay.innerText = code;
-            codeDisplay.classList.remove('hidden');
-            badge.classList.remove('hidden');
-
-            if (result === 'PASS') {
-                playTone('PASS');
-                card.className = "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-green";
-                badge.className = "px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs font-bold bg-black text-[#2ed573]";
-                badge.innerText = "PASS";
-                heading.innerText = "VALIDATED";
-                detail.innerText = msg;
-                
-                incrementVerifiedKPI();
-            } else {
-                playTone('FAIL');
-                card.className = "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-red";
-                badge.className = "px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs font-bold bg-black text-[#ff4757]";
-                badge.innerText = "ERROR";
-                heading.innerText = msg;
-                detail.innerText = "";
-            }
-
-            const now = new Date().toLocaleTimeString();
-            allScans.unshift({ code, result, time: now, user: currentUser.username });
-            renderStreamTable();
-        }
-
-        function incrementVerifiedKPI() {
-            const consumedElem = document.getElementById('kpi-consumed');
-            const pendingElem = document.getElementById('kpi-pending');
-            
-            let consumed = parseInt(consumedElem.innerText.replace(/,/g, '')) || 0;
-            let pending = parseInt(pendingElem.innerText.replace(/,/g, '')) || 0;
-
-            consumed += 1;
-            pending = Math.max(0, pending - 1);
-
-            consumedElem.innerText = consumed.toLocaleString();
-            pendingElem.innerText = pending.toLocaleString();
-        }
-
-        function filterStream(type) {
-            streamFilter = type;
-            ['all', 'pass', 'error'].forEach(t => {
-                const btn = document.getElementById(`stream-filter-${t}`);
-                if (btn) {
-                    if (t === type.toLowerCase()) {
-                        btn.className = "flex-1 md:flex-initial text-left px-3 py-2 rounded bg-white/20 text-black font-bold transition-colors hover:bg-white/25 flex justify-between items-center text-sm";
-                    } else {
-                        btn.className = "flex-1 md:flex-initial text-left px-3 py-2 rounded text-black font-semibold hover:bg-white/10 transition-colors flex justify-between items-center text-sm";
-                    }
-                }
-            });
-            renderStreamTable();
-        }
-
-        function renderStreamTable() {
-            const tbody = document.getElementById('recent-scans-rows');
-            
-            let countAll = allScans.length;
-            let countPass = allScans.filter(s => s.result === 'PASS').length;
-            let countError = allScans.filter(s => s.result !== 'PASS').length;
-
-            document.getElementById('stream-count-all').innerText = countAll;
-            document.getElementById('stream-count-pass').innerText = countPass;
-            document.getElementById('stream-count-error').innerText = countError;
-
-            let filteredScans = allScans;
-            if (streamFilter === 'PASS') {
-                filteredScans = allScans.filter(s => s.result === 'PASS');
-            } else if (streamFilter === 'ERROR') {
-                filteredScans = allScans.filter(s => s.result !== 'PASS');
-            }
-
-            if (filteredScans.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-6 text-center text-slate-400 italic text-xs">No scan events found for this filter</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = filteredScans.map((s, idx) => {
-                let badge = "linear-badge-pass";
-                if (s.result !== 'PASS') badge = "linear-badge-fail";
-                return `
-                    <tr class="hover:bg-black/[0.02]">
-                        <td class="px-3.5 py-2 text-slate-300 text-xs font-medium">#${allScans.length - allScans.indexOf(s)}</td>
-                        <td class="px-3.5 py-2 font-bold text-sm table-text-theme">${s.code}</td>
-                        <td class="px-3.5 py-2"><span class="${badge} px-2 py-0.5 rounded text-xs font-bold">${s.result}</span></td>
-                        <td class="px-3.5 py-2 text-slate-200 text-xs">${s.time}</td>
-                        <td class="px-3.5 py-2 text-xs table-text-theme font-medium">${s.user}</td>
-                    </tr>
-                `;
-            }).join('');
         }
 
         // --- Packing QC Terminal Functions ---
