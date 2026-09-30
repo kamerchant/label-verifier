@@ -4,17 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CCL ME - PK - Variable Data Verification</title>
-    <!-- Browser Tab Favicon / System Logo -->
     <link rel="icon" type="image/png" href="/static/ico.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Universal Font Standardization across all elements */
         *, body, input, button, select, textarea, table, th, td {
             font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
             letter-spacing: -0.01em;
         }
 
-        /* Responsive base typography & iOS zoom prevention */
         html {
             font-size: 16px;
         }
@@ -87,7 +84,6 @@
             border: 1px solid rgba(255, 165, 2, 0.35);
         }
 
-        /* Obsidian Theme Headings and Table Text Adaptation */
         .modal-title-theme {
             color: #f8fafc !important;
         }
@@ -233,7 +229,6 @@
             display: none;
         }
 
-        /* Hide timestamp on screen by default */
         .print-timestamp-footer {
             display: none !important;
         }
@@ -242,7 +237,7 @@
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 10mm;
+                margin: 0;
             }
             html, body {
                 background: #ffffff !important;
@@ -270,11 +265,6 @@
                 width: auto !important;
                 object-fit: contain !important;
             }
-            .print-brand-text {
-                font-size: 11pt !important;
-                font-weight: bold !important;
-                color: #0f172a !important;
-            }
             .print-timestamp-footer {
                 display: block !important;
                 visibility: visible !important;
@@ -285,7 +275,6 @@
                 padding-top: 6px !important;
             }
             
-            /* Target any open printable modal and force absolute top alignment */
             .printable-modal:not(.hidden) {
                 position: absolute !important;
                 left: 0 !important;
@@ -295,7 +284,8 @@
                 height: auto !important;
                 background: #ffffff !important;
                 color: #0f172a !important;
-                padding: 0 !important;
+                padding: 10mm !important;
+                box-sizing: border-box !important;
                 margin: 0 !important;
                 box-shadow: none !important;
                 border: none !important;
@@ -315,7 +305,6 @@
                 margin: 0 !important;
             }
 
-            /* Explicitly box-border stats blocks in print mode */
             #report-stats > div {
                 border: 1px solid #cbd5e1 !important;
                 background: #f8fafc !important;
@@ -323,13 +312,14 @@
                 border-radius: 4px !important;
             }
 
-            /* Specifically handle Packing QC terminal print container */
             #packing-qc-printable {
                 display: block !important;
                 position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
                 width: 100% !important;
+                padding: 10mm !important;
+                box-sizing: border-box !important;
                 visibility: visible !important;
                 background: #ffffff !important;
                 color: #0f172a !important;
@@ -381,7 +371,7 @@
         </div>
 
         <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto py-0.5 sm:py-0">
-            <button onclick="openPackingQCModal()" class="linear-button-primary px-2.5 py-1.5 rounded text-xs font-semibold whitespace-nowrap min-h-[34px] flex items-center bg-emerald-600 hover:bg-emerald-500">Batch Audit</button>
+            <button onclick="openPackingQCModal()" class="linear-button-primary px-2.5 py-1.5 rounded text-xs font-semibold whitespace-nowrap min-h-[34px] flex items-center bg-emerald-600 hover:bg-emerald-500">Final QC</button>
             <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-2.5 py-1.5 rounded text-xs font-semibold whitespace-nowrap min-h-[34px] flex items-center">Create Job</button>
             <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-2.5 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center">Job Control Center</button>
             <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-2.5 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center">User Admin</button>
@@ -549,11 +539,11 @@
         </div>
     </footer>
 
-    <!-- Batch Audit Modal -->
+    <!-- Final QC Modal -->
     <div id="packing-qc-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-2xl w-full shadow-2xl flex flex-col max-h-[90vh]">
             <div class="flex justify-between items-center mb-4 border-b border-white/[0.08] pb-3 shrink-0">
-                <h3 class="text-lg font-bold table-text-theme">Batch Audit Console</h3>
+                <h3 class="text-lg font-bold table-text-theme">Final QC Terminal</h3>
                 <button onclick="toggleModal('packing-qc-modal')" class="linear-button-secondary px-3 py-1 text-xs rounded no-print">Close</button>
             </div>
             
@@ -603,9 +593,8 @@
                 <div style="font-family: Arial, sans-serif; padding: 15px; color: #0f172a; background: #ffffff;">
                     <div class="print-brand-box">
                         <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.style.display='none';">
-                        <span class="print-brand-text">CCL Middle East – Pakistan</span>
                     </div>
-                    <h3 style="font-size: 14pt; font-weight: bold; text-align: center; margin-bottom: 12px; color: #0f172a;">Batch Audit Certificate</h3>
+                    <h3 style="font-size: 14pt; font-weight: bold; text-align: center; margin-bottom: 12px; color: #0f172a;">Final QC Certificate</h3>
                     
                     <div style="border: 1px solid #cbd5e1; padding: 10px; border-radius: 4px; margin-bottom: 12px; background: #f8fafc;">
                         <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Job Card:</strong> <span id="print-qc-job"></span></p>
@@ -633,7 +622,7 @@
                     </div>
 
                     <div style="margin-top: 10px; padding: 10px; background: #f0fdf4; border: 2px solid #16a34a; border-radius: 6px; text-align: center;">
-                        <span style="font-size: 11pt; font-weight: bold; color: #16a34a;">Audit Approved, OK to Pack</span>
+                        <span style="font-size: 11pt; font-weight: bold; color: #16a34a;">QC Approved, OK to Pack</span>
                     </div>
                 </div>
             </div>
@@ -683,7 +672,7 @@
                             <th class="px-3.5 py-2.5">Timestamps</th>
                             <th class="px-3.5 py-2.5 text-center">Status</th>
                             <th class="px-3.5 py-2.5 text-right">Codes Verified</th>
-                            <th class="px-3.5 py-2.5 text-center">Batch Audit</th>
+                            <th class="px-3.5 py-2.5 text-center">Final QC</th>
                             <th class="px-3.5 py-2.5 text-center">Action</th>
                         </tr>
                     </thead>
@@ -745,7 +734,6 @@
             <div class="report-header-box mb-3 border-b border-white/[0.08] pb-3">
                 <div class="print-brand-box">
                     <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
-                    <span class="print-brand-text">CCL Middle East – Pakistan</span>
                 </div>
                 <div class="flex justify-between items-start no-print mb-2">
                     <div></div>
@@ -789,7 +777,6 @@
             <div class="report-header-box mb-3 border-b border-white/[0.08] pb-2">
                 <div class="print-brand-box">
                     <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
-                    <span class="print-brand-text">CCL Middle East – Pakistan</span>
                 </div>
                 <div class="flex justify-between items-start no-print mb-2">
                     <div></div>
@@ -1013,7 +1000,6 @@
 
         const spinnerSvg = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
 
-        // --- Theme Initializer & Toggle ---
         function initTheme() {
             const savedTheme = localStorage.getItem('vdv_theme') || 'obsidian';
             if (savedTheme === 'parchment') {
@@ -1284,7 +1270,6 @@
             list.classList.remove('hidden');
         }
 
-        // Auto-dismiss Job Search dropdown on outside click
         document.addEventListener('click', (e) => {
             const searchInput = document.getElementById('job-search');
             const jobList = document.getElementById('job-list');
@@ -1416,7 +1401,6 @@
 
         async function loadJobScanStream(jobCardId) {
             try {
-                // Uses the lightweight recent-scans endpoint to keep verification fast
                 const res = await fetch(`/api/jobs/${encodeURIComponent(jobCardId)}/recent-scans?limit=50`);
                 if (res.ok) {
                     const data = await res.json();
@@ -1554,14 +1538,13 @@
                 return;
             }
 
-            // Slice to top 50 rows to keep DOM lightweight and eliminate table rendering lag
             const visibleScans = filteredScans.slice(0, 50);
 
             tbody.innerHTML = visibleScans.map((s, idx) => {
                 let badge = s.result === 'PASS' ? "linear-badge-pass" : "linear-badge-fail";
                 return `
                     <tr class="hover:bg-black/[0.02]">
-                        <td class="px-3.5 py-2 text-slate-300 text-xs font-medium">#${allScans.length - allScans.indexOf(s)}</td>
+                        <td class="px-3.5 py-2 text-slate-300 text-xs font-medium">#${allScans.length - idx}</td>
                         <td class="px-3.5 py-2 font-bold text-sm table-text-theme">${s.code}</td>
                         <td class="px-3.5 py-2"><span class="${badge} px-2 py-0.5 rounded text-xs font-bold">${s.result}</span></td>
                         <td class="px-3.5 py-2 text-slate-200 text-xs">${s.time}</td>
@@ -1571,7 +1554,7 @@
             }).join('');
         }
 
-        // --- Batch Audit Terminal Functions ---
+        // --- Final QC Terminal Functions ---
         let currentPackingQCLogs = [];
         let currentPackingQCJob = "";
         let currentPackingQCDesc = "";
@@ -1730,7 +1713,7 @@
 
                 if (data.matched) {
                     resultBox.className = "p-3 rounded mb-3 border bg-emerald-500/10 border-emerald-500/30 text-emerald-400 text-center";
-                    statusText.innerText = "MATCH CONFIRMED: Audit approved, OK to Pack";
+                    statusText.innerText = "MATCH CONFIRMED: Final QC approved, OK to Pack";
                     detailText.innerText = `Job Card ${data.job_card_id} verified with code ${data.code}.`;
                     
                     currentPackingQCJob = data.job_card_id;
@@ -1752,7 +1735,7 @@
                     detailText.innerText = data.message;
                 }
             } catch (ex) {
-                showCustomAlert("Server error during Batch Audit Test.");
+                showCustomAlert("Server error during Final QC Test.");
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalBtnText;
@@ -1985,7 +1968,6 @@
             }
         }
 
-        // Job Control Center functions
         async function openMasterJobsModal() {
             const modal = document.getElementById('master-jobs-modal');
             if (modal) {
