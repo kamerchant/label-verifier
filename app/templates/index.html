@@ -209,7 +209,6 @@
             background-color: #c53030 !important;
             color: #ffffff !important;
         }
-        /* Dedicated Pink state for potential file restart warnings */
         .status-state-pink {
             background-color: #ff69b4 !important;
             color: #000000 !important;
@@ -251,7 +250,6 @@
             }
             body * {
                 visibility: hidden !important;
-                background: transparent !important;
             }
             .print-brand-box {
                 display: flex !important;
@@ -268,7 +266,7 @@
                 display: block !important;
                 visibility: visible !important;
                 position: absolute !important;
-                bottom: 15mm !important;
+                bottom: 12mm !important;
                 left: 10mm !important;
                 right: 10mm !important;
                 font-size: 8pt !important;
@@ -278,13 +276,15 @@
                 text-align: left !important;
             }
             
-            .printable-modal:not(.hidden) {
+            #packing-qc-modal:not(.hidden),
+            #report-modal:not(.hidden),
+            #lifecycle-modal:not(.hidden) {
                 position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
                 width: 100% !important;
                 max-width: 100% !important;
-                height: auto !important;
+                height: 100% !important;
                 background: #ffffff !important;
                 color: #0f172a !important;
                 padding: 10mm !important;
@@ -295,43 +295,23 @@
                 visibility: visible !important;
                 display: block !important;
             }
-            .printable-modal:not(.hidden) * {
-                visibility: visible !important;
-            }
-            .printable-modal:not(.hidden) .linear-card {
-                background: #ffffff !important;
-                border: none !important;
-                box-shadow: none !important;
-                padding: 0 !important;
-                max-height: none !important;
-                height: auto !important;
-                margin: 0 !important;
-            }
 
-            #report-stats > div {
-                border: 1px solid #cbd5e1 !important;
-                background: #f8fafc !important;
-                padding: 8px !important;
-                border-radius: 4px !important;
+            #packing-qc-modal:not(.hidden) *,
+            #report-modal:not(.hidden) *,
+            #lifecycle-modal:not(.hidden) * {
+                visibility: visible !important;
             }
 
             #packing-qc-printable {
                 display: block !important;
-                position: absolute !important;
-                left: 0 !important;
-                top: 0 !important;
-                width: 100% !important;
-                height: 100% !important;
-                padding: 10mm !important;
-                box-sizing: border-box !important;
+                position: static !important;
                 visibility: visible !important;
                 background: #ffffff !important;
                 color: #0f172a !important;
+                width: 100% !important;
             }
-            #packing-qc-printable * {
-                visibility: visible !important;
-            }
-            #packing-qc-modal:not(.hidden) > div > *:not(#packing-qc-printable) {
+
+            #packing-qc-modal > div > *:not(#packing-qc-printable) {
                 display: none !important;
             }
 
@@ -629,7 +609,7 @@
                             <span style="font-size: 11pt; font-weight: bold; color: #16a34a;">Final QC Approved, OK to Pack</span>
                         </div>
                     </div>
-                    <div id="print-timestamp" class="print-timestamp-footer"></div>
+                    <div id="print-qc-footer-timestamp" class="print-timestamp-footer"></div>
                 </div>
             </div>
 
@@ -813,7 +793,7 @@
                     <tbody id="lifecycle-log-rows" class="divide-y divide-white/[0.04] table-text-theme text-xs"></tbody>
                 </table>
             </div>
-            <div id="print-timestamp" class="print-timestamp-footer"></div>
+            <div id="print-lifecycle-timestamp" class="print-timestamp-footer"></div>
         </div>
     </div>
 
@@ -1000,6 +980,7 @@
         let alarmCount = 0;
         let alarmInterval = null;
         let searchDebounceTimer = null;
+        let pendingUploadFormData = null;
 
         let confirmCallback = null;
 
@@ -1789,7 +1770,7 @@
             document.getElementById('print-qc-desc').innerText = currentPackingQCDesc || "Serialized Production Batch";
             document.getElementById('print-qc-status').innerText = "Completed";
             document.getElementById('print-qc-count').innerText = currentPackingQCLogs.length.toLocaleString();
-            document.getElementById('print-qc-time').innerText = `Report Generated On: ${new Date().toLocaleString()}`;
+            document.getElementById('print-qc-footer-timestamp').innerText = `Report Generated On: ${new Date().toLocaleString()}`;
 
             const printTableBody = document.getElementById('print-qc-table-rows');
             printTableBody.innerHTML = currentPackingQCLogs.map(l => `
@@ -1801,7 +1782,10 @@
                 </tr>
             `).join('');
 
+            const printable = document.getElementById('packing-qc-printable');
+            printable.classList.remove('hidden');
             window.print();
+            printable.classList.add('hidden');
         }
 
         async function openPackingQCReportFromAdmin(jobCardId) {
@@ -1860,7 +1844,7 @@
             document.getElementById('lifecycle-desc-text').innerText = data.description || '-';
             
             const printTimestampStr = `Report Generated On: ${new Date().toLocaleString()}`;
-            document.getElementById('print-timestamp').innerText = printTimestampStr;
+            document.getElementById('print-lifecycle-timestamp').innerText = printTimestampStr;
 
             const tbody = document.getElementById('lifecycle-log-rows');
             if (data.logs.length === 0) {
@@ -1933,6 +1917,85 @@
             `).join('');
         }
 
+        async function toggleUserRole(username, role) {
+            const body = new FormData();
+            body.append('role', role);
+            try {
+                const res = await fetch(`/api/users/${encodeURIComponent(username)}/role`, { method: 'POST', body });
+                if (res.ok) {
+                    showCustomAlert(`Role updated to ${role} for ${username}`, "Success");
+                    openUserModal();
+                } else {
+                    const err = await res.json();
+                    showCustomAlert(err.detail || "Failed to update role");
+                    openUserModal();
+                }
+            } catch(ex) {
+                showCustomAlert("Network error");
+            }
+        }
+
+        async function toggleUserSuspension(username, isActive) {
+            const action = isActive ? "suspend" : "activate";
+            const confirmed = await showCustomConfirm(`Are you sure you want to ${action} user ${username}?`);
+            if (!confirmed) return;
+
+            const body = new FormData();
+            body.append('is_active', !isActive);
+
+            try {
+                const res = await fetch(`/api/users/${encodeURIComponent(username)}/toggle-active`, { method: 'POST', body });
+                if (res.ok) {
+                    showCustomAlert(`User ${username} ${isActive ? 'suspended' : 'activated'}.`, "Success");
+                    openUserModal();
+                } else {
+                    const err = await res.json();
+                    showCustomAlert(err.detail || "Failed to toggle user status");
+                }
+            } catch(ex) {
+                showCustomAlert("Network error");
+            }
+        }
+
+        function promptAdminResetPassword(username) {
+            targetResetUsername = username;
+            document.getElementById('admin-reset-pw-title').innerText = `Reset Password: ${username}`;
+            document.getElementById('admin-new-pw').value = '';
+            document.getElementById('admin-confirm-pw').value = '';
+            document.getElementById('admin-reset-pw-modal').classList.remove('hidden');
+        }
+
+        function closeAdminResetModal() {
+            targetResetUsername = null;
+            document.getElementById('admin-reset-pw-modal').classList.add('hidden');
+        }
+
+        async function submitAdminResetPassword(e) {
+            e.preventDefault();
+            if (!targetResetUsername) return;
+
+            const newPw = document.getElementById('admin-new-pw').value;
+            const adminPw = document.getElementById('admin-confirm-pw').value;
+
+            const body = new FormData();
+            body.append('new_password', newPw);
+            body.append('admin_password', adminPw);
+
+            try {
+                const res = await fetch(`/api/users/${encodeURIComponent(targetResetUsername)}/reset-password`, { method: 'POST', body });
+                if (res.ok) {
+                    closeAdminResetModal();
+                    showCustomAlert(`Password reset for ${targetResetUsername}. User must change password on next login.`, "Success");
+                    openUserModal();
+                } else {
+                    const err = await res.json();
+                    showCustomAlert(err.detail || "Password reset failed");
+                }
+            } catch(ex) {
+                showCustomAlert("Network error");
+            }
+        }
+
         async function toggleUploadPermission(username, allowed) {
             const body = new FormData();
             body.append("can_upload", allowed);
@@ -1978,6 +2041,144 @@
             } finally {
                 userBtn.disabled = false;
                 userBtn.innerHTML = originalText;
+            }
+        }
+
+        async function uploadJob(e, overrideDuplicate = false) {
+            if (e) e.preventDefault();
+            const uploadBtn = document.getElementById('upload-btn');
+            const originalText = uploadBtn ? uploadBtn.innerHTML : 'Create Job';
+
+            const jcId = document.getElementById('new-job-id').value.trim();
+            const desc = document.getElementById('new-job-desc').value.trim();
+            const fileInput = document.getElementById('new-job-file');
+
+            if (!overrideDuplicate && (!fileInput.files || fileInput.files.length === 0)) {
+                showCustomAlert("Please select a batch CSV or TXT file.");
+                return;
+            }
+
+            const body = new FormData();
+            body.append('job_card_id', jcId);
+            body.append('description', desc);
+            if (fileInput.files[0]) {
+                body.append('file', fileInput.files[0]);
+            } else if (pendingUploadFormData && pendingUploadFormData.get('file')) {
+                body.append('file', pendingUploadFormData.get('file'));
+            }
+            body.append('override_duplicate', overrideDuplicate);
+
+            if (uploadBtn) {
+                uploadBtn.disabled = true;
+                uploadBtn.innerHTML = `${spinnerSvg} Ingesting...`;
+            }
+
+            try {
+                const res = await fetch('/api/jobs/create', { method: 'POST', body });
+                if (res.status === 409) {
+                    const data = await res.json();
+                    pendingUploadFormData = body;
+                    document.getElementById('duplicate-warning-msg').innerText = data.message;
+                    document.getElementById('duplicate-warning-modal').classList.remove('hidden');
+                    return;
+                }
+
+                if (res.ok) {
+                    const data = await res.json();
+                    toggleModal('upload-modal');
+                    document.getElementById('create-job-form').reset();
+                    pendingUploadFormData = null;
+                    showCustomAlert(`Job Card '${data.job_card_id}' created with ${data.total_extracted.toLocaleString()} codes.`, "Success");
+                } else {
+                    const err = await res.json();
+                    showCustomAlert(err.detail || "Failed to create job");
+                }
+            } catch(ex) {
+                showCustomAlert("Network error or upload failed");
+            } finally {
+                if (uploadBtn) {
+                    uploadBtn.disabled = false;
+                    uploadBtn.innerHTML = originalText;
+                }
+            }
+        }
+
+        function confirmDuplicateUpload() {
+            document.getElementById('duplicate-warning-modal').classList.add('hidden');
+            uploadJob(null, true);
+        }
+
+        function cancelDuplicateUpload() {
+            document.getElementById('duplicate-warning-modal').classList.add('hidden');
+            pendingUploadFormData = null;
+        }
+
+        function toggleSelectAllJobs(master) {
+            const checkboxes = document.querySelectorAll('.job-select-checkbox');
+            checkboxes.forEach(cb => cb.checked = master.checked);
+            updateBulkStatusButtonState();
+        }
+
+        function updateBulkStatusButtonState() {
+            const checked = document.querySelectorAll('.job-select-checkbox:checked');
+            const btn = document.getElementById('btn-bulk-status');
+            if (btn) {
+                if (checked.length > 0) {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-30', 'pointer-events-none');
+                    btn.innerText = `Update Status (${checked.length})`;
+                } else {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-30', 'pointer-events-none');
+                    btn.innerText = 'Update Job Status';
+                }
+            }
+        }
+
+        function promptBulkStatusChange() {
+            const checked = Array.from(document.querySelectorAll('.job-select-checkbox:checked')).map(cb => cb.value);
+            if (checked.length === 0) return;
+            document.getElementById('bulk-status-subtitle').innerText = `Apply status change to ${checked.length} selected job(s).`;
+            document.getElementById('bulk-status-admin-pass').value = '';
+            document.getElementById('bulk-status-modal').classList.remove('hidden');
+        }
+
+        function closeBulkStatusModal() {
+            document.getElementById('bulk-status-modal').classList.add('hidden');
+            document.getElementById('bulk-status-admin-pass').value = '';
+        }
+
+        async function submitBulkStatusChange(e) {
+            e.preventDefault();
+            const checked = Array.from(document.querySelectorAll('.job-select-checkbox:checked')).map(cb => cb.value);
+            const targetStatus = document.getElementById('bulk-target-status').value;
+            const adminPass = document.getElementById('bulk-status-admin-pass').value;
+            const submitBtn = document.getElementById('bulk-status-submit-btn');
+
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `${spinnerSvg} Updating...`;
+
+            const body = new FormData();
+            body.append('job_card_ids', JSON.stringify(checked));
+            body.append('target_status', targetStatus);
+            body.append('admin_password', adminPass);
+
+            try {
+                const res = await fetch('/api/admin/jobs/bulk-status', { method: 'POST', body });
+                if (res.ok) {
+                    closeBulkStatusModal();
+                    showCustomAlert(`Status updated to ${targetStatus} for selected jobs.`, "Success");
+                    await loadMasterJobs(currentMasterTab);
+                } else {
+                    const err = await res.json();
+                    showCustomAlert(err.detail || "Bulk status update failed");
+                }
+            } catch(ex) {
+                showCustomAlert("Network error or server unreachable");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
             }
         }
 
@@ -2029,7 +2230,7 @@
             }
         }
 
-        filterMasterJobs = (filterType) => {
+        function filterMasterJobs(filterType) {
             loadMasterJobs(filterType);
         }
 
