@@ -885,7 +885,6 @@ def get_recent_scans(job_card_id: str, limit: int = 50, user: dict = Depends(get
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # 1. Fetch active run_id
             cur.execute("""
                 SELECT run_id FROM job_cards 
                 WHERE job_card_id = %s AND status != 'DELETED' 
@@ -967,18 +966,36 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
             """, (jc_id,))
             results_breakdown = {r[0]: r[1] for r in cur.fetchall()}
 
-            cur.execute("""
-                SELECT code_scanned, result, scanned_by, scanned_at 
-                FROM scan_logs 
-                WHERE job_card_id = %s 
-                ORDER BY scanned_at DESC 
-                LIMIT 5000
-            """, (jc_id,))
+            cur.execute("SELECT MIN(id) FROM codes WHERE run_id = %s", (run_id,))
+            min_row = cur.fetchone()
+            min_id = min_row[0] if min_row else None
+
+            if min_id is not None:
+                cur.execute("""
+                    SELECT s.code_scanned, s.result, s.scanned_by, s.scanned_at,
+                           (c.id - %s + 1) AS row_num
+                    FROM scan_logs s
+                    LEFT JOIN codes c ON c.run_id = %s AND c.code_value = s.code_scanned
+                    WHERE s.job_card_id = %s 
+                    ORDER BY s.scanned_at DESC 
+                    LIMIT 5000
+                """, (min_id, run_id, jc_id))
+            else:
+                cur.execute("""
+                    SELECT s.code_scanned, s.result, s.scanned_by, s.scanned_at,
+                           NULL AS row_num
+                    FROM scan_logs s
+                    WHERE s.job_card_id = %s 
+                    ORDER BY s.scanned_at DESC 
+                    LIMIT 5000
+                """, (jc_id,))
+
             logs = [{
                 "code": r[0],
                 "result": r[1],
                 "user": r[2],
-                "time": r[3].strftime("%Y-%m-%d %H:%M:%S") if r[3] else ""
+                "time": r[3].strftime("%Y-%m-%d %H:%M:%S") if r[3] else "",
+                "row_num": r[4] if r[4] is not None else "-"
             } for r in cur.fetchall()]
 
             return {
@@ -1002,18 +1019,43 @@ def export_report_csv(job_card_id: str, user: dict = Depends(get_current_user)):
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT code_scanned, result, scanned_by, scanned_at 
-                FROM scan_logs 
-                WHERE job_card_id = %s 
-                ORDER BY scanned_at ASC
+                SELECT run_id FROM job_cards 
+                WHERE job_card_id = %s AND status != 'DELETED' 
+                ORDER BY created_at DESC LIMIT 1
             """, (job_card_id,))
+            jc_row = cur.fetchone()
+            run_id = jc_row[0] if jc_row else None
+
+            min_id = None
+            if run_id:
+                cur.execute("SELECT MIN(id) FROM codes WHERE run_id = %s", (run_id,))
+                min_row = cur.fetchone()
+                min_id = min_row[0] if min_row else None
+
+            if run_id and min_id is not None:
+                cur.execute("""
+                    SELECT s.code_scanned, (c.id - %s + 1) AS row_num, s.result, s.scanned_by, s.scanned_at 
+                    FROM scan_logs s
+                    LEFT JOIN codes c ON c.run_id = %s AND c.code_value = s.code_scanned
+                    WHERE s.job_card_id = %s 
+                    ORDER BY s.scanned_at ASC
+                """, (min_id, run_id, job_card_id))
+            else:
+                cur.execute("""
+                    SELECT s.code_scanned, NULL AS row_num, s.result, s.scanned_by, s.scanned_at 
+                    FROM scan_logs s
+                    WHERE s.job_card_id = %s 
+                    ORDER BY s.scanned_at ASC
+                """, (job_card_id,))
+
             rows = cur.fetchall()
 
             output = io.StringIO()
             writer = csv.writer(output)
-            writer.writerow(["Job Card ID", "Scanned Code", "Result", "Tested By", "Timestamp"])
+            writer.writerow(["Job Card ID", "Scanned Code", "Row #", "Result", "Tested By", "Timestamp"])
             for r in rows:
-                writer.writerow([job_card_id, r[0], r[1], r[2], r[3].strftime("%Y-%m-%d %H:%M:%S") if r[3] else ""])
+                row_val = r[1] if r[1] is not None else "-"
+                writer.writerow([job_card_id, r[0], row_val, r[2], r[3], r[4].strftime("%Y-%m-%d %H:%M:%S") if r[4] else ""])
 
             output.seek(0)
             return StreamingResponse(
