@@ -764,7 +764,7 @@ def verify_code(
                 max_consumed_row = cur.fetchone()
                 max_consumed_id = max_consumed_row[0] if max_consumed_row and max_consumed_row[0] is not None else 0
 
-                # STEP 1: CHECK IF ROW IS LOWER THAN PREVIOUSLY SCANNED ROW (POTENTIAL FILE RESTART)
+                # STEP 1: CHECK FOR POTENTIAL FILE RESTART (ROW IS LOWER THAN PREVIOUSLY SCANNED ROW)
                 out_of_sequence = max_consumed_id > 0 and code_id < max_consumed_id
 
                 if out_of_sequence:
