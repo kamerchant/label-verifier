@@ -389,7 +389,7 @@
                 font-weight: bold !important;
             }
 
-            /* QC Report & Lifecycle Audit footer timestamp */
+            /* QC Report & Lifecycle Audit footer timestamp: sits cleanly below table, no overlap */
             #report-modal .print-timestamp-footer,
             #lifecycle-modal .print-timestamp-footer {
                 display: block !important;
@@ -774,13 +774,16 @@
 
     <!-- User Administration Modal -->
     <div id="user-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
-        <div class="linear-card p-4 sm:p-6 rounded-lg max-w-2xl w-full shadow-2xl flex flex-col max-h-[92vh]">
+        <div class="linear-card p-4 sm:p-6 rounded-lg max-w-3xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="flex justify-between items-center mb-3 pb-2 border-b border-white/[0.08]">
-                <h3 class="text-lg font-black modal-title-theme">User Administration</h3>
-                <button onclick="toggleModal('user-modal')" class="linear-button-secondary px-3 py-1 text-xs rounded">Close</button>
+                <div>
+                    <h3 class="text-lg font-black modal-title-theme">User Administration</h3>
+                    <p class="text-xs text-slate-400">Manage user accounts, roles, and job creation permissions</p>
+                </div>
             </div>
             
-            <form onsubmit="createUser(event)" class="linear-subcard p-4 rounded mb-4 space-y-3">
+            <!-- User Staging Form -->
+            <form onsubmit="stageNewUser(event)" class="linear-subcard p-4 rounded mb-4 space-y-3 shrink-0">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                     <input type="text" id="new-user-name" placeholder="Username *" required class="linear-input p-2.5 text-xs rounded">
                     <input type="password" id="new-user-pass" placeholder="Password *" title="Minimum 8 characters, at least 1 uppercase, 1 lowercase, and 1 number." required class="linear-input p-2.5 text-xs rounded">
@@ -799,14 +802,15 @@
                         <input type="checkbox" id="new-user-can-upload" class="rounded">
                         <span id="new-user-can-upload-label">Allow creating new job cards</span>
                     </label>
-                    <button type="submit" id="create-user-btn" class="linear-button-primary px-4 py-2 rounded text-xs font-semibold">Create User</button>
+                    <button type="submit" id="create-user-btn" class="linear-button-secondary px-4 py-2 rounded text-xs font-semibold hover:bg-white/10">Add User to List</button>
                 </div>
             </form>
 
-            <div class="max-h-64 overflow-y-auto text-xs border border-white/[0.08] rounded">
+            <!-- Staged Users Table -->
+            <div class="flex-1 overflow-y-auto text-xs border border-white/[0.08] rounded mb-3">
                 <table class="w-full text-left">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0">
+                        <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0 z-10">
                             <th class="px-3 py-2">User Name</th>
                             <th class="px-3 py-2 text-center">User Type</th>
                             <th class="px-3 py-2 text-center">Can Create Jobs?</th>
@@ -815,6 +819,12 @@
                     </thead>
                     <tbody id="users-table" class="divide-y divide-white/[0.04] table-text-theme"></tbody>
                 </table>
+            </div>
+
+            <!-- Bottom Actions Bar: Close and Submit Changes on bottom right -->
+            <div class="flex justify-end items-center gap-2 pt-3 border-t border-white/[0.08] shrink-0">
+                <button type="button" id="btn-close-user-modal" onclick="closeUserModal()" class="linear-button-secondary px-4 py-2 rounded text-xs font-medium">Close</button>
+                <button type="button" id="btn-submit-user-changes" onclick="submitUserChanges()" disabled class="linear-button-primary px-5 py-2 rounded text-xs font-semibold opacity-30 pointer-events-none transition-all flex items-center justify-center">Submit Changes</button>
             </div>
         </div>
     </div>
@@ -1088,6 +1098,10 @@
         let alarmInterval = null;
         let searchDebounceTimer = null;
         let pendingUploadFormData = null;
+
+        let originalUsers = [];
+        let stagedUsers = [];
+        let pendingNewUsers = [];
 
         let confirmCallback = null;
 
@@ -2010,81 +2024,298 @@
             const res = await fetch('/api/users');
             if (!res.ok) return;
             const users = await res.json();
+            originalUsers = JSON.parse(JSON.stringify(users));
+            stagedUsers = JSON.parse(JSON.stringify(users));
+            pendingNewUsers = [];
+            renderUserAdminTable();
+            checkUserAdminDirty();
+            handleNewUserRoleChange();
+        }
+
+        function closeUserModal() {
+            document.getElementById('user-modal').classList.add('hidden');
+        }
+
+        function stageNewUser(e) {
+            e.preventDefault();
+            const username = document.getElementById('new-user-name').value.trim();
+            const password = document.getElementById('new-user-pass').value;
+            const role = document.getElementById('new-user-role').value;
+            const canUpload = (role === 'admin' || role === 'QC manager') ? true : document.getElementById('new-user-can-upload').checked;
+            const empName = document.getElementById('new-employee-name').value.trim();
+            const empId = document.getElementById('new-employee-id').value.trim();
+
+            if (!username) {
+                showCustomAlert("Username is required.");
+                return;
+            }
+
+            const existsInStaged = stagedUsers.some(u => u.username.toLowerCase() === username.toLowerCase());
+            const existsInPending = pendingNewUsers.some(u => u.username.toLowerCase() === username.toLowerCase());
+            if (existsInStaged || existsInPending) {
+                showCustomAlert(`User '${username}' already exists in list.`);
+                return;
+            }
+
+            if (password.length < 8) {
+                showCustomAlert("Password must be at least 8 characters long.");
+                return;
+            }
+            if (!/[A-Z]/.test(password)) {
+                showCustomAlert("Password must include at least one uppercase letter.");
+                return;
+            }
+            if (!/[a-z]/.test(password)) {
+                showCustomAlert("Password must include at least one lowercase letter.");
+                return;
+            }
+            if (!/[0-9]/.test(password)) {
+                showCustomAlert("Password must include at least one number.");
+                return;
+            }
+
+            pendingNewUsers.push({
+                username: username,
+                password: password,
+                role: role,
+                can_upload: canUpload,
+                employee_name: empName,
+                employee_id: empId,
+                is_active: true,
+                created_at: 'Pending',
+                must_change_password: true,
+                is_new: true
+            });
+
+            document.getElementById('new-user-name').value = '';
+            document.getElementById('new-user-pass').value = '';
+            document.getElementById('new-employee-name').value = '';
+            document.getElementById('new-employee-id').value = '';
+            document.getElementById('new-user-role').value = 'QC officer';
+            handleNewUserRoleChange();
+
+            renderUserAdminTable();
+            checkUserAdminDirty();
+        }
+
+        function removeStagedNewUser(username) {
+            pendingNewUsers = pendingNewUsers.filter(u => u.username.toLowerCase() !== username.toLowerCase());
+            renderUserAdminTable();
+            checkUserAdminDirty();
+        }
+
+        function stageUserRole(username, newRole) {
+            const staged = stagedUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
+            if (staged) {
+                staged.role = newRole;
+                if (newRole === 'admin' || newRole === 'QC manager') {
+                    staged.can_upload = true;
+                }
+            } else {
+                const pend = pendingNewUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
+                if (pend) {
+                    pend.role = newRole;
+                    if (newRole === 'admin' || newRole === 'QC manager') {
+                        pend.can_upload = true;
+                    }
+                }
+            }
+            renderUserAdminTable();
+            checkUserAdminDirty();
+        }
+
+        function stageUserUpload(username, allowed) {
+            const staged = stagedUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
+            if (staged) {
+                staged.can_upload = allowed;
+            } else {
+                const pend = pendingNewUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
+                if (pend) {
+                    pend.can_upload = allowed;
+                }
+            }
+            checkUserAdminDirty();
+        }
+
+        function stageUserActive(username) {
+            const staged = stagedUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
+            if (staged) {
+                staged.is_active = !staged.is_active;
+            } else {
+                const pend = pendingNewUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
+                if (pend) {
+                    pend.is_active = !pend.is_active;
+                }
+            }
+            renderUserAdminTable();
+            checkUserAdminDirty();
+        }
+
+        function checkUserAdminDirty() {
+            let isDirty = false;
+            if (pendingNewUsers.length > 0) {
+                isDirty = true;
+            } else {
+                for (const su of stagedUsers) {
+                    const orig = originalUsers.find(o => o.username.toLowerCase() === su.username.toLowerCase());
+                    if (!orig) continue;
+                    if (su.role !== orig.role || su.can_upload !== orig.can_upload || su.is_active !== orig.is_active) {
+                        isDirty = true;
+                        break;
+                    }
+                }
+            }
+
+            const btn = document.getElementById('btn-submit-user-changes');
+            if (btn) {
+                if (isDirty) {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-30', 'pointer-events-none');
+                } else {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-30', 'pointer-events-none');
+                }
+            }
+        }
+
+        function renderUserAdminTable() {
             const container = document.getElementById('users-table');
-            container.innerHTML = users.map(u => {
-                const isPerm = u.role === 'admin' || u.role === 'QC manager';
+            const allUsers = [...stagedUsers, ...pendingNewUsers];
+
+            container.innerHTML = allUsers.map(u => {
+                const isPerm = (u.role === 'admin' || u.role === 'QC manager');
+                const isCurrent = currentUser && currentUser.username.toLowerCase() === u.username.toLowerCase();
+
+                let uploadCheckboxHtml = '';
+                if (isPerm) {
+                    uploadCheckboxHtml = `<input type="checkbox" checked disabled class="rounded w-4 h-4 cursor-not-allowed opacity-60" title="Permanent rights for ${u.role}">`;
+                } else {
+                    uploadCheckboxHtml = `<input type="checkbox" ${u.can_upload ? 'checked' : ''} onchange="stageUserUpload('${u.username}', this.checked)" class="rounded cursor-pointer w-4 h-4">`;
+                }
+
+                let actionsHtml = '';
+                if (u.is_new) {
+                    actionsHtml = `
+                        <span class="text-xs text-amber-400 font-bold mr-2">(Unsaved)</span>
+                        <button type="button" onclick="removeStagedNewUser('${u.username}')" class="text-xs text-red-400 hover:text-red-300 font-bold">Remove</button>
+                    `;
+                } else if (isCurrent) {
+                    actionsHtml = `<span class="text-xs text-slate-400 font-medium">Current User</span>`;
+                } else {
+                    actionsHtml = `
+                        <button type="button" onclick="promptAdminResetPassword('${u.username}')" class="text-indigo-400 hover:text-indigo-300 font-bold text-xs mr-2">Reset PW</button>
+                        <button type="button" onclick="stageUserActive('${u.username}')" class="${u.is_active ? 'text-amber-400 hover:text-amber-300' : 'text-green-400 hover:text-green-300'} font-bold text-xs">${u.is_active ? 'Suspend' : 'Activate'}</button>
+                    `;
+                }
+
                 return `
                     <tr class="hover:bg-black/[0.02]">
                         <td class="px-3 py-1.5">
                             <div class="flex items-center gap-2">
                                 <span class="font-bold table-text-theme text-xs">${u.username}</span>
+                                ${u.is_new ? '<span class="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 py-0.2 rounded font-semibold">NEW</span>' : ''}
                             </div>
                             ${!u.is_active ? '<span class="text-[10px] text-red-400 font-bold block mt-0.5">(Suspended)</span>' : ''}
-                            ${u.must_change_password ? '<span class="text-[10px] text-amber-400 font-bold block mt-0.5">(PW Reset Required)</span>' : ''}
+                            ${u.must_change_password && !u.is_new ? '<span class="text-[10px] text-amber-400 font-bold block mt-0.5">(PW Reset Required)</span>' : ''}
                         </td>
                         <td class="px-3 py-1.5 text-center">
-                            <select onchange="toggleUserRole('${u.username}', this.value)" class="linear-input text-xs px-2 py-1 rounded cursor-pointer">
+                            <select onchange="stageUserRole('${u.username}', this.value)" class="linear-input text-xs px-2 py-1 rounded cursor-pointer">
                                 <option value="QC officer" ${u.role === 'QC officer' || u.role === 'QC operator' ? 'selected' : ''}>QC officer</option>
                                 <option value="QC manager" ${u.role === 'QC manager' ? 'selected' : ''}>QC manager</option>
                                 <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
                             </select>
                         </td>
                         <td class="px-3 py-1.5 text-center">
-                            ${isPerm 
-                                ? `<input type="checkbox" checked disabled class="rounded w-4 h-4 cursor-not-allowed opacity-60" title="Permanent rights for ${u.role}">`
-                                : `<input type="checkbox" ${u.can_upload ? 'checked' : ''} onchange="toggleUploadPermission('${u.username}', this.checked)" class="rounded cursor-pointer w-4 h-4">`
-                            }
+                            ${uploadCheckboxHtml}
                         </td>
                         <td class="px-3 py-1.5 text-right">
-                            ${u.username !== currentUser.username ? `
-                                <button onclick="promptAdminResetPassword('${u.username}')" class="text-indigo-400 hover:text-indigo-300 font-bold text-xs mr-2">Reset PW</button>
-                                <button onclick="toggleUserSuspension('${u.username}', ${u.is_active})" class="${u.is_active ? 'text-amber-400 hover:text-amber-300' : 'text-green-400 hover:text-green-300'} font-bold text-xs">${u.is_active ? 'Suspend' : 'Activate'}</button>
-                            ` : '<span class="text-xs text-slate-400 font-medium">Current User</span>'}
+                            ${actionsHtml}
                         </td>
                     </tr>
                 `;
             }).join('');
-
-            handleNewUserRoleChange();
         }
 
-        async function toggleUserRole(username, role) {
-            const body = new FormData();
-            body.append('role', role);
-            try {
-                const res = await fetch(`/api/users/${encodeURIComponent(username)}/role`, { method: 'POST', body });
-                if (res.ok) {
-                    showCustomAlert(`Role updated to ${role} for ${username}`, "Success");
-                    openUserModal();
-                } else {
-                    const err = await res.json();
-                    showCustomAlert(err.detail || "Failed to update role");
-                    openUserModal();
-                }
-            } catch(ex) {
-                showCustomAlert("Network error");
-            }
-        }
+        async function submitUserChanges() {
+            const btn = document.getElementById('btn-submit-user-changes');
+            const closeBtn = document.getElementById('btn-close-user-modal');
 
-        async function toggleUserSuspension(username, isActive) {
-            const action = isActive ? "suspend" : "activate";
-            const confirmed = await showCustomConfirm(`Are you sure you want to ${action} user ${username}?`);
-            if (!confirmed) return;
-
-            const body = new FormData();
-            body.append('is_active', !isActive);
+            btn.disabled = true;
+            btn.classList.add('pointer-events-none');
+            closeBtn.disabled = true;
+            closeBtn.classList.add('pointer-events-none');
+            btn.innerHTML = `${spinnerSvg} Processing...`;
 
             try {
-                const res = await fetch(`/api/users/${encodeURIComponent(username)}/toggle-active`, { method: 'POST', body });
-                if (res.ok) {
-                    showCustomAlert(`User ${username} ${isActive ? 'suspended' : 'activated'}.`, "Success");
-                    openUserModal();
-                } else {
-                    const err = await res.json();
-                    showCustomAlert(err.detail || "Failed to toggle user status");
+                for (const nu of pendingNewUsers) {
+                    const body = new FormData();
+                    body.append('username', nu.username);
+                    body.append('password', nu.password);
+                    body.append('role', nu.role);
+                    body.append('can_upload', nu.can_upload);
+                    body.append('employee_name', nu.employee_name);
+                    body.append('employee_id', nu.employee_id);
+
+                    const res = await fetch('/api/users/create', { method: 'POST', body });
+                    if (!res.ok) {
+                        const err = await res.json();
+                        throw new Error(`Failed to create user '${nu.username}': ${err.detail || 'Server error'}`);
+                    }
                 }
+
+                for (const su of stagedUsers) {
+                    const orig = originalUsers.find(o => o.username.toLowerCase() === su.username.toLowerCase());
+                    if (!orig) continue;
+
+                    if (su.role !== orig.role) {
+                        const body = new FormData();
+                        body.append('role', su.role);
+                        const res = await fetch(`/api/users/${encodeURIComponent(su.username)}/role`, { method: 'POST', body });
+                        if (!res.ok) {
+                            const err = await res.json();
+                            throw new Error(`Failed to update role for '${su.username}': ${err.detail || 'Server error'}`);
+                        }
+                    }
+
+                    if (su.is_active !== orig.is_active) {
+                        const body = new FormData();
+                        body.append('is_active', su.is_active);
+                        const res = await fetch(`/api/users/${encodeURIComponent(su.username)}/toggle-active`, { method: 'POST', body });
+                        if (!res.ok) {
+                            const err = await res.json();
+                            throw new Error(`Failed to update active state for '${su.username}': ${err.detail || 'Server error'}`);
+                        }
+                    }
+
+                    if (su.can_upload !== orig.can_upload && su.role !== 'admin' && su.role !== 'QC manager') {
+                        const body = new FormData();
+                        body.append('can_upload', su.can_upload);
+                        const res = await fetch(`/api/users/${encodeURIComponent(su.username)}/toggle-upload`, { method: 'POST', body });
+                        if (!res.ok) {
+                            const err = await res.json();
+                            throw new Error(`Failed to update upload rights for '${su.username}': ${err.detail || 'Server error'}`);
+                        }
+                    }
+                }
+
+                pendingNewUsers = [];
+                const res = await fetch('/api/users');
+                if (res.ok) {
+                    const users = await res.json();
+                    originalUsers = JSON.parse(JSON.stringify(users));
+                    stagedUsers = JSON.parse(JSON.stringify(users));
+                    renderUserAdminTable();
+                }
+
+                checkSession();
+                showCustomAlert("User changes saved successfully.", "Success");
             } catch(ex) {
-                showCustomAlert("Network error");
+                showCustomAlert(ex.message || "Failed to submit user changes.");
+            } finally {
+                btn.innerHTML = "Submit Changes";
+                closeBtn.disabled = false;
+                closeBtn.classList.remove('pointer-events-none');
+                checkUserAdminDirty();
             }
         }
 
@@ -2117,61 +2348,12 @@
                 if (res.ok) {
                     closeAdminResetModal();
                     showCustomAlert(`Password reset for ${targetResetUsername}. User must change password on next login.`, "Success");
-                    openUserModal();
                 } else {
                     const err = await res.json();
                     showCustomAlert(err.detail || "Password reset failed");
                 }
             } catch(ex) {
                 showCustomAlert("Network error");
-            }
-        }
-
-        async function toggleUploadPermission(username, allowed) {
-            const body = new FormData();
-            body.append("can_upload", allowed);
-
-            const res = await fetch(`/api/users/${username}/toggle-upload`, {
-                method: 'POST',
-                body: body
-            });
-
-            if (res.ok) {
-                if (username === currentUser.username) checkSession();
-                openUserModal();
-            } else {
-                showCustomAlert("Failed to update user authorization.");
-            }
-        }
-
-        async function createUser(e) {
-            e.preventDefault();
-            const userBtn = document.getElementById('create-user-btn');
-            const originalText = userBtn.innerHTML;
-            userBtn.disabled = true;
-            userBtn.innerHTML = `${spinnerSvg} Creating...`;
-
-            const body = new FormData();
-            body.append("username", document.getElementById('new-user-name').value);
-            body.append("password", document.getElementById('new-user-pass').value);
-            body.append("role", document.getElementById('new-user-role').value);
-            body.append("can_upload", document.getElementById('new-user-can-upload').checked);
-            body.append("employee_name", document.getElementById('new-employee-name').value);
-            body.append("employee_id", document.getElementById('new-employee-id').value);
-
-            try {
-                const res = await fetch('/api/users/create', { method: 'POST', body });
-                if (res.ok) {
-                    e.target.reset();
-                    openUserModal();
-                    showCustomAlert("User created successfully.", "Success");
-                } else {
-                    const err = await res.json();
-                    showCustomAlert(err.detail || "Failed to create user");
-                }
-            } finally {
-                userBtn.disabled = false;
-                userBtn.innerHTML = originalText;
             }
         }
 
