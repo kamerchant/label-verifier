@@ -591,7 +591,7 @@
                     <table class="w-full text-left whitespace-nowrap">
                         <thead>
                             <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0 z-10">
-                                <th class="px-3.5 py-2.5 w-16">Seq</th>
+                                <th class="px-3.5 py-2.5 w-24">Row #</th>
                                 <th class="px-3.5 py-2.5">Code</th>
                                 <th class="px-3.5 py-2.5">Evaluation</th>
                                 <th class="px-3.5 py-2.5">Recorded At</th>
@@ -1579,7 +1579,8 @@
                         code: l.code,
                         result: l.result,
                         time: l.time,
-                        user: l.user
+                        user: l.user,
+                        row_num: l.row_num
                     }));
                     renderStreamTable();
                 }
@@ -1740,11 +1741,12 @@
 
             const visibleScans = filteredScans.slice(0, 50);
 
-            tbody.innerHTML = visibleScans.map((s, idx) => {
+            tbody.innerHTML = visibleScans.map((s) => {
                 let badge = (s.result === 'PASS' || s.result === 'Pass (Potential Restart)') ? "linear-badge-pass" : "linear-badge-fail";
+                let rowDisplay = (s.row_num && s.row_num !== '-') ? `Row ${s.row_num}` : '-';
                 return `
                     <tr class="hover:bg-black/[0.02]">
-                        <td class="px-3.5 py-2 text-slate-300 text-xs font-medium">#${allScans.length - idx}</td>
+                        <td class="px-3.5 py-2 text-slate-300 text-xs font-semibold">${rowDisplay}</td>
                         <td class="px-3.5 py-2 font-bold text-sm table-text-theme">${s.code}</td>
                         <td class="px-3.5 py-2"><span class="${badge} px-2 py-0.5 rounded text-xs font-bold">${s.result}</span></td>
                         <td class="px-3.5 py-2 text-slate-200 text-xs">${s.time}</td>

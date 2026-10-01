@@ -753,6 +753,11 @@ def verify_code(
                 )
                 conn.commit()
 
+            # Find the minimum code ID for the run to establish 1-based row numbering
+            cur.execute("SELECT MIN(id) FROM codes WHERE run_id = %s", (active_run_id,))
+            min_row = cur.fetchone()
+            min_id = min_row[0] if min_row and min_row[0] is not None else 0
+
             # Find the code in the active run
             cur.execute("""
                 SELECT id, code_value, status 
@@ -766,6 +771,8 @@ def verify_code(
                 exact_code = code_row[1]
                 current_status = code_row[2]
 
+                row_num = (code_id - min_id + 1) if min_id > 0 else code_id
+
                 # Find the maximum row ID of previously consumed codes in this job session
                 cur.execute("""
                     SELECT MAX(id) FROM codes 
@@ -773,6 +780,7 @@ def verify_code(
                 """, (active_run_id,))
                 max_consumed_row = cur.fetchone()
                 max_consumed_id = max_consumed_row[0] if max_consumed_row and max_consumed_row[0] is not None else 0
+                max_consumed_row_num = (max_consumed_id - min_id + 1) if (max_consumed_id > 0 and min_id > 0) else max_consumed_id
 
                 # STEP 1: CHECK FOR POTENTIAL FILE RESTART (ROW IS LOWER THAN PREVIOUSLY SCANNED ROW)
                 out_of_sequence = max_consumed_id > 0 and code_id < max_consumed_id
@@ -780,12 +788,13 @@ def verify_code(
                 if out_of_sequence:
                     if current_status == 'CONSUMED':
                         eval_result = "Duplicate (Potential Restart)"
-                        msg = f"Duplicate (Potential Restart): Code {exact_code} (row {code_id}) was verified earlier and is lower than the max row ({max_consumed_id})."
+                        msg = f"Duplicate (Potential Restart): Code {exact_code} (row {row_num}) was verified earlier and is lower than the max row ({max_consumed_row_num})."
                         log_scan(eval_result, msg)
                         return JSONResponse(status_code=200, content={
                             "result": eval_result,
                             "message": msg,
-                            "sequence_warning": True
+                            "sequence_warning": True,
+                            "row_num": row_num
                         })
 
                     # If PENDING, consume it and trigger warning pass
@@ -797,12 +806,13 @@ def verify_code(
                     conn.commit()
 
                     eval_result = "Pass (Potential Restart)"
-                    msg = f"Potential file restart: row of code ({code_id}) is lower than the row of a previously scanned code ({max_consumed_id})."
+                    msg = f"Potential file restart: row of code ({row_num}) is lower than the row of a previously scanned code ({max_consumed_row_num})."
                     log_scan(eval_result, msg)
                     return JSONResponse(status_code=200, content={
                         "result": eval_result,
                         "message": msg,
-                        "sequence_warning": True
+                        "sequence_warning": True,
+                        "row_num": row_num
                     })
 
                 # STEP 2: NORMAL PENDING SCAN
@@ -820,7 +830,8 @@ def verify_code(
                     return JSONResponse(status_code=200, content={
                         "result": eval_result,
                         "message": msg,
-                        "sequence_warning": False
+                        "sequence_warning": False,
+                        "row_num": row_num
                     })
                 
                 # STEP 3: DUPLICATE SCAN
@@ -830,7 +841,8 @@ def verify_code(
                     log_scan(eval_result, msg)
                     return JSONResponse(status_code=200, content={
                         "result": eval_result,
-                        "message": msg
+                        "message": msg,
+                        "row_num": row_num
                     })
 
             # Check other runs for mismatch / unknown
@@ -847,7 +859,8 @@ def verify_code(
                 log_scan("UNKNOWN", msg)
                 return JSONResponse(status_code=200, content={
                     "result": "UNKNOWN", 
-                    "message": msg
+                    "message": msg,
+                    "row_num": "-"
                 })
 
             owning_jobs = ", ".join(list(set([r[1] for r in rows])))
@@ -855,12 +868,14 @@ def verify_code(
             log_scan("MISMATCH", msg)
             return JSONResponse(status_code=200, content={
                 "result": "MISMATCH", 
-                "message": msg
+                "message": msg,
+                "row_num": "-"
             })
     except Exception as e:
         return JSONResponse(status_code=200, content={
             "result": "ERROR",
-            "message": f"Server verification error: {str(e)}"
+            "message": f"Server verification error: {str(e)}",
+            "row_num": "-"
         })
     finally:
         release_connection(conn)
@@ -870,18 +885,47 @@ def get_recent_scans(job_card_id: str, limit: int = 50, user: dict = Depends(get
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            # 1. Fetch active run_id
             cur.execute("""
-                SELECT code_scanned, result, scanned_by, scanned_at 
-                FROM scan_logs 
-                WHERE job_card_id = %s 
-                ORDER BY scanned_at DESC 
-                LIMIT %s
-            """, (job_card_id, limit))
+                SELECT run_id FROM job_cards 
+                WHERE job_card_id = %s AND status != 'DELETED' 
+                ORDER BY created_at DESC LIMIT 1
+            """, (job_card_id,))
+            jc_row = cur.fetchone()
+            active_run_id = jc_row[0] if jc_row else None
+
+            min_id = None
+            if active_run_id:
+                cur.execute("SELECT MIN(id) FROM codes WHERE run_id = %s", (active_run_id,))
+                min_row = cur.fetchone()
+                min_id = min_row[0] if min_row else None
+
+            if active_run_id and min_id is not None:
+                cur.execute("""
+                    SELECT s.code_scanned, s.result, s.scanned_by, s.scanned_at,
+                           (c.id - %s + 1) AS row_num
+                    FROM scan_logs s
+                    LEFT JOIN codes c ON c.run_id = %s AND c.code_value = s.code_scanned
+                    WHERE s.job_card_id = %s 
+                    ORDER BY s.scanned_at DESC 
+                    LIMIT %s
+                """, (min_id, active_run_id, job_card_id, limit))
+            else:
+                cur.execute("""
+                    SELECT s.code_scanned, s.result, s.scanned_by, s.scanned_at,
+                           NULL AS row_num
+                    FROM scan_logs s
+                    WHERE s.job_card_id = %s 
+                    ORDER BY s.scanned_at DESC 
+                    LIMIT %s
+                """, (job_card_id, limit))
+
             logs = [{
                 "code": r[0],
                 "result": r[1],
                 "user": r[2],
-                "time": r[3].strftime("%Y-%m-%d %H:%M:%S") if r[3] else ""
+                "time": r[3].strftime("%Y-%m-%d %H:%M:%S") if r[3] else "",
+                "row_num": r[4] if r[4] is not None else "-"
             } for r in cur.fetchall()]
             return {"recent_logs": logs}
     finally:
