@@ -74,13 +74,18 @@ def require_admin(user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin permissions required")
     return user
 
+def require_manager_or_admin(user: dict = Depends(get_current_user)):
+    if user.get("role") not in ["admin", "QC manager"]:
+        raise HTTPException(status_code=403, detail="QC Manager or Admin permissions required")
+    return user
+
 def require_uploader(user: dict = Depends(get_current_user)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute("SELECT can_upload, role FROM users WHERE LOWER(username) = LOWER(%s)", (user["username"],))
             row = cur.fetchone()
-            if not row or (not row[0] and row[1] != "admin"):
+            if not row or (not row[0] and row[1] not in ["admin", "QC manager"]):
                 raise HTTPException(status_code=403, detail="You do not have permission to create jobs.")
             return user
     finally:
@@ -119,7 +124,7 @@ def login(response: Response, username: str = Form(...), password: str = Form(..
                 "username": original_username,
                 "role": user[1],
                 "must_change_password": user[2],
-                "can_upload": user[3]
+                "can_upload": user[3] or user[1] in ["admin", "QC manager"]
             }
     finally:
         release_connection(conn)
@@ -149,7 +154,7 @@ def get_me(request: Request):
             "username": user["username"],
             "role": role,
             "must_change_password": must_change,
-            "can_upload": can_upload
+            "can_upload": can_upload or role in ["admin", "QC manager"]
         }
     except HTTPException:
         return {"authenticated": False}
@@ -191,7 +196,7 @@ def list_users(admin: dict = Depends(require_admin)):
                 "username": r[0],
                 "role": r[1],
                 "must_change_password": r[2],
-                "can_upload": r[3],
+                "can_upload": True if r[1] in ["admin", "QC manager"] else (r[3] or False),
                 "is_active": r[4] if r[4] is not None else True,
                 "employee_name": r[5] or "",
                 "employee_id": r[6] or "",
@@ -204,7 +209,7 @@ def list_users(admin: dict = Depends(require_admin)):
 def create_user(
     username: str = Form(...),
     password: str = Form(...),
-    role: str = Form("QC operator"),
+    role: str = Form("QC officer"),
     can_upload: bool = Form(False),
     employee_name: str = Form(""),
     employee_id: str = Form(""),
@@ -212,6 +217,9 @@ def create_user(
 ):
     clean_username = username.strip()
     validate_password_strength(password)
+
+    if role in ["admin", "QC manager"]:
+        can_upload = True
 
     conn = get_connection()
     try:
@@ -237,7 +245,7 @@ def update_user_role(
     role: str = Form(...),
     admin: dict = Depends(require_admin)
 ):
-    if role not in ["QC operator", "admin"]:
+    if role not in ["QC officer", "QC operator", "QC manager", "admin"]:
         raise HTTPException(status_code=400, detail="Invalid role specified.")
 
     if username.lower() == admin["username"].lower() and role != "admin":
@@ -246,7 +254,10 @@ def update_user_role(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("UPDATE users SET role = %s WHERE LOWER(username) = LOWER(%s)", (role, username))
+            if role in ["admin", "QC manager"]:
+                cur.execute("UPDATE users SET role = %s, can_upload = TRUE WHERE LOWER(username) = LOWER(%s)", (role, username))
+            else:
+                cur.execute("UPDATE users SET role = %s WHERE LOWER(username) = LOWER(%s)", (role, username))
             conn.commit()
             return {"status": "success"}
     finally:
@@ -310,6 +321,11 @@ def toggle_user_upload(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            cur.execute("SELECT role FROM users WHERE LOWER(username) = LOWER(%s)", (username,))
+            row = cur.fetchone()
+            if row and row[0] in ["admin", "QC manager"] and not can_upload:
+                raise HTTPException(status_code=400, detail="Admin and QC Manager have permanent job creation rights.")
+
             cur.execute("UPDATE users SET can_upload = %s WHERE LOWER(username) = LOWER(%s)", (can_upload, username))
             conn.commit()
             return {"status": "success"}
@@ -322,13 +338,10 @@ def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
     try:
         with conn.cursor() as cur:
             base_sql = """
-                SELECT j.job_card_id, j.description, j.status, 
-                       COUNT(c.code_value) as total,
-                       COUNT(CASE WHEN c.status = 'CONSUMED' THEN 1 END) as consumed,
-                       j.created_at,
-                       j.run_id
+                SELECT j.job_card_id, j.description, j.status, j.created_at, j.run_id,
+                       (SELECT COUNT(*) FROM codes c WHERE c.run_id = j.run_id AND c.status != 'DELETED') as total,
+                       (SELECT COUNT(*) FROM codes c WHERE c.run_id = j.run_id AND c.status = 'CONSUMED') as consumed
                 FROM job_cards j
-                LEFT JOIN codes c ON j.run_id = c.run_id AND c.status != 'DELETED'
                 WHERE j.status IN ('ACTIVE', 'COMPLETED')
             """
             params = []
@@ -337,25 +350,22 @@ def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
                 search_term = f"%{query.strip().lower()}%"
                 params.extend([search_term, search_term])
 
-            base_sql += """
-                GROUP BY j.run_id, j.job_card_id, j.description, j.status, j.created_at
-                ORDER BY j.created_at DESC
-            """
+            base_sql += " ORDER BY j.created_at DESC LIMIT 15"
             cur.execute(base_sql, params)
             rows = cur.fetchall()
             return [{
                 "id": r[0],
                 "description": r[1] or "",
                 "status": r[2],
-                "total": r[3],
-                "consumed": r[4],
-                "created_at": r[5].strftime("%Y-%m-%d %H:%M") if r[5] else ""
+                "total": r[5] or 0,
+                "consumed": r[6] or 0,
+                "created_at": r[3].strftime("%Y-%m-%d %H:%M") if r[3] else ""
             } for r in rows]
     finally:
         release_connection(conn)
 
 @app.get("/api/admin/master-jobs")
-def get_master_jobs_report(status_filter: str = "ALL", admin: dict = Depends(require_admin)):
+def get_master_jobs_report(status_filter: str = "ALL", user: dict = Depends(require_manager_or_admin)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -495,7 +505,7 @@ def bulk_status_change(
     job_card_ids: str = Form(...),
     target_status: str = Form(...),
     admin_password: str = Form(...),
-    admin: dict = Depends(require_admin)
+    user: dict = Depends(require_manager_or_admin)
 ):
     if target_status not in ["ACTIVE", "INACTIVE", "COMPLETED"]:
         raise HTTPException(status_code=400, detail="Invalid target status.")
@@ -503,7 +513,7 @@ def bulk_status_change(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT password_hash FROM users WHERE LOWER(username) = LOWER(%s)", (admin["username"],))
+            cur.execute("SELECT password_hash FROM users WHERE LOWER(username) = LOWER(%s)", (user["username"],))
             row = cur.fetchone()
             if not row or not verify_password(admin_password, row[0]):
                 raise HTTPException(status_code=403, detail="Invalid password. Status update denied.")
@@ -529,7 +539,7 @@ def bulk_status_change(
                     
                     cur.execute(
                         "INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) VALUES (%s, %s, %s, %s)",
-                        (jc_id, f"STATUS_CHANGED_TO_{target_status}", admin["username"], "Bulk status update in Job Control Center")
+                        (jc_id, f"STATUS_CHANGED_TO_{target_status}", user["username"], "Bulk status update in Job Control Center")
                     )
 
             conn.commit()
