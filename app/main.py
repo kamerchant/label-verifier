@@ -769,8 +769,7 @@ def verify_code(
 
                 if out_of_sequence:
                     if current_status == 'CONSUMED':
-                        # If an already consumed lower-row code is scanned again during a restart, treat as Duplicate with restart context
-                        eval_result = "DUPLICATE"
+                        eval_result = "Duplicate (Potential Restart)"
                         msg = f"Duplicate (Potential Restart): Code {exact_code} (row {code_id}) was verified earlier and is lower than the max row ({max_consumed_id})."
                         log_scan(eval_result, msg)
                         return JSONResponse(status_code=200, content={
