@@ -265,6 +265,7 @@
             #duplicate-warning-modal,
             #custom-confirm-modal,
             #admin-reset-pw-modal,
+            #user-admin-pw-modal,
             #bulk-status-modal,
             .no-print {
                 display: none !important;
@@ -823,8 +824,26 @@
             <!-- Bottom Actions Bar: Close and Submit Changes on bottom right -->
             <div class="flex justify-end items-center gap-2 pt-3 border-t border-white/[0.08] shrink-0">
                 <button type="button" id="btn-close-user-modal" onclick="closeUserModal()" class="linear-button-secondary px-4 py-2 rounded text-xs font-medium">Close</button>
-                <button type="button" id="btn-submit-user-changes" onclick="submitUserChanges()" disabled class="linear-button-primary px-5 py-2 rounded text-xs font-semibold opacity-30 pointer-events-none transition-all flex items-center justify-center">Submit Changes</button>
+                <button type="button" id="btn-submit-user-changes" onclick="promptUserAdminSubmit()" disabled class="linear-button-primary px-5 py-2 rounded text-xs font-semibold opacity-30 pointer-events-none transition-all flex items-center justify-center">Submit Changes</button>
             </div>
+        </div>
+    </div>
+
+    <!-- User Admin Submit Changes Password Confirmation Modal -->
+    <div id="user-admin-pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[85]">
+        <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/30 shadow-2xl">
+            <h3 class="text-base font-bold mb-1 table-text-theme">Confirm Admin Password</h3>
+            <p class="text-xs text-slate-400 mb-4">Enter your password to authorize and apply all staged user changes to the database.</p>
+            <form onsubmit="confirmAndSubmitUserChanges(event)" class="space-y-3.5">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Enter your password *</label>
+                    <input type="password" id="user-admin-confirm-pass" required class="linear-input w-full p-2.5 text-sm rounded">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeUserAdminPwModal()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
+                    <button type="submit" id="user-admin-pw-confirm-btn" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold">Authorize & Save</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -946,23 +965,19 @@
         </div>
     </div>
 
-    <!-- Admin Reset Password Modal -->
+    <!-- Admin Reset Operator Password Modal (Single Password Field, No Admin Password Prompt Here) -->
     <div id="admin-reset-pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[80]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/30 shadow-2xl">
-            <h3 id="admin-reset-pw-title" class="text-base font-bold mb-1 table-text-theme">Reset Operator Password</h3>
+            <h3 id="admin-reset-pw-title" class="text-base font-bold mb-1 table-text-theme">Set Operator Password</h3>
             <p id="admin-reset-pw-subtitle" class="text-xs text-slate-400 mb-4">Enter a new temporary password for this user (Min 8 chars, 1 uppercase, 1 lowercase, 1 number).</p>
             <form onsubmit="submitAdminResetPassword(event)" class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">New Password *</label>
                     <input type="password" id="admin-new-pw" required minlength="8" title="Minimum 8 characters, at least 1 uppercase, 1 lowercase, and 1 number." class="linear-input w-full p-2.5 text-sm rounded">
                 </div>
-                <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Enter your password *</label>
-                    <input type="password" id="admin-confirm-pw" required class="linear-input w-full p-2.5 text-sm rounded">
-                </div>
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" onclick="closeAdminResetModal()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
-                    <button type="submit" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold">Reset Password</button>
+                    <button type="submit" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold">Set Password</button>
                 </div>
             </form>
         </div>
@@ -1101,6 +1116,7 @@
         let originalUsers = [];
         let stagedUsers = [];
         let pendingNewUsers = [];
+        let stagedPasswordResets = {};
 
         let confirmCallback = null;
 
@@ -2026,6 +2042,7 @@
             originalUsers = JSON.parse(JSON.stringify(users));
             stagedUsers = JSON.parse(JSON.stringify(users));
             pendingNewUsers = [];
+            stagedPasswordResets = {};
             renderUserAdminTable();
             checkUserAdminDirty();
             handleNewUserRoleChange();
@@ -2150,9 +2167,17 @@
             checkUserAdminDirty();
         }
 
+        function cancelStagedPasswordReset(username) {
+            delete stagedPasswordResets[username];
+            renderUserAdminTable();
+            checkUserAdminDirty();
+        }
+
         function checkUserAdminDirty() {
             let isDirty = false;
             if (pendingNewUsers.length > 0) {
+                isDirty = true;
+            } else if (Object.keys(stagedPasswordResets).length > 0) {
                 isDirty = true;
             } else {
                 for (const su of stagedUsers) {
@@ -2184,6 +2209,7 @@
             container.innerHTML = allUsers.map(u => {
                 const isPerm = (u.role === 'admin' || u.role === 'QC manager');
                 const isCurrent = currentUser && currentUser.username.toLowerCase() === u.username.toLowerCase();
+                const hasStagedPw = !!stagedPasswordResets[u.username];
 
                 let uploadCheckboxHtml = '';
                 if (isPerm) {
@@ -2201,8 +2227,15 @@
                 } else if (isCurrent) {
                     actionsHtml = `<span class="text-xs text-slate-400 font-medium">Current User</span>`;
                 } else {
+                    let pwBtnHtml = `<button type="button" onclick="promptAdminResetPassword('${u.username}')" class="text-indigo-400 hover:text-indigo-300 font-bold text-xs mr-2">Reset PW</button>`;
+                    if (hasStagedPw) {
+                        pwBtnHtml = `
+                            <button type="button" onclick="promptAdminResetPassword('${u.username}')" class="text-amber-400 hover:text-amber-300 font-bold text-xs mr-1">Edit PW</button>
+                            <button type="button" onclick="cancelStagedPasswordReset('${u.username}')" class="text-slate-400 hover:text-slate-300 text-xs mr-2">Undo</button>
+                        `;
+                    }
                     actionsHtml = `
-                        <button type="button" onclick="promptAdminResetPassword('${u.username}')" class="text-indigo-400 hover:text-indigo-300 font-bold text-xs mr-2">Reset PW</button>
+                        ${pwBtnHtml}
                         <button type="button" onclick="stageUserActive('${u.username}')" class="${u.is_active ? 'text-amber-400 hover:text-amber-300' : 'text-green-400 hover:text-green-300'} font-bold text-xs">${u.is_active ? 'Suspend' : 'Activate'}</button>
                     `;
                 }
@@ -2214,8 +2247,9 @@
                                 <span class="font-bold table-text-theme text-xs">${u.username}</span>
                                 ${u.is_new ? '<span class="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 py-0.2 rounded font-semibold">NEW</span>' : ''}
                             </div>
+                            ${hasStagedPw ? '<span class="text-[10px] text-amber-400 font-bold block mt-0.5">(PW Revision Staged)</span>' : ''}
                             ${!u.is_active ? '<span class="text-[10px] text-red-400 font-bold block mt-0.5">(Suspended)</span>' : ''}
-                            ${u.must_change_password && !u.is_new ? '<span class="text-[10px] text-amber-400 font-bold block mt-0.5">(PW Reset Required)</span>' : ''}
+                            ${u.must_change_password && !u.is_new && !hasStagedPw ? '<span class="text-[10px] text-amber-400 font-bold block mt-0.5">(PW Reset Required)</span>' : ''}
                         </td>
                         <td class="px-3 py-1.5 text-center">
                             <select onchange="stageUserRole('${u.username}', this.value)" class="linear-input text-xs px-2 py-1 rounded cursor-pointer">
@@ -2235,17 +2269,54 @@
             }).join('');
         }
 
-        async function submitUserChanges() {
-            const btn = document.getElementById('btn-submit-user-changes');
-            const closeBtn = document.getElementById('btn-close-user-modal');
+        function promptUserAdminSubmit() {
+            document.getElementById('user-admin-confirm-pass').value = '';
+            document.getElementById('user-admin-pw-modal').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('user-admin-confirm-pass').focus();
+            }, 100);
+        }
 
-            btn.disabled = true;
-            btn.classList.add('pointer-events-none');
-            closeBtn.disabled = true;
-            closeBtn.classList.add('pointer-events-none');
-            btn.innerHTML = `${spinnerSvg} Processing...`;
+        function closeUserAdminPwModal() {
+            document.getElementById('user-admin-pw-modal').classList.add('hidden');
+            document.getElementById('user-admin-confirm-pass').value = '';
+        }
+
+        async function confirmAndSubmitUserChanges(e) {
+            e.preventDefault();
+            const adminPass = document.getElementById('user-admin-confirm-pass').value;
+            if (!adminPass) return;
+
+            const modalSubmitBtn = document.getElementById('user-admin-pw-confirm-btn');
+            const originalModalBtnText = modalSubmitBtn.innerHTML;
+            modalSubmitBtn.disabled = true;
+            modalSubmitBtn.innerHTML = `${spinnerSvg} Verifying...`;
 
             try {
+                // Verify admin password before making any changes
+                const verifyBody = new FormData();
+                verifyBody.append('username', currentUser.username);
+                verifyBody.append('password', adminPass);
+
+                const verifyRes = await fetch('/api/auth/login', { method: 'POST', body: verifyBody });
+                if (!verifyRes.ok) {
+                    showCustomAlert("Invalid administrator password. Changes were not saved.");
+                    modalSubmitBtn.disabled = false;
+                    modalSubmitBtn.innerHTML = originalModalBtnText;
+                    return;
+                }
+
+                closeUserAdminPwModal();
+
+                const btn = document.getElementById('btn-submit-user-changes');
+                const closeBtn = document.getElementById('btn-close-user-modal');
+                btn.disabled = true;
+                btn.classList.add('pointer-events-none');
+                closeBtn.disabled = true;
+                closeBtn.classList.add('pointer-events-none');
+                btn.innerHTML = `${spinnerSvg} Processing...`;
+
+                // 1. Create staged new users
                 for (const nu of pendingNewUsers) {
                     const body = new FormData();
                     body.append('username', nu.username);
@@ -2262,6 +2333,7 @@
                     }
                 }
 
+                // 2. Apply updates to existing users
                 for (const su of stagedUsers) {
                     const orig = originalUsers.find(o => o.username.toLowerCase() === su.username.toLowerCase());
                     if (!orig) continue;
@@ -2295,9 +2367,22 @@
                             throw new Error(`Failed to update upload rights for '${su.username}': ${err.detail || 'Server error'}`);
                         }
                     }
+
+                    // Apply staged password reset if present
+                    if (stagedPasswordResets[su.username]) {
+                        const body = new FormData();
+                        body.append('new_password', stagedPasswordResets[su.username]);
+                        body.append('admin_password', adminPass);
+                        const res = await fetch(`/api/users/${encodeURIComponent(su.username)}/reset-password`, { method: 'POST', body });
+                        if (!res.ok) {
+                            const err = await res.json();
+                            throw new Error(`Failed to reset password for '${su.username}': ${err.detail || 'Server error'}`);
+                        }
+                    }
                 }
 
                 pendingNewUsers = [];
+                stagedPasswordResets = {};
                 const res = await fetch('/api/users');
                 if (res.ok) {
                     const users = await res.json();
@@ -2311,6 +2396,11 @@
             } catch(ex) {
                 showCustomAlert(ex.message || "Failed to submit user changes.");
             } finally {
+                modalSubmitBtn.disabled = false;
+                modalSubmitBtn.innerHTML = originalModalBtnText;
+
+                const btn = document.getElementById('btn-submit-user-changes');
+                const closeBtn = document.getElementById('btn-close-user-modal');
                 btn.innerHTML = "Submit Changes";
                 closeBtn.disabled = false;
                 closeBtn.classList.remove('pointer-events-none');
@@ -2320,9 +2410,8 @@
 
         function promptAdminResetPassword(username) {
             targetResetUsername = username;
-            document.getElementById('admin-reset-pw-title').innerText = `Reset Password: ${username}`;
-            document.getElementById('admin-new-pw').value = '';
-            document.getElementById('admin-confirm-pw').value = '';
+            document.getElementById('admin-reset-pw-title').innerText = `Set Password: ${username}`;
+            document.getElementById('admin-new-pw').value = stagedPasswordResets[username] || '';
             document.getElementById('admin-reset-pw-modal').classList.remove('hidden');
         }
 
@@ -2331,30 +2420,32 @@
             document.getElementById('admin-reset-pw-modal').classList.add('hidden');
         }
 
-        async function submitAdminResetPassword(e) {
+        function submitAdminResetPassword(e) {
             e.preventDefault();
             if (!targetResetUsername) return;
 
             const newPw = document.getElementById('admin-new-pw').value;
-            const adminPw = document.getElementById('admin-confirm-pw').value;
-
-            const body = new FormData();
-            body.append('new_password', newPw);
-            body.append('admin_password', adminPw);
-
-            try {
-                const res = await fetch(`/api/users/${encodeURIComponent(targetResetUsername)}/reset-password`, { method: 'POST', body });
-                if (res.ok) {
-                    closeAdminResetModal();
-                    showCustomAlert(`Password reset for ${targetResetUsername}. User must change password on next login.`, "Success");
-                    openUserModal();
-                } else {
-                    const err = await res.json();
-                    showCustomAlert(err.detail || "Password reset failed");
-                }
-            } catch(ex) {
-                showCustomAlert("Network error");
+            if (newPw.length < 8) {
+                showCustomAlert("Password must be at least 8 characters long.");
+                return;
             }
+            if (!/[A-Z]/.test(newPw)) {
+                showCustomAlert("Password must include at least one uppercase letter.");
+                return;
+            }
+            if (!/[a-z]/.test(newPw)) {
+                showCustomAlert("Password must include at least one lowercase letter.");
+                return;
+            }
+            if (!/[0-9]/.test(newPw)) {
+                showCustomAlert("Password must include at least one number.");
+                return;
+            }
+
+            stagedPasswordResets[targetResetUsername] = newPw;
+            closeAdminResetModal();
+            renderUserAdminTable();
+            checkUserAdminDirty();
         }
 
         async function uploadJob(e, overrideDuplicate = false) {
