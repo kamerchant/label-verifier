@@ -646,7 +646,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1">Job Card Number *</label>
-                        <input type="text" id="packing-qc-job" required onblur="lockPackingQCJobCard()" oninput="handlePackingQCJobInput()" placeholder="" class="linear-input w-full p-2.5 text-xs rounded">
+                        <input type="text" id="packing-qc-job" required onkeydown="handlePackingQCJobKeyDown(event)" onblur="lockPackingQCJobCard()" oninput="handlePackingQCJobInput()" placeholder="" class="linear-input w-full p-2.5 text-xs rounded">
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1">Scan or Enter Code *</label>
@@ -1794,6 +1794,7 @@
                 unlockBtn.classList.add('hidden');
                 codeInput.disabled = true;
                 codeInput.classList.add('opacity-40', 'cursor-not-allowed');
+                setTimeout(() => jcInput.focus(), 50);
             }
         }
 
@@ -1833,6 +1834,22 @@
                     }
                 }
             } catch(e) {}
+        }
+
+        async function handlePackingQCJobKeyDown(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const jcInput = document.getElementById('packing-qc-job');
+                const jcId = jcInput.value.trim();
+                if (!jcId) return;
+
+                lockPackingQCJobCard();
+                await handlePackingQCJobInput();
+                const codeInput = document.getElementById('packing-qc-code');
+                if (codeInput && !codeInput.disabled) {
+                    codeInput.focus();
+                }
+            }
         }
 
         function lockPackingQCJobCard() {
@@ -1877,6 +1894,14 @@
             const submitBtn = document.getElementById('packing-qc-submit-btn');
             const jcId = jcInput.value.trim();
             const code = codeInput.value.trim();
+
+            if (jcId && !code) {
+                lockPackingQCJobCard();
+                await handlePackingQCJobInput();
+                codeInput.focus();
+                return;
+            }
+
             if (!jcId || !code) return;
 
             const originalBtnText = submitBtn.innerHTML;
@@ -2341,7 +2366,7 @@
             try {
                 // Verify admin password before making any changes
                 const verifyBody = new FormData();
-                verifyBody.append('username', currentUser.username);
+                verifyBody.append('username', currentUser ? currentUser.username : '');
                 verifyBody.append('password', adminPass);
 
                 const verifyRes = await fetch('/api/auth/login', { method: 'POST', body: verifyBody });
@@ -2689,7 +2714,7 @@
             }
         }
 
-        filterMasterJobs = (filterType) => {
+        function filterMasterJobs(filterType) {
             loadMasterJobs(filterType);
         }
 
