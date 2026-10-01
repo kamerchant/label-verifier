@@ -600,7 +600,7 @@
                         </thead>
                         <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] table-text-theme">
                             <tr>
-                                <td colspan="5" class="px-3 py-8 text-center text-slate-400 italic text-xs">No scan events recorded for this session</td>
+                                <td colspan="5" class="px-3 py-8 text-center text-slate-400 italic text-xs">No Job Card selected</td>
                             </tr>
                         </tbody>
                     </table>
@@ -677,7 +677,7 @@
                     </thead>
                     <tbody id="packing-qc-chart-rows" class="divide-y divide-white/[0.04] table-text-theme">
                         <tr>
-                            <td colspan="4" class="p-4 text-center text-slate-400 italic">No codes verified for the Job Card yet</td>
+                            <td colspan="4" class="p-4 text-center text-slate-400 italic">No Job Card selected</td>
                         </tr>
                     </tbody>
                 </table>
@@ -1458,7 +1458,7 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `<span>Job Card: ${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>`;
+            document.getElementById('active-title-card').innerHTML = `<span>Job Card: ${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
             
             const displayDesc = activeJobDesc ? `${activeJobDesc} | Status: ${status}` : `Status: ${status}`;
             document.getElementById('header-job-desc').innerText = displayDesc;
@@ -1717,6 +1717,11 @@
             document.getElementById('stream-count-pass').innerText = countPass;
             document.getElementById('stream-count-error').innerText = countError;
 
+            if (!activeJobId) {
+                tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-8 text-center text-slate-400 italic text-xs">No Job Card selected</td></tr>`;
+                return;
+            }
+
             let filteredScans = allScans;
             if (streamFilter === 'PASS') {
                 filteredScans = allScans.filter(s => s.result === 'PASS' || s.result === 'Pass (Potential Restart)');
@@ -1725,7 +1730,11 @@
             }
 
             if (filteredScans.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-6 text-center text-slate-400 italic text-xs">No scan events found for this filter</td></tr>`;
+                if (allScans.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-8 text-center text-slate-400 italic text-xs">No scan events recorded for this Job Card yet</td></tr>`;
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-6 text-center text-slate-400 italic text-xs">No scan events found for this filter</td></tr>`;
+                }
                 return;
             }
 
@@ -1804,6 +1813,9 @@
             const unlockBtn = document.getElementById('packing-qc-unlock-btn');
             const jcId = jcInput.value.trim();
             if (!jcId) {
+                currentPackingQCJob = "";
+                currentPackingQCLogs = [];
+                renderPackingQCChart();
                 codeInput.disabled = true;
                 codeInput.classList.add('opacity-40', 'cursor-not-allowed');
                 return;
@@ -1862,6 +1874,7 @@
                 currentPackingQCJob = jcInput.value.trim();
                 codeInput.disabled = false;
                 codeInput.classList.remove('opacity-40', 'cursor-not-allowed');
+                renderPackingQCChart();
                 codeInput.focus();
             }
         }
@@ -1962,6 +1975,10 @@
 
         function renderPackingQCChart() {
             const tbody = document.getElementById('packing-qc-chart-rows');
+            if (!currentPackingQCJob) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">No Job Card selected</td></tr>`;
+                return;
+            }
             if (currentPackingQCLogs.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">No codes verified for the Job Card yet</td></tr>`;
                 return;
