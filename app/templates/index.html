@@ -399,9 +399,9 @@
                 <p id="header-job-desc" class="text-xs text-slate-400 mt-0.5 truncate">Search active production jobs using the search field.</p>
             </div>
 
-            <!-- Action Buttons Group & Job Search Bar on the Right -->
-            <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full lg:w-auto shrink-0">
-                <div class="flex items-center gap-1.5 shrink-0">
+            <!-- Action Buttons Group & Mobile-Optimized Job Search Bar -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto shrink-0">
+                <div class="flex items-center gap-1.5 shrink-0 overflow-x-auto no-scrollbar py-0.5">
                     <button id="report-btn" onclick="openReportModal()" disabled 
                             class="linear-button-secondary text-xs px-2.5 py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[38px] font-medium shadow-sm whitespace-nowrap">
                         QC Report
@@ -416,9 +416,9 @@
                     </button>
                 </div>
 
-                <div class="relative w-full sm:w-64 flex-1 sm:flex-initial">
+                <div class="relative w-full sm:w-72">
                     <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Search active jobs..." 
-                           class="linear-input w-full px-3 py-2 text-xs sm:text-sm rounded placeholder-slate-500 shadow-inner min-h-[38px]">
+                           class="linear-input w-full px-3.5 py-2.5 text-sm sm:text-base rounded placeholder-slate-400 shadow-inner min-h-[44px]">
                     <div id="job-list" class="absolute left-0 right-0 top-full mt-1 linear-card rounded shadow-2xl max-h-60 overflow-y-auto z-30 hidden"></div>
                 </div>
             </div>
@@ -999,6 +999,7 @@
         let streamFilter = 'ALL';
         let alarmCount = 0;
         let alarmInterval = null;
+        let searchDebounceTimer = null;
 
         let confirmCallback = null;
 
@@ -1241,39 +1242,42 @@
             location.reload();
         }
 
-        async function handleJobSearch() {
-            const query = document.getElementById('job-search').value.trim();
-            const list = document.getElementById('job-list');
+        function handleJobSearch() {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(async () => {
+                const query = document.getElementById('job-search').value.trim();
+                const list = document.getElementById('job-list');
 
-            if (!query) {
-                list.classList.add('hidden');
-                return;
-            }
+                if (!query) {
+                    list.classList.add('hidden');
+                    return;
+                }
 
-            const res = await fetch(`/api/jobs?query=${encodeURIComponent(query)}`);
-            if (res.status === 401) return checkSession();
-            const jobs = await res.json();
+                const res = await fetch(`/api/jobs?query=${encodeURIComponent(query)}`);
+                if (res.status === 401) return checkSession();
+                const jobs = await res.json();
 
-            if (jobs.length === 0) {
-                list.innerHTML = `<div class="p-3 text-xs text-slate-500 italic text-center">No jobs match '${query}'</div>`;
+                if (jobs.length === 0) {
+                    list.innerHTML = `<div class="p-3 text-xs text-slate-500 italic text-center">No jobs match '${query}'</div>`;
+                    list.classList.remove('hidden');
+                    return;
+                }
+
+                list.innerHTML = jobs.map(j => `
+                    <div onclick="selectJob('${j.id}', '${escape(j.description)}', '${j.status}', ${j.consumed}, ${j.total})" 
+                         class="p-2.5 hover:bg-black/[0.02] border-b cursor-pointer flex justify-between items-center transition-colors">
+                        <div class="min-w-0 pr-2">
+                            <span class="font-bold text-xs block truncate">${j.id}</span>
+                            ${j.description ? `<span class="text-[11px] text-slate-400 block truncate max-w-[180px]">${j.description}</span>` : ''}
+                        </div>
+                        <div class="text-right shrink-0">
+                            <span class="text-[10px] px-1.5 py-0.5 rounded linear-badge-pass">${j.status}</span>
+                            <span class="block text-[10px] text-slate-500 mt-0.5">${j.consumed} / ${j.total}</span>
+                        </div>
+                    </div>
+                `).join('');
                 list.classList.remove('hidden');
-                return;
-            }
-
-            list.innerHTML = jobs.map(j => `
-                <div onclick="selectJob('${j.id}', '${escape(j.description)}', '${j.status}', ${j.consumed}, ${j.total})" 
-                     class="p-2.5 hover:bg-black/[0.02] border-b cursor-pointer flex justify-between items-center transition-colors">
-                    <div class="min-w-0 pr-2">
-                        <span class="font-bold text-xs block truncate">${j.id}</span>
-                        ${j.description ? `<span class="text-[11px] text-slate-400 block truncate max-w-[180px]">${j.description}</span>` : ''}
-                    </div>
-                    <div class="text-right shrink-0">
-                        <span class="text-[10px] px-1.5 py-0.5 rounded linear-badge-pass">${j.status}</span>
-                        <span class="block text-[10px] text-slate-500 mt-0.5">${j.consumed} / ${j.total}</span>
-                    </div>
-                </div>
-            `).join('');
-            list.classList.remove('hidden');
+            }, 300);
         }
 
         document.addEventListener('click', (e) => {
@@ -1491,7 +1495,7 @@
                 card.className = "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-pink";
                 badge.className = "px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs font-bold bg-black text-pink-600";
                 badge.innerText = "WARNING";
-                heading.innerText = result === 'Duplicate (Potential Restart)' ? "DUPLICATE (POTENTIAL RESTART)" : "POTENTIAL RESTART DETECTED";
+                heading.innerText = result === 'Duplicate (Potential Restart)' ? "DUPLICATE - POTENTIAL RESTART DETECTED" : "PASS - POTENTIAL RESTART DETECTED";
                 detail.innerText = msg;
                 
                 if (result === 'Pass (Potential Restart)') {
