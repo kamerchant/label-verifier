@@ -460,7 +460,8 @@
         </div>
 
         <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto py-0.5 sm:py-0">
-            <button onclick="openPackingQCModal()" class="linear-button-primary px-2.5 py-1.5 rounded text-xs font-semibold whitespace-nowrap min-h-[34px] flex items-center bg-emerald-600 hover:bg-emerald-500">Final QC</button>
+            <!-- Distinct Green Final QC Terminal Action Button -->
+            <button onclick="openPackingQCModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap min-h-[34px] flex items-center shadow-md transition-colors">Final QC</button>
             <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-2.5 py-1.5 rounded text-xs font-semibold whitespace-nowrap min-h-[34px] flex items-center">Create Job</button>
             <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-2.5 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center">Job Control Center</button>
             <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-2.5 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center">User Admin</button>
@@ -610,20 +611,26 @@
     </main>
 
     <!-- Footer Information Bar (Pinned) -->
-    <footer class="border-t px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between text-xs text-slate-300 shrink-0 bg-[#0d0e11] z-40 gap-1">
-        <div class="flex items-center gap-3">
-            <div class="flex items-center gap-2">
+    <footer class="border-t px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between text-xs text-slate-300 shrink-0 bg-[#0d0e11] z-40 gap-2">
+        <div class="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
+            <div class="flex items-center gap-2 shrink-0">
                 <span class="w-2 h-2 rounded-full bg-[#2ed573]"></span>
                 <span class="table-text-theme">Online</span>
                 <span class="text-slate-600">&middot;</span>
-                <span id="user-display" class="truncate max-w-[180px] sm:max-w-none table-text-theme font-medium">Checking session...</span>
+                <span id="user-display" class="truncate max-w-[150px] sm:max-w-none table-text-theme font-medium">Checking session...</span>
             </div>
-            <span class="text-slate-600">&middot;</span>
-            <button onclick="toggleTheme()" class="text-slate-300 hover:text-indigo-400 underline cursor-pointer bg-transparent border-none p-0 text-xs transition-colors" title="Switch Theme">
+            <span class="text-slate-600 shrink-0">&middot;</span>
+            <button onclick="toggleTheme()" class="text-slate-300 hover:text-indigo-400 underline cursor-pointer bg-transparent border-none p-0 text-xs transition-colors shrink-0" title="Switch Theme">
                 Theme: <span id="theme-name-text" class="table-text-theme font-semibold">Obsidian</span>
             </button>
+            <span class="text-slate-600 shrink-0">&middot;</span>
+            <!-- Live System Event Message Output -->
+            <div id="footer-sys-msg-box" class="flex items-center gap-1.5 text-xs truncate transition-all">
+                <span id="footer-sys-dot" class="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0"></span>
+                <span id="footer-sys-msg" class="truncate text-slate-400 max-w-[200px] sm:max-w-xs md:max-w-md">System Ready</span>
+            </div>
         </div>
-        <div class="text-slate-400 text-[11px] hidden sm:block">
+        <div class="text-slate-400 text-[11px] hidden lg:block shrink-0">
             Press <kbd class="bg-[#1e2029] text-white px-1.5 py-0.5 rounded">Enter</kbd> to submit
         </div>
     </footer>
@@ -1124,6 +1131,28 @@
 
         const spinnerSvg = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
 
+        function updateSystemMessage(msg, type = 'info') {
+            const box = document.getElementById('footer-sys-msg-box');
+            const dot = document.getElementById('footer-sys-dot');
+            const text = document.getElementById('footer-sys-msg');
+            if (!box || !dot || !text) return;
+            
+            text.innerText = msg;
+            if (type === 'error') {
+                dot.className = "w-1.5 h-1.5 rounded-full bg-red-400 shrink-0 animate-pulse";
+                text.className = "truncate text-red-400 font-semibold max-w-[200px] sm:max-w-xs md:max-w-md";
+            } else if (type === 'warn') {
+                dot.className = "w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 animate-pulse";
+                text.className = "truncate text-amber-300 font-semibold max-w-[200px] sm:max-w-xs md:max-w-md";
+            } else if (type === 'success') {
+                dot.className = "w-1.5 h-1.5 rounded-full bg-[#2ed573] shrink-0";
+                text.className = "truncate text-[#2ed573] font-medium max-w-[200px] sm:max-w-xs md:max-w-md";
+            } else {
+                dot.className = "w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0";
+                text.className = "truncate text-slate-300 max-w-[200px] sm:max-w-xs md:max-w-md";
+            }
+        }
+
         function initTheme() {
             const savedTheme = localStorage.getItem('vdv_theme') || 'obsidian';
             if (savedTheme === 'parchment') {
@@ -1152,6 +1181,7 @@
             document.getElementById('custom-alert-title').innerText = title;
             document.getElementById('custom-alert-msg').innerText = message;
             document.getElementById('custom-alert-modal').classList.remove('hidden');
+            updateSystemMessage(message, 'warn');
         }
 
         function closeCustomAlert() {
@@ -1312,6 +1342,7 @@
                 const res = await fetch('/api/auth/login', { method: 'POST', body });
                 if (res.ok) {
                     checkSession();
+                    updateSystemMessage("User session authenticated", "success");
                 } else {
                     const err = await res.json();
                     let errMsg = "Authentication failed";
@@ -1323,9 +1354,11 @@
                         errMsg = JSON.stringify(err.detail);
                     }
                     showCustomAlert(errMsg);
+                    updateSystemMessage(errMsg, "error");
                 }
             } catch (ex) {
                 showCustomAlert("Network error or server unreachable");
+                updateSystemMessage("Network error or server unreachable", "error");
             } finally {
                 loginBtn.disabled = false;
                 loginBtn.innerHTML = originalText;
@@ -1351,9 +1384,11 @@
                     document.getElementById('pw-current').value = "";
                     document.getElementById('pw-new').value = "";
                     checkSession();
+                    updateSystemMessage("Password changed successfully", "success");
                 } else {
                     const err = await res.json();
                     showCustomAlert(err.detail || "Password change failed");
+                    updateSystemMessage(err.detail || "Password change failed", "error");
                 }
             } finally {
                 pwBtn.disabled = false;
@@ -1482,6 +1517,7 @@
 
             await loadJobScanStream(id);
             resetInput();
+            updateSystemMessage(`Loaded Job Card: ${id} (${status})`, "info");
         }
 
         function clearLoadedJob() {
@@ -1531,6 +1567,7 @@
 
             renderStreamTable();
             resetInput();
+            updateSystemMessage("Job Card closed. Ready to select job.", "info");
         }
 
         async function loadJobScanStream(jobCardId) {
@@ -1561,9 +1598,11 @@
                 if (res.ok) {
                     showCustomAlert(`Job Card ${activeJobId} completed.`, "Success");
                     selectJob(activeJobId, escape(activeJobDesc), 'COMPLETED', 0, 0);
+                    updateSystemMessage(`Job Card ${activeJobId} marked COMPLETED`, "warn");
                 } else {
                     const err = await res.json();
                     showCustomAlert(err.detail || "Action failed");
+                    updateSystemMessage(err.detail || "Status update failed", "error");
                 }
             }
         }
@@ -1614,6 +1653,7 @@
                 detail.innerText = msg;
                 
                 incrementVerifiedKPI();
+                updateSystemMessage(`[PASS] ${code}: ${msg}`, "success");
             } else if (result === 'Pass (Potential Restart)' || result === 'Duplicate (Potential Restart)') {
                 startAlarm();
                 card.className = "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-pink";
@@ -1625,6 +1665,7 @@
                 if (result === 'Pass (Potential Restart)') {
                     incrementVerifiedKPI();
                 }
+                updateSystemMessage(`[${result}] ${code}: ${msg}`, "warn");
             } else {
                 playTone('FAIL');
                 card.className = "px-3.5 sm:px-5 py-3 sm:py-4 rounded flex flex-col md:flex-row items-center justify-center text-center gap-2 sm:gap-3 status-state-red";
@@ -1632,6 +1673,7 @@
                 badge.innerText = "ERROR";
                 heading.innerText = msg;
                 detail.innerText = "";
+                updateSystemMessage(`[${result}] ${code}: ${msg}`, "error");
             }
         }
 
@@ -1877,13 +1919,16 @@
                     printBtn.classList.remove('opacity-30', 'pointer-events-none');
                     codeInput.value = "";
                     codeInput.focus();
+                    updateSystemMessage(`[Final QC OK] Code: ${data.code}`, "success");
                 } else {
                     resultBox.className = "p-3 rounded mb-3 border bg-red-500/10 border-red-500/25 text-red-400 text-center";
                     statusText.innerText = data.message === "Code was already validated against this job card" ? "DUPLICATE VALIDATION" : "MISMATCH / ERROR";
                     detailText.innerText = data.message;
+                    updateSystemMessage(`[Final QC Failed] ${data.message}`, "error");
                 }
             } catch (ex) {
                 showCustomAlert("Server error during Final QC Test.");
+                updateSystemMessage("Final QC Server Error", "error");
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalBtnText;
@@ -2112,6 +2157,7 @@
 
             renderUserAdminTable();
             checkUserAdminDirty();
+            updateSystemMessage(`Staged new user: ${username}`, "info");
         }
 
         function removeStagedNewUser(username) {
@@ -2393,8 +2439,10 @@
 
                 checkSession();
                 showCustomAlert("User changes saved successfully.", "Success");
+                updateSystemMessage("All user administration changes committed", "success");
             } catch(ex) {
                 showCustomAlert(ex.message || "Failed to submit user changes.");
+                updateSystemMessage(ex.message || "Failed to submit user changes", "error");
             } finally {
                 modalSubmitBtn.disabled = false;
                 modalSubmitBtn.innerHTML = originalModalBtnText;
@@ -2446,6 +2494,7 @@
             closeAdminResetModal();
             renderUserAdminTable();
             checkUserAdminDirty();
+            updateSystemMessage(`Password revision staged for ${targetResetUsername}`, "warn");
         }
 
         async function uploadJob(e, overrideDuplicate = false) {
@@ -2493,12 +2542,15 @@
                     document.getElementById('create-job-form').reset();
                     pendingUploadFormData = null;
                     showCustomAlert(`Job Card '${data.job_card_id}' created with ${data.total_extracted.toLocaleString()} codes.`, "Success");
+                    updateSystemMessage(`Job Card '${data.job_card_id}' created (${data.total_extracted.toLocaleString()} codes)`, "success");
                 } else {
                     const err = await res.json();
                     showCustomAlert(err.detail || "Failed to create job");
+                    updateSystemMessage(err.detail || "Failed to create job", "error");
                 }
             } catch(ex) {
                 showCustomAlert("Network error or upload failed");
+                updateSystemMessage("Job creation network error", "error");
             } finally {
                 if (uploadBtn) {
                     uploadBtn.disabled = false;
@@ -2574,12 +2626,15 @@
                     closeBulkStatusModal();
                     showCustomAlert(`Status updated to ${targetStatus} for selected jobs.`, "Success");
                     await loadMasterJobs(currentMasterTab);
+                    updateSystemMessage(`Bulk status updated to ${targetStatus} (${checked.length} jobs)`, "success");
                 } else {
                     const err = await res.json();
                     showCustomAlert(err.detail || "Bulk status update failed");
+                    updateSystemMessage(err.detail || "Bulk update failed", "error");
                 }
             } catch(ex) {
                 showCustomAlert("Network error or server unreachable");
+                updateSystemMessage("Bulk update network error", "error");
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalText;
