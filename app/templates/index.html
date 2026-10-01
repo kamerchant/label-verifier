@@ -231,15 +231,17 @@
             display: none !important;
         }
 
-        /* Flawless Full-Width A4 Print Formatting */
+        /* Clean Full-Width A4 Print Stylesheet */
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 10mm;
+                margin: 10mm 12mm;
             }
+
             html, body {
                 background: #ffffff !important;
                 color: #0f172a !important;
+                width: 100% !important;
                 height: auto !important;
                 min-height: 0 !important;
                 max-height: none !important;
@@ -247,103 +249,138 @@
                 font-size: 9pt !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                width: 100% !important;
-            }
-            body * {
-                visibility: hidden !important;
-            }
-            
-            .print-brand-box {
-                display: flex !important;
-                align-items: center !important;
-                gap: 8px !important;
-                margin-bottom: 10px !important;
-            }
-            .print-brand-logo {
-                height: 28px !important;
-                width: auto !important;
-                object-fit: contain !important;
+                display: block !important;
             }
 
-            /* Container and Card resets for print: 100% full width */
-            .printable-modal:not(.hidden),
-            #packing-qc-modal:not(.hidden),
-            #report-modal:not(.hidden),
-            #lifecycle-modal:not(.hidden) {
+            /* Completely remove UI chrome from the print flow */
+            body > header,
+            body > main,
+            body > footer,
+            #login-modal,
+            #pw-modal,
+            #upload-modal,
+            #master-jobs-modal,
+            #user-modal,
+            #custom-alert-modal,
+            #duplicate-warning-modal,
+            #custom-confirm-modal,
+            #admin-reset-pw-modal,
+            #bulk-status-modal,
+            .no-print {
+                display: none !important;
+                height: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                visibility: hidden !important;
+            }
+
+            /* Make target printable modal flow naturally at top left */
+            .printable-modal:not(.hidden) {
+                display: block !important;
                 position: static !important;
-                left: 0 !important;
-                top: 0 !important;
                 width: 100% !important;
                 max-width: 100% !important;
                 min-width: 100% !important;
                 height: auto !important;
                 min-height: 0 !important;
                 max-height: none !important;
-                background: #ffffff !important;
-                color: #0f172a !important;
-                padding: 0 !important;
                 margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
                 box-shadow: none !important;
                 border: none !important;
                 visibility: visible !important;
-                display: block !important;
             }
 
             .printable-modal:not(.hidden) > div,
-            #packing-qc-modal:not(.hidden) > div,
-            #report-modal:not(.hidden) > div,
-            #lifecycle-modal:not(.hidden) > div,
             .printable-modal:not(.hidden) .linear-card {
+                display: block !important;
+                width: 100% !important;
                 max-width: 100% !important;
                 min-width: 100% !important;
-                width: 100% !important;
-                max-height: none !important;
                 height: auto !important;
+                min-height: 0 !important;
+                max-height: none !important;
                 padding: 0 !important;
                 margin: 0 !important;
-                border: none !important;
-                box-shadow: none !important;
                 background: #ffffff !important;
-                border-radius: 0 !important;
-                display: block !important;
+                box-shadow: none !important;
+                border: none !important;
             }
 
-            .printable-modal:not(.hidden) *,
-            #packing-qc-modal:not(.hidden) *,
-            #report-modal:not(.hidden) *,
-            #lifecycle-modal:not(.hidden) * {
+            .printable-modal:not(.hidden) * {
                 visibility: visible !important;
+            }
+
+            /* Report Brand Header */
+            .print-brand-box {
+                display: flex !important;
+                align-items: center !important;
+                gap: 8px !important;
+                margin-bottom: 8px !important;
+            }
+            .print-brand-logo {
+                height: 26px !important;
+                width: auto !important;
+                object-fit: contain !important;
             }
 
             .modal-title-theme, .table-text-theme {
                 color: #0f172a !important;
             }
 
+            .linear-subcard {
+                background: #f8fafc !important;
+                border: 1px solid #cbd5e1 !important;
+                color: #0f172a !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+                margin-bottom: 10px !important;
+                padding: 8px 10px !important;
+                border-radius: 4px !important;
+            }
+
+            #report-stats {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 10px !important;
+                width: 100% !important;
+                margin-bottom: 10px !important;
+            }
+            #report-stats > div {
+                border: 1px solid #cbd5e1 !important;
+                background: #f8fafc !important;
+                padding: 6px 8px !important;
+                border-radius: 4px !important;
+                text-align: center !important;
+            }
+
             /* Tables full width */
-            .print-table-container {
+            .print-table-container,
+            .printable-modal .overflow-y-auto {
                 width: 100% !important;
                 max-width: 100% !important;
                 min-width: 100% !important;
-                border: none !important;
-                overflow: visible !important;
+                height: auto !important;
                 max-height: none !important;
+                overflow: visible !important;
+                border: none !important;
+                margin-bottom: 10px !important;
             }
 
             table {
-                font-size: 8.5pt !important;
                 width: 100% !important;
                 min-width: 100% !important;
                 max-width: 100% !important;
+                font-size: 8.5pt !important;
                 border-collapse: collapse !important;
                 page-break-inside: auto !important;
-                table-layout: auto !important;
             }
             tr {
                 page-break-inside: avoid !important;
-                page-break-after: auto !important;
             }
             th, td {
-                padding: 5px 8px !important;
+                padding: 4px 6px !important;
                 border: 1px solid #cbd5e1 !important;
                 color: #0f172a !important;
             }
@@ -352,70 +389,43 @@
                 font-weight: bold !important;
             }
 
-            /* Report Stats in QC Report */
-            #report-stats {
-                width: 100% !important;
-                display: grid !important;
-                grid-template-columns: 1fr 1fr !important;
-                gap: 12px !important;
-                margin-bottom: 12px !important;
-            }
-            #report-stats > div {
-                border: 1px solid #cbd5e1 !important;
-                background: #f8fafc !important;
-                padding: 8px !important;
-                border-radius: 4px !important;
-                text-align: center !important;
-            }
-
-            /* Subcards (info boxes) */
-            .linear-subcard {
-                background: #f8fafc !important;
-                border: 1px solid #cbd5e1 !important;
-                color: #0f172a !important;
-                width: 100% !important;
-                box-sizing: border-box !important;
-                margin-bottom: 12px !important;
-                padding: 10px !important;
-                border-radius: 4px !important;
-            }
-
-            /* QC Report and Lifecycle Audit footer timestamp: cleanly after the table, never merging */
+            /* QC Report & Lifecycle Audit footer timestamp: sits cleanly below table, no overlap */
             #report-modal .print-timestamp-footer,
             #lifecycle-modal .print-timestamp-footer {
                 display: block !important;
                 visibility: visible !important;
                 position: static !important;
-                margin-top: 16px !important;
-                margin-bottom: 0 !important;
-                padding-top: 8px !important;
+                width: 100% !important;
+                margin-top: 14px !important;
+                padding-top: 6px !important;
                 border-top: 1px solid #cbd5e1 !important;
                 font-size: 8pt !important;
                 color: #475569 !important;
                 clear: both !important;
-                width: 100% !important;
+                page-break-before: avoid !important;
             }
 
-            /* Final QC Certificate print layout */
+            /* Final QC Terminal Print Layout */
             #packing-qc-printable {
                 display: block !important;
                 visibility: visible !important;
-                background: #ffffff !important;
-                color: #0f172a !important;
                 width: 100% !important;
                 max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
             }
             #packing-qc-printable-content {
                 display: flex !important;
                 flex-direction: column !important;
-                justify-content: space-between !important;
-                min-height: 250mm !important;
-                height: 100% !important;
+                min-height: 220mm !important;
+                max-height: 250mm !important;
                 box-sizing: border-box !important;
                 width: 100% !important;
                 max-width: 100% !important;
                 padding: 0 !important;
                 margin: 0 !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
             }
             #packing-qc-modal > div > *:not(#packing-qc-printable) {
                 display: none !important;
@@ -423,16 +433,13 @@
             #print-qc-footer-timestamp {
                 display: block !important;
                 visibility: visible !important;
+                width: 100% !important;
                 margin-top: auto !important;
-                padding-top: 8px !important;
+                padding-top: 6px !important;
                 border-top: 1px solid #cbd5e1 !important;
                 font-size: 8pt !important;
                 color: #475569 !important;
-                width: 100% !important;
-            }
-
-            .no-print {
-                display: none !important;
+                page-break-before: avoid !important;
             }
         }
     </style>
@@ -1900,7 +1907,8 @@
             document.getElementById('report-status-text').innerText = data.status;
             
             const printTimestampStr = `Report Generated On: ${new Date().toLocaleString()}`;
-            document.getElementById('print-report-timestamp').innerText = printTimestampStr;
+            const rptTs = document.getElementById('print-report-timestamp');
+            if (rptTs) rptTs.innerText = printTimestampStr;
 
             document.getElementById('download-csv-btn').onclick = () => {
                 window.location.href = `/api/reports/${activeJobId}/csv`;
@@ -1940,7 +1948,8 @@
             document.getElementById('lifecycle-desc-text').innerText = data.description || '-';
             
             const printTimestampStr = `Report Generated On: ${new Date().toLocaleString()}`;
-            document.getElementById('print-lifecycle-timestamp').innerText = printTimestampStr;
+            const lifeTs = document.getElementById('print-lifecycle-timestamp');
+            if (lifeTs) lifeTs.innerText = printTimestampStr;
 
             const tbody = document.getElementById('lifecycle-log-rows');
             if (data.logs.length === 0) {
