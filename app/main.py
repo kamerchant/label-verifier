@@ -756,7 +756,7 @@ def verify_code(
                 exact_code = code_row[1]
                 current_status = code_row[2]
 
-                # Find the maximum row ID of previously consumed codes in this job
+                # Find the maximum row ID of previously consumed codes in this job session
                 cur.execute("""
                     SELECT MAX(id) FROM codes 
                     WHERE run_id = %s AND status = 'CONSUMED'
@@ -837,6 +837,11 @@ def verify_code(
                 "result": "MISMATCH", 
                 "message": msg
             })
+    except Exception as e:
+        return JSONResponse(status_code=200, content={
+            "result": "ERROR",
+            "message": f"Server verification error: {str(e)}"
+        })
     finally:
         release_connection(conn)
 
