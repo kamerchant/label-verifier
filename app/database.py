@@ -79,7 +79,6 @@ def init_db():
                     scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
-            # Ensure scan_logs result column can handle longer result strings like 'Pass (Potential Restart)'
             cur.execute("ALTER TABLE scan_logs ALTER COLUMN result TYPE VARCHAR(100);")
 
             cur.execute("""

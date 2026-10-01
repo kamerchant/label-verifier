@@ -768,13 +768,24 @@ def verify_code(
                 out_of_sequence = max_consumed_id > 0 and code_id < max_consumed_id
 
                 if out_of_sequence:
-                    if current_status == 'PENDING':
-                        cur.execute("""
-                            UPDATE codes 
-                            SET status = 'CONSUMED', scanned_at = NOW() 
-                            WHERE run_id = %s AND id = %s
-                        """, (active_run_id, code_id))
-                        conn.commit()
+                    if current_status == 'CONSUMED':
+                        # If an already consumed lower-row code is scanned again during a restart, treat as Duplicate with restart context
+                        eval_result = "DUPLICATE"
+                        msg = f"Duplicate (Potential Restart): Code {exact_code} (row {code_id}) was verified earlier and is lower than the max row ({max_consumed_id})."
+                        log_scan(eval_result, msg)
+                        return JSONResponse(status_code=200, content={
+                            "result": eval_result,
+                            "message": msg,
+                            "sequence_warning": True
+                        })
+
+                    # If PENDING, consume it and trigger warning pass
+                    cur.execute("""
+                        UPDATE codes 
+                        SET status = 'CONSUMED', scanned_at = NOW() 
+                        WHERE run_id = %s AND id = %s
+                    """, (active_run_id, code_id))
+                    conn.commit()
 
                     eval_result = "Pass (Potential Restart)"
                     msg = f"Potential file restart: row of code ({code_id}) is lower than the row of a previously scanned code ({max_consumed_id})."

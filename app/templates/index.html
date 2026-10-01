@@ -267,11 +267,15 @@
             .print-timestamp-footer {
                 display: block !important;
                 visibility: visible !important;
-                margin-top: 10px !important;
+                position: absolute !important;
+                bottom: 15mm !important;
+                left: 10mm !important;
+                right: 10mm !important;
                 font-size: 8pt !important;
                 color: #475569 !important;
                 border-top: 1px solid #cbd5e1 !important;
                 padding-top: 6px !important;
+                text-align: left !important;
             }
             
             .printable-modal:not(.hidden) {
@@ -317,6 +321,7 @@
                 left: 0 !important;
                 top: 0 !important;
                 width: 100% !important;
+                height: 100% !important;
                 padding: 10mm !important;
                 box-sizing: border-box !important;
                 visibility: visible !important;
@@ -589,40 +594,42 @@
 
             <!-- Printable report container hidden normally on screen, visible on print -->
             <div id="packing-qc-printable" class="hidden">
-                <div style="font-family: Arial, sans-serif; padding: 15px; color: #0f172a; background: #ffffff;">
-                    <div class="print-brand-box">
-                        <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.style.display='none';">
-                    </div>
-                    <h3 style="font-size: 14pt; font-weight: bold; text-align: center; margin-bottom: 12px; color: #0f172a;">Final QC Certificate</h3>
-                    
-                    <div style="border: 1px solid #cbd5e1; padding: 10px; border-radius: 4px; margin-bottom: 12px; background: #f8fafc;">
-                        <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Job Card:</strong> <span id="print-qc-job"></span></p>
-                        <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Description:</strong> <span id="print-qc-desc"></span></p>
-                        <p style="font-size: 9.5pt; margin-bottom: 2px;"><strong>Status:</strong> <span id="print-qc-status">Completed</span></p>
-                    </div>
+                <div id="packing-qc-printable-content" style="font-family: Arial, sans-serif; padding: 15px; color: #0f172a; background: #ffffff; position: relative; min-height: 250mm; box-sizing: border-box;">
+                    <div>
+                        <div class="print-brand-box">
+                            <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.style.display='none';">
+                        </div>
+                        <h3 style="font-size: 14pt; font-weight: bold; text-align: center; margin-bottom: 12px; color: #0f172a;">Final QC Certificate</h3>
+                        
+                        <div style="border: 1px solid #cbd5e1; padding: 10px; border-radius: 4px; margin-bottom: 12px; background: #f8fafc;">
+                            <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Job Card:</strong> <span id="print-qc-job"></span></p>
+                            <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Description:</strong> <span id="print-qc-desc"></span></p>
+                            <p style="font-size: 9.5pt; margin-bottom: 2px;"><strong>Status:</strong> <span id="print-qc-status">Completed</span></p>
+                        </div>
 
-                    <p style="font-size: 9.5pt; margin-bottom: 10px;"><strong>Total Codes Verified:</strong> <span id="print-qc-count"></span></p>
-                    <p style="font-size: 9pt; margin-bottom: 12px; color: #475569;"><span id="print-qc-time"></span></p>
+                        <p style="font-size: 9.5pt; margin-bottom: 10px;"><strong>Total Codes Verified:</strong> <span id="print-qc-count"></span></p>
 
-                    <div style="margin-bottom: 12px;">
-                        <h4 style="font-size: 9.5pt; font-weight: bold; margin-bottom: 5px; color: #0f172a;">Verified Codes Audit Summary:</h4>
-                        <table style="width: 100%; border-collapse: collapse; font-size: 8.5pt;">
-                            <thead>
-                                <tr style="background-color: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
-                                    <th style="padding: 5px; border: 1px solid #cbd5e1; text-align: left;">Tested Code</th>
-                                    <th style="padding: 5px; border: 1px solid #cbd5e1; text-align: left;">Job Card</th>
-                                    <th style="padding: 5px; border: 1px solid #cbd5e1; text-align: left;">Inspector</th>
-                                    <th style="padding: 5px; border: 1px solid #cbd5e1; text-align: left;">Test Timestamp</th>
-                                </tr>
-                            </thead>
-                            <tbody id="print-qc-table-rows">
-                            </tbody>
-                        </table>
-                    </div>
+                        <div style="margin-bottom: 12px;">
+                            <h4 style="font-size: 9.5pt; font-weight: bold; margin-bottom: 5px; color: #0f172a;">Verified Codes Audit Summary:</h4>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 8.5pt;">
+                                <thead>
+                                    <tr style="background-color: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
+                                        <th style="padding: 5px; border: 1px solid #cbd5e1; text-align: left;">Tested Code</th>
+                                        <th style="padding: 5px; border: 1px solid #cbd5e1; text-align: left;">Job Card</th>
+                                        <th style="padding: 5px; border: 1px solid #cbd5e1; text-align: left;">Inspector</th>
+                                        <th style="padding: 5px; border: 1px solid #cbd5e1; text-align: left;">Test Timestamp</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="print-qc-table-rows">
+                                </tbody>
+                            </table>
+                        </div>
 
-                    <div style="margin-top: 10px; padding: 10px; background: #f0fdf4; border: 2px solid #16a34a; border-radius: 6px; text-align: center;">
-                        <span style="font-size: 11pt; font-weight: bold; color: #16a34a;">Final QC Approved, OK to Pack</span>
+                        <div style="margin-top: 10px; padding: 10px; background: #f0fdf4; border: 2px solid #16a34a; border-radius: 6px; text-align: center;">
+                            <span style="font-size: 11pt; font-weight: bold; color: #16a34a;">Final QC Approved, OK to Pack</span>
+                        </div>
                     </div>
+                    <div id="print-timestamp" class="print-timestamp-footer"></div>
                 </div>
             </div>
 
@@ -1094,18 +1101,18 @@
         }
 
         function playAlarmSiren() {
-            if (alarmCount >= 10) {
+            if (alarmCount >= 6) {
                 stopAlarm();
                 return;
             }
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-            osc.frequency.linearRampToValueAtTime(440, audioCtx.currentTime + 0.25);
-            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.2);
+            gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start();
@@ -1117,7 +1124,7 @@
             stopAlarm();
             alarmCount = 0;
             playAlarmSiren();
-            alarmInterval = setInterval(playAlarmSiren, 400);
+            alarmInterval = setInterval(playAlarmSiren, 350);
         }
 
         function stopAlarm() {
@@ -1288,7 +1295,7 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `<span>Job Card: ${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
+            document.getElementById('active-title-card').innerHTML = `<span>Job Card: ${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>`;
             
             const displayDesc = activeJobDesc ? `${activeJobDesc} | Status: ${status}` : `Status: ${status}`;
             document.getElementById('header-job-desc').innerText = displayDesc;
