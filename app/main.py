@@ -3,10 +3,8 @@ import os
 import re
 import csv
 import json
-import codecs
 import tempfile
 import threading
-import traceback
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Response, Depends
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -15,7 +13,7 @@ from app.database import init_db, get_connection, release_connection, hash_passw
 
 app = FastAPI(title="CCL ME - PK - Variable Data Verification")
 
-SECRET_KEY = os.environ.get("SESSION_SECRET", "super-secret-press-floor-key-change-in-prod")
+SECRET_KEY = os.environ.get("SESSION_SECRET", "ccl-variable-data-secret-floor-key-2026")
 signer = URLSafeTimedSerializer(SECRET_KEY)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -408,10 +406,6 @@ def toggle_user_upload(
     finally:
         release_connection(conn)
 
-# --------------------------------------------------------------------------------------
-# UNIFIED GLOBAL AUDIT TRAIL ENDPOINT
-# --------------------------------------------------------------------------------------
-
 @app.get("/api/admin/audit-trail")
 def get_global_audit_trail(user: dict = Depends(require_manager_or_admin)):
     conn = get_connection()
@@ -683,10 +677,6 @@ def bulk_status_change(
             return {"status": "success"}
     finally:
         release_connection(conn)
-
-# --------------------------------------------------------------------------------------
-# STREAMING PIPELINE WORKERS
-# --------------------------------------------------------------------------------------
 
 def stream_file_to_codes_chunked(cur, conn, run_id: int, target_tsv_path: str, total_to_insert: int):
     CHUNK_SIZE = 100_000
@@ -1092,10 +1082,6 @@ def cancel_upload_job(run_id: int, user: dict = Depends(require_uploader)):
             return {"status": "success"}
     finally:
         release_connection(conn)
-
-# --------------------------------------------------------------------------------------
-# SECURE PASSWORD-PROTECTED CONDITIONAL PURGE
-# --------------------------------------------------------------------------------------
 
 @app.post("/api/admin/jobs/{run_id}/purge")
 def purge_job(

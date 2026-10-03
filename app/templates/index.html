@@ -119,21 +119,6 @@
             background-color: #e8e2d2;
             color: #1a211e;
         }
-        html.theme-parchment .linear-badge-pass {
-            background-color: rgba(47, 133, 90, 0.15);
-            color: #2f855a;
-            border: 1px solid rgba(47, 133, 90, 0.35);
-        }
-        html.theme-parchment .linear-badge-fail {
-            background-color: rgba(197, 48, 48, 0.15);
-            color: #c53030;
-            border: 1px solid rgba(197, 48, 48, 0.35);
-        }
-        html.theme-parchment .linear-badge-warn {
-            background-color: rgba(214, 158, 46, 0.18);
-            color: #b7791f;
-            border: 1px solid rgba(214, 158, 46, 0.35);
-        }
         html.theme-parchment header, html.theme-parchment footer {
             background-color: #f7f5f0 !important;
             border-color: #e3decb !important;
@@ -150,20 +135,10 @@
             border-color: #e3decb !important;
             color: #2c3531 !important;
         }
-        html.theme-parchment .modal-title-theme { color: #1a211e !important; }
-        html.theme-parchment .table-text-theme { color: #2c3531 !important; }
-        html.theme-parchment .table-header-theme {
-            color: #3d4a45 !important;
-            background-color: #f0ece1 !important;
-        }
 
         .status-state-black {
             background-color: #000000 !important;
             color: #f8fafc !important;
-        }
-        html.theme-parchment .status-state-black {
-            background-color: #1a211e !important;
-            color: #f7f5f0 !important;
         }
         .status-state-yellow {
             background-color: #fbbf24 !important;
@@ -175,18 +150,10 @@
             color: #000000 !important;
             font-weight: 700;
         }
-        html.theme-parchment .status-state-green {
-            background-color: #2f855a !important;
-            color: #ffffff !important;
-        }
         .status-state-red {
             background-color: #ff4757 !important;
             color: #000000 !important;
             font-weight: 700;
-        }
-        html.theme-parchment .status-state-red {
-            background-color: #c53030 !important;
-            color: #ffffff !important;
         }
         .status-state-pink {
             background-color: #ff69b4 !important;
@@ -201,14 +168,19 @@
         .print-timestamp-footer { display: none !important; }
 
         @media print {
-            @page { size: A4 portrait; margin: 10mm 15mm; }
+            @page {
+                size: A4 portrait;
+                margin: 8mm 10mm;
+            }
             html, body {
                 background: #ffffff !important;
                 color: #0f172a !important;
                 width: 100% !important;
+                max-width: 100% !important;
                 height: auto !important;
+                min-height: auto !important;
                 overflow: visible !important;
-                font-size: 10pt !important;
+                font-size: 9.5pt !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 display: block !important;
@@ -225,59 +197,88 @@
                 position: static !important;
                 width: 100% !important;
                 max-width: 100% !important;
+                height: auto !important;
+                max-height: none !important;
                 background: #ffffff !important;
                 box-shadow: none !important;
                 border: none !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                overflow: visible !important;
                 visibility: visible !important;
             }
             .printable-modal:not(.hidden) * { visibility: visible !important; }
+            .printable-modal:not(.hidden) > div {
+                max-width: 100% !important;
+                width: 100% !important;
+                max-height: none !important;
+                height: auto !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                overflow: visible !important;
+                background: transparent !important;
+            }
             .print-brand-box {
                 display: flex !important;
                 align-items: center !important;
+                justify-content: space-between !important;
                 gap: 12px !important;
-                margin-bottom: 15px !important;
-                padding-bottom: 10px !important;
+                margin-bottom: 12px !important;
+                padding-bottom: 8px !important;
                 border-bottom: 2px solid #0f172a !important;
                 width: 100% !important;
             }
-            .print-brand-logo { height: 32px !important; width: auto !important; object-fit: contain !important; }
+            .print-brand-logo {
+                height: 38px !important;
+                width: auto !important;
+                object-fit: contain !important;
+                display: block !important;
+            }
             .modal-title-theme, .table-text-theme { color: #0f172a !important; }
             .linear-subcard {
                 background: #f8fafc !important;
                 border: 1px solid #cbd5e1 !important;
                 color: #0f172a !important;
-                margin-bottom: 12px !important;
-                padding: 10px 12px !important;
+                margin-bottom: 10px !important;
+                padding: 8px 10px !important;
                 width: 100% !important;
             }
             #report-stats {
                 display: grid !important;
                 grid-template-columns: 1fr 1fr !important;
-                gap: 12px !important;
-                margin-bottom: 12px !important;
+                gap: 10px !important;
+                margin-bottom: 10px !important;
                 width: 100% !important;
             }
             #report-stats > div {
                 border: 1px solid #cbd5e1 !important;
                 background: #f8fafc !important;
-                padding: 8px 10px !important;
+                padding: 6px 8px !important;
                 text-align: center !important;
             }
-            table { width: 100% !important; font-size: 9pt !important; border-collapse: collapse !important; table-layout: auto !important; }
+            .print-table-container {
+                max-height: none !important;
+                overflow: visible !important;
+                border: 1px solid #cbd5e1 !important;
+                width: 100% !important;
+            }
+            table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                font-size: 8.5pt !important;
+                table-layout: auto !important;
+            }
             th, td {
-                padding: 6px 10px !important;
+                padding: 5px 8px !important;
                 border: 1px solid #cbd5e1 !important;
                 color: #0f172a !important;
                 text-align: left !important;
             }
-            th { background-color: #f1f5f9 !important; font-weight: bold !important; }
-            .print-table-container {
-                max-height: none !important;
-                overflow: visible !important;
-                border: none !important;
-                width: 100% !important;
+            th {
+                background-color: #f1f5f9 !important;
+                font-weight: 700 !important;
             }
             #report-modal .print-timestamp-footer,
             #lifecycle-modal .print-timestamp-footer,
@@ -285,11 +286,12 @@
             #print-qc-footer-timestamp {
                 display: block !important;
                 visibility: visible !important;
-                margin-top: 16px !important;
-                padding-top: 8px !important;
+                margin-top: 14px !important;
+                padding-top: 6px !important;
                 border-top: 1px solid #cbd5e1 !important;
-                font-size: 8.5pt !important;
+                font-size: 8pt !important;
                 color: #475569 !important;
+                width: 100% !important;
             }
             #packing-qc-printable { display: block !important; visibility: visible !important; width: 100% !important; }
             #packing-qc-modal > div > *:not(#packing-qc-printable) { display: none !important; }
@@ -328,8 +330,8 @@
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
                     <h1 id="active-title-card" class="text-lg sm:text-2xl font-extrabold tracking-tight truncate flex items-center gap-2 table-text-theme">
-                        <span>Job Card: None</span>
-                        <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>
+                        <span>Job Card: <span id="active-job-id-text">None</span></span>
+                        <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-red-400 hover:text-red-300 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2" title="Close Job Card">[Close Job]</button>
                     </h1>
                 </div>
                 <p id="header-job-desc" class="text-xs text-slate-400 mt-0.5 truncate">Search active production jobs using the search field.</p>
@@ -359,7 +361,7 @@
             </div>
         </div>
 
-        <!-- Metric Figures (Atomic O(1) KPI Counters) -->
+        <!-- Metric Figures (KPI Counters) -->
         <div class="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2 shrink-0">
             <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center">
                 <span class="text-[11px] text-slate-400 block font-medium">Total Pool</span>
@@ -492,6 +494,10 @@
             <div class="report-header-box mb-3 border-b border-white/[0.08] pb-3">
                 <div class="print-brand-box">
                     <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
+                    <div style="display: flex; flex-direction: column; text-align: right;">
+                        <span style="font-size: 13pt; font-weight: bold; color: #0f172a; line-height: 1.1;">CCL Middle East – Pakistan</span>
+                        <span style="font-size: 8.5pt; color: #475569;">Variable Data Verification System</span>
+                    </div>
                 </div>
                 <div class="flex justify-between items-start no-print mb-2">
                     <div></div>
@@ -547,7 +553,7 @@
         </div>
     </div>
 
-    <!-- Duplicate Warning Modal with 3 Action Choices -->
+    <!-- Duplicate Warning Modal -->
     <div id="duplicate-warning-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
         <div id="duplicate-modal-card" class="linear-card p-5 sm:p-6 rounded-lg max-w-lg w-full border border-amber-500/40 shadow-2xl text-center">
             <h3 id="duplicate-modal-title" class="text-base sm:text-lg font-bold mb-2 text-amber-400">Batch Uniqueness Report</h3>
@@ -625,6 +631,10 @@
                     <div>
                         <div class="print-brand-box">
                             <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
+                            <div style="display: flex; flex-direction: column; text-align: right;">
+                                <span style="font-size: 13pt; font-weight: bold; color: #0f172a; line-height: 1.1;">CCL Middle East – Pakistan</span>
+                                <span style="font-size: 8.5pt; color: #475569;">Variable Data Verification System</span>
+                            </div>
                         </div>
                         <h3 style="font-size: 14pt; font-weight: bold; text-align: center; margin-bottom: 12px; color: #0f172a;">Final QC Certificate</h3>
                         
@@ -794,6 +804,10 @@
             <div class="report-header-box mb-3 border-b border-white/[0.08] pb-3">
                 <div class="print-brand-box">
                     <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
+                    <div style="display: flex; flex-direction: column; text-align: right;">
+                        <span style="font-size: 13pt; font-weight: bold; color: #0f172a; line-height: 1.1;">CCL Middle East – Pakistan</span>
+                        <span style="font-size: 8.5pt; color: #475569;">Variable Data Verification System</span>
+                    </div>
                 </div>
                 <div class="flex justify-between items-start no-print mb-2">
                     <div></div>
@@ -838,12 +852,16 @@
             <div class="report-header-box mb-3 border-b border-white/[0.08] pb-2">
                 <div class="print-brand-box">
                     <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
+                    <div style="display: flex; flex-direction: column; text-align: right;">
+                        <span style="font-size: 13pt; font-weight: bold; color: #0f172a; line-height: 1.1;">CCL Middle East – Pakistan</span>
+                        <span style="font-size: 8.5pt; color: #475569;">Variable Data Verification System</span>
+                    </div>
                 </div>
                 <div class="flex justify-between items-start no-print mb-2">
                     <div></div>
                     <div class="flex gap-2">
                         <button onclick="window.print()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Print Log</button>
-                        <button onclick="toggleModal('lifecycle-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Close</button>
+                        <button onclick="toggleModal('lifecycle-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Close</button>
                     </div>
                 </div>
                 <h3 class="text-2xl font-black modal-title-theme text-center mb-3">LIFE CYCLE AUDIT REPORT</h3>
@@ -1022,7 +1040,44 @@
         </div>
     </div>
 
+    <!-- Complete Client Script Layer -->
     <script>
+        // Modal Visibility Handler
+        function toggleModal(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const isHidden = el.classList.contains('hidden') || el.style.display === 'none';
+            if (isHidden) {
+                el.classList.remove('hidden');
+                el.style.display = 'flex';
+            } else {
+                el.classList.add('hidden');
+                el.style.display = 'none';
+                if (id === 'master-jobs-modal' && masterJobsPollTimer) {
+                    clearInterval(masterJobsPollTimer);
+                    masterJobsPollTimer = null;
+                }
+                if (id === 'upload-modal') {
+                    clearJobCardAvailabilityError();
+                }
+            }
+        }
+
+        // Job Control Center Launch Handler
+        window.openMasterJobsModal = async function() {
+            const modal = document.getElementById('master-jobs-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.style.display = 'flex';
+                const searchEl = document.getElementById('master-job-search');
+                if (searchEl) searchEl.value = "";
+                const selectAll = document.getElementById('select-all-jobs');
+                if (selectAll) selectAll.checked = false;
+                await loadMasterJobs('ALL');
+                startMasterJobsAutoRefresh();
+            }
+        };
+
         let currentUser = null;
         let activeJobId = null;
         let activeJobDesc = "";
@@ -1054,31 +1109,20 @@
         let confirmCallback = null;
         let confirmActionFn = null;
 
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let audioCtx = null;
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) audioCtx = new AudioContextClass();
+            }
+            return audioCtx;
+        }
 
         const spinnerSvg = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
 
-        function toggleModal(id) {
-            const el = document.getElementById(id);
-            if (el) {
-                el.classList.toggle('hidden');
-                if (id === 'master-jobs-modal' && el.classList.contains('hidden')) {
-                    if (masterJobsPollTimer) {
-                        clearInterval(masterJobsPollTimer);
-                        masterJobsPollTimer = null;
-                    }
-                }
-                if (id === 'upload-modal' && el.classList.contains('hidden')) {
-                    clearJobCardAvailabilityError();
-                }
-            }
-        }
-
         function resetInput() {
             const barcodeInput = document.getElementById('barcode-input');
-            if (barcodeInput && !barcodeInput.disabled) {
-                barcodeInput.focus();
-            }
+            if (barcodeInput && !barcodeInput.disabled) barcodeInput.focus();
         }
 
         function updateSystemMessage(msg, type = 'info') {
@@ -1104,25 +1148,31 @@
         }
 
         function initTheme() {
-            const savedTheme = localStorage.getItem('vdv_theme') || 'obsidian';
-            if (savedTheme === 'parchment') {
-                document.documentElement.classList.add('theme-parchment');
-                document.getElementById('theme-name-text').innerText = 'Parchment';
-            } else {
-                document.documentElement.classList.remove('theme-parchment');
-                document.getElementById('theme-name-text').innerText = 'Obsidian';
-            }
+            try {
+                const savedTheme = localStorage.getItem('vdv_theme') || 'obsidian';
+                const themeName = document.getElementById('theme-name-text');
+                if (savedTheme === 'parchment') {
+                    document.documentElement.classList.add('theme-parchment');
+                    if (themeName) themeName.innerText = 'Parchment';
+                } else {
+                    document.documentElement.classList.remove('theme-parchment');
+                    if (themeName) themeName.innerText = 'Obsidian';
+                }
+            } catch (e) {}
         }
 
         function toggleTheme() {
-            const isParchment = document.documentElement.classList.toggle('theme-parchment');
-            if (isParchment) {
-                localStorage.setItem('vdv_theme', 'parchment');
-                document.getElementById('theme-name-text').innerText = 'Parchment';
-            } else {
-                localStorage.setItem('vdv_theme', 'obsidian');
-                document.getElementById('theme-name-text').innerText = 'Obsidian';
-            }
+            try {
+                const isParchment = document.documentElement.classList.toggle('theme-parchment');
+                const themeName = document.getElementById('theme-name-text');
+                if (isParchment) {
+                    localStorage.setItem('vdv_theme', 'parchment');
+                    if (themeName) themeName.innerText = 'Parchment';
+                } else {
+                    localStorage.setItem('vdv_theme', 'obsidian');
+                    if (themeName) themeName.innerText = 'Obsidian';
+                }
+            } catch (e) {}
         }
 
         initTheme();
@@ -1130,12 +1180,16 @@
         function showCustomAlert(message, title = "Please Verify!") {
             document.getElementById('custom-alert-title').innerText = title;
             document.getElementById('custom-alert-msg').innerText = message;
-            document.getElementById('custom-alert-modal').classList.remove('hidden');
+            const modal = document.getElementById('custom-alert-modal');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
             updateSystemMessage(message, 'warn');
         }
 
         function closeCustomAlert() {
-            document.getElementById('custom-alert-modal').classList.add('hidden');
+            const modal = document.getElementById('custom-alert-modal');
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
             resetInput();
         }
 
@@ -1152,7 +1206,9 @@
             }
             if (cancelBtn) cancelBtn.disabled = false;
             
-            document.getElementById('custom-confirm-modal').classList.remove('hidden');
+            const modal = document.getElementById('custom-confirm-modal');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
 
             if (typeof onConfirmAction === 'function') {
                 confirmActionFn = onConfirmAction;
@@ -1178,7 +1234,9 @@
 
                 try {
                     await confirmActionFn();
-                    document.getElementById('custom-confirm-modal').classList.add('hidden');
+                    const modal = document.getElementById('custom-confirm-modal');
+                    modal.classList.add('hidden');
+                    modal.style.display = 'none';
                 } catch (err) {
                     showCustomAlert("An error occurred while processing the request.", "Error");
                 } finally {
@@ -1196,7 +1254,9 @@
             if (confirmCallback) {
                 const cb = confirmCallback;
                 confirmCallback = null;
-                document.getElementById('custom-confirm-modal').classList.add('hidden');
+                const modal = document.getElementById('custom-confirm-modal');
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
                 cb(true);
                 resetInput();
             }
@@ -1204,7 +1264,9 @@
 
         function resolveCustomConfirm(result) {
             confirmActionFn = null;
-            document.getElementById('custom-confirm-modal').classList.add('hidden');
+            const modal = document.getElementById('custom-confirm-modal');
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
             if (confirmCallback) {
                 const cb = confirmCallback;
                 confirmCallback = null;
@@ -1216,41 +1278,38 @@
         function copyJobCardNumber(text, btnElement) {
             navigator.clipboard.writeText(text).then(() => {
                 const originalHTML = btnElement.innerHTML;
-                const originalClass = btnElement.className;
-                
-                btnElement.innerHTML = `<svg class="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>`;
+                btnElement.innerHTML = `<svg class="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>`;
                 btnElement.className = "bg-green-500/20 border border-green-500/30 p-1 rounded transition-colors inline-flex items-center justify-center shrink-0 ml-1.5";
-                
                 setTimeout(() => {
                     btnElement.innerHTML = originalHTML;
-                    btnElement.className = originalClass;
+                    btnElement.className = "linear-button-secondary p-1 rounded transition-colors inline-flex items-center justify-center shrink-0";
                 }, 1200);
-            }).catch(err => {
-                showCustomAlert("Failed to copy text.");
-            });
+            }).catch(() => showCustomAlert("Failed to copy text."));
         }
 
         function playTone(type) {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
+            const ctx = getAudioContext();
+            if (!ctx) return;
+            if (ctx.state === 'suspended') ctx.resume();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
             osc.connect(gain);
-            gain.connect(audioCtx.destination);
+            gain.connect(ctx.destination);
 
             if (type === 'PASS') {
-                osc.frequency.setValueAtTime(1046.5, audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                osc.frequency.setValueAtTime(1046.5, ctx.currentTime);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
                 osc.start();
-                osc.stop(audioCtx.currentTime + 0.15);
+                osc.stop(ctx.currentTime + 0.15);
             } else {
                 osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-                osc.frequency.linearRampToValueAtTime(220, audioCtx.currentTime + 0.4);
-                gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                osc.frequency.setValueAtTime(440, ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(220, ctx.currentTime + 0.4);
+                gain.gain.setValueAtTime(0.6, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
                 osc.start();
-                osc.stop(audioCtx.currentTime + 0.4);
+                osc.stop(ctx.currentTime + 0.4);
             }
         }
 
@@ -1259,18 +1318,20 @@
                 stopAlarm();
                 return;
             }
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
+            const ctx = getAudioContext();
+            if (!ctx) return;
+            if (ctx.state === 'suspended') ctx.resume();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.2);
-            gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+            osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.2);
+            gain.gain.setValueAtTime(0.25, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
             osc.connect(gain);
-            gain.connect(audioCtx.destination);
+            gain.connect(ctx.destination);
             osc.start();
-            osc.stop(audioCtx.currentTime + 0.25);
+            osc.stop(ctx.currentTime + 0.25);
             alarmCount++;
         }
 
@@ -1294,33 +1355,54 @@
                 const data = await res.json();
                 if (data.authenticated) {
                     currentUser = data;
-                    document.getElementById('login-modal').classList.add('hidden');
+                    const loginModal = document.getElementById('login-modal');
+                    loginModal.classList.add('hidden');
+                    loginModal.style.display = 'none';
                     document.getElementById('user-display').innerText = `${data.username} (${data.role})`;
                     
-                    const roleLower = String(data.role || "").toLowerCase();
-                    if (roleLower === 'admin') {
-                        document.getElementById('btn-users').classList.remove('hidden');
-                    } else {
-                        document.getElementById('btn-users').classList.add('hidden');
+                    const roleLower = String(data.role || "").toLowerCase().trim();
+                    const isManagerOrAdmin = roleLower === 'admin' || roleLower === 'qc manager';
+                    
+                    const usersBtn = document.getElementById('btn-users');
+                    if (usersBtn) {
+                        if (roleLower === 'admin') {
+                            usersBtn.classList.remove('hidden');
+                            usersBtn.style.display = 'inline-flex';
+                        } else {
+                            usersBtn.classList.add('hidden');
+                            usersBtn.style.display = 'none';
+                        }
                     }
 
-                    if (roleLower === 'admin' || roleLower === 'qc manager') {
-                        document.getElementById('btn-all-jobs').classList.remove('hidden');
-                    } else {
-                        document.getElementById('btn-all-jobs').classList.add('hidden');
+                    const allJobsBtn = document.getElementById('btn-all-jobs');
+                    if (allJobsBtn) {
+                        if (isManagerOrAdmin) {
+                            allJobsBtn.classList.remove('hidden');
+                            allJobsBtn.style.display = 'inline-flex';
+                        } else {
+                            allJobsBtn.classList.add('hidden');
+                            allJobsBtn.style.display = 'none';
+                        }
                     }
 
-                    if (data.can_upload || roleLower === 'admin' || roleLower === 'qc manager') {
-                        document.getElementById('btn-upload').classList.remove('hidden');
-                    } else {
-                        document.getElementById('btn-upload').classList.add('hidden');
+                    const uploadBtn = document.getElementById('btn-upload');
+                    if (uploadBtn) {
+                        if (data.can_upload || isManagerOrAdmin) {
+                            uploadBtn.classList.remove('hidden');
+                            uploadBtn.style.display = 'inline-flex';
+                        } else {
+                            uploadBtn.classList.add('hidden');
+                            uploadBtn.style.display = 'none';
+                        }
                     }
 
                     if (data.must_change_password) {
                         forcePasswordChange();
                     }
                 } else {
-                    document.getElementById('login-modal').classList.remove('hidden');
+                    const loginModal = document.getElementById('login-modal');
+                    loginModal.classList.remove('hidden');
+                    loginModal.style.display = 'flex';
                 }
             } catch(e) {
                 console.error("Session check failed", e);
@@ -1331,7 +1413,9 @@
             document.getElementById('pw-title').innerText = "First Login Password Change Required";
             document.getElementById('pw-subtitle').innerText = "For security, you must update your password before proceeding.";
             document.getElementById('pw-cancel-btn').classList.add('hidden');
-            document.getElementById('pw-modal').classList.remove('hidden');
+            const pwModal = document.getElementById('pw-modal');
+            pwModal.classList.remove('hidden');
+            pwModal.style.display = 'flex';
         }
 
         async function handleLogin(e) {
@@ -1348,14 +1432,11 @@
             try {
                 const res = await fetch('/api/auth/login', { method: 'POST', body });
                 if (res.ok) {
-                    checkSession();
+                    await checkSession();
                     updateSystemMessage("User session authenticated", "success");
                 } else {
                     const err = await res.json();
-                    let errMsg = "Authentication failed";
-                    if (typeof err.detail === 'string') errMsg = err.detail;
-                    else if (Array.isArray(err.detail)) errMsg = err.detail.map(d => d.msg || JSON.stringify(d)).join(', ');
-                    else if (err.detail) errMsg = JSON.stringify(err.detail);
+                    let errMsg = err.detail || "Authentication failed";
                     showCustomAlert(errMsg);
                     updateSystemMessage(errMsg, "error");
                 }
@@ -1383,10 +1464,10 @@
                 const res = await fetch('/api/auth/change-password', { method: 'POST', body });
                 if (res.ok) {
                     showCustomAlert("Password updated successfully!", "Success");
-                    document.getElementById('pw-modal').classList.add('hidden');
+                    toggleModal('pw-modal');
                     document.getElementById('pw-current').value = "";
                     document.getElementById('pw-new').value = "";
-                    checkSession();
+                    await checkSession();
                     updateSystemMessage("Password changed successfully", "success");
                 } else {
                     const err = await res.json();
@@ -1448,9 +1529,6 @@
             if (jobList && searchInput && !searchInput.contains(e.target) && !jobList.contains(e.target)) {
                 jobList.classList.add('hidden');
             }
-            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'SELECT' && e.target.tagName !== 'TEXTAREA') {
-                resetInput();
-            }
         });
 
         async function selectJob(id, descEncoded, status, consumed, total) {
@@ -1461,8 +1539,14 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `<span>Job Card: ${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
+            document.getElementById('active-job-id-text').innerText = id;
             
+            const closeBtn = document.getElementById('close-job-btn');
+            if (closeBtn) {
+                closeBtn.classList.remove('hidden');
+                closeBtn.style.display = 'inline-block';
+            }
+
             const displayDesc = activeJobDesc ? `${activeJobDesc} | Status: ${status}` : `Status: ${status}`;
             document.getElementById('header-job-desc').innerText = displayDesc;
 
@@ -1546,7 +1630,14 @@
             allScans = [];
 
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `<span>Job Card: None</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>`;
+            document.getElementById('active-job-id-text').innerText = "None";
+            
+            const closeBtn = document.getElementById('close-job-btn');
+            if (closeBtn) {
+                closeBtn.classList.add('hidden');
+                closeBtn.style.display = 'none';
+            }
+
             document.getElementById('header-job-desc').innerText = "Search active production jobs using the search field.";
 
             const card = document.getElementById('status-card');
@@ -1625,10 +1716,7 @@
                             showCustomAlert(`Job Card ${activeJobId} has been successfully completed.`, "Job Completed");
                         } else {
                             const err = await res.json().catch(() => ({}));
-                            let errMsg = "Action failed";
-                            if (typeof err.detail === 'string') errMsg = err.detail;
-                            else if (Array.isArray(err.detail)) errMsg = err.detail.map(d => d.msg || JSON.stringify(d)).join(', ');
-                            else if (err.detail) errMsg = JSON.stringify(err.detail);
+                            let errMsg = err.detail || "Action failed";
                             showCustomAlert(errMsg, "Error");
                             updateSystemMessage(errMsg, "error");
                         }
@@ -1761,11 +1849,7 @@
             }
 
             if (filteredScans.length === 0) {
-                if (allScans.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-8 text-center text-slate-400 italic text-xs">No scan events recorded for this Job Card yet</td></tr>`;
-                } else {
-                    tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-6 text-center text-slate-400 italic text-xs">No scan events found for this filter</td></tr>`;
-                }
+                tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-6 text-center text-slate-400 italic text-xs">No scan events recorded for this view</td></tr>`;
                 return;
             }
 
@@ -1791,7 +1875,7 @@
         let currentPackingQCDesc = "";
 
         async function openPackingQCModal(prefillJobId = null) {
-            document.getElementById('packing-qc-modal').classList.remove('hidden');
+            toggleModal('packing-qc-modal');
             const jcInput = document.getElementById('packing-qc-job');
             const codeInput = document.getElementById('packing-qc-code');
             const unlockBtn = document.getElementById('packing-qc-unlock-btn');
@@ -2062,9 +2146,8 @@
             document.getElementById('report-desc-text').innerText = data.description || '-';
             document.getElementById('report-status-text').innerText = data.status;
             
-            const printTimestampStr = `Report Generated On: ${new Date().toLocaleString()}`;
             const rptTs = document.getElementById('print-report-timestamp');
-            if (rptTs) rptTs.innerText = printTimestampStr;
+            if (rptTs) rptTs.innerText = `Report Generated On: ${new Date().toLocaleString()}`;
 
             document.getElementById('download-csv-btn').onclick = () => {
                 window.location.href = `/api/reports/${encodeURIComponent(activeJobId)}/csv`;
@@ -2109,9 +2192,8 @@
             document.getElementById('lifecycle-status-text').innerText = data.status;
             document.getElementById('lifecycle-desc-text').innerText = data.description || '-';
             
-            const printTimestampStr = `Report Generated On: ${new Date().toLocaleString()}`;
             const lifeTs = document.getElementById('print-lifecycle-timestamp');
-            if (lifeTs) lifeTs.innerText = printTimestampStr;
+            if (lifeTs) lifeTs.innerText = `Report Generated On: ${new Date().toLocaleString()}`;
 
             const tbody = document.getElementById('lifecycle-log-rows');
             if (data.logs.length === 0) {
@@ -2123,14 +2205,8 @@
                     if (log.action === 'CREATED') {
                         label = "Job Created & Ingested";
                         colorClass = "text-indigo-400 font-bold";
-                    } else if (log.action === 'REACTIVATED_AND_UNBLOCKED') {
-                        label = "Reactivated & Unblocked";
-                        colorClass = "text-amber-400 font-bold";
                     } else if (log.action === 'COMPLETED') {
                         label = "Completed";
-                        colorClass = "text-red-400 font-bold";
-                    } else if (log.action === 'DELETED') {
-                        label = "Soft Deleted";
                         colorClass = "text-red-400 font-bold";
                     }
 
@@ -2148,10 +2224,6 @@
             toggleModal('lifecycle-modal');
         }
 
-        // --------------------------------------------------------------------------------------
-        // GLOBAL AUDIT TRAIL FUNCTIONS
-        // --------------------------------------------------------------------------------------
-
         async function openGlobalAuditTrailModal() {
             try {
                 const res = await fetch('/api/admin/audit-trail');
@@ -2163,7 +2235,7 @@
                 const data = await res.json();
                 globalAuditEvents = data.events || [];
                 filterAuditCategory('ALL');
-                document.getElementById('global-audit-modal').classList.remove('hidden');
+                toggleModal('global-audit-modal');
 
                 const tsElem = document.getElementById('print-global-audit-timestamp');
                 if (tsElem) tsElem.innerText = `Report Generated On: ${new Date().toLocaleString()}`;
@@ -2176,9 +2248,7 @@
             currentAuditCategory = cat;
             ['all', 'scan', 'life', 'qc', 'user'].forEach(t => {
                 const btn = document.getElementById(`audit-filter-${t}`);
-                if (btn) {
-                    btn.className = "linear-button-secondary px-3 py-1 rounded text-xs font-semibold";
-                }
+                if (btn) btn.className = "linear-button-secondary px-3 py-1 rounded text-xs font-semibold";
             });
 
             let activeBtnId = 'audit-filter-all';
@@ -2188,9 +2258,7 @@
             else if (cat === 'USER_MGMT') activeBtnId = 'audit-filter-user';
 
             const activeBtn = document.getElementById(activeBtnId);
-            if (activeBtn) {
-                activeBtn.className = "linear-button-primary px-3 py-1 rounded text-xs font-bold";
-            }
+            if (activeBtn) activeBtn.className = "linear-button-primary px-3 py-1 rounded text-xs font-bold";
 
             renderGlobalAuditTable();
         }
@@ -2225,25 +2293,19 @@
             }).join('');
         }
 
-        // --------------------------------------------------------------------------------------
-        // SECURE PURGE WITH PASSWORD PROMPT
-        // --------------------------------------------------------------------------------------
-
         function purgeJobFromAdmin(runId, jcId) {
             targetPurgeRunId = runId;
             targetPurgeJobId = jcId;
             document.getElementById('purge-admin-password-input').value = '';
             document.getElementById('purge-modal-subtitle').innerText = `Enter your password to authorize the permanent deletion of Job Card '${jcId}'.`;
-            document.getElementById('purge-admin-pw-modal').classList.remove('hidden');
-            setTimeout(() => {
-                document.getElementById('purge-admin-password-input').focus();
-            }, 100);
+            toggleModal('purge-admin-pw-modal');
+            setTimeout(() => document.getElementById('purge-admin-password-input').focus(), 100);
         }
 
         function closePurgeModal() {
             targetPurgeRunId = null;
             targetPurgeJobId = null;
-            document.getElementById('purge-admin-pw-modal').classList.add('hidden');
+            toggleModal('purge-admin-pw-modal');
             document.getElementById('purge-admin-password-input').value = '';
         }
 
@@ -2261,11 +2323,7 @@
                 const body = new FormData();
                 body.append("admin_password", password);
 
-                const res = await fetch(`/api/admin/jobs/${targetPurgeRunId}/purge`, {
-                    method: 'POST',
-                    body
-                });
-
+                const res = await fetch(`/api/admin/jobs/${targetPurgeRunId}/purge`, { method: 'POST', body });
                 if (res.ok) {
                     closePurgeModal();
                     showCustomAlert(`Job Card '${targetPurgeJobId}' successfully purged.`, "Purged");
@@ -2285,9 +2343,7 @@
 
         function toggleSelectAllJobs(masterCheckbox) {
             const checkboxes = document.querySelectorAll('.job-select-checkbox');
-            checkboxes.forEach(cb => {
-                cb.checked = masterCheckbox.checked;
-            });
+            checkboxes.forEach(cb => { cb.checked = masterCheckbox.checked; });
             updateBulkStatusButtonState();
         }
 
@@ -2309,17 +2365,14 @@
             const checkboxes = document.querySelectorAll('.job-select-checkbox:checked');
             if (checkboxes.length === 0) return;
 
-            const count = checkboxes.length;
-            document.getElementById('bulk-status-subtitle').innerText = `Update status for ${count} selected job(s). Enter your password to authorize.`;
+            document.getElementById('bulk-status-subtitle').innerText = `Update status for ${checkboxes.length} selected job(s). Enter your password to authorize.`;
             document.getElementById('bulk-status-admin-pass').value = '';
-            document.getElementById('bulk-status-modal').classList.remove('hidden');
-            setTimeout(() => {
-                document.getElementById('bulk-status-admin-pass').focus();
-            }, 100);
+            toggleModal('bulk-status-modal');
+            setTimeout(() => document.getElementById('bulk-status-admin-pass').focus(), 100);
         }
 
         function closeBulkStatusModal() {
-            document.getElementById('bulk-status-modal').classList.add('hidden');
+            toggleModal('bulk-status-modal');
             document.getElementById('bulk-status-admin-pass').value = '';
         }
 
@@ -2343,11 +2396,7 @@
                 body.append("target_status", targetStatus);
                 body.append("admin_password", password);
 
-                const res = await fetch('/api/admin/jobs/bulk-status', {
-                    method: 'POST',
-                    body
-                });
-
+                const res = await fetch('/api/admin/jobs/bulk-status', { method: 'POST', body });
                 if (res.ok) {
                     closeBulkStatusModal();
                     showCustomAlert(`Successfully updated ${jobCardIds.length} job(s) to ${targetStatus}.`, "Status Updated");
@@ -2355,7 +2404,7 @@
                     updateSystemMessage(`Updated ${jobCardIds.length} job(s) status to ${targetStatus}`, "success");
                 } else {
                     const err = await res.json().catch(() => ({}));
-                    showCustomAlert(err.detail || "Failed to update job status. Invalid password or permissions.");
+                    showCustomAlert(err.detail || "Failed to update job status.");
                 }
             } catch (ex) {
                 showCustomAlert("Network error while connecting to server.");
@@ -2391,7 +2440,7 @@
         }
 
         function closeUserModal() {
-            document.getElementById('user-modal').classList.add('hidden');
+            toggleModal('user-modal');
         }
 
         function stageNewUser(e) {
@@ -2403,46 +2452,20 @@
             const empName = document.getElementById('new-employee-name').value.trim();
             const empId = document.getElementById('new-employee-id').value.trim();
 
-            if (!username) {
-                showCustomAlert("Username is required.");
-                return;
+            if (!username) return showCustomAlert("Username is required.");
+            if (stagedUsers.some(u => u.username.toLowerCase() === username.toLowerCase()) || 
+                pendingNewUsers.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+                return showCustomAlert(`User '${username}' already exists in list.`);
             }
 
-            const existsInStaged = stagedUsers.some(u => u.username.toLowerCase() === username.toLowerCase());
-            const existsInPending = pendingNewUsers.some(u => u.username.toLowerCase() === username.toLowerCase());
-            if (existsInStaged || existsInPending) {
-                showCustomAlert(`User '${username}' already exists in list.`);
-                return;
-            }
-
-            if (password.length < 8) {
-                showCustomAlert("Password must be at least 8 characters long.");
-                return;
-            }
-            if (!/[A-Z]/.test(password)) {
-                showCustomAlert("Password must include at least one uppercase letter.");
-                return;
-            }
-            if (!/[a-z]/.test(password)) {
-                showCustomAlert("Password must include at least one lowercase letter.");
-                return;
-            }
-            if (!/[0-9]/.test(password)) {
-                showCustomAlert("Password must include at least one number.");
-                return;
+            if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+                return showCustomAlert("Password must be at least 8 characters long and include uppercase, lowercase, and numeric digits.");
             }
 
             pendingNewUsers.push({
-                username: username,
-                password: password,
-                role: role,
-                can_upload: canUpload,
-                employee_name: empName,
-                employee_id: empId,
-                is_active: true,
-                created_at: 'Pending',
-                must_change_password: true,
-                is_new: true
+                username, password, role, can_upload: canUpload,
+                employee_name: empName, employee_id: empId,
+                is_active: true, created_at: 'Pending', must_change_password: true, is_new: true
             });
 
             document.getElementById('new-user-name').value = '';
@@ -2464,48 +2487,27 @@
         }
 
         function stageUserRole(username, newRole) {
-            const staged = stagedUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
+            const staged = stagedUsers.find(u => u.username.toLowerCase() === username.toLowerCase()) || 
+                           pendingNewUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
             if (staged) {
                 staged.role = newRole;
-                if (newRole === 'admin' || newRole === 'QC manager') {
-                    staged.can_upload = true;
-                }
-            } else {
-                const pend = pendingNewUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
-                if (pend) {
-                    pend.role = newRole;
-                    if (newRole === 'admin' || newRole === 'QC manager') {
-                        pend.can_upload = true;
-                    }
-                }
+                if (newRole === 'admin' || newRole === 'QC manager') staged.can_upload = true;
             }
             renderUserAdminTable();
             checkUserAdminDirty();
         }
 
         function stageUserUpload(username, allowed) {
-            const staged = stagedUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
-            if (staged) {
-                staged.can_upload = allowed;
-            } else {
-                const pend = pendingNewUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
-                if (pend) {
-                    pend.can_upload = allowed;
-                }
-            }
+            const staged = stagedUsers.find(u => u.username.toLowerCase() === username.toLowerCase()) || 
+                           pendingNewUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
+            if (staged) staged.can_upload = allowed;
             checkUserAdminDirty();
         }
 
         function stageUserActive(username) {
-            const staged = stagedUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
-            if (staged) {
-                staged.is_active = !staged.is_active;
-            } else {
-                const pend = pendingNewUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
-                if (pend) {
-                    pend.is_active = !pend.is_active;
-                }
-            }
+            const staged = stagedUsers.find(u => u.username.toLowerCase() === username.toLowerCase()) || 
+                           pendingNewUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
+            if (staged) staged.is_active = !staged.is_active;
             renderUserAdminTable();
             checkUserAdminDirty();
         }
@@ -2517,16 +2519,11 @@
         }
 
         function checkUserAdminDirty() {
-            let isDirty = false;
-            if (pendingNewUsers.length > 0) {
-                isDirty = true;
-            } else if (Object.keys(stagedPasswordResets).length > 0) {
-                isDirty = true;
-            } else {
+            let isDirty = pendingNewUsers.length > 0 || Object.keys(stagedPasswordResets).length > 0;
+            if (!isDirty) {
                 for (const su of stagedUsers) {
                     const orig = originalUsers.find(o => o.username.toLowerCase() === su.username.toLowerCase());
-                    if (!orig) continue;
-                    if (su.role !== orig.role || su.can_upload !== orig.can_upload || su.is_active !== orig.is_active) {
+                    if (orig && (su.role !== orig.role || su.can_upload !== orig.can_upload || su.is_active !== orig.is_active)) {
                         isDirty = true;
                         break;
                     }
@@ -2554,12 +2551,9 @@
                 const isCurrent = currentUser && currentUser.username.toLowerCase() === u.username.toLowerCase();
                 const hasStagedPw = !!stagedPasswordResets[u.username];
 
-                let uploadCheckboxHtml = '';
-                if (isPerm) {
-                    uploadCheckboxHtml = `<input type="checkbox" checked disabled class="rounded w-4 h-4 cursor-not-allowed opacity-60" title="Permanent rights for ${u.role}">`;
-                } else {
-                    uploadCheckboxHtml = `<input type="checkbox" ${u.can_upload ? 'checked' : ''} onchange="stageUserUpload('${u.username}', this.checked)" class="rounded cursor-pointer w-4 h-4">`;
-                }
+                let uploadCheckboxHtml = isPerm 
+                    ? `<input type="checkbox" checked disabled class="rounded w-4 h-4 cursor-not-allowed opacity-60">`
+                    : `<input type="checkbox" ${u.can_upload ? 'checked' : ''} onchange="stageUserUpload('${u.username}', this.checked)" class="rounded cursor-pointer w-4 h-4">`;
 
                 let actionsHtml = '';
                 if (u.is_new) {
@@ -2570,13 +2564,11 @@
                 } else if (isCurrent) {
                     actionsHtml = `<span class="text-xs text-slate-400 font-medium">Current User</span>`;
                 } else {
-                    let pwBtnHtml = `<button type="button" onclick="promptAdminResetPassword('${u.username}')" class="text-indigo-400 hover:text-indigo-300 font-bold text-xs mr-2">Reset PW</button>`;
-                    if (hasStagedPw) {
-                        pwBtnHtml = `
-                            <button type="button" onclick="promptAdminResetPassword('${u.username}')" class="text-amber-400 hover:text-amber-300 font-bold text-xs mr-1">Edit PW</button>
-                            <button type="button" onclick="cancelStagedPasswordReset('${u.username}')" class="text-slate-400 hover:text-slate-300 text-xs mr-2">Undo</button>
-                        `;
-                    }
+                    let pwBtnHtml = hasStagedPw
+                        ? `<button type="button" onclick="promptAdminResetPassword('${u.username}')" class="text-amber-400 hover:text-amber-300 font-bold text-xs mr-1">Edit PW</button>
+                           <button type="button" onclick="cancelStagedPasswordReset('${u.username}')" class="text-slate-400 hover:text-slate-300 text-xs mr-2">Undo</button>`
+                        : `<button type="button" onclick="promptAdminResetPassword('${u.username}')" class="text-indigo-400 hover:text-indigo-300 font-bold text-xs mr-2">Reset PW</button>`;
+
                     actionsHtml = `
                         ${pwBtnHtml}
                         <button type="button" onclick="stageUserActive('${u.username}')" class="${u.is_active ? 'text-amber-400 hover:text-amber-300' : 'text-green-400 hover:text-green-300'} font-bold text-xs">${u.is_active ? 'Suspend' : 'Activate'}</button>
@@ -2586,27 +2578,19 @@
                 return `
                     <tr class="hover:bg-black/[0.02]">
                         <td class="px-3 py-1.5">
-                            <div class="flex items-center gap-2">
-                                <span class="font-bold table-text-theme text-xs">${u.username}</span>
-                                ${u.is_new ? '<span class="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 py-0.2 rounded font-semibold">NEW</span>' : ''}
-                            </div>
+                            <span class="font-bold table-text-theme text-xs">${u.username}</span>
                             ${hasStagedPw ? '<span class="text-[10px] text-amber-400 font-bold block mt-0.5">(PW Revision Staged)</span>' : ''}
                             ${!u.is_active ? '<span class="text-[10px] text-red-400 font-bold block mt-0.5">(Suspended)</span>' : ''}
-                            ${u.must_change_password && !u.is_new && !hasStagedPw ? '<span class="text-[10px] text-amber-400 font-bold block mt-0.5">(PW Reset Required)</span>' : ''}
                         </td>
                         <td class="px-3 py-1.5 text-center">
                             <select onchange="stageUserRole('${u.username}', this.value)" class="linear-input text-xs px-2 py-1 rounded cursor-pointer">
-                                <option value="QC officer" ${u.role === 'QC officer' || u.role === 'QC operator' ? 'selected' : ''}>QC officer</option>
+                                <option value="QC officer" ${u.role === 'QC officer' ? 'selected' : ''}>QC officer</option>
                                 <option value="QC manager" ${u.role === 'QC manager' ? 'selected' : ''}>QC manager</option>
                                 <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
                             </select>
                         </td>
-                        <td class="px-3 py-1.5 text-center">
-                            ${uploadCheckboxHtml}
-                        </td>
-                        <td class="px-3 py-1.5 text-right">
-                            ${actionsHtml}
-                        </td>
+                        <td class="px-3 py-1.5 text-center">${uploadCheckboxHtml}</td>
+                        <td class="px-3 py-1.5 text-right">${actionsHtml}</td>
                     </tr>
                 `;
             }).join('');
@@ -2614,14 +2598,12 @@
 
         function promptUserAdminSubmit() {
             document.getElementById('user-admin-confirm-pass').value = '';
-            document.getElementById('user-admin-pw-modal').classList.remove('hidden');
-            setTimeout(() => {
-                document.getElementById('user-admin-confirm-pass').focus();
-            }, 100);
+            toggleModal('user-admin-pw-modal');
+            setTimeout(() => document.getElementById('user-admin-confirm-pass').focus(), 100);
         }
 
         function closeUserAdminPwModal() {
-            document.getElementById('user-admin-pw-modal').classList.add('hidden');
+            toggleModal('user-admin-pw-modal');
             document.getElementById('user-admin-confirm-pass').value = '';
         }
 
@@ -2651,11 +2633,7 @@
                 closeUserAdminPwModal();
 
                 const btn = document.getElementById('btn-submit-user-changes');
-                const closeBtn = document.getElementById('btn-close-user-modal');
                 btn.disabled = true;
-                btn.classList.add('pointer-events-none');
-                closeBtn.disabled = true;
-                closeBtn.classList.add('pointer-events-none');
                 btn.innerHTML = `${spinnerSvg} Processing...`;
 
                 for (const nu of pendingNewUsers) {
@@ -2666,12 +2644,7 @@
                     body.append('can_upload', nu.can_upload);
                     body.append('employee_name', nu.employee_name);
                     body.append('employee_id', nu.employee_id);
-
-                    const res = await fetch('/api/users/create', { method: 'POST', body });
-                    if (!res.ok) {
-                        const err = await res.json();
-                        throw new Error(`Failed to create user '${nu.username}': ${err.detail || 'Server error'}`);
-                    }
+                    await fetch('/api/users/create', { method: 'POST', body });
                 }
 
                 for (const su of stagedUsers) {
@@ -2681,42 +2654,23 @@
                     if (su.role !== orig.role) {
                         const body = new FormData();
                         body.append('role', su.role);
-                        const res = await fetch(`/api/users/${encodeURIComponent(su.username)}/role`, { method: 'POST', body });
-                        if (!res.ok) {
-                            const err = await res.json();
-                            throw new Error(`Failed to update role for '${su.username}': ${err.detail || 'Server error'}`);
-                        }
+                        await fetch(`/api/users/${encodeURIComponent(su.username)}/role`, { method: 'POST', body });
                     }
-
                     if (su.is_active !== orig.is_active) {
                         const body = new FormData();
                         body.append('is_active', su.is_active);
-                        const res = await fetch(`/api/users/${encodeURIComponent(su.username)}/toggle-active`, { method: 'POST', body });
-                        if (!res.ok) {
-                            const err = await res.json();
-                            throw new Error(`Failed to update active state for '${su.username}': ${err.detail || 'Server error'}`);
-                        }
+                        await fetch(`/api/users/${encodeURIComponent(su.username)}/toggle-active`, { method: 'POST', body });
                     }
-
                     if (su.can_upload !== orig.can_upload && su.role !== 'admin' && su.role !== 'QC manager') {
                         const body = new FormData();
                         body.append('can_upload', su.can_upload);
-                        const res = await fetch(`/api/users/${encodeURIComponent(su.username)}/toggle-upload`, { method: 'POST', body });
-                        if (!res.ok) {
-                            const err = await res.json();
-                            throw new Error(`Failed to update upload rights for '${su.username}': ${err.detail || 'Server error'}`);
-                        }
+                        await fetch(`/api/users/${encodeURIComponent(su.username)}/toggle-upload`, { method: 'POST', body });
                     }
-
                     if (stagedPasswordResets[su.username]) {
                         const body = new FormData();
                         body.append('new_password', stagedPasswordResets[su.username]);
                         body.append('admin_password', adminPass);
-                        const res = await fetch(`/api/users/${encodeURIComponent(su.username)}/reset-password`, { method: 'POST', body });
-                        if (!res.ok) {
-                            const err = await res.json();
-                            throw new Error(`Failed to reset password for '${su.username}': ${err.detail || 'Server error'}`);
-                        }
+                        await fetch(`/api/users/${encodeURIComponent(su.username)}/reset-password`, { method: 'POST', body });
                     }
                 }
 
@@ -2730,21 +2684,15 @@
                     renderUserAdminTable();
                 }
 
-                checkSession();
+                await checkSession();
                 showCustomAlert("User changes saved successfully.", "Success");
-                updateSystemMessage("All user administration changes committed", "success");
+                updateSystemMessage("User management updates committed", "success");
             } catch(ex) {
                 showCustomAlert(ex.message || "Failed to submit user changes.");
-                updateSystemMessage(ex.message || "Failed to submit user changes", "error");
             } finally {
                 modalSubmitBtn.disabled = false;
                 modalSubmitBtn.innerHTML = originalModalBtnText;
-
-                const btn = document.getElementById('btn-submit-user-changes');
-                const closeBtn = document.getElementById('btn-close-user-modal');
                 btn.innerHTML = "Submit Changes";
-                closeBtn.disabled = false;
-                closeBtn.classList.remove('pointer-events-none');
                 checkUserAdminDirty();
             }
         }
@@ -2753,46 +2701,26 @@
             targetResetUsername = username;
             document.getElementById('admin-reset-pw-title').innerText = `Set Password: ${username}`;
             document.getElementById('admin-new-pw').value = stagedPasswordResets[username] || '';
-            document.getElementById('admin-reset-pw-modal').classList.remove('hidden');
+            toggleModal('admin-reset-pw-modal');
         }
 
         function closeAdminResetModal() {
             targetResetUsername = null;
-            document.getElementById('admin-reset-pw-modal').classList.add('hidden');
+            toggleModal('admin-reset-pw-modal');
         }
 
         function submitAdminResetPassword(e) {
             e.preventDefault();
             if (!targetResetUsername) return;
-
             const newPw = document.getElementById('admin-new-pw').value;
-            if (newPw.length < 8) {
-                showCustomAlert("Password must be at least 8 characters long.");
-                return;
+            if (newPw.length < 8 || !/[A-Z]/.test(newPw) || !/[a-z]/.test(newPw) || !/[0-9]/.test(newPw)) {
+                return showCustomAlert("Password must meet strength requirements.");
             }
-            if (!/[A-Z]/.test(newPw)) {
-                showCustomAlert("Password must include at least one uppercase letter.");
-                return;
-            }
-            if (!/[a-z]/.test(newPw)) {
-                showCustomAlert("Password must include at least one lowercase letter.");
-                return;
-            }
-            if (!/[0-9]/.test(newPw)) {
-                showCustomAlert("Password must include at least one number.");
-                return;
-            }
-
             stagedPasswordResets[targetResetUsername] = newPw;
             closeAdminResetModal();
             renderUserAdminTable();
             checkUserAdminDirty();
-            updateSystemMessage(`Password revision staged for ${targetResetUsername}`, "warn");
         }
-
-        // --------------------------------------------------------------------------------------
-        // REAL-TIME INLINE JOB CARD AVAILABILITY VALIDATION
-        // --------------------------------------------------------------------------------------
 
         async function checkJobCardAvailability() {
             const input = document.getElementById('new-job-id');
@@ -2810,10 +2738,9 @@
                 if (res.ok) {
                     const data = await res.json();
                     if (data.exists) {
-                        errBox.innerText = `Job Card '${jcId}' already exists (${data.status}). Please choose a unique ID or purge the existing job.`;
+                        errBox.innerText = `Job Card '${jcId}' already exists (${data.status}).`;
                         errBox.classList.remove('hidden');
                         input.classList.add('border-red-500');
-                        input.classList.remove('border-white/[0.12]');
                         if (uploadBtn) {
                             uploadBtn.disabled = true;
                             uploadBtn.classList.add('opacity-40', 'cursor-not-allowed');
@@ -2821,16 +2748,13 @@
                     } else {
                         errBox.classList.add('hidden');
                         input.classList.remove('border-red-500');
-                        input.classList.add('border-white/[0.12]');
                         if (uploadBtn) {
                             uploadBtn.disabled = false;
                             uploadBtn.classList.remove('opacity-40', 'cursor-not-allowed');
                         }
                     }
                 }
-            } catch (e) {
-                console.error("Availability check failed", e);
-            }
+            } catch (e) {}
         }
 
         function clearJobCardAvailabilityError() {
@@ -2838,19 +2762,12 @@
             const errBox = document.getElementById('job-id-availability-error');
             const uploadBtn = document.getElementById('upload-btn');
             if (errBox) errBox.classList.add('hidden');
-            if (input) {
-                input.classList.remove('border-red-500');
-                input.classList.add('border-white/[0.12]');
-            }
+            if (input) input.classList.remove('border-red-500');
             if (uploadBtn) {
                 uploadBtn.disabled = false;
                 uploadBtn.classList.remove('opacity-40', 'cursor-not-allowed');
             }
         }
-
-        // --------------------------------------------------------------------------------------
-        // INGESTION & CONFLICT LIFECYCLE (CHUNKED WITH REAL-TIME PROGRESS)
-        // --------------------------------------------------------------------------------------
 
         async function uploadJob(e, overrideDuplicate = false) {
             if (e) e.preventDefault();
@@ -2864,23 +2781,15 @@
             const jcId = document.getElementById('new-job-id').value.trim();
             const desc = document.getElementById('new-job-desc').value.trim();
             const fileInput = document.getElementById('new-job-file');
-            const errBox = document.getElementById('job-id-availability-error');
-
-            if (errBox && !errBox.classList.contains('hidden')) {
-                showCustomAlert("Please enter a unique Job Card ID before creating a job.");
-                return;
-            }
 
             if (!fileInput.files || fileInput.files.length === 0) {
-                showCustomAlert("Please select a batch CSV or TXT file.");
-                return;
+                return showCustomAlert("Please select a batch CSV or TXT file.");
             }
 
-            const file = fileInput.files[0];
             const formData = new FormData();
             formData.append('job_card_id', jcId);
             formData.append('description', desc);
-            formData.append('file', file);
+            formData.append('file', fileInput.files[0]);
             formData.append('override_duplicate', overrideDuplicate ? 'true' : 'false');
 
             uploadBtn.disabled = true;
@@ -2896,12 +2805,9 @@
 
             xhr.upload.onprogress = function(event) {
                 if (event.lengthComputable) {
-                    const percentComplete = Math.round((event.loaded / event.total) * 100);
-                    progressBar.style.width = percentComplete + '%';
-                    percentageLabel.innerText = percentComplete + '%';
-                    if (percentComplete >= 100) {
-                        statusLabel.innerText = 'Processing batch in background...';
-                    }
+                    const pct = Math.round((event.loaded / event.total) * 100);
+                    progressBar.style.width = pct + '%';
+                    percentageLabel.innerText = pct + '%';
                 }
             };
 
@@ -2910,30 +2816,17 @@
                     const data = JSON.parse(xhr.responseText);
                     activeIngestionRunId = data.run_id;
                     activeIngestionJobCardId = data.job_card_id;
-                    statusLabel.innerText = 'Analyzing batch uniqueness across historical records...';
                     startIngestionPolling(data.run_id);
                 } else {
-                    let errMsg = "Failed to upload batch file.";
-                    try {
-                        const err = JSON.parse(xhr.responseText);
-                        errMsg = err.detail || errMsg;
-                    } catch(e) {}
-                    showCustomAlert(errMsg, "Upload Error");
+                    showCustomAlert("Failed to initiate ingestion.");
                     resetUploadUI();
                 }
             };
-
-            xhr.onerror = function() {
-                showCustomAlert("Network connection error during file upload.", "Upload Error");
-                resetUploadUI();
-            };
-
             xhr.send(formData);
         }
 
         function startIngestionPolling(runId) {
             if (ingestionPollTimer) clearInterval(ingestionPollTimer);
-
             ingestionPollTimer = setInterval(async () => {
                 try {
                     const res = await fetch(`/api/jobs/${runId}/upload-status`);
@@ -2941,109 +2834,38 @@
                     const data = await res.json();
 
                     const statusLabel = document.getElementById('upload-status-label');
-                    const progressBar = document.getElementById('upload-progress-bar');
-                    const percentageLabel = document.getElementById('upload-percentage');
-
-                    if (statusLabel && data.progress_message) {
-                        statusLabel.innerText = data.progress_message;
-
-                        const pctMatch = data.progress_message.match(/(\d+)%/);
-                        if (pctMatch && progressBar && percentageLabel) {
-                            const pctVal = pctMatch[1];
-                            progressBar.style.width = pctVal + '%';
-                            percentageLabel.innerText = pctVal + '%';
-                        }
-                    }
+                    if (statusLabel && data.progress_message) statusLabel.innerText = data.progress_message;
 
                     if (data.status === 'CONFLICT_DETECTED') {
                         clearInterval(ingestionPollTimer);
-                        document.getElementById('upload-modal').classList.add('hidden');
+                        toggleModal('upload-modal');
                         resetUploadUI();
-
-                        const conflictCount = Number(data.conflict_count) || 0;
-                        const totalCount = Number(data.total_codes) || 0;
-                        const warningMsg = `Found ${conflictCount.toLocaleString()} conflicting code(s) out of ${totalCount.toLocaleString()} total codes in the CSV that already exist in active or completed jobs.`;
-                        document.getElementById('duplicate-warning-msg').innerText = warningMsg;
-                        document.getElementById('duplicate-warning-modal').classList.remove('hidden');
-                    }
-                    else if (data.status === 'ACTIVE') {
+                        document.getElementById('duplicate-warning-msg').innerText = 
+                            `Found ${Number(data.conflict_count).toLocaleString()} conflicts in ${Number(data.total_codes).toLocaleString()} codes.`;
+                        toggleModal('duplicate-warning-modal');
+                    } else if (data.status === 'ACTIVE') {
                         clearInterval(ingestionPollTimer);
-                        document.getElementById('upload-modal').classList.add('hidden');
-                        document.getElementById('duplicate-warning-modal').classList.add('hidden');
+                        toggleModal('upload-modal');
                         resetUploadUI();
                         document.getElementById('create-job-form').reset();
-                        clearJobCardAvailabilityError();
-                        activeIngestionRunId = null;
-
-                        const finalCount = Number(data.total_codes) || 0;
-                        showCustomAlert(`Job Card '${data.job_card_id}' created with ${finalCount.toLocaleString()} codes.`, "Success");
-                        updateSystemMessage(`Job Card '${data.job_card_id}' ingested (${finalCount.toLocaleString()} codes)`, "success");
-                    }
-                    else if (data.status === 'FAILED') {
+                        showCustomAlert(`Job Card '${data.job_card_id}' is now active with ${Number(data.total_codes).toLocaleString()} codes.`, "Success");
+                    } else if (data.status === 'FAILED') {
                         clearInterval(ingestionPollTimer);
                         resetUploadUI();
-                        document.getElementById('duplicate-warning-modal').classList.add('hidden');
                         showCustomAlert(`Ingestion failed: ${data.progress_message}`, "Ingestion Error");
                     }
-                } catch(e) {
-                    console.error("Polling error", e);
-                }
+                } catch(e) {}
             }, 1000);
         }
 
         async function confirmDuplicateUpload(skipConflicts = false) {
             if (!activeIngestionRunId) return;
-
-            const proceedBtn = document.getElementById('duplicate-proceed-btn');
-            const skipBtn = document.getElementById('duplicate-skip-btn');
-            const cancelBtn = document.getElementById('duplicate-cancel-btn');
-
-            if (proceedBtn) proceedBtn.disabled = true;
-            if (skipBtn) skipBtn.disabled = true;
-            if (cancelBtn) cancelBtn.disabled = true;
-
-            try {
-                const formData = new FormData();
-                formData.append('skip_conflicts', skipConflicts ? 'true' : 'false');
-
-                const res = await fetch(`/api/jobs/${activeIngestionRunId}/proceed-override`, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (res.status === 202) {
-                    document.getElementById('duplicate-warning-modal').classList.add('hidden');
-                    document.getElementById('upload-modal').classList.remove('hidden');
-
-                    const uploadBtn = document.getElementById('upload-btn');
-                    const uploadCancelBtn = document.getElementById('upload-cancel-btn');
-                    const progressBox = document.getElementById('upload-progress-box');
-                    const progressBar = document.getElementById('upload-progress-bar');
-                    const percentageLabel = document.getElementById('upload-percentage');
-                    const statusLabel = document.getElementById('upload-status-label');
-
-                    uploadBtn.disabled = true;
-                    uploadCancelBtn.disabled = true;
-                    uploadBtn.innerHTML = `${spinnerSvg} Processing...`;
-                    progressBox.classList.remove('hidden');
-                    progressBar.style.width = '10%';
-                    percentageLabel.innerText = '10%';
-                    statusLabel.innerText = skipConflicts ? 'Filtering and ingesting non-conflicting codes...' : 'Bulk ingesting codes...';
-
-                    startIngestionPolling(activeIngestionRunId);
-                } else {
-                    const err = await res.json().catch(() => ({}));
-                    showCustomAlert(err.detail || "Failed to initiate override ingestion.");
-                    document.getElementById('duplicate-warning-modal').classList.add('hidden');
-                    resetUploadUI();
-                }
-            } catch(e) {
-                showCustomAlert("Network error while connecting to server.");
-            } finally {
-                if (proceedBtn) proceedBtn.disabled = false;
-                if (skipBtn) skipBtn.disabled = false;
-                if (cancelBtn) cancelBtn.disabled = false;
-            }
+            const formData = new FormData();
+            formData.append('skip_conflicts', skipConflicts ? 'true' : 'false');
+            await fetch(`/api/jobs/${activeIngestionRunId}/proceed-override`, { method: 'POST', body: formData });
+            toggleModal('duplicate-warning-modal');
+            toggleModal('upload-modal');
+            startIngestionPolling(activeIngestionRunId);
         }
 
         async function cancelDuplicateUpload() {
@@ -3051,7 +2873,7 @@
                 await fetch(`/api/jobs/${activeIngestionRunId}/cancel-upload`, { method: 'POST' });
                 activeIngestionRunId = null;
             }
-            document.getElementById('duplicate-warning-modal').classList.add('hidden');
+            toggleModal('duplicate-warning-modal');
             resetUploadUI();
         }
 
@@ -3071,13 +2893,127 @@
             activeIngestionRunId = runId;
             const cCount = Number(conflictCount) || 0;
             const tCount = Number(totalCodes) || 0;
-            const warningMsg = `Found ${cCount.toLocaleString()} conflicting code(s) out of ${tCount.toLocaleString()} total codes in the CSV that already exist in active or completed jobs.`;
-            document.getElementById('duplicate-warning-msg').innerText = warningMsg;
+            document.getElementById('duplicate-warning-msg').innerText = 
+                `Found ${cCount.toLocaleString()} conflicting code(s) out of ${tCount.toLocaleString()} total codes in the CSV that already exist in active or completed jobs.`;
             toggleModal('master-jobs-modal');
-            document.getElementById('duplicate-warning-modal').classList.remove('hidden');
+            toggleModal('duplicate-warning-modal');
         }
 
-        checkSession();
+        function startMasterJobsAutoRefresh() {
+            if (masterJobsPollTimer) clearInterval(masterJobsPollTimer);
+            masterJobsPollTimer = setInterval(async () => {
+                const modal = document.getElementById('master-jobs-modal');
+                if (!modal || modal.classList.contains('hidden')) {
+                    clearInterval(masterJobsPollTimer);
+                    masterJobsPollTimer = null;
+                    return;
+                }
+                await loadMasterJobs(currentMasterTab, false);
+            }, 3000);
+        }
+
+        async function loadMasterJobs(filterType, showLoadingError = true) {
+            currentMasterTab = filterType;
+            ['all', 'active', 'inactive', 'completed', 'stuck', 'deleted'].forEach(t => {
+                const btn = document.getElementById(`filter-tab-${t}`);
+                if (btn) {
+                    btn.className = (t === filterType.toLowerCase())
+                        ? "linear-button-primary px-3 py-1.5 rounded text-xs font-medium"
+                        : "linear-button-secondary px-3 py-1.5 rounded text-xs font-medium";
+                }
+            });
+
+            try {
+                const res = await fetch(`/api/admin/master-jobs?status_filter=${filterType}`);
+                if (res.ok) {
+                    rawMasterJobs = await res.json();
+                    renderMasterJobsTable();
+                }
+            } catch(e) {}
+        }
+
+        function filterMasterJobs(filterType) {
+            loadMasterJobs(filterType);
+        }
+
+        function renderMasterJobsTable() {
+            const query = (document.getElementById('master-job-search').value || "").toLowerCase().trim();
+            const filtered = rawMasterJobs.filter(j => 
+                j.job_card_id.toLowerCase().includes(query) ||
+                (j.description && j.description.toLowerCase().includes(query)) ||
+                (j.status && j.status.toLowerCase().includes(query))
+            );
+
+            const tbody = document.getElementById('master-jobs-rows');
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400 italic text-xs">No job cards found matching '${query}'</td></tr>`;
+                updateBulkStatusButtonState();
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(j => {
+                let badgeClass = "linear-badge-pass";
+                if (j.status === 'INACTIVE') badgeClass = "linear-badge-warn";
+                else if (j.status === 'COMPLETED') badgeClass = "bg-blue-500/10 text-blue-400 border border-blue-500/25";
+                else if (j.status !== 'ACTIVE') badgeClass = "linear-badge-fail";
+
+                const totalNum = Number(j.total) || 0;
+                const consumedNum = Number(j.consumed) || 0;
+
+                let actionHtml = `<span class="text-slate-400 italic text-[11px]">Locked (${consumedNum.toLocaleString()} verified)</span>`;
+                if (j.status === 'DELETED') {
+                    actionHtml = `<span class="text-slate-500 italic text-[11px]">Deleted</span>`;
+                } else if (j.status === 'CONFLICT_DETECTED') {
+                    actionHtml = `<button onclick="resolveJobFromAdmin(${j.run_id}, ${j.conflict_count || 0}, ${j.total || 0})" class="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded text-[11px] font-bold">Resolve Conflict</button>`;
+                } else if (consumedNum === 0 || j.status === 'FAILED') {
+                    actionHtml = `<button onclick="purgeJobFromAdmin(${j.run_id}, '${j.job_card_id}')" class="bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 px-2.5 py-1 rounded text-[11px] font-bold">Purge Job</button>`;
+                }
+
+                let statusDisplay = j.status;
+                if (j.ingestion_progress && (j.status === 'INGESTING' || j.status === 'OVERRIDING' || j.status === 'FAILED')) {
+                    statusDisplay += `<span class="block text-[9px] text-slate-400 font-normal truncate max-w-[140px]">${j.ingestion_progress}</span>`;
+                }
+
+                return `
+                    <tr class="hover:bg-black/[0.02]">
+                        <td class="p-3 text-center">
+                            ${(j.status !== 'DELETED' && j.status !== 'FAILED') ? `<input type="checkbox" value="${j.job_card_id}" onchange="updateBulkStatusButtonState()" class="job-select-checkbox rounded w-4 h-4 cursor-pointer">` : ''}
+                        </td>
+                        <td class="p-3 font-bold table-text-theme">
+                            <div class="inline-flex items-center gap-1.5">
+                                <span class="truncate cursor-pointer hover:underline text-indigo-400" onclick="toggleModal('master-jobs-modal'); selectJob('${j.job_card_id}', '${encodeURIComponent(j.description || '')}', '${j.status}', ${j.consumed}, ${j.total});">${j.job_card_id}</span>
+                                <button onclick="copyJobCardNumber('${j.job_card_id}', this)" class="linear-button-secondary p-1 rounded inline-flex items-center justify-center">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                </button>
+                            </div>
+                        </td>
+                        <td class="p-3 max-w-[200px] text-xs table-text-theme opacity-90 truncate">${j.description || '-'}</td>
+                        <td class="p-3 text-[10px] text-slate-300">${j.created_at}</td>
+                        <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">${statusDisplay}</span></td>
+                        <td class="p-3 text-right text-xs table-text-theme font-semibold">${consumedNum.toLocaleString()} / ${totalNum.toLocaleString()}</td>
+                        <td class="p-3 text-center">
+                            <button onclick="openPackingQCReportFromAdmin('${j.job_card_id}')" class="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded text-xs font-bold">
+                                Verified: ${j.packing_qc_count || 0}
+                            </button>
+                        </td>
+                        <td class="p-3 text-center">${actionHtml}</td>
+                    </tr>
+                `;
+            }).join('');
+            updateBulkStatusButtonState();
+        }
+
+        // DOM Ready Initializer
+        window.addEventListener('DOMContentLoaded', () => {
+            const allJobsBtn = document.getElementById('btn-all-jobs');
+            if (allJobsBtn) {
+                allJobsBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    window.openMasterJobsModal();
+                });
+            }
+            checkSession();
+        });
     </script>
 </body>
 </html>
