@@ -1043,6 +1043,22 @@
 
         const spinnerSvg = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
 
+        function toggleModal(id) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.classList.toggle('hidden');
+                if (id === 'master-jobs-modal' && el.classList.contains('hidden')) {
+                    if (masterJobsPollTimer) {
+                        clearInterval(masterJobsPollTimer);
+                        masterJobsPollTimer = null;
+                    }
+                }
+                if (id === 'upload-modal' && el.classList.contains('hidden')) {
+                    clearJobCardAvailabilityError();
+                }
+            }
+        }
+
         function resetInput() {
             const barcodeInput = document.getElementById('barcode-input');
             if (barcodeInput && !barcodeInput.disabled) {
@@ -1394,7 +1410,7 @@
                 }
 
                 list.innerHTML = jobs.map(j => `
-                    <div onclick="selectJob('${j.id}', '${escape(j.description)}', '${j.status}', ${j.consumed}, ${j.total})" 
+                    <div onclick="selectJob('${j.id}', '${encodeURIComponent(j.description)}', '${j.status}', ${j.consumed}, ${j.total})" 
                          class="p-2.5 hover:bg-black/[0.02] border-b cursor-pointer flex justify-between items-center transition-colors">
                         <div class="min-w-0 pr-2">
                             <span class="font-bold text-xs block truncate">${j.id}</span>
@@ -1423,7 +1439,7 @@
 
         async function selectJob(id, descEncoded, status, consumed, total) {
             activeJobId = id;
-            activeJobDesc = unescape(descEncoded || "");
+            activeJobDesc = decodeURIComponent(descEncoded || "");
             activeJobStatus = status;
             allScans = [];
 
@@ -1588,7 +1604,7 @@
 
                         const res = await fetch(`/api/jobs/${encodeURIComponent(activeJobId)}/complete`, { method: 'POST' });
                         if (res.ok) {
-                            selectJob(activeJobId, escape(activeJobDesc), 'COMPLETED', currentConsumed, currentTotal);
+                            selectJob(activeJobId, encodeURIComponent(activeJobDesc), 'COMPLETED', currentConsumed, currentTotal);
                             updateSystemMessage(`Job Card ${activeJobId} marked COMPLETED`, "warn");
                             showCustomAlert(`Job Card ${activeJobId} has been successfully completed.`, "Job Completed");
                         } else {
@@ -3042,7 +3058,7 @@
             const warningMsg = `Found ${cCount.toLocaleString()} conflicting code(s) out of ${tCount.toLocaleString()} total codes in the CSV that already exist in active or completed jobs.`;
             document.getElementById('duplicate-warning-msg').innerText = warningMsg;
             toggleModal('master-jobs-modal');
-            document.getElementById('duplicate-warning-modal').classList.remove('hidden');
+            document.getElementById('duplicate-warning-modal').classList.add('hidden');
         }
 
         checkSession();
