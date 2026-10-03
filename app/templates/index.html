@@ -215,7 +215,8 @@
             }
             body > header, body > main, body > footer, #login-modal, #pw-modal, #upload-modal,
             #master-jobs-modal, #user-modal, #custom-alert-modal, #duplicate-warning-modal,
-            #custom-confirm-modal, #admin-reset-pw-modal, #user-admin-pw-modal, #bulk-status-modal, .no-print {
+            #custom-confirm-modal, #admin-reset-pw-modal, #user-admin-pw-modal, #bulk-status-modal,
+            #purge-admin-pw-modal, .no-print {
                 display: none !important;
                 visibility: hidden !important;
             }
@@ -265,6 +266,7 @@
             th { background-color: #f1f5f9 !important; font-weight: bold !important; }
             #report-modal .print-timestamp-footer,
             #lifecycle-modal .print-timestamp-footer,
+            #global-audit-modal .print-timestamp-footer,
             #print-qc-footer-timestamp {
                 display: block !important;
                 visibility: visible !important;
@@ -440,12 +442,19 @@
 
     </main>
 
-    <!-- Footer Information Bar -->
+    <!-- Footer Information Bar with Audit Trail Link -->
     <footer class="border-t px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between text-xs text-slate-300 shrink-0 bg-[#0d0e11] z-40 gap-2">
         <div class="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
             <div class="flex items-center gap-2 shrink-0">
                 <span class="w-2 h-2 rounded-full bg-[#2ed573]"></span>
                 <span class="table-text-theme">Online</span>
+                <span class="text-slate-600">&middot;</span>
+                <button onclick="openGlobalAuditTrailModal()" class="text-indigo-400 hover:text-indigo-300 underline font-semibold cursor-pointer bg-transparent border-none p-0 text-xs transition-colors flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                    </svg>
+                    Audit Trail
+                </button>
                 <span class="text-slate-600">&middot;</span>
                 <span id="user-display" class="truncate max-w-[150px] sm:max-w-none table-text-theme font-medium">Checking session...</span>
             </div>
@@ -463,6 +472,66 @@
             Press <kbd class="bg-[#1e2029] text-white px-1.5 py-0.5 rounded">Enter</kbd> to submit
         </div>
     </footer>
+
+    <!-- Global Audit Trail Modal -->
+    <div id="global-audit-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
+        <div class="linear-card p-6 rounded-lg max-w-5xl w-full shadow-2xl flex flex-col max-h-[92vh]">
+            <div class="report-header-box mb-3 border-b border-white/[0.08] pb-3">
+                <div class="print-brand-box">
+                    <img src="/static/ico.png" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/ico.png';">
+                </div>
+                <div class="flex justify-between items-start no-print mb-2">
+                    <div></div>
+                    <div class="flex gap-2">
+                        <button onclick="window.print()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Print Report</button>
+                        <button onclick="toggleModal('global-audit-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Close</button>
+                    </div>
+                </div>
+                <h3 class="text-2xl font-black modal-title-theme text-center mb-3">Global Activity Audit Trail</h3>
+                
+                <div class="flex flex-wrap gap-1.5 items-center justify-center no-print pt-1">
+                    <button onclick="filterAuditCategory('ALL')" id="audit-filter-all" class="linear-button-primary px-3 py-1 rounded text-xs font-bold">All Activities</button>
+                    <button onclick="filterAuditCategory('SCAN_VERIFICATION')" id="audit-filter-scan" class="linear-button-secondary px-3 py-1 rounded text-xs font-semibold">Verifications & Scans</button>
+                    <button onclick="filterAuditCategory('JOB_LIFECYCLE')" id="audit-filter-life" class="linear-button-secondary px-3 py-1 rounded text-xs font-semibold">Job Lifecycle & Purges</button>
+                    <button onclick="filterAuditCategory('FINAL_QC')" id="audit-filter-qc" class="linear-button-secondary px-3 py-1 rounded text-xs font-semibold">Final QC Packing</button>
+                </div>
+            </div>
+
+            <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded">
+                <table class="w-full text-left whitespace-nowrap">
+                    <thead>
+                        <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0">
+                            <th class="px-3.5 py-2.5">Timestamp</th>
+                            <th class="px-3.5 py-2.5">User / Inspector</th>
+                            <th class="px-3.5 py-2.5">Job Card</th>
+                            <th class="px-3.5 py-2.5">Activity Type</th>
+                            <th class="px-3.5 py-2.5">Activity Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="global-audit-rows" class="divide-y divide-white/[0.04] table-text-theme text-xs"></tbody>
+                </table>
+            </div>
+            <div id="print-global-audit-timestamp" class="print-timestamp-footer"></div>
+        </div>
+    </div>
+
+    <!-- Password Prompt Modal for Purging Jobs -->
+    <div id="purge-admin-pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
+        <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-red-500/30 shadow-2xl">
+            <h3 class="text-base font-bold mb-1 text-red-400">Authorize Job Purge</h3>
+            <p id="purge-modal-subtitle" class="text-xs text-slate-300 mb-4 leading-relaxed">Enter your password to authorize the permanent deletion of this unverified job card.</p>
+            <form onsubmit="executePurgeJobWithPassword(event)" class="space-y-3.5">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Enter your password *</label>
+                    <input type="password" id="purge-admin-password-input" required class="linear-input w-full p-2.5 text-sm rounded focus:border-red-400">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closePurgeModal()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
+                    <button type="submit" id="purge-submit-btn" class="bg-red-600 hover:bg-red-500 text-white px-3.5 py-1.5 rounded text-xs font-semibold">Authorize & Purge</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Duplicate Warning Modal with 3 Action Choices -->
     <div id="duplicate-warning-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
@@ -541,7 +610,7 @@
                 <div id="packing-qc-printable-content">
                     <div>
                         <div class="print-brand-box">
-                            <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
+                            <img src="/static/ico.png" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/ico.png';">
                         </div>
                         <h3 style="font-size: 14pt; font-weight: bold; text-align: center; margin-bottom: 12px; color: #0f172a;">Final QC Certificate</h3>
                         
@@ -710,7 +779,7 @@
         <div class="linear-card p-6 rounded-lg max-w-4xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="report-header-box mb-3 border-b border-white/[0.08] pb-3">
                 <div class="print-brand-box">
-                    <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
+                    <img src="/static/ico.png" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/ico.png';">
                 </div>
                 <div class="flex justify-between items-start no-print mb-2">
                     <div></div>
@@ -754,13 +823,13 @@
         <div class="linear-card p-6 rounded-lg max-w-3xl w-full shadow-2xl flex flex-col max-h-[85vh]">
             <div class="report-header-box mb-3 border-b border-white/[0.08] pb-2">
                 <div class="print-brand-box">
-                    <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
+                    <img src="/static/ico.png" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/ico.png';">
                 </div>
                 <div class="flex justify-between items-start no-print mb-2">
                     <div></div>
                     <div class="flex gap-2">
-                        <button onclick="window.print()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Print Log</button>
-                        <button onclick="toggleModal('lifecycle-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Close</button>
+                        <button onclick="window.print()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Print Log</button>
+                        <button onclick="toggleModal('lifecycle-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Close</button>
                     </div>
                 </div>
                 <h3 class="text-2xl font-black modal-title-theme text-center mb-3">LIFE CYCLE AUDIT REPORT</h3>
@@ -957,6 +1026,11 @@
         let activeIngestionJobCardId = null;
         let ingestionPollTimer = null;
         let masterJobsPollTimer = null;
+
+        let targetPurgeRunId = null;
+        let targetPurgeJobId = null;
+        let globalAuditEvents = [];
+        let currentAuditCategory = 'ALL';
 
         let originalUsers = [];
         let stagedUsers = [];
@@ -1349,7 +1423,7 @@
 
             document.getElementById('job-list').classList.add('hidden');
             document.getElementById('job-search').value = "";
-            document.getElementById('active-title-card').innerHTML = `<span>Job Card: ${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors ml-2">[Close]</button>`;
+            document.getElementById('active-title-card').innerHTML = `<span>Job Card: ${id}</span> <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2">[Close]</button>`;
             
             const displayDesc = activeJobDesc ? `${activeJobDesc} | Status: ${status}` : `Status: ${status}`;
             document.getElementById('header-job-desc').innerText = displayDesc;
@@ -2036,6 +2110,140 @@
             toggleModal('lifecycle-modal');
         }
 
+        // --------------------------------------------------------------------------------------
+        // GLOBAL AUDIT TRAIL FUNCTIONS
+        // --------------------------------------------------------------------------------------
+
+        async function openGlobalAuditTrailModal() {
+            try {
+                const res = await fetch('/api/admin/audit-trail');
+                if (!res.ok) {
+                    const err = await res.json();
+                    showCustomAlert(err.detail || "Manager or Admin permissions required to view Audit Trail.");
+                    return;
+                }
+                const data = await res.json();
+                globalAuditEvents = data.events || [];
+                filterAuditCategory('ALL');
+                document.getElementById('global-audit-modal').classList.remove('hidden');
+
+                const tsElem = document.getElementById('print-global-audit-timestamp');
+                if (tsElem) tsElem.innerText = `Report Generated On: ${new Date().toLocaleString()}`;
+            } catch (e) {
+                showCustomAlert("Failed to load global audit trail.");
+            }
+        }
+
+        function filterAuditCategory(cat) {
+            currentAuditCategory = cat;
+            ['all', 'scan', 'life', 'qc'].forEach(t => {
+                const btn = document.getElementById(`audit-filter-${t}`);
+                if (btn) {
+                    btn.className = "linear-button-secondary px-3 py-1 rounded text-xs font-semibold";
+                }
+            });
+
+            let activeBtnId = 'audit-filter-all';
+            if (cat === 'SCAN_VERIFICATION') activeBtnId = 'audit-filter-scan';
+            else if (cat === 'JOB_LIFECYCLE') activeBtnId = 'audit-filter-life';
+            else if (cat === 'FINAL_QC') activeBtnId = 'audit-filter-qc';
+
+            const activeBtn = document.getElementById(activeBtnId);
+            if (activeBtn) {
+                activeBtn.className = "linear-button-primary px-3 py-1 rounded text-xs font-bold";
+            }
+
+            renderGlobalAuditTable();
+        }
+
+        function renderGlobalAuditTable() {
+            const tbody = document.getElementById('global-audit-rows');
+            let filtered = globalAuditEvents;
+            if (currentAuditCategory !== 'ALL') {
+                filtered = globalAuditEvents.filter(e => e.category === currentAuditCategory);
+            }
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 italic">No audit records found</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(e => {
+                let badgeColor = "text-indigo-400 font-semibold";
+                if (e.activity_type.includes('PASS') || e.activity_type.includes('FINAL_QC')) badgeColor = "text-[#2ed573] font-bold";
+                else if (e.activity_type.includes('ERROR') || e.activity_type.includes('MISMATCH') || e.activity_type.includes('PURGE')) badgeColor = "text-red-400 font-bold";
+                else if (e.activity_type.includes('DUPLICATE')) badgeColor = "text-amber-400 font-semibold";
+
+                return `
+                    <tr class="hover:bg-black/[0.02]">
+                        <td class="px-3.5 py-2.5 text-xs text-slate-300">${e.timestamp}</td>
+                        <td class="px-3.5 py-2.5 font-bold table-text-theme text-xs">${e.user}</td>
+                        <td class="px-3.5 py-2.5 table-text-theme text-xs font-semibold">${e.job_card_id}</td>
+                        <td class="px-3.5 py-2.5 text-xs ${badgeColor}">${e.activity_type}</td>
+                        <td class="px-3.5 py-2.5 text-xs table-text-theme opacity-90">${e.details}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // --------------------------------------------------------------------------------------
+        // SECURE PURGE WITH PASSWORD PROMPT
+        // --------------------------------------------------------------------------------------
+
+        function purgeJobFromAdmin(runId, jcId) {
+            targetPurgeRunId = runId;
+            targetPurgeJobId = jcId;
+            document.getElementById('purge-admin-password-input').value = '';
+            document.getElementById('purge-modal-subtitle').innerText = `Enter your password to authorize the permanent deletion of Job Card '${jcId}'.`;
+            document.getElementById('purge-admin-pw-modal').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('purge-admin-password-input').focus();
+            }, 100);
+        }
+
+        function closePurgeModal() {
+            targetPurgeRunId = null;
+            targetPurgeJobId = null;
+            document.getElementById('purge-admin-pw-modal').classList.add('hidden');
+            document.getElementById('purge-admin-password-input').value = '';
+        }
+
+        async function executePurgeJobWithPassword(e) {
+            e.preventDefault();
+            const password = document.getElementById('purge-admin-password-input').value;
+            if (!password || !targetPurgeRunId) return;
+
+            const submitBtn = document.getElementById('purge-submit-btn');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `${spinnerSvg} Purging...`;
+
+            try {
+                const body = new FormData();
+                body.append("admin_password", password);
+
+                const res = await fetch(`/api/admin/jobs/${targetPurgeRunId}/purge`, {
+                    method: 'POST',
+                    body
+                });
+
+                if (res.ok) {
+                    closePurgeModal();
+                    showCustomAlert(`Job Card '${targetPurgeJobId}' successfully purged.`, "Purged");
+                    await loadMasterJobs(currentMasterTab);
+                    updateSystemMessage(`Purged Job Card: ${targetPurgeJobId}`, "success");
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    showCustomAlert(err.detail || "Purge failed. Invalid password or job has verified scans.");
+                }
+            } catch (ex) {
+                showCustomAlert("Network error while connecting to server.");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        }
+
         function handleNewUserRoleChange() {
             const role = document.getElementById('new-user-role').value;
             const canUploadCb = document.getElementById('new-user-can-upload');
@@ -2311,7 +2519,7 @@
                 verifyBody.append('username', currentUser ? currentUser.username : '');
                 verifyBody.append('password', adminPass);
 
-                const verifyRes = await fetch('/api/auth/login', { method: 'POST', body });
+                const verifyRes = await fetch('/api/auth/login', { method: 'POST', body: verifyBody });
                 if (!verifyRes.ok) {
                     showCustomAlert("Invalid administrator password. Changes were not saved.");
                     modalSubmitBtn.disabled = false;
@@ -2748,21 +2956,58 @@
             document.getElementById('duplicate-warning-modal').classList.remove('hidden');
         }
 
-        async function purgeJobFromAdmin(runId, jcId) {
-            showCustomConfirm(
-                `Are you sure you want to permanently delete Job Card '${jcId}'? This will free the ID for re-upload.`,
-                async () => {
-                    const res = await fetch(`/api/admin/jobs/${runId}/purge`, { method: 'POST' });
-                    if (res.ok) {
-                        showCustomAlert(`Job Card '${jcId}' purged successfully.`, "Purged");
-                        await loadMasterJobs(currentMasterTab);
-                    } else {
-                        const err = await res.json().catch(() => ({}));
-                        showCustomAlert(err.detail || "Failed to purge job.");
-                    }
-                },
-                "Purge Job"
-            );
+        function purgeJobFromAdmin(runId, jcId) {
+            targetPurgeRunId = runId;
+            targetPurgeJobId = jcId;
+            document.getElementById('purge-admin-password-input').value = '';
+            document.getElementById('purge-modal-subtitle').innerText = `Enter your password to authorize the permanent deletion of Job Card '${jcId}'.`;
+            document.getElementById('purge-admin-pw-modal').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('purge-admin-password-input').focus();
+            }, 100);
+        }
+
+        function closePurgeModal() {
+            targetPurgeRunId = null;
+            targetPurgeJobId = null;
+            document.getElementById('purge-admin-pw-modal').classList.add('hidden');
+            document.getElementById('purge-admin-password-input').value = '';
+        }
+
+        async function executePurgeJobWithPassword(e) {
+            e.preventDefault();
+            const password = document.getElementById('purge-admin-password-input').value;
+            if (!password || !targetPurgeRunId) return;
+
+            const submitBtn = document.getElementById('purge-submit-btn');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `${spinnerSvg} Purging...`;
+
+            try {
+                const body = new FormData();
+                body.append("admin_password", password);
+
+                const res = await fetch(`/api/admin/jobs/${targetPurgeRunId}/purge`, {
+                    method: 'POST',
+                    body
+                });
+
+                if (res.ok) {
+                    closePurgeModal();
+                    showCustomAlert(`Job Card '${targetPurgeJobId}' successfully purged.`, "Purged");
+                    await loadMasterJobs(currentMasterTab);
+                    updateSystemMessage(`Purged Job Card: ${targetPurgeJobId}`, "success");
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    showCustomAlert(err.detail || "Purge failed. Invalid password or job has verified scans.");
+                }
+            } catch (ex) {
+                showCustomAlert("Network error while connecting to server.");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
         }
 
         function toggleSelectAllJobs(master) {
@@ -2953,7 +3198,6 @@
                 const totalNum = Number(j.total) || 0;
                 const consumedNum = Number(j.consumed) || 0;
 
-                // Action Column: Allow purging if 0 verifications performed, locked if scanned
                 let actionHtml = `<span class="text-slate-400 italic text-[11px]">Locked (${consumedNum.toLocaleString()} verified)</span>`;
                 if (j.status === 'DELETED') {
                     actionHtml = `<span class="text-slate-500 italic text-[11px]">Deleted</span>`;
@@ -2966,7 +3210,7 @@
                     `;
                 } else if (j.status === 'FAILED' || j.status === 'INGESTING' || j.status === 'OVERRIDING') {
                     actionHtml = `
-                        <button onclick="purgeJobFromAdmin(${j.run_id}, '${j.job_card_id}')" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-2.5 py-1 rounded text-[11px] font-bold">Purge Stuck</button>
+                        <button onclick="purgeJobFromAdmin(${j.run_id}, '${j.job_card_id}')" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-2 py-1 rounded text-[11px] font-bold">Purge Stuck</button>
                     `;
                 } else if (consumedNum === 0) {
                     actionHtml = `

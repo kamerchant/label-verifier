@@ -52,7 +52,6 @@ def startup():
                 WHERE status IN ('INGESTING', 'OVERRIDING');
             """)
 
-            # Self-healing sync: Repair total_codes and consumed_codes for any jobs showing 0
             cur.execute("""
                 UPDATE job_cards j
                 SET total_codes = sub.cnt,
@@ -378,8 +377,78 @@ def toggle_user_upload(
         release_connection(conn)
 
 # --------------------------------------------------------------------------------------
-# REAL-TIME FIELD VALIDATION ENDPOINT
+# GLOBAL AUDIT TRAIL ENDPOINT
 # --------------------------------------------------------------------------------------
+
+@app.get("/api/admin/audit-trail")
+def get_global_audit_trail(user: dict = Depends(require_manager_or_admin)):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            # 1. Fetch Job Lifecycle Logs (Job created, completed, status changes, purges)
+            cur.execute("""
+                SELECT job_card_id, action, performed_by, reason, timestamp 
+                FROM job_lifecycle_logs 
+                ORDER BY timestamp DESC 
+                LIMIT 5000
+            """)
+            lifecycle_rows = cur.fetchall()
+
+            # 2. Fetch Scan Audit Logs (Verifications, mismatches, duplicates)
+            cur.execute("""
+                SELECT job_card_id, code_scanned, result, scanned_by, scanned_at 
+                FROM scan_logs 
+                ORDER BY scanned_at DESC 
+                LIMIT 5000
+            """)
+            scan_rows = cur.fetchall()
+
+            # 3. Fetch Final QC Packing Logs
+            cur.execute("""
+                SELECT job_card_id, code_scanned, tested_by, tested_at 
+                FROM packing_qc_logs 
+                ORDER BY tested_at DESC 
+                LIMIT 5000
+            """)
+            packing_rows = cur.fetchall()
+
+            events = []
+
+            for r in lifecycle_rows:
+                events.append({
+                    "category": "JOB_LIFECYCLE",
+                    "timestamp": r[4].strftime("%Y-%m-%d %H:%M:%S") if r[4] else "",
+                    "user": r[2] or "System",
+                    "job_card_id": r[0],
+                    "activity_type": r[1],
+                    "details": r[3] or "-"
+                })
+
+            for r in scan_rows:
+                events.append({
+                    "category": "SCAN_VERIFICATION",
+                    "timestamp": r[4].strftime("%Y-%m-%d %H:%M:%S") if r[4] else "",
+                    "user": r[3] or "Operator",
+                    "job_card_id": r[0],
+                    "activity_type": f"SCAN_{r[2]}",
+                    "details": f"Scanned code: {r[1]} [{r[2]}]"
+                })
+
+            for r in packing_rows:
+                events.append({
+                    "category": "FINAL_QC",
+                    "timestamp": r[3].strftime("%Y-%m-%d %H:%M:%S") if r[3] else "",
+                    "user": r[2] or "Operator",
+                    "job_card_id": r[0],
+                    "activity_type": "FINAL_QC_PACK",
+                    "details": f"Tested code for packing: {r[1]}"
+                })
+
+            # Sort globally by timestamp descending
+            events.sort(key=lambda x: x["timestamp"], reverse=True)
+            return {"events": events[:5000]}
+    finally:
+        release_connection(conn)
 
 @app.get("/api/jobs/check-availability")
 def check_job_card_availability(job_card_id: str, user: dict = Depends(get_current_user)):
@@ -621,7 +690,7 @@ def bulk_status_change(
         release_connection(conn)
 
 # --------------------------------------------------------------------------------------
-# 3-4 MILLION CODES STREAMING PIPELINE WITH CHUNKED COMMIT PULSES
+# STREAMING PIPELINE WORKERS
 # --------------------------------------------------------------------------------------
 
 def stream_file_to_codes_chunked(cur, conn, run_id: int, target_tsv_path: str, total_to_insert: int):
@@ -1028,14 +1097,24 @@ def cancel_upload_job(run_id: int, user: dict = Depends(require_uploader)):
         release_connection(conn)
 
 # --------------------------------------------------------------------------------------
-# SECURE CONDITIONAL PURGE ENDPOINT (PERMITS DELETION ONLY IF ZERO SCANS RECORDED)
+# SECURE PASSWORD-PROTECTED CONDITIONAL PURGE ENDPOINT
 # --------------------------------------------------------------------------------------
 
 @app.post("/api/admin/jobs/{run_id}/purge")
-def purge_job(run_id: int, user: dict = Depends(require_manager_or_admin)):
+def purge_job(
+    run_id: int, 
+    admin_password: str = Form(...),
+    user: dict = Depends(require_manager_or_admin)
+):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            # Verify admin/manager password
+            cur.execute("SELECT password_hash FROM users WHERE LOWER(username) = LOWER(%s)", (user["username"],))
+            user_row = cur.fetchone()
+            if not user_row or not verify_password(admin_password, user_row[0]):
+                raise HTTPException(status_code=403, detail="Invalid password. Purge authorization denied.")
+
             cur.execute("SELECT staged_file_path, job_card_id, consumed_codes FROM job_cards WHERE run_id = %s", (run_id,))
             row = cur.fetchone()
             if not row:
@@ -1043,7 +1122,6 @@ def purge_job(run_id: int, user: dict = Depends(require_manager_or_admin)):
 
             staged_file_path, jc_id, consumed_codes = row
 
-            # Verification check: inspect both consumed_codes counter and real scan_logs
             cur.execute("SELECT COUNT(*) FROM scan_logs WHERE job_card_id = %s", (jc_id,))
             scan_count = cur.fetchone()[0]
 
@@ -1053,7 +1131,6 @@ def purge_job(run_id: int, user: dict = Depends(require_manager_or_admin)):
                     detail=f"Cannot purge Job Card '{jc_id}': verification scans have already been recorded ({consumed_codes or scan_count} verified)."
                 )
 
-            # Zero scans verified: safe to purge cleanly
             if staged_file_path and os.path.exists(staged_file_path):
                 try:
                     os.remove(staged_file_path)
@@ -1357,7 +1434,6 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
 
             run_id, jc_id, jc_desc, jc_status, jc_created, total_pool, consumed_pool = job
 
-            # Instant self-healing fallback if total_codes or consumed_codes were 0
             if not total_pool or total_pool == 0:
                 cur.execute("SELECT COUNT(*) FROM codes WHERE run_id = %s", (run_id,))
                 cnt_r = cur.fetchone()
