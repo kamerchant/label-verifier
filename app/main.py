@@ -39,14 +39,16 @@ async def get_logo():
 @app.on_event("startup")
 def startup():
     init_db()
-    # Automatically recover jobs interrupted by server reboots or container restarts
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            # Ensure the column type is widened before writing any recovery message
+            cur.execute("ALTER TABLE job_cards ALTER COLUMN ingestion_progress TYPE TEXT;")
+            cur.execute("ALTER TABLE job_cards ALTER COLUMN status TYPE VARCHAR(100);")
             cur.execute("""
                 UPDATE job_cards 
                 SET status = 'FAILED', 
-                    ingestion_progress = 'Ingestion was interrupted by a server restart or crash. You can safely delete or re-upload.'
+                    ingestion_progress = 'Interrupted by server restart. You can safely purge or re-upload.'
                 WHERE status IN ('INGESTING', 'OVERRIDING');
             """)
             conn.commit()
@@ -615,7 +617,7 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
 
                 cur.execute("ANALYZE temp_incoming_codes;")
 
-                # Fast indexed join utilizing existing idx_codes_code_value
+                # Fast indexed lookup against existing idx_codes_code_value
                 cur.execute("""
                     SELECT COUNT(*)
                     FROM temp_incoming_codes t
@@ -668,7 +670,6 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 pass
 
     except Exception as e:
-        # Isolated recovery: open a guaranteed fresh connection if current connection dropped
         try:
             if conn:
                 conn.rollback()
@@ -763,7 +764,6 @@ async def create_job(
                 if ex_status in ('ACTIVE', 'COMPLETED', 'INACTIVE'):
                     raise HTTPException(status_code=400, detail=f"Active Job Card '{job_card_id}' already exists in the system.")
                 else:
-                    # Auto-purge stuck, failed, or unresolved upload attempts
                     cur.execute("DELETE FROM job_cards WHERE run_id = %s", (ex_run_id,))
                     conn.commit()
 
