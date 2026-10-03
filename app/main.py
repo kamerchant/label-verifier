@@ -39,6 +39,19 @@ async def get_logo():
 @app.on_event("startup")
 def startup():
     init_db()
+    # Automatically recover jobs interrupted by server reboots or container restarts
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                UPDATE job_cards 
+                SET status = 'FAILED', 
+                    ingestion_progress = 'Ingestion was interrupted by a server restart or crash. You can safely delete or re-upload.'
+                WHERE status IN ('INGESTING', 'OVERRIDING');
+            """)
+            conn.commit()
+    finally:
+        release_connection(conn)
 
 def validate_password_strength(password: str):
     if len(password) < 8:
@@ -373,6 +386,8 @@ def get_master_jobs_report(status_filter: str = "ALL", user: dict = Depends(requ
             if status_filter in ["ACTIVE", "INACTIVE", "COMPLETED", "DELETED"]:
                 where_clause = "WHERE j.status = %s"
                 params.append(status_filter)
+            elif status_filter == "STUCK":
+                where_clause = "WHERE j.status IN ('INGESTING', 'OVERRIDING', 'CONFLICT_DETECTED', 'FAILED')"
 
             sql = f"""
                 SELECT j.run_id, j.job_card_id, j.description, j.status,
@@ -382,7 +397,9 @@ def get_master_jobs_report(status_filter: str = "ALL", user: dict = Depends(requ
                        j.deleted_by,
                        j.deleted_at,
                        j.deletion_reason,
-                       COALESCE(pq.packing_qc_count, 0) as packing_qc_count
+                       COALESCE(pq.packing_qc_count, 0) as packing_qc_count,
+                       j.ingestion_progress,
+                       j.conflict_count
                 FROM job_cards j
                 LEFT JOIN (
                     SELECT p.job_card_id, COUNT(*) as packing_qc_count
@@ -405,7 +422,9 @@ def get_master_jobs_report(status_filter: str = "ALL", user: dict = Depends(requ
                 "deleted_by": r[7] or "",
                 "deleted_at": r[8].strftime("%Y-%m-%d %H:%M") if r[8] else "",
                 "deletion_reason": r[9] or "",
-                "packing_qc_count": r[10] or 0
+                "packing_qc_count": r[10] or 0,
+                "ingestion_progress": r[11] or "",
+                "conflict_count": r[12] or 0
             } for r in rows]
     finally:
         release_connection(conn)
@@ -538,15 +557,16 @@ def bulk_status_change(
         release_connection(conn)
 
 # --------------------------------------------------------------------------------------
-# 3-4 MILLION CODES ASYNCHRONOUS STREAMING PIPELINE
+# 3-4 MILLION CODES ASYNCHRONOUS PIPELINE WITH ISOLATED RECOVERY
 # --------------------------------------------------------------------------------------
 
 def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, is_override: bool, username: str):
     conn = None
+    clean_tsv_path = None
     try:
         conn = get_connection()
         with conn.cursor() as cur:
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Filtering unique codes from file...' WHERE run_id = %s", (run_id,))
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Filtering unique codes...' WHERE run_id = %s", (run_id,))
             conn.commit()
 
             header_blacklist = {"code", "url", "qr", "qrcode", "serial", "barcode", "data", "id", "link"}
@@ -574,10 +594,8 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
             del seen_in_batch
 
             if total_codes == 0:
-                cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = 'No valid codes found in file' WHERE run_id = %s", (run_id,))
+                cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = 'No valid codes found in uploaded file' WHERE run_id = %s", (run_id,))
                 conn.commit()
-                if os.path.exists(clean_tsv_path):
-                    os.remove(clean_tsv_path)
                 return
 
             cur.execute("""
@@ -595,15 +613,18 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 with open(clean_tsv_path, "r", encoding="utf-8") as tsv_in:
                     cur.copy_expert("COPY temp_incoming_codes FROM STDIN WITH (FORMAT text)", tsv_in)
 
-                cur.execute("CREATE INDEX idx_tmp_inc_codes ON temp_incoming_codes(code_value);")
                 cur.execute("ANALYZE temp_incoming_codes;")
 
+                # Fast indexed join utilizing existing idx_codes_code_value
                 cur.execute("""
-                    SELECT COUNT(DISTINCT c.code_value)
-                    FROM codes c
-                    JOIN temp_incoming_codes t ON c.code_value = t.code_value
-                    JOIN job_cards j ON c.run_id = j.run_id
-                    WHERE j.status != 'DELETED'
+                    SELECT COUNT(*)
+                    FROM temp_incoming_codes t
+                    WHERE EXISTS (
+                        SELECT 1 
+                        FROM codes c
+                        JOIN job_cards j ON c.run_id = j.run_id
+                        WHERE c.code_value = t.code_value AND j.status != 'DELETED'
+                    )
                 """)
                 conflicts_found = cur.fetchone()[0]
 
@@ -611,13 +632,14 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                     cur.execute("""
                         UPDATE job_cards 
                         SET status = 'CONFLICT_DETECTED', 
-                            conflict_count = %s,
+                            conflict_count = %s, 
                             ingestion_progress = 'Duplicate conflicts detected. Awaiting authorization.' 
                         WHERE run_id = %s
                     """, (conflicts_found, run_id))
                     conn.commit()
                     return
 
+            # Ingest bulk codes
             cur.execute("UPDATE job_cards SET ingestion_progress = 'Bulk ingesting codes into database...' WHERE run_id = %s", (run_id,))
             conn.commit()
 
@@ -640,20 +662,29 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
             conn.commit()
 
             try:
-                if os.path.exists(clean_tsv_path):
+                if clean_tsv_path and os.path.exists(clean_tsv_path):
                     os.remove(clean_tsv_path)
             except OSError:
                 pass
 
     except Exception as e:
-        if conn:
-            conn.rollback()
-            try:
-                with conn.cursor() as cur:
-                    cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = %s WHERE run_id = %s", (str(e), run_id))
-                    conn.commit()
-            except Exception:
-                pass
+        # Isolated recovery: open a guaranteed fresh connection if current connection dropped
+        try:
+            if conn:
+                conn.rollback()
+        except Exception:
+            pass
+        fail_conn = None
+        try:
+            fail_conn = get_connection()
+            with fail_conn.cursor() as cur:
+                cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = %s WHERE run_id = %s", (f"Ingestion Error: {str(e)}", run_id))
+                fail_conn.commit()
+        except Exception:
+            pass
+        finally:
+            if fail_conn:
+                release_connection(fail_conn)
     finally:
         if conn:
             release_connection(conn)
@@ -668,7 +699,7 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
     try:
         conn = get_connection()
         with conn.cursor() as cur:
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Bulk ingesting overridden codes into database...' WHERE run_id = %s", (run_id,))
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Bulk ingesting overridden codes...' WHERE run_id = %s", (run_id,))
             conn.commit()
 
             with open(clean_tsv_path, "r", encoding="utf-8") as tsv_in:
@@ -695,14 +726,17 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
             except OSError:
                 pass
     except Exception as e:
-        if conn:
-            conn.rollback()
-            try:
-                with conn.cursor() as cur:
-                    cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = %s WHERE run_id = %s", (str(e), run_id))
-                    conn.commit()
-            except Exception:
-                pass
+        fail_conn = None
+        try:
+            fail_conn = get_connection()
+            with fail_conn.cursor() as cur:
+                cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = %s WHERE run_id = %s", (f"Override Error: {str(e)}", run_id))
+                fail_conn.commit()
+        except Exception:
+            pass
+        finally:
+            if fail_conn:
+                release_connection(fail_conn)
     finally:
         if conn:
             release_connection(conn)
@@ -722,9 +756,16 @@ async def create_job(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT run_id FROM job_cards WHERE job_card_id = %s AND status != 'DELETED'", (job_card_id,))
-            if cur.fetchone():
-                raise HTTPException(status_code=400, detail=f"Active/Open Job Card '{job_card_id}' already exists.")
+            cur.execute("SELECT run_id, status FROM job_cards WHERE job_card_id = %s AND status != 'DELETED'", (job_card_id,))
+            existing = cur.fetchone()
+            if existing:
+                ex_run_id, ex_status = existing
+                if ex_status in ('ACTIVE', 'COMPLETED', 'INACTIVE'):
+                    raise HTTPException(status_code=400, detail=f"Active Job Card '{job_card_id}' already exists in the system.")
+                else:
+                    # Auto-purge stuck, failed, or unresolved upload attempts
+                    cur.execute("DELETE FROM job_cards WHERE run_id = %s", (ex_run_id,))
+                    conn.commit()
 
             cur.execute("""
                 INSERT INTO job_cards (job_card_id, description, status, ingestion_progress) 
@@ -803,12 +844,14 @@ def proceed_override_job(run_id: int, user: dict = Depends(require_uploader)):
             job_card_id, _, total_codes, conflicts, clean_tsv_path = row
 
             if not clean_tsv_path or not os.path.exists(clean_tsv_path):
-                raise HTTPException(status_code=400, detail="Staged batch cache expired or missing. Please upload the file again.")
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Staged temporary file was cleared by server restart. Please delete this job card and re-upload."
+                )
 
             cur.execute("UPDATE job_cards SET status = 'OVERRIDING', ingestion_progress = 'Starting background database insertion...' WHERE run_id = %s", (run_id,))
             conn.commit()
 
-            # Execute asynchronously in background thread to avoid HTTP 504 timeouts on 3-4M rows
             override_thread = threading.Thread(
                 target=process_override_worker,
                 args=(run_id, job_card_id, clean_tsv_path, conflicts, total_codes, user["username"]),
@@ -841,6 +884,28 @@ def cancel_upload_job(run_id: int, user: dict = Depends(require_uploader)):
             cur.execute("DELETE FROM job_cards WHERE run_id = %s", (run_id,))
             conn.commit()
             return {"status": "success"}
+    finally:
+        release_connection(conn)
+
+@app.post("/api/admin/jobs/{run_id}/purge")
+def purge_stuck_job(run_id: int, user: dict = Depends(require_manager_or_admin)):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT staged_file_path, job_card_id FROM job_cards WHERE run_id = %s", (run_id,))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Job not found")
+
+            if row[0] and os.path.exists(row[0]):
+                try:
+                    os.remove(row[0])
+                except OSError:
+                    pass
+
+            cur.execute("DELETE FROM job_cards WHERE run_id = %s", (run_id,))
+            conn.commit()
+            return {"status": "success", "message": f"Job {row[1]} removed."}
     finally:
         release_connection(conn)
 
