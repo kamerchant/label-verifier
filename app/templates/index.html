@@ -12,14 +12,8 @@
             letter-spacing: -0.01em;
         }
 
-        html {
-            font-size: 16px;
-        }
-        @media (min-width: 768px) {
-            html {
-                font-size: 18px;
-            }
-        }
+        html { font-size: 16px; }
+        @media (min-width: 768px) { html { font-size: 18px; } }
 
         body {
             background-color: #0d0e11;
@@ -54,9 +48,7 @@
             color: #ffffff;
             transition: all 0.12s ease;
         }
-        .linear-button-primary:hover {
-            background-color: #6875e3;
-        }
+        .linear-button-primary:hover { background-color: #6875e3; }
         .linear-button-secondary {
             background-color: #1a1c24;
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -83,12 +75,8 @@
             border: 1px solid rgba(255, 165, 2, 0.35);
         }
 
-        .modal-title-theme {
-            color: #f8fafc !important;
-        }
-        .table-text-theme {
-            color: #f1f5f9 !important;
-        }
+        .modal-title-theme { color: #f8fafc !important; }
+        .table-text-theme { color: #f1f5f9 !important; }
         .table-header-theme {
             color: #ffffff !important;
             background-color: #161821 !important;
@@ -121,9 +109,7 @@
             background-color: #276749;
             color: #ffffff;
         }
-        html.theme-parchment .linear-button-primary:hover {
-            background-color: #22543d;
-        }
+        html.theme-parchment .linear-button-primary:hover { background-color: #22543d; }
         html.theme-parchment .linear-button-secondary {
             background-color: #f0ece1;
             border: 1px solid #d4cebc;
@@ -164,12 +150,8 @@
             border-color: #e3decb !important;
             color: #2c3531 !important;
         }
-        html.theme-parchment .modal-title-theme {
-            color: #1a211e !important;
-        }
-        html.theme-parchment .table-text-theme {
-            color: #2c3531 !important;
-        }
+        html.theme-parchment .modal-title-theme { color: #1a211e !important; }
+        html.theme-parchment .table-text-theme { color: #2c3531 !important; }
         html.theme-parchment .table-header-theme {
             color: #3d4a45 !important;
             background-color: #f0ece1 !important;
@@ -212,33 +194,19 @@
             font-weight: 700;
         }
 
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        .print-brand-box {
-            display: none;
-        }
-        .print-timestamp-footer {
-            display: none !important;
-        }
+        .print-brand-box { display: none; }
+        .print-timestamp-footer { display: none !important; }
 
         @media print {
-            @page {
-                size: A4 portrait;
-                margin: 10mm 12mm;
-            }
+            @page { size: A4 portrait; margin: 10mm 12mm; }
             html, body {
                 background: #ffffff !important;
                 color: #0f172a !important;
                 width: 100% !important;
                 height: auto !important;
-                min-height: 0 !important;
-                max-height: none !important;
                 overflow: visible !important;
                 font-size: 9pt !important;
                 margin: 0 !important;
@@ -260,22 +228,15 @@
                 border: none !important;
                 visibility: visible !important;
             }
-            .printable-modal:not(.hidden) * {
-                visibility: visible !important;
-            }
+            .printable-modal:not(.hidden) * { visibility: visible !important; }
             .print-brand-box {
                 display: flex !important;
                 align-items: center !important;
                 gap: 8px !important;
                 margin-bottom: 8px !important;
             }
-            .print-brand-logo {
-                height: 26px !important;
-                width: auto !important;
-            }
-            .modal-title-theme, .table-text-theme {
-                color: #0f172a !important;
-            }
+            .print-brand-logo { height: 26px !important; width: auto !important; }
+            .modal-title-theme, .table-text-theme { color: #0f172a !important; }
             .linear-subcard {
                 background: #f8fafc !important;
                 border: 1px solid #cbd5e1 !important;
@@ -295,20 +256,13 @@
                 padding: 6px 8px !important;
                 text-align: center !important;
             }
-            table {
-                width: 100% !important;
-                font-size: 8.5pt !important;
-                border-collapse: collapse !important;
-            }
+            table { width: 100% !important; font-size: 8.5pt !important; border-collapse: collapse !important; }
             th, td {
                 padding: 4px 6px !important;
                 border: 1px solid #cbd5e1 !important;
                 color: #0f172a !important;
             }
-            th {
-                background-color: #f1f5f9 !important;
-                font-weight: bold !important;
-            }
+            th { background-color: #f1f5f9 !important; font-weight: bold !important; }
             #report-modal .print-timestamp-footer,
             #lifecycle-modal .print-timestamp-footer,
             #print-qc-footer-timestamp {
@@ -320,13 +274,8 @@
                 font-size: 8pt !important;
                 color: #475569 !important;
             }
-            #packing-qc-printable {
-                display: block !important;
-                visibility: visible !important;
-            }
-            #packing-qc-modal > div > *:not(#packing-qc-printable) {
-                display: none !important;
-            }
+            #packing-qc-printable { display: block !important; visibility: visible !important; }
+            #packing-qc-modal > div > *:not(#packing-qc-printable) { display: none !important; }
         }
     </style>
 </head>
@@ -515,23 +464,27 @@
         </div>
     </footer>
 
-    <!-- Duplicate Warning Modal for Job Creation -->
+    <!-- Duplicate Warning Modal with Skip Conflicting Codes Option -->
     <div id="duplicate-warning-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
-        <div id="duplicate-modal-card" class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full border border-amber-500/40 shadow-2xl text-center">
+        <div id="duplicate-modal-card" class="linear-card p-5 sm:p-6 rounded-lg max-w-lg w-full border border-amber-500/40 shadow-2xl text-center">
             <h3 id="duplicate-modal-title" class="text-base sm:text-lg font-bold mb-2 text-amber-400">Batch Uniqueness Report</h3>
             
             <div class="linear-subcard p-3.5 rounded text-xs mb-5 text-left border border-white/[0.08]">
                 <p id="duplicate-warning-msg" class="leading-relaxed table-text-theme font-medium text-xs sm:text-sm"></p>
             </div>
             
-            <div class="flex justify-end gap-2">
+            <div class="flex flex-col sm:flex-row justify-end gap-2">
                 <button type="button" onclick="cancelDuplicateUpload()" id="duplicate-cancel-btn" 
-                        class="linear-button-secondary px-4 py-2 rounded text-xs font-medium min-h-[40px]">
+                        class="linear-button-secondary px-3.5 py-2 rounded text-xs font-medium min-h-[40px]">
                     Cancel / Discard
                 </button>
-                <button type="button" onclick="confirmDuplicateUpload()" id="duplicate-proceed-btn" 
-                        class="bg-amber-600 hover:bg-amber-500 text-white px-5 py-2 rounded text-xs font-bold transition-all min-h-[40px] shadow-md flex items-center justify-center">
-                    Proceed Anyway
+                <button type="button" onclick="confirmDuplicateUpload(true)" id="duplicate-skip-btn" 
+                        class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded text-xs font-bold transition-all min-h-[40px] shadow-md flex items-center justify-center">
+                    Skip Conflicting Codes
+                </button>
+                <button type="button" onclick="confirmDuplicateUpload(false)" id="duplicate-proceed-btn" 
+                        class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded text-xs font-bold transition-all min-h-[40px] shadow-md flex items-center justify-center">
+                    Proceed with All (Override)
                 </button>
             </div>
         </div>
@@ -631,7 +584,7 @@
         </div>
     </div>
 
-    <!-- Job Control Center Modal with Stuck Filter & Purge Support -->
+    <!-- Job Control Center Modal -->
     <div id="master-jobs-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
         <div class="linear-card p-4 sm:p-6 rounded-lg max-w-6xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="flex justify-between items-center mb-3 border-b border-white/[0.08] pb-3">
@@ -1002,6 +955,7 @@
         let activeIngestionRunId = null;
         let activeIngestionJobCardId = null;
         let ingestionPollTimer = null;
+        let masterJobsPollTimer = null;
 
         let originalUsers = [];
         let stagedUsers = [];
@@ -1084,9 +1038,7 @@
                 okBtn.disabled = false;
                 okBtn.innerHTML = "Confirm";
             }
-            if (cancelBtn) {
-                cancelBtn.disabled = false;
-            }
+            if (cancelBtn) cancelBtn.disabled = false;
             
             document.getElementById('custom-confirm-modal').classList.remove('hidden');
 
@@ -2491,7 +2443,7 @@
         }
 
         // --------------------------------------------------------------------------------------
-        // INGESTION & CONFLICT LIFECYCLE
+        // INGESTION & CONFLICT LIFECYCLE (CHUNKED WITH REAL-TIME PROGRESS)
         // --------------------------------------------------------------------------------------
 
         async function uploadJob(e, overrideDuplicate = false) {
@@ -2577,8 +2529,18 @@
                     const data = await res.json();
 
                     const statusLabel = document.getElementById('upload-status-label');
+                    const progressBar = document.getElementById('upload-progress-bar');
+                    const percentageLabel = document.getElementById('upload-percentage');
+
                     if (statusLabel && data.progress_message) {
                         statusLabel.innerText = data.progress_message;
+
+                        const pctMatch = data.progress_message.match(/(\d+)%/);
+                        if (pctMatch && progressBar && percentageLabel) {
+                            const pctVal = pctMatch[1];
+                            progressBar.style.width = pctVal + '%';
+                            percentageLabel.innerText = pctVal + '%';
+                        }
                     }
 
                     if (data.status === 'CONFLICT_DETECTED') {
@@ -2586,7 +2548,7 @@
                         document.getElementById('upload-modal').classList.add('hidden');
                         resetUploadUI();
 
-                        const warningMsg = `Found ${data.conflict_count.toLocaleString()} conflicting code(s) out of ${data.total_codes.toLocaleString()} total codes in the CSV that already exist in active or completed jobs. Do you want to override and proceed?`;
+                        const warningMsg = `Found ${data.conflict_count.toLocaleString()} conflicting code(s) out of ${data.total_codes.toLocaleString()} total codes in the CSV that already exist in active or completed jobs.`;
                         document.getElementById('duplicate-warning-msg').innerText = warningMsg;
                         document.getElementById('duplicate-warning-modal').classList.remove('hidden');
                     }
@@ -2610,26 +2572,33 @@
                 } catch(e) {
                     console.error("Polling error", e);
                 }
-            }, 1200);
+            }, 1000);
         }
 
-        async function confirmDuplicateUpload() {
+        async function confirmDuplicateUpload(skipConflicts = false) {
             if (!activeIngestionRunId) return;
 
             const proceedBtn = document.getElementById('duplicate-proceed-btn');
+            const skipBtn = document.getElementById('duplicate-skip-btn');
             const cancelBtn = document.getElementById('duplicate-cancel-btn');
-            const originalText = proceedBtn.innerHTML;
 
-            proceedBtn.disabled = true;
-            cancelBtn.disabled = true;
-            proceedBtn.innerHTML = `${spinnerSvg} Overriding...`;
+            if (proceedBtn) proceedBtn.disabled = true;
+            if (skipBtn) skipBtn.disabled = true;
+            if (cancelBtn) cancelBtn.disabled = true;
 
             try {
-                const res = await fetch(`/api/jobs/${activeIngestionRunId}/proceed-override`, { method: 'POST' });
+                const formData = new FormData();
+                formData.append('skip_conflicts', skipConflicts ? 'true' : 'false');
+
+                const res = await fetch(`/api/jobs/${activeIngestionRunId}/proceed-override`, {
+                    method: 'POST',
+                    body: formData
+                });
+
                 if (res.status === 202) {
                     document.getElementById('duplicate-warning-modal').classList.add('hidden');
-                    
                     document.getElementById('upload-modal').classList.remove('hidden');
+
                     const uploadBtn = document.getElementById('upload-btn');
                     const uploadCancelBtn = document.getElementById('upload-cancel-btn');
                     const progressBox = document.getElementById('upload-progress-box');
@@ -2641,9 +2610,9 @@
                     uploadCancelBtn.disabled = true;
                     uploadBtn.innerHTML = `${spinnerSvg} Processing...`;
                     progressBox.classList.remove('hidden');
-                    progressBar.style.width = '75%';
-                    percentageLabel.innerText = 'Overriding...';
-                    statusLabel.innerText = 'Bulk ingesting codes into database...';
+                    progressBar.style.width = '10%';
+                    percentageLabel.innerText = '10%';
+                    statusLabel.innerText = skipConflicts ? 'Filtering and ingesting non-conflicting codes...' : 'Bulk ingesting codes...';
 
                     startIngestionPolling(activeIngestionRunId);
                 } else {
@@ -2655,9 +2624,9 @@
             } catch(e) {
                 showCustomAlert("Network error while connecting to server.");
             } finally {
-                proceedBtn.disabled = false;
-                cancelBtn.disabled = false;
-                proceedBtn.innerHTML = originalText;
+                if (proceedBtn) proceedBtn.disabled = false;
+                if (skipBtn) skipBtn.disabled = false;
+                if (cancelBtn) cancelBtn.disabled = false;
             }
         }
 
@@ -2684,7 +2653,7 @@
 
         function resolveJobFromAdmin(runId, conflictCount, totalCodes) {
             activeIngestionRunId = runId;
-            const warningMsg = `Found ${conflictCount.toLocaleString()} conflicting code(s) out of ${totalCodes.toLocaleString()} total codes in the CSV that already exist in active or completed jobs. Do you want to override and proceed?`;
+            const warningMsg = `Found ${conflictCount.toLocaleString()} conflicting code(s) out of ${totalCodes.toLocaleString()} total codes in the CSV that already exist in active or completed jobs.`;
             document.getElementById('duplicate-warning-msg').innerText = warningMsg;
             toggleModal('master-jobs-modal');
             document.getElementById('duplicate-warning-modal').classList.remove('hidden');
@@ -2788,7 +2757,16 @@
         }
 
         function toggleModal(id) {
-            document.getElementById(id).classList.toggle('hidden');
+            const el = document.getElementById(id);
+            if (el) {
+                el.classList.toggle('hidden');
+                if (id === 'master-jobs-modal' && el.classList.contains('hidden')) {
+                    if (masterJobsPollTimer) {
+                        clearInterval(masterJobsPollTimer);
+                        masterJobsPollTimer = null;
+                    }
+                }
+            }
         }
 
         function resetInput() {
@@ -2805,10 +2783,27 @@
                 document.getElementById('master-job-search').value = "";
                 document.getElementById('select-all-jobs').checked = false;
                 await loadMasterJobs('ALL');
+                startMasterJobsAutoRefresh();
             }
         }
 
-        async function loadMasterJobs(filterType) {
+        function startMasterJobsAutoRefresh() {
+            if (masterJobsPollTimer) clearInterval(masterJobsPollTimer);
+            masterJobsPollTimer = setInterval(async () => {
+                const modal = document.getElementById('master-jobs-modal');
+                if (!modal || modal.classList.contains('hidden')) {
+                    clearInterval(masterJobsPollTimer);
+                    masterJobsPollTimer = null;
+                    return;
+                }
+                const hasPendingJobs = rawMasterJobs.some(j => ['INGESTING', 'OVERRIDING', 'CONFLICT_DETECTED'].includes(j.status));
+                if (hasPendingJobs) {
+                    await loadMasterJobs(currentMasterTab, false);
+                }
+            }, 2500);
+        }
+
+        async function loadMasterJobs(filterType, showLoadingError = true) {
             currentMasterTab = filterType;
             ['all', 'active', 'inactive', 'completed', 'stuck', 'deleted'].forEach(t => {
                 const btn = document.getElementById(`filter-tab-${t}`);
@@ -2826,7 +2821,7 @@
                 if (res.ok) {
                     rawMasterJobs = await res.json();
                     renderMasterJobsTable();
-                } else {
+                } else if (showLoadingError) {
                     const err = await res.json();
                     showCustomAlert(err.detail || "Failed to load Job Control Center data.");
                 }
