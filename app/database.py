@@ -10,25 +10,6 @@ db_pool = None
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(Here are the complete, unabridged codes for `app/database.py` and `app/main.py` to fix the `StringDataRightTruncation` error and ensure the database column is permanently expanded to `TEXT`.
-
----
-
-### `app/database.py`
-
-```python
-import os
-import psycopg2
-from psycopg2 import pool
-from passlib.context import CryptContext
-
-DATABASE_URL = os.environ.get("DATABASE_URL")
-
-db_pool = None
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
