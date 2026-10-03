@@ -590,7 +590,7 @@
             <div class="flex justify-between items-center mb-3 border-b border-white/[0.08] pb-3">
                 <div>
                     <h3 class="text-lg font-black modal-title-theme">Job Control Center</h3>
-                    <p class="text-xs text-slate-400">View live status, purge stuck uploads, or resolve conflict batches</p>
+                    <p class="text-xs text-slate-400">View live status, purge unused jobs, or resolve conflict batches</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <button id="btn-bulk-status" onclick="promptBulkStatusChange()" disabled class="linear-button-primary px-3 py-1.5 text-xs rounded font-medium opacity-30 pointer-events-none transition-opacity">Update Job Status</button>
@@ -759,8 +759,8 @@
                 <div class="flex justify-between items-start no-print mb-2">
                     <div></div>
                     <div class="flex gap-2">
-                        <button onclick="window.print()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Print Log</button>
-                        <button onclick="toggleModal('lifecycle-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Close</button>
+                        <button onclick="window.print()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Print Log</button>
+                        <button onclick="toggleModal('lifecycle-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Close</button>
                     </div>
                 </div>
                 <h3 class="text-2xl font-black modal-title-theme text-center mb-3">LIFE CYCLE AUDIT REPORT</h3>
@@ -900,7 +900,7 @@
         </div>
     </div>
 
-    <!-- Create Job Upload Modal with Inline Real-time Uniqueness Check -->
+    <!-- Create Job Upload Modal -->
     <div id="upload-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full shadow-2xl">
             <h3 class="text-base font-bold mb-3 table-text-theme">Create New Job & Ingest Code Pool</h3>
@@ -2311,7 +2311,7 @@
                 verifyBody.append('username', currentUser ? currentUser.username : '');
                 verifyBody.append('password', adminPass);
 
-                const verifyRes = await fetch('/api/auth/login', { method: 'POST', body: verifyBody });
+                const verifyRes = await fetch('/api/auth/login', { method: 'POST', body });
                 if (!verifyRes.ok) {
                     showCustomAlert("Invalid administrator password. Changes were not saved.");
                     modalSubmitBtn.disabled = false;
@@ -2750,7 +2750,7 @@
 
         async function purgeJobFromAdmin(runId, jcId) {
             showCustomConfirm(
-                `Are you sure you want to permanently delete stuck/failed Job Card '${jcId}'? This will free the ID for re-upload.`,
+                `Are you sure you want to permanently delete Job Card '${jcId}'? This will free the ID for re-upload.`,
                 async () => {
                     const res = await fetch(`/api/admin/jobs/${runId}/purge`, { method: 'POST' });
                     if (res.ok) {
@@ -2761,7 +2761,7 @@
                         showCustomAlert(err.detail || "Failed to purge job.");
                     }
                 },
-                "Purge Stuck Job"
+                "Purge Job"
             );
         }
 
@@ -2950,8 +2950,14 @@
                 else if (j.status === 'INGESTING' || j.status === 'OVERRIDING') badgeClass = "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 animate-pulse";
                 else if (j.status === 'FAILED' || j.status === 'DELETED') badgeClass = "linear-badge-fail";
 
-                let actionHtml = `<span class="text-slate-400 italic text-[11px]">Active Record</span>`;
-                if (j.status === 'CONFLICT_DETECTED') {
+                const totalNum = Number(j.total) || 0;
+                const consumedNum = Number(j.consumed) || 0;
+
+                // Action Column: Allow purging if 0 verifications performed, locked if scanned
+                let actionHtml = `<span class="text-slate-400 italic text-[11px]">Locked (${consumedNum.toLocaleString()} verified)</span>`;
+                if (j.status === 'DELETED') {
+                    actionHtml = `<span class="text-slate-500 italic text-[11px]">Deleted</span>`;
+                } else if (j.status === 'CONFLICT_DETECTED') {
                     actionHtml = `
                         <div class="flex items-center justify-center gap-1.5">
                             <button onclick="resolveJobFromAdmin(${j.run_id}, ${j.conflict_count || 0}, ${j.total || 0})" class="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded text-[11px] font-bold shadow-sm">Resolve</button>
@@ -2962,6 +2968,10 @@
                     actionHtml = `
                         <button onclick="purgeJobFromAdmin(${j.run_id}, '${j.job_card_id}')" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-2.5 py-1 rounded text-[11px] font-bold">Purge Stuck</button>
                     `;
+                } else if (consumedNum === 0) {
+                    actionHtml = `
+                        <button onclick="purgeJobFromAdmin(${j.run_id}, '${j.job_card_id}')" class="bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 px-2.5 py-1 rounded text-[11px] font-bold transition-colors">Purge Job</button>
+                    `;
                 }
 
                 const descDetail = (j.status === 'FAILED' || j.status === 'INGESTING' || j.status === 'OVERRIDING')
@@ -2971,9 +2981,6 @@
                 const timeDetail = j.status === 'DELETED' 
                     ? `<span class="text-slate-400 block text-[10px]">Created: ${j.created_at}</span><span class="text-red-400 block text-[10px]">Deleted: ${j.deleted_at}</span>`
                     : `<span class="table-text-theme block text-[10px]">${j.created_at}</span>`;
-
-                const totalNum = Number(j.total) || 0;
-                const consumedNum = Number(j.consumed) || 0;
 
                 return `
                     <tr class="hover:bg-black/[0.02]">

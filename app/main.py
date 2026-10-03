@@ -1027,25 +1027,45 @@ def cancel_upload_job(run_id: int, user: dict = Depends(require_uploader)):
     finally:
         release_connection(conn)
 
+# --------------------------------------------------------------------------------------
+# SECURE CONDITIONAL PURGE ENDPOINT (PERMITS DELETION ONLY IF ZERO SCANS RECORDED)
+# --------------------------------------------------------------------------------------
+
 @app.post("/api/admin/jobs/{run_id}/purge")
-def purge_stuck_job(run_id: int, user: dict = Depends(require_manager_or_admin)):
+def purge_job(run_id: int, user: dict = Depends(require_manager_or_admin)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT staged_file_path, job_card_id FROM job_cards WHERE run_id = %s", (run_id,))
+            cur.execute("SELECT staged_file_path, job_card_id, consumed_codes FROM job_cards WHERE run_id = %s", (run_id,))
             row = cur.fetchone()
             if not row:
                 raise HTTPException(status_code=404, detail="Job not found")
 
-            if row[0] and os.path.exists(row[0]):
+            staged_file_path, jc_id, consumed_codes = row
+
+            # Verification check: inspect both consumed_codes counter and real scan_logs
+            cur.execute("SELECT COUNT(*) FROM scan_logs WHERE job_card_id = %s", (jc_id,))
+            scan_count = cur.fetchone()[0]
+
+            if (consumed_codes and consumed_codes > 0) or scan_count > 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot purge Job Card '{jc_id}': verification scans have already been recorded ({consumed_codes or scan_count} verified)."
+                )
+
+            # Zero scans verified: safe to purge cleanly
+            if staged_file_path and os.path.exists(staged_file_path):
                 try:
-                    os.remove(row[0])
+                    os.remove(staged_file_path)
                 except OSError:
                     pass
 
+            cur.execute("DELETE FROM codes WHERE run_id = %s", (run_id,))
+            cur.execute("DELETE FROM packing_qc_logs WHERE job_card_id = %s", (jc_id,))
+            cur.execute("DELETE FROM job_lifecycle_logs WHERE job_card_id = %s", (jc_id,))
             cur.execute("DELETE FROM job_cards WHERE run_id = %s", (run_id,))
             conn.commit()
-            return {"status": "success", "message": f"Job {row[1]} removed."}
+            return {"status": "success", "message": f"Job Card '{jc_id}' has been purged."}
     finally:
         release_connection(conn)
 
