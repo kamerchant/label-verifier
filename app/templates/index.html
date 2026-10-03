@@ -476,7 +476,7 @@
         <div class="linear-card p-6 rounded-lg max-w-5xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="report-header-box mb-3 border-b border-white/[0.08] pb-3">
                 <div class="print-brand-box">
-                    <img src="/static/ico.png" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/ico.png';">
+                    <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
                 </div>
                 <div class="flex justify-between items-start no-print mb-2">
                     <div></div>
@@ -658,7 +658,7 @@
             <div class="flex justify-between items-center mb-3 border-b border-white/[0.08] pb-3">
                 <div>
                     <h3 class="text-lg font-black modal-title-theme">Job Control Center</h3>
-                    <p class="text-xs text-slate-400">View live status, purge unused jobs, or resolve conflict batches</p>
+                    <p class="text-xs text-slate-400">View live status, change job status, or resolve conflict batches</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <button id="btn-bulk-status" onclick="promptBulkStatusChange()" disabled class="linear-button-primary px-3 py-1.5 text-xs rounded font-medium opacity-30 pointer-events-none transition-opacity">Update Job Status</button>
@@ -2244,6 +2244,88 @@
             }
         }
 
+        function toggleSelectAllJobs(masterCheckbox) {
+            const checkboxes = document.querySelectorAll('.job-select-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = masterCheckbox.checked;
+            });
+            updateBulkStatusButtonState();
+        }
+
+        function updateBulkStatusButtonState() {
+            const checkboxes = document.querySelectorAll('.job-select-checkbox:checked');
+            const btn = document.getElementById('btn-bulk-status');
+            if (btn) {
+                if (checkboxes.length > 0) {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-30', 'pointer-events-none');
+                } else {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-30', 'pointer-events-none');
+                }
+            }
+        }
+
+        function promptBulkStatusChange() {
+            const checkboxes = document.querySelectorAll('.job-select-checkbox:checked');
+            if (checkboxes.length === 0) return;
+
+            const count = checkboxes.length;
+            document.getElementById('bulk-status-subtitle').innerText = `Update status for ${count} selected job(s). Enter your password to authorize.`;
+            document.getElementById('bulk-status-admin-pass').value = '';
+            document.getElementById('bulk-status-modal').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('bulk-status-admin-pass').focus();
+            }, 100);
+        }
+
+        function closeBulkStatusModal() {
+            document.getElementById('bulk-status-modal').classList.add('hidden');
+            document.getElementById('bulk-status-admin-pass').value = '';
+        }
+
+        async function submitBulkStatusChange(e) {
+            e.preventDefault();
+            const password = document.getElementById('bulk-status-admin-pass').value;
+            const targetStatus = document.getElementById('bulk-target-status').value;
+            if (!password) return;
+
+            const checkboxes = document.querySelectorAll('.job-select-checkbox:checked');
+            const jobCardIds = Array.from(checkboxes).map(cb => cb.value);
+
+            const submitBtn = document.getElementById('bulk-status-submit-btn');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `${spinnerSvg} Updating...`;
+
+            try {
+                const body = new FormData();
+                body.append("job_card_ids", JSON.stringify(jobCardIds));
+                body.append("target_status", targetStatus);
+                body.append("admin_password", password);
+
+                const res = await fetch('/api/admin/jobs/bulk-status', {
+                    method: 'POST',
+                    body
+                });
+
+                if (res.ok) {
+                    closeBulkStatusModal();
+                    showCustomAlert(`Successfully updated ${jobCardIds.length} job(s) to ${targetStatus}.`, "Status Updated");
+                    await loadMasterJobs(currentMasterTab);
+                    updateSystemMessage(`Updated ${jobCardIds.length} job(s) status to ${targetStatus}`, "success");
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    showCustomAlert(err.detail || "Failed to update job status. Invalid password or permissions.");
+                }
+            } catch (ex) {
+                showCustomAlert("Network error while connecting to server.");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        }
+
         function handleNewUserRoleChange() {
             const role = document.getElementById('new-user-role').value;
             const canUploadCb = document.getElementById('new-user-can-upload');
@@ -2954,173 +3036,6 @@
             document.getElementById('duplicate-warning-msg').innerText = warningMsg;
             toggleModal('master-jobs-modal');
             document.getElementById('duplicate-warning-modal').classList.remove('hidden');
-        }
-
-        // Master Jobs Modal and Purge Actions
-        function toggleModal(id) {
-            const el = document.getElementById(id);
-            if (el) {
-                el.classList.toggle('hidden');
-                if (id === 'master-jobs-modal' && el.classList.contains('hidden')) {
-                    if (masterJobsPollTimer) {
-                        clearInterval(masterJobsPollTimer);
-                        masterJobsPollTimer = null;
-                    }
-                }
-                if (id === 'upload-modal' && el.classList.contains('hidden')) {
-                    clearJobCardAvailabilityError();
-                }
-            }
-        }
-
-        async function openMasterJobsModal() {
-            const modal = document.getElementById('master-jobs-modal');
-            if (modal) {
-                modal.classList.remove('hidden');
-                document.getElementById('master-job-search').value = "";
-                document.getElementById('select-all-jobs').checked = false;
-                await loadMasterJobs('ALL');
-                startMasterJobsAutoRefresh();
-            }
-        }
-
-        function startMasterJobsAutoRefresh() {
-            if (masterJobsPollTimer) clearInterval(masterJobsPollTimer);
-            masterJobsPollTimer = setInterval(async () => {
-                const modal = document.getElementById('master-jobs-modal');
-                if (!modal || modal.classList.contains('hidden')) {
-                    clearInterval(masterJobsPollTimer);
-                    masterJobsPollTimer = null;
-                    return;
-                }
-                const hasPendingJobs = rawMasterJobs.some(j => ['INGESTING', 'OVERRIDING', 'CONFLICT_DETECTED'].includes(j.status));
-                if (hasPendingJobs) {
-                    await loadMasterJobs(currentMasterTab, false);
-                }
-            }, 2500);
-        }
-
-        async function loadMasterJobs(filterType, showLoadingError = true) {
-            currentMasterTab = filterType;
-            ['all', 'active', 'inactive', 'completed', 'stuck', 'deleted'].forEach(t => {
-                const btn = document.getElementById(`filter-tab-${t}`);
-                if (btn) {
-                    if (t === filterType.toLowerCase()) {
-                        btn.className = "linear-button-primary px-3 py-1.5 rounded text-xs font-medium";
-                    } else {
-                        btn.className = "linear-button-secondary px-3 py-1.5 rounded text-xs font-medium";
-                    }
-                }
-            });
-
-            try {
-                const res = await fetch(`/api/admin/master-jobs?status_filter=${filterType}`);
-                if (res.ok) {
-                    rawMasterJobs = await res.json();
-                    renderMasterJobsTable();
-                } else if (showLoadingError) {
-                    const err = await res.json();
-                    showCustomAlert(err.detail || "Failed to load Job Control Center data.");
-                }
-            } catch(e) {
-                console.error("Master jobs load error", e);
-            }
-        }
-
-        function filterMasterJobs(filterType) {
-            loadMasterJobs(filterType);
-        }
-
-        function renderMasterJobsTable() {
-            const query = (document.getElementById('master-job-search').value || "").toLowerCase().trim();
-            const filtered = rawMasterJobs.filter(j => 
-                j.job_card_id.toLowerCase().includes(query) ||
-                (j.description && j.description.toLowerCase().includes(query)) ||
-                (j.status && j.status.toLowerCase().includes(query))
-            );
-
-            const tbody = document.getElementById('master-jobs-rows');
-            if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400 italic text-xs">No job cards found matching '${query}'</td></tr>`;
-                updateBulkStatusButtonState();
-                return;
-            }
-
-            tbody.innerHTML = filtered.map(j => {
-                let badgeClass = "bg-slate-800 text-slate-400 border border-slate-700";
-                if (j.status === 'ACTIVE') badgeClass = "linear-badge-pass";
-                else if (j.status === 'INACTIVE') badgeClass = "linear-badge-warn";
-                else if (j.status === 'COMPLETED') badgeClass = "bg-blue-500/10 text-blue-400 border border-blue-500/25";
-                else if (j.status === 'CONFLICT_DETECTED') badgeClass = "bg-amber-500/20 text-amber-300 border border-amber-500/40";
-                else if (j.status === 'INGESTING' || j.status === 'OVERRIDING') badgeClass = "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 animate-pulse";
-                else if (j.status === 'FAILED' || j.status === 'DELETED') badgeClass = "linear-badge-fail";
-
-                const totalNum = Number(j.total) || 0;
-                const consumedNum = Number(j.consumed) || 0;
-
-                let actionHtml = `<span class="text-slate-400 italic text-[11px]">Locked (${consumedNum.toLocaleString()} verified)</span>`;
-                if (j.status === 'DELETED') {
-                    actionHtml = `<span class="text-slate-500 italic text-[11px]">Deleted</span>`;
-                } else if (j.status === 'CONFLICT_DETECTED') {
-                    actionHtml = `
-                        <div class="flex items-center justify-center gap-1.5">
-                            <button onclick="resolveJobFromAdmin(${j.run_id}, ${j.conflict_count || 0}, ${j.total || 0})" class="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded text-[11px] font-bold shadow-sm">Resolve</button>
-                            <button onclick="purgeJobFromAdmin(${j.run_id}, '${j.job_card_id}')" class="text-red-400 hover:text-red-300 text-[11px] font-bold underline">Purge</button>
-                        </div>
-                    `;
-                } else if (j.status === 'FAILED' || j.status === 'INGESTING' || j.status === 'OVERRIDING') {
-                    actionHtml = `
-                        <button onclick="purgeJobFromAdmin(${j.run_id}, '${j.job_card_id}')" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-2.5 py-1 rounded text-[11px] font-bold">Purge Stuck</button>
-                    `;
-                } else if (consumedNum === 0) {
-                    actionHtml = `
-                        <button onclick="purgeJobFromAdmin(${j.run_id}, '${j.job_card_id}')" class="bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 px-2.5 py-1 rounded text-[11px] font-bold transition-colors">Purge Job</button>
-                    `;
-                }
-
-                const descDetail = (j.status === 'FAILED' || j.status === 'INGESTING' || j.status === 'OVERRIDING')
-                    ? `<span class="text-amber-400 font-semibold block truncate" title="${j.ingestion_progress}">${j.ingestion_progress || 'Processing...'}</span>`
-                    : (j.description || '-');
-
-                const timeDetail = j.status === 'DELETED' 
-                    ? `<span class="text-slate-400 block text-[10px]">Created: ${j.created_at}</span><span class="text-red-400 block text-[10px]">Deleted: ${j.deleted_at}</span>`
-                    : `<span class="table-text-theme block text-[10px]">${j.created_at}</span>`;
-
-                return `
-                    <tr class="hover:bg-black/[0.02]">
-                        <td class="p-3 text-center">
-                            ${(j.status !== 'DELETED' && j.status !== 'FAILED') ? `<input type="checkbox" value="${j.job_card_id}" onchange="updateBulkStatusButtonState()" class="job-select-checkbox rounded w-4 h-4 cursor-pointer">` : ''}
-                        </td>
-                        <td class="p-3 font-bold table-text-theme">
-                            <div class="inline-flex items-center gap-1.5">
-                                <span class="truncate">${j.job_card_id}</span>
-                                <button onclick="copyJobCardNumber('${j.job_card_id}', this)" title="Copy Job Card Number" class="linear-button-secondary p-1 rounded transition-colors inline-flex items-center justify-center shrink-0">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                                    </svg>
-                                </button>
-                            </div>
-                        </td>
-                        <td class="p-3 max-w-[200px] text-xs table-text-theme opacity-90">${descDetail}</td>
-                        <td class="p-3">${timeDetail}</td>
-                        <td class="p-3 text-center">
-                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">
-                                ${j.status}
-                            </span>
-                        </td>
-                        <td class="p-3 text-right text-xs table-text-theme font-semibold">${consumedNum.toLocaleString()} / ${totalNum.toLocaleString()}</td>
-                        <td class="p-3 text-center">
-                            <button onclick="openPackingQCReportFromAdmin('${j.job_card_id}')" class="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded text-xs font-bold transition-colors cursor-pointer">
-                                Verified: ${j.packing_qc_count || 0}
-                            </button>
-                        </td>
-                        <td class="p-3 text-center">
-                            ${actionHtml}
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-            updateBulkStatusButtonState();
         }
 
         checkSession();
