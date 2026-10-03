@@ -1282,19 +1282,20 @@
                     document.getElementById('login-modal').classList.add('hidden');
                     document.getElementById('user-display').innerText = `${data.username} (${data.role})`;
                     
-                    if (data.role === 'admin') {
+                    const roleLower = String(data.role || "").toLowerCase();
+                    if (roleLower === 'admin') {
                         document.getElementById('btn-users').classList.remove('hidden');
                     } else {
                         document.getElementById('btn-users').classList.add('hidden');
                     }
 
-                    if (data.role === 'admin' || data.role === 'QC manager') {
+                    if (roleLower === 'admin' || roleLower === 'qc manager') {
                         document.getElementById('btn-all-jobs').classList.remove('hidden');
                     } else {
                         document.getElementById('btn-all-jobs').classList.add('hidden');
                     }
 
-                    if (data.can_upload || data.role === 'admin' || data.role === 'QC manager') {
+                    if (data.can_upload || roleLower === 'admin' || roleLower === 'qc manager') {
                         document.getElementById('btn-upload').classList.remove('hidden');
                     } else {
                         document.getElementById('btn-upload').classList.add('hidden');
@@ -3058,7 +3059,7 @@
             const warningMsg = `Found ${cCount.toLocaleString()} conflicting code(s) out of ${tCount.toLocaleString()} total codes in the CSV that already exist in active or completed jobs.`;
             document.getElementById('duplicate-warning-msg').innerText = warningMsg;
             toggleModal('master-jobs-modal');
-            document.getElementById('duplicate-warning-modal').classList.add('hidden');
+            document.getElementById('duplicate-warning-modal').classList.remove('hidden');
         }
 
         checkSession();

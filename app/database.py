@@ -151,25 +151,6 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_system_audit_time ON system_audit_logs(timestamp DESC);
             """)
 
-            # Backfill migration: Pull all historical job lifecycle logs into system_audit_logs if empty
-            cur.execute("SELECT COUNT(*) FROM system_audit_logs;")
-            if cur.fetchone()[0] == 0:
-                cur.execute("""
-                    INSERT INTO system_audit_logs (category, job_card_id, action, performed_by, details, timestamp)
-                    SELECT 'JOB_LIFECYCLE', job_card_id, action, performed_by, reason, timestamp
-                    FROM job_lifecycle_logs;
-                """)
-                cur.execute("""
-                    INSERT INTO system_audit_logs (category, job_card_id, action, performed_by, details, timestamp)
-                    SELECT 'SCAN_VERIFICATION', job_card_id, 'SCAN_' || result, scanned_by, 'Scanned code: ' || code_scanned || ' [' || result || ']', scanned_at
-                    FROM scan_logs;
-                """)
-                cur.execute("""
-                    INSERT INTO system_audit_logs (category, job_card_id, action, performed_by, details, timestamp)
-                    SELECT 'FINAL_QC', job_card_id, 'FINAL_QC_PACK', tested_by, 'Tested code for packing: ' || code_scanned, tested_at
-                    FROM packing_qc_logs;
-                """)
-
             # Seed default admin if missing
             cur.execute("SELECT id FROM users WHERE LOWER(username) = 'admin';")
             if not cur.fetchone():

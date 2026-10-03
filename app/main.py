@@ -122,12 +122,13 @@ def get_current_user(request: Request):
         raise HTTPException(status_code=401, detail="Session expired or invalid")
 
 def require_admin(user: dict = Depends(get_current_user)):
-    if user.get("role") != "admin":
+    if str(user.get("role", "")).lower() != "admin":
         raise HTTPException(status_code=403, detail="Admin permissions required")
     return user
 
 def require_manager_or_admin(user: dict = Depends(get_current_user)):
-    if user.get("role") not in ["admin", "QC manager"]:
+    role = str(user.get("role", "")).lower()
+    if role not in ["admin", "qc manager"]:
         raise HTTPException(status_code=403, detail="QC Manager or Admin permissions required")
     return user
 
@@ -137,7 +138,7 @@ def require_uploader(user: dict = Depends(get_current_user)):
         with conn.cursor() as cur:
             cur.execute("SELECT can_upload, role FROM users WHERE LOWER(username) = LOWER(%s)", (user["username"],))
             row = cur.fetchone()
-            if not row or (not row[0] and row[1] not in ["admin", "QC manager"]):
+            if not row or (not row[0] and str(row[1]).lower() not in ["admin", "qc manager"]):
                 raise HTTPException(status_code=403, detail="You do not have permission to create jobs.")
             return user
     finally:
@@ -181,7 +182,7 @@ def login(response: Response, username: str = Form(...), password: str = Form(..
                 "username": original_username,
                 "role": user[1],
                 "must_change_password": user[2],
-                "can_upload": user[3] or user[1] in ["admin", "QC manager"]
+                "can_upload": user[3] or str(user[1]).lower() in ["admin", "qc manager"]
             }
     finally:
         release_connection(conn)
@@ -223,7 +224,7 @@ def get_me(request: Request):
             "username": user["username"],
             "role": role,
             "must_change_password": must_change,
-            "can_upload": can_upload or role in ["admin", "QC manager"]
+            "can_upload": can_upload or str(role).lower() in ["admin", "qc manager"]
         }
     except HTTPException:
         return {"authenticated": False}
@@ -265,7 +266,7 @@ def list_users(admin: dict = Depends(require_admin)):
                 "username": r[0],
                 "role": r[1],
                 "must_change_password": r[2],
-                "can_upload": True if r[1] in ["admin", "QC manager"] else (r[3] or False),
+                "can_upload": True if str(r[1]).lower() in ["admin", "qc manager"] else (r[3] or False),
                 "is_active": r[4] if r[4] is not None else True,
                 "employee_name": r[5] or "",
                 "employee_id": r[6] or "",
@@ -287,7 +288,7 @@ def create_user(
     clean_username = username.strip()
     validate_password_strength(password)
 
-    if role in ["admin", "QC manager"]:
+    if str(role).lower() in ["admin", "qc manager"]:
         can_upload = True
 
     conn = get_connection()
@@ -324,7 +325,7 @@ def update_user_role(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            if role in ["admin", "QC manager"]:
+            if str(role).lower() in ["admin", "qc manager"]:
                 cur.execute("UPDATE users SET role = %s, can_upload = TRUE WHERE LOWER(username) = LOWER(%s)", (role, username))
             else:
                 cur.execute("UPDATE users SET role = %s WHERE LOWER(username) = LOWER(%s)", (role, username))
@@ -397,7 +398,7 @@ def toggle_user_upload(
         with conn.cursor() as cur:
             cur.execute("SELECT role FROM users WHERE LOWER(username) = LOWER(%s)", (username,))
             row = cur.fetchone()
-            if row and row[0] in ["admin", "QC manager"] and not can_upload:
+            if row and str(row[0]).lower() in ["admin", "qc manager"] and not can_upload:
                 raise HTTPException(status_code=400, detail="Admin and QC Manager have permanent job creation rights.")
 
             cur.execute("UPDATE users SET can_upload = %s WHERE LOWER(username) = LOWER(%s)", (can_upload, username))
@@ -408,7 +409,7 @@ def toggle_user_upload(
         release_connection(conn)
 
 # --------------------------------------------------------------------------------------
-# GLOBAL AUDIT TRAIL ENDPOINT
+# UNIFIED GLOBAL AUDIT TRAIL ENDPOINT (COMBINES ALL TABLES DYNAMICALLY)
 # --------------------------------------------------------------------------------------
 
 @app.get("/api/admin/audit-trail")
@@ -417,8 +418,13 @@ def get_global_audit_trail(user: dict = Depends(require_manager_or_admin)):
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT category, job_card_id, action, performed_by, details, timestamp 
-                FROM system_audit_logs 
+                SELECT category, job_card_id, action, performed_by, details, timestamp FROM system_audit_logs
+                UNION ALL
+                SELECT 'JOB_LIFECYCLE', job_card_id, action, COALESCE(performed_by, 'System'), COALESCE(reason, '-'), timestamp FROM job_lifecycle_logs
+                UNION ALL
+                SELECT 'SCAN_VERIFICATION', job_card_id, 'SCAN_' || result, COALESCE(scanned_by, 'Operator'), 'Scanned code: ' || code_scanned || ' [' || result || ']', scanned_at FROM scan_logs
+                UNION ALL
+                SELECT 'FINAL_QC', job_card_id, 'FINAL_QC_PACK', COALESCE(tested_by, 'Operator'), 'Tested code for packing: ' || code_scanned, tested_at FROM packing_qc_logs
                 ORDER BY timestamp DESC 
                 LIMIT 5000
             """)
@@ -474,7 +480,7 @@ def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
                        COALESCE(NULLIF(j.total_codes, 0), (SELECT COUNT(*) FROM codes c WHERE c.run_id = j.run_id), 0) AS total_codes,
                        COALESCE(NULLIF(j.consumed_codes, 0), (SELECT COUNT(*) FROM codes c WHERE c.run_id = j.run_id AND c.status = 'CONSUMED'), 0) AS consumed_codes
                 FROM job_cards j
-                WHERE j.status IN ('ACTIVE', 'COMPLETED')
+                WHERE j.status IN ('ACTIVE', 'COMPLETED', 'INACTIVE')
             """
             params = []
             if query.strip():
@@ -1088,7 +1094,7 @@ def cancel_upload_job(run_id: int, user: dict = Depends(require_uploader)):
         release_connection(conn)
 
 # --------------------------------------------------------------------------------------
-# SECURE PASSWORD-PROTECTED CONDITIONAL PURGE (LOGS TO PERMANENT system_audit_logs)
+# SECURE PASSWORD-PROTECTED CONDITIONAL PURGE
 # --------------------------------------------------------------------------------------
 
 @app.post("/api/admin/jobs/{run_id}/purge")
