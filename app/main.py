@@ -6,6 +6,7 @@ import json
 import codecs
 import tempfile
 import threading
+import traceback
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Response, Depends
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -42,7 +43,6 @@ def startup():
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # Guarantee TEXT type to prevent StringDataRightTruncation errors
             cur.execute("ALTER TABLE job_cards ALTER COLUMN ingestion_progress TYPE TEXT;")
             cur.execute("ALTER TABLE job_cards ALTER COLUMN status TYPE VARCHAR(100);")
             cur.execute("""
@@ -559,14 +559,10 @@ def bulk_status_change(
         release_connection(conn)
 
 # --------------------------------------------------------------------------------------
-# 3-4 MILLION CODES STREAMING PIPELINE WITH CHUNKED LIVE HEARTBEATS
+# 3-4 MILLION CODES STREAMING PIPELINE WITH CHUNKED COMMIT PULSES
 # --------------------------------------------------------------------------------------
 
 def stream_file_to_codes_chunked(cur, conn, run_id: int, target_tsv_path: str, total_to_insert: int):
-    """
-    Splits multi-million TSV into 100,000 row chunks with real-time heartbeat updates.
-    Prevents PostgreSQL lock contention and long-transaction HTTP drops.
-    """
     CHUNK_SIZE = 100_000
     inserted = 0
 
@@ -582,11 +578,10 @@ def stream_file_to_codes_chunked(cur, conn, run_id: int, target_tsv_path: str, t
                 chunk_buffer.seek(0)
                 cur.copy_expert("COPY codes (run_id, job_card_id, code_value, status) FROM STDIN WITH (FORMAT text)", chunk_buffer)
                 inserted += lines_in_buffer
-                pct = int((inserted / total_to_insert) * 100)
-                cur.execute(
-                    "UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s",
-                    (f"Ingesting: {pct}% ({inserted:,} / {total_to_insert:,} codes)...", run_id)
-                )
+                pct = int((inserted / max(1, total_to_insert)) * 100)
+                # Pass formatted message as parameter to prevent psycopg2 tuple substitution bugs
+                progress_msg = f"Ingesting: {pct}% ({inserted:,} / {total_to_insert:,} codes)..."
+                cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", (progress_msg, run_id))
                 conn.commit()
                 chunk_buffer = io.StringIO()
                 lines_in_buffer = 0
@@ -595,10 +590,8 @@ def stream_file_to_codes_chunked(cur, conn, run_id: int, target_tsv_path: str, t
             chunk_buffer.seek(0)
             cur.copy_expert("COPY codes (run_id, job_card_id, code_value, status) FROM STDIN WITH (FORMAT text)", chunk_buffer)
             inserted += lines_in_buffer
-            cur.execute(
-                "UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s",
-                (f"Ingesting: 100% ({inserted:,} / {total_to_insert:,} codes)...", run_id)
-            )
+            progress_msg = f"Ingesting: 100% ({inserted:,} / {total_to_insert:,} codes)..."
+            cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", (progress_msg, run_id))
             conn.commit()
 
 def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, is_override: bool, username: str):
@@ -656,7 +649,6 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
 
                 cur.execute("ANALYZE temp_incoming_codes;")
 
-                # Fast indexed lookup against existing idx_codes_code_value
                 cur.execute("""
                     SELECT COUNT(*)
                     FROM temp_incoming_codes t
@@ -680,15 +672,15 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                     conn.commit()
                     return
 
-            # Perform chunked ingestion with real-time UI percentage feedback
             stream_file_to_codes_chunked(cur, conn, run_id, clean_tsv_path, total_codes)
 
+            # Pass '100%' as parameter to avoid psycopg2 tuple parameter substitution bug
             cur.execute("""
                 UPDATE job_cards 
                 SET status = 'ACTIVE', 
-                    ingestion_progress = '100%' 
+                    ingestion_progress = %s 
                 WHERE run_id = %s
-            """, (run_id,))
+            """, ('100%', run_id))
 
             lifecycle_reason = f"Full batch ingestion completed ({total_codes:,} codes" + (f", {conflicts_found:,} conflicts overridden)" if is_override else ")")
             cur.execute("""
@@ -769,7 +761,6 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                     conn.commit()
                     return
 
-                # Dump filtered subset directly to a clean TSV on disk
                 filtered_fd, filtered_tsv_path = tempfile.mkstemp(suffix=".tsv")
                 with os.fdopen(filtered_fd, "w", encoding="utf-8") as filtered_out:
                     cur.copy_expert("COPY temp_override_filtered TO STDOUT WITH (FORMAT text)", filtered_out)
@@ -778,15 +769,15 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 cur.execute("UPDATE job_cards SET total_codes = %s WHERE run_id = %s", (effective_total, run_id))
                 conn.commit()
 
-            # Execute chunked streaming with live progress percentages
             stream_file_to_codes_chunked(cur, conn, run_id, target_tsv, effective_total)
 
+            # Pass '100%' as parameter to prevent psycopg2 tuple index errors
             cur.execute("""
                 UPDATE job_cards 
                 SET status = 'ACTIVE', 
-                    ingestion_progress = '100%' 
+                    ingestion_progress = %s 
                 WHERE run_id = %s
-            """, (run_id,))
+            """, ('100%', run_id))
 
             if skip_conflicts:
                 lifecycle_reason = f"Batch ingested with conflicts skipped: {effective_total:,} clean codes kept ({conflicts:,} conflicts skipped)"
