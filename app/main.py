@@ -409,7 +409,7 @@ def toggle_user_upload(
         release_connection(conn)
 
 # --------------------------------------------------------------------------------------
-# UNIFIED GLOBAL AUDIT TRAIL ENDPOINT (COMBINES ALL TABLES DYNAMICALLY)
+# UNIFIED GLOBAL AUDIT TRAIL ENDPOINT
 # --------------------------------------------------------------------------------------
 
 @app.get("/api/admin/audit-trail")
