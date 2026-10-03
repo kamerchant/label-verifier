@@ -75,8 +75,17 @@
             border: 1px solid rgba(255, 165, 2, 0.35);
         }
 
-        .modal-title-theme { color: #f8fafc !important; }
-        .table-text-theme { color: #f1f5f9 !important; }
+        .modal-title-theme {
+            color: #ffffff !important;
+            font-weight: 800 !important;
+            letter-spacing: -0.02em !important;
+        }
+        .modal-subtitle-theme {
+            color: #94a3b8 !important;
+        }
+        .table-text-theme {
+            color: #f1f5f9 !important;
+        }
         .table-header-theme {
             color: #ffffff !important;
             background-color: #161821 !important;
@@ -125,6 +134,19 @@
         }
         html.theme-parchment header span, html.theme-parchment h1, html.theme-parchment footer span {
             color: #1a211e !important;
+        }
+        html.theme-parchment .modal-title-theme {
+            color: #0f172a !important;
+        }
+        html.theme-parchment .modal-subtitle-theme {
+            color: #475569 !important;
+        }
+        html.theme-parchment .table-text-theme {
+            color: #1e293b !important;
+        }
+        html.theme-parchment .table-header-theme {
+            color: #0f172a !important;
+            background-color: #f0ece1 !important;
         }
         html.theme-parchment table th {
             background-color: #f0ece1 !important;
@@ -506,7 +528,8 @@
                         <button onclick="toggleModal('global-audit-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Close</button>
                     </div>
                 </div>
-                <h3 class="text-2xl font-black modal-title-theme text-center mb-3">Global Activity Audit Trail</h3>
+                <h3 class="text-xl sm:text-2xl font-extrabold modal-title-theme text-center mb-1">Global Activity Audit Trail</h3>
+                <p class="text-xs modal-subtitle-theme text-center mb-3">Immutable record of all inspection scans, job lifecycles, and user administration events</p>
                 
                 <div class="flex flex-wrap gap-1.5 items-center justify-center no-print pt-1">
                     <button onclick="filterAuditCategory('ALL')" id="audit-filter-all" class="linear-button-primary px-3 py-1 rounded text-xs font-bold">All Activities</button>
@@ -538,8 +561,8 @@
     <!-- Password Prompt Modal for Purging Jobs -->
     <div id="purge-admin-pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-red-500/30 shadow-2xl">
-            <h3 class="text-base font-bold mb-1 text-red-400">Authorize Job Purge</h3>
-            <p id="purge-modal-subtitle" class="text-xs text-slate-300 mb-4 leading-relaxed">Enter your password to authorize the permanent deletion of this unverified job card.</p>
+            <h3 class="text-base sm:text-lg font-extrabold text-red-400 mb-1">Authorize Job Purge</h3>
+            <p id="purge-modal-subtitle" class="text-xs modal-subtitle-theme mb-4 leading-relaxed">Enter your password to authorize the permanent deletion of this unverified job card.</p>
             <form onsubmit="executePurgeJobWithPassword(event)" class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Enter your password *</label>
@@ -553,13 +576,25 @@
         </div>
     </div>
 
-    <!-- Duplicate Warning Modal -->
+    <!-- Duplicate Warning Modal with In-Modal Progress Tracking -->
     <div id="duplicate-warning-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
         <div id="duplicate-modal-card" class="linear-card p-5 sm:p-6 rounded-lg max-w-lg w-full border border-amber-500/40 shadow-2xl text-center">
-            <h3 id="duplicate-modal-title" class="text-base sm:text-lg font-bold mb-2 text-amber-400">Batch Uniqueness Report</h3>
+            <h3 id="duplicate-modal-title" class="text-base sm:text-lg font-extrabold text-amber-400 mb-1">Batch Uniqueness & Conflict Report</h3>
+            <p class="text-xs modal-subtitle-theme mb-3">Review duplicate barcode conflicts detected against existing production job cards</p>
             
-            <div class="linear-subcard p-3.5 rounded text-xs mb-5 text-left border border-white/[0.08]">
+            <div class="linear-subcard p-3.5 rounded text-xs mb-4 text-left border border-white/[0.08]">
                 <p id="duplicate-warning-msg" class="leading-relaxed table-text-theme font-medium text-xs sm:text-sm"></p>
+            </div>
+
+            <!-- In-Modal Ingestion Progress Tracker -->
+            <div id="duplicate-progress-box" class="hidden linear-subcard p-3.5 rounded mb-4 border border-indigo-500/30 text-left">
+                <div class="flex justify-between items-center text-xs mb-1.5">
+                    <span id="duplicate-status-label" class="table-text-theme font-medium">Authorizing batch ingestion...</span>
+                    <span id="duplicate-percentage" class="text-indigo-400 font-bold">0%</span>
+                </div>
+                <div class="w-full bg-black/40 rounded-full h-2 overflow-hidden border border-white/[0.08]">
+                    <div id="duplicate-progress-bar" class="bg-indigo-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
             </div>
             
             <div class="flex flex-col sm:flex-row justify-end gap-2">
@@ -583,7 +618,8 @@
     <div id="packing-qc-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-2xl w-full shadow-2xl flex flex-col max-h-[90vh]">
             <div class="mb-4 border-b border-white/[0.08] pb-3 shrink-0 no-print">
-                <h3 class="text-lg font-bold table-text-theme">Final QC Terminal</h3>
+                <h3 class="text-lg font-extrabold modal-title-theme">Final QC Terminal</h3>
+                <p class="text-xs modal-subtitle-theme mt-0.5">Verify serialized samples and generate packing clearance certificates</p>
             </div>
             
             <form onsubmit="handlePackingQCVerify(event)" class="space-y-3 mb-4 shrink-0 no-print">
@@ -682,8 +718,8 @@
         <div class="linear-card p-4 sm:p-6 rounded-lg max-w-6xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="flex justify-between items-center mb-3 border-b border-white/[0.08] pb-3">
                 <div>
-                    <h3 class="text-lg font-black modal-title-theme">Job Control Center</h3>
-                    <p class="text-xs text-slate-400">View live status, change job status, or resolve conflict batches</p>
+                    <h3 class="text-lg sm:text-xl font-extrabold modal-title-theme">Job Control Center</h3>
+                    <p class="text-xs modal-subtitle-theme mt-0.5">View live status, change job status, or resolve conflict batches</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <button id="btn-bulk-status" onclick="promptBulkStatusChange()" disabled class="linear-button-primary px-3 py-1.5 text-xs rounded font-medium opacity-30 pointer-events-none transition-opacity">Update Job Status</button>
@@ -731,8 +767,8 @@
         <div class="linear-card p-4 sm:p-6 rounded-lg max-w-3xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="flex justify-between items-center mb-3 pb-2 border-b border-white/[0.08]">
                 <div>
-                    <h3 class="text-lg font-black modal-title-theme">User Management</h3>
-                    <p class="text-xs text-slate-400">Manage user accounts, roles, and job creation permissions</p>
+                    <h3 class="text-lg sm:text-xl font-extrabold modal-title-theme">User Management</h3>
+                    <p class="text-xs modal-subtitle-theme mt-0.5">Manage user accounts, roles, and job creation permissions</p>
                 </div>
             </div>
             
@@ -783,8 +819,8 @@
     <!-- User Admin Submit Password Modal -->
     <div id="user-admin-pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[85]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/30 shadow-2xl">
-            <h3 class="text-base font-bold mb-1 table-text-theme">Confirm Admin Password</h3>
-            <p class="text-xs text-slate-400 mb-4">Enter your password to authorize and apply all staged user changes to the database.</p>
+            <h3 class="text-base sm:text-lg font-extrabold modal-title-theme mb-1">Confirm Administrator Password</h3>
+            <p class="text-xs modal-subtitle-theme mb-4">Enter your password to authorize and apply all staged user changes to the database.</p>
             <form onsubmit="confirmAndSubmitUserChanges(event)" class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Enter your password *</label>
@@ -817,7 +853,8 @@
                         <button onclick="toggleModal('report-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Close</button>
                     </div>
                 </div>
-                <h3 class="text-2xl font-black modal-title-theme text-center mb-3">QC Report</h3>
+                <h3 class="text-xl sm:text-2xl font-extrabold modal-title-theme text-center mb-1">Quality Control Verification Report</h3>
+                <p class="text-xs modal-subtitle-theme text-center mb-3">Comprehensive inspection and sequence evaluation record</p>
                 
                 <div class="linear-subcard p-3 rounded text-xs space-y-1 text-left">
                     <p><strong>Job Card:</strong> <span id="report-job-num"></span></p>
@@ -860,11 +897,12 @@
                 <div class="flex justify-between items-start no-print mb-2">
                     <div></div>
                     <div class="flex gap-2">
-                        <button onclick="window.print()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Print Log</button>
+                        <button onclick="window.print()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Print Log</button>
                         <button onclick="toggleModal('lifecycle-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Close</button>
                     </div>
                 </div>
-                <h3 class="text-2xl font-black modal-title-theme text-center mb-3">LIFE CYCLE AUDIT REPORT</h3>
+                <h3 class="text-xl sm:text-2xl font-extrabold modal-title-theme text-center mb-1">Job Lifecycle Audit Report</h3>
+                <p class="text-xs modal-subtitle-theme text-center mb-3">Chronological state transitions and authorization log</p>
                 
                 <div class="linear-subcard p-3 rounded text-xs space-y-1 text-left">
                     <p><strong>Job Card:</strong> <span id="lifecycle-job-num"></span></p>
@@ -893,8 +931,8 @@
     <!-- Custom Alert Modal -->
     <div id="custom-alert-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/35 shadow-2xl text-center">
-            <h3 id="custom-alert-title" class="text-base font-bold mb-1 table-text-theme">Please Verify!</h3>
-            <p id="custom-alert-msg" class="text-xs text-slate-300 mb-5 leading-relaxed"></p>
+            <h3 id="custom-alert-title" class="text-base sm:text-lg font-extrabold modal-title-theme mb-1">Please Verify</h3>
+            <p id="custom-alert-msg" class="text-xs modal-subtitle-theme mb-5 leading-relaxed"></p>
             <button type="button" onclick="closeCustomAlert()" class="linear-button-primary w-full py-2.5 rounded text-sm font-semibold min-h-[40px]">OK</button>
         </div>
     </div>
@@ -902,8 +940,8 @@
     <!-- Custom Confirm Modal -->
     <div id="custom-confirm-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-amber-500/35 shadow-2xl text-center">
-            <h3 id="custom-confirm-title" class="text-base font-bold mb-1 text-amber-400">Please Verify!</h3>
-            <p id="custom-confirm-msg" class="text-xs text-slate-300 mb-5 leading-relaxed"></p>
+            <h3 id="custom-confirm-title" class="text-base sm:text-lg font-extrabold text-amber-400 mb-1">Confirmation Required</h3>
+            <p id="custom-confirm-msg" class="text-xs modal-subtitle-theme mb-5 leading-relaxed"></p>
             <div class="flex justify-end gap-2">
                 <button type="button" id="custom-confirm-cancel-btn" onclick="resolveCustomConfirm(false)" class="linear-button-secondary px-4 py-2 rounded text-xs font-medium min-h-[40px]">Cancel</button>
                 <button type="button" id="custom-confirm-ok-btn" onclick="handleConfirmOkClick()" class="linear-button-primary px-4 py-2 rounded text-xs font-medium min-h-[40px] flex items-center justify-center">Confirm</button>
@@ -914,8 +952,8 @@
     <!-- Admin Reset Password Modal -->
     <div id="admin-reset-pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[80]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/30 shadow-2xl">
-            <h3 id="admin-reset-pw-title" class="text-base font-bold mb-1 table-text-theme">Set Operator Password</h3>
-            <p id="admin-reset-pw-subtitle" class="text-xs text-slate-400 mb-4">Enter a new temporary password for this user (Min 8 chars, 1 uppercase, 1 lowercase, 1 number).</p>
+            <h3 id="admin-reset-pw-title" class="text-base sm:text-lg font-extrabold modal-title-theme mb-1">Set Operator Password</h3>
+            <p id="admin-reset-pw-subtitle" class="text-xs modal-subtitle-theme mb-4">Enter a new temporary password for this user (Min 8 chars, 1 uppercase, 1 lowercase, 1 number).</p>
             <form onsubmit="submitAdminResetPassword(event)" class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">New Password *</label>
@@ -932,8 +970,8 @@
     <!-- Update Job Status Modal -->
     <div id="bulk-status-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[70]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-amber-500/25 shadow-2xl">
-            <h3 class="text-base font-bold mb-1 text-amber-400">Update Job Status</h3>
-            <p id="bulk-status-subtitle" class="text-xs text-slate-300 mb-4 leading-relaxed"></p>
+            <h3 class="text-base sm:text-lg font-extrabold text-amber-400 mb-1">Update Job Status</h3>
+            <p id="bulk-status-subtitle" class="text-xs modal-subtitle-theme mb-4 leading-relaxed"></p>
             <form onsubmit="submitBulkStatusChange(event)" class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">New Status *</label>
@@ -962,9 +1000,9 @@
                 <div class="bg-white p-1 rounded shrink-0">
                     <img src="/static/logo.jpg" alt="CCL Logo" class="h-6 w-auto object-contain block" onerror="this.onerror=null; this.src='/logo.jpg';">
                 </div>
-                <span class="font-bold text-base table-text-theme">CCL ME - PK - Variable Data Verification</span>
+                <span class="font-extrabold text-base modal-title-theme">CCL ME - PK - Variable Data Verification</span>
             </div>
-            <p class="text-xs text-slate-400 mb-4">Please enter username and password to access system</p>
+            <p class="text-xs modal-subtitle-theme mb-4">Please enter username and password to access system</p>
             <form onsubmit="handleLogin(event)" class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Username</label>
@@ -982,8 +1020,8 @@
     <!-- Password Modal -->
     <div id="pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full shadow-2xl">
-            <h3 id="pw-title" class="text-base font-bold mb-1 table-text-theme">Change Password</h3>
-            <p id="pw-subtitle" class="text-xs text-slate-400 mb-4">Enter current and new credentials</p>
+            <h3 id="pw-title" class="text-base sm:text-lg font-extrabold modal-title-theme mb-1">Change Password</h3>
+            <p id="pw-subtitle" class="text-xs modal-subtitle-theme mb-4">Enter current and new credentials</p>
             <form onsubmit="handleChangePassword(event)" class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Current Password</label>
@@ -1004,7 +1042,8 @@
     <!-- Create Job Upload Modal -->
     <div id="upload-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full shadow-2xl">
-            <h3 class="text-base font-bold mb-3 table-text-theme">Create New Job & Ingest Code Pool</h3>
+            <h3 class="text-base sm:text-lg font-extrabold modal-title-theme mb-1">Create New Job & Ingest Code Pool</h3>
+            <p class="text-xs modal-subtitle-theme mb-3">Upload a CSV or TXT dataset to register a new production run</p>
             <form id="create-job-form" onsubmit="uploadJob(event, false)" class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Job Card # *</label>
@@ -1024,7 +1063,7 @@
                 <!-- Live Progress Box -->
                 <div id="upload-progress-box" class="hidden linear-subcard p-3 rounded mt-3 border border-indigo-500/20">
                     <div class="flex justify-between items-center text-xs mb-1.5">
-                        <span id="upload-status-label" class="text-slate-300 font-medium">Uploading file...</span>
+                        <span id="upload-status-label" class="table-text-theme font-medium">Uploading file...</span>
                         <span id="upload-percentage" class="text-indigo-400 font-bold">0%</span>
                     </div>
                     <div class="w-full bg-black/40 rounded-full h-2 overflow-hidden border border-white/[0.08]">
@@ -1177,7 +1216,7 @@
 
         initTheme();
 
-        function showCustomAlert(message, title = "Please Verify!") {
+        function showCustomAlert(message, title = "Please Verify") {
             document.getElementById('custom-alert-title').innerText = title;
             document.getElementById('custom-alert-msg').innerText = message;
             const modal = document.getElementById('custom-alert-modal');
@@ -1193,7 +1232,7 @@
             resetInput();
         }
 
-        function showCustomConfirm(message, onConfirmAction = null, title = "Please Verify!") {
+        function showCustomConfirm(message, onConfirmAction = null, title = "Confirmation Required") {
             const titleElem = document.getElementById('custom-confirm-title');
             if (titleElem) titleElem.innerText = title;
             document.getElementById('custom-confirm-msg').innerText = message;
@@ -2838,19 +2877,31 @@
 
                     if (data.status === 'CONFLICT_DETECTED') {
                         clearInterval(ingestionPollTimer);
+                        ingestionPollTimer = null;
+                        
+                        // Close upload modal cleanly without resetting so form doesn't flicker
                         toggleModal('upload-modal');
                         resetUploadUI();
+
+                        // Present conflict modal with exact conflict totals
                         document.getElementById('duplicate-warning-msg').innerText = 
-                            `Found ${Number(data.conflict_count).toLocaleString()} conflicts in ${Number(data.total_codes).toLocaleString()} codes.`;
+                            `Found ${Number(data.conflict_count).toLocaleString()} conflicting code(s) out of ${Number(data.total_codes).toLocaleString()} total codes in this batch that already exist in active or completed jobs.`;
+                        
+                        // Reset progress tracker in duplicate modal
+                        const dupProgress = document.getElementById('duplicate-progress-box');
+                        if (dupProgress) dupProgress.classList.add('hidden');
+                        
                         toggleModal('duplicate-warning-modal');
                     } else if (data.status === 'ACTIVE') {
                         clearInterval(ingestionPollTimer);
+                        ingestionPollTimer = null;
                         toggleModal('upload-modal');
                         resetUploadUI();
                         document.getElementById('create-job-form').reset();
                         showCustomAlert(`Job Card '${data.job_card_id}' is now active with ${Number(data.total_codes).toLocaleString()} codes.`, "Success");
                     } else if (data.status === 'FAILED') {
                         clearInterval(ingestionPollTimer);
+                        ingestionPollTimer = null;
                         resetUploadUI();
                         showCustomAlert(`Ingestion failed: ${data.progress_message}`, "Ingestion Error");
                     }
@@ -2860,12 +2911,116 @@
 
         async function confirmDuplicateUpload(skipConflicts = false) {
             if (!activeIngestionRunId) return;
-            const formData = new FormData();
-            formData.append('skip_conflicts', skipConflicts ? 'true' : 'false');
-            await fetch(`/api/jobs/${activeIngestionRunId}/proceed-override`, { method: 'POST', body: formData });
-            toggleModal('duplicate-warning-modal');
-            toggleModal('upload-modal');
-            startIngestionPolling(activeIngestionRunId);
+
+            const proceedBtn = document.getElementById('duplicate-proceed-btn');
+            const skipBtn = document.getElementById('duplicate-skip-btn');
+            const cancelBtn = document.getElementById('duplicate-cancel-btn');
+            const progressBox = document.getElementById('duplicate-progress-box');
+            const progressBar = document.getElementById('duplicate-progress-bar');
+            const percentageLabel = document.getElementById('duplicate-percentage');
+            const statusLabel = document.getElementById('duplicate-status-label');
+
+            if (proceedBtn) proceedBtn.disabled = true;
+            if (skipBtn) skipBtn.disabled = true;
+            if (cancelBtn) cancelBtn.disabled = true;
+
+            const activeBtn = skipConflicts ? skipBtn : proceedBtn;
+            const originalText = activeBtn ? activeBtn.innerHTML : '';
+            if (activeBtn) activeBtn.innerHTML = `${spinnerSvg} Processing...`;
+
+            if (progressBox) progressBox.classList.remove('hidden');
+            if (progressBar) progressBar.style.width = '10%';
+            if (percentageLabel) percentageLabel.innerText = '10%';
+            if (statusLabel) statusLabel.innerText = skipConflicts ? 'Filtering conflicting codes...' : 'Authorizing duplicate override...';
+
+            try {
+                const formData = new FormData();
+                formData.append('skip_conflicts', skipConflicts ? 'true' : 'false');
+                const res = await fetch(`/api/jobs/${activeIngestionRunId}/proceed-override`, { method: 'POST', body: formData });
+                
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    showCustomAlert(err.detail || "Failed to proceed with override.");
+                    if (progressBox) progressBox.classList.add('hidden');
+                    if (activeBtn) activeBtn.innerHTML = originalText;
+                    if (proceedBtn) proceedBtn.disabled = false;
+                    if (skipBtn) skipBtn.disabled = false;
+                    if (cancelBtn) cancelBtn.disabled = false;
+                    return;
+                }
+
+                startDuplicateIngestionPolling(activeIngestionRunId, activeBtn, originalText);
+            } catch (ex) {
+                showCustomAlert("Network error while connecting to server.");
+                if (progressBox) progressBox.classList.add('hidden');
+                if (activeBtn) activeBtn.innerHTML = originalText;
+                if (proceedBtn) proceedBtn.disabled = false;
+                if (skipBtn) skipBtn.disabled = false;
+                if (cancelBtn) cancelBtn.disabled = false;
+            }
+        }
+
+        function startDuplicateIngestionPolling(runId, activeBtn, originalText) {
+            if (ingestionPollTimer) clearInterval(ingestionPollTimer);
+            const progressBar = document.getElementById('duplicate-progress-bar');
+            const percentageLabel = document.getElementById('duplicate-percentage');
+            const statusLabel = document.getElementById('duplicate-status-label');
+            const progressBox = document.getElementById('duplicate-progress-box');
+            const proceedBtn = document.getElementById('duplicate-proceed-btn');
+            const skipBtn = document.getElementById('duplicate-skip-btn');
+            const cancelBtn = document.getElementById('duplicate-cancel-btn');
+
+            ingestionPollTimer = setInterval(async () => {
+                try {
+                    const res = await fetch(`/api/jobs/${runId}/upload-status`);
+                    if (!res.ok) return;
+                    const data = await res.json();
+
+                    if (statusLabel && data.progress_message) {
+                        statusLabel.innerText = data.progress_message;
+                        const match = data.progress_message.match(/(\d+)%/);
+                        if (match && progressBar && percentageLabel) {
+                            progressBar.style.width = match[1] + '%';
+                            percentageLabel.innerText = match[1] + '%';
+                        }
+                    }
+
+                    if (data.status === 'ACTIVE') {
+                        clearInterval(ingestionPollTimer);
+                        ingestionPollTimer = null;
+                        activeIngestionRunId = null;
+
+                        toggleModal('duplicate-warning-modal');
+
+                        if (progressBox) progressBox.classList.add('hidden');
+                        if (activeBtn) activeBtn.innerHTML = originalText;
+                        if (proceedBtn) proceedBtn.disabled = false;
+                        if (skipBtn) skipBtn.disabled = false;
+                        if (cancelBtn) cancelBtn.disabled = false;
+
+                        const createForm = document.getElementById('create-job-form');
+                        if (createForm) createForm.reset();
+                        resetUploadUI();
+
+                        showCustomAlert(`Job Card '${data.job_card_id}' is now active with ${Number(data.total_codes).toLocaleString()} codes.`, "Success");
+                        updateSystemMessage(`Job Card ${data.job_card_id} activated (${Number(data.total_codes).toLocaleString()} codes)`, "success");
+
+                        const masterModal = document.getElementById('master-jobs-modal');
+                        if (masterModal && !masterModal.classList.contains('hidden')) {
+                            loadMasterJobs(currentMasterTab, false);
+                        }
+                    } else if (data.status === 'FAILED') {
+                        clearInterval(ingestionPollTimer);
+                        ingestionPollTimer = null;
+                        if (progressBox) progressBox.classList.add('hidden');
+                        if (activeBtn) activeBtn.innerHTML = originalText;
+                        if (proceedBtn) proceedBtn.disabled = false;
+                        if (skipBtn) skipBtn.disabled = false;
+                        if (cancelBtn) cancelBtn.disabled = false;
+                        showCustomAlert(`Ingestion failed: ${data.progress_message}`, "Ingestion Error");
+                    }
+                } catch(e) {}
+            }, 1000);
         }
 
         async function cancelDuplicateUpload() {
@@ -2894,7 +3049,11 @@
             const cCount = Number(conflictCount) || 0;
             const tCount = Number(totalCodes) || 0;
             document.getElementById('duplicate-warning-msg').innerText = 
-                `Found ${cCount.toLocaleString()} conflicting code(s) out of ${tCount.toLocaleString()} total codes in the CSV that already exist in active or completed jobs.`;
+                `Found ${cCount.toLocaleString()} conflicting code(s) out of ${tCount.toLocaleString()} total codes in this batch that already exist in active or completed jobs.`;
+            
+            const dupProgress = document.getElementById('duplicate-progress-box');
+            if (dupProgress) dupProgress.classList.add('hidden');
+
             toggleModal('master-jobs-modal');
             toggleModal('duplicate-warning-modal');
         }
