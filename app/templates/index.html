@@ -864,9 +864,9 @@
                 <div class="flex justify-between items-start no-print mb-2">
                     <div></div>
                     <div class="flex gap-2">
-                        <button onclick="window.print()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Print Report</button>
+                        <button onclick="window.print()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Print Report</button>
                         <button id="download-csv-btn" class="linear-button-primary px-3 py-1.5 rounded text-xs font-medium">Download CSV</button>
-                        <button onclick="toggleModal('report-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Close</button>
+                        <button onclick="toggleModal('report-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Close</button>
                     </div>
                 </div>
                 <h3 class="text-2xl font-black modal-title-theme text-center mb-3">QC Report</h3>
@@ -887,7 +887,7 @@
                             <th class="px-3.5 py-2.5">Timestamp</th>
                             <th class="px-3.5 py-2.5">Inspector</th>
                             <th class="px-3.5 py-2.5">Code</th>
-                            <th class="px-3.5 py-2.5">Row #</th>
+                            <th class="px-3.5 py-2.5 w-24">Row #</th>
                             <th class="px-3.5 py-2.5">Evaluation</th>
                         </tr>
                     </thead>
@@ -961,14 +961,14 @@
         </div>
     </div>
 
-    <!-- Custom Confirm Modal -->
+    <!-- Custom Confirm Modal with Processing Spinner -->
     <div id="custom-confirm-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-amber-500/35 shadow-2xl text-center">
-            <h3 id="custom-confirm-msg" class="text-base font-bold mb-1 text-amber-400">Please Verify!</h3>
+            <h3 id="custom-confirm-title" class="text-base font-bold mb-1 text-amber-400">Please Verify!</h3>
             <p id="custom-confirm-msg" class="text-xs text-slate-300 mb-5 leading-relaxed"></p>
             <div class="flex justify-end gap-2">
-                <button type="button" onclick="resolveCustomConfirm(false)" class="linear-button-secondary px-4 py-2 rounded text-xs font-medium min-h-[40px]">Cancel</button>
-                <button type="button" onclick="resolveCustomConfirm(true)" class="linear-button-primary px-4 py-2 rounded text-xs font-medium min-h-[40px]">Confirm</button>
+                <button type="button" id="custom-confirm-cancel-btn" onclick="resolveCustomConfirm(false)" class="linear-button-secondary px-4 py-2 rounded text-xs font-medium min-h-[40px]">Cancel</button>
+                <button type="button" id="custom-confirm-ok-btn" onclick="handleConfirmOkClick()" class="linear-button-primary px-4 py-2 rounded text-xs font-medium min-h-[40px] flex items-center justify-center">Confirm</button>
             </div>
         </div>
     </div>
@@ -1127,6 +1127,7 @@
         let stagedPasswordResets = {};
 
         let confirmCallback = null;
+        let confirmActionFn = null;
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -1190,15 +1191,73 @@
             resetInput();
         }
 
-        function showCustomConfirm(message) {
+        function showCustomConfirm(message, onConfirmAction = null, title = "Please Verify!") {
+            const titleElem = document.getElementById('custom-confirm-title');
+            if (titleElem) titleElem.innerText = title;
+            document.getElementById('custom-confirm-msg').innerText = message;
+            
+            const okBtn = document.getElementById('custom-confirm-ok-btn');
+            const cancelBtn = document.getElementById('custom-confirm-cancel-btn');
+            if (okBtn) {
+                okBtn.disabled = false;
+                okBtn.innerHTML = "Confirm";
+            }
+            if (cancelBtn) {
+                cancelBtn.disabled = false;
+            }
+            
+            document.getElementById('custom-confirm-modal').classList.remove('hidden');
+
+            if (typeof onConfirmAction === 'function') {
+                confirmActionFn = onConfirmAction;
+                confirmCallback = null;
+                return;
+            }
+
             return new Promise((resolve) => {
-                document.getElementById('custom-confirm-msg').innerText = message;
-                document.getElementById('custom-confirm-modal').classList.remove('hidden');
                 confirmCallback = resolve;
+                confirmActionFn = null;
             });
         }
 
+        async function handleConfirmOkClick() {
+            const okBtn = document.getElementById('custom-confirm-ok-btn');
+            const cancelBtn = document.getElementById('custom-confirm-cancel-btn');
+
+            if (confirmActionFn) {
+                const originalText = okBtn.innerHTML;
+                okBtn.disabled = true;
+                if (cancelBtn) cancelBtn.disabled = true;
+                okBtn.innerHTML = `${spinnerSvg} Processing...`;
+
+                try {
+                    await confirmActionFn();
+                    document.getElementById('custom-confirm-modal').classList.add('hidden');
+                } catch (err) {
+                    showCustomAlert("An error occurred while processing the request.", "Error");
+                } finally {
+                    confirmActionFn = null;
+                    if (okBtn) {
+                        okBtn.disabled = false;
+                        okBtn.innerHTML = originalText;
+                    }
+                    if (cancelBtn) cancelBtn.disabled = false;
+                    resetInput();
+                }
+                return;
+            }
+
+            if (confirmCallback) {
+                const cb = confirmCallback;
+                confirmCallback = null;
+                document.getElementById('custom-confirm-modal').classList.add('hidden');
+                cb(true);
+                resetInput();
+            }
+        }
+
         function resolveCustomConfirm(result) {
+            confirmActionFn = null;
             document.getElementById('custom-confirm-modal').classList.add('hidden');
             if (confirmCallback) {
                 const cb = confirmCallback;
@@ -1505,7 +1564,7 @@
                 toggleBtn.classList.remove('opacity-30', 'pointer-events-none');
             } else {
                 barcodeInput.disabled = true;
-                barcodeInput.placeholder = "Job is completed. Scanning disabled.";
+                barcodeInput.placeholder = `Job is ${status.toLowerCase()}. Scanning disabled.`;
                 barcodeInput.classList.add('opacity-40', 'cursor-not-allowed');
 
                 verifyBtn.disabled = true;
@@ -1594,18 +1653,29 @@
             if (!activeJobId) return;
 
             if (activeJobStatus === 'ACTIVE') {
-                const confirmed = await showCustomConfirm(`Mark Job Card ${activeJobId} completed?`);
-                if (!confirmed) return;
-                const res = await fetch(`/api/jobs/${activeJobId}/complete`, { method: 'POST' });
-                if (res.ok) {
-                    showCustomAlert(`Job Card ${activeJobId} completed.`, "Success");
-                    selectJob(activeJobId, escape(activeJobDesc), 'COMPLETED', 0, 0);
-                    updateSystemMessage(`Job Card ${activeJobId} marked COMPLETED`, "warn");
-                } else {
-                    const err = await res.json();
-                    showCustomAlert(err.detail || "Action failed");
-                    updateSystemMessage(err.detail || "Status update failed", "error");
-                }
+                showCustomConfirm(
+                    `Are you sure you want to mark Job Card ${activeJobId} as Completed? This will disable further barcode scanning for this batch.`,
+                    async () => {
+                        const currentTotal = parseInt(document.getElementById('kpi-total').innerText.replace(/,/g, '')) || 0;
+                        const currentConsumed = parseInt(document.getElementById('kpi-consumed').innerText.replace(/,/g, '')) || 0;
+
+                        const res = await fetch(`/api/jobs/${encodeURIComponent(activeJobId)}/complete`, { method: 'POST' });
+                        if (res.ok) {
+                            selectJob(activeJobId, escape(activeJobDesc), 'COMPLETED', currentConsumed, currentTotal);
+                            updateSystemMessage(`Job Card ${activeJobId} marked COMPLETED`, "warn");
+                            showCustomAlert(`Job Card ${activeJobId} has been successfully completed.`, "Job Completed");
+                        } else {
+                            const err = await res.json().catch(() => ({}));
+                            let errMsg = "Action failed";
+                            if (typeof err.detail === 'string') errMsg = err.detail;
+                            else if (Array.isArray(err.detail)) errMsg = err.detail.map(d => d.msg || JSON.stringify(d)).join(', ');
+                            else if (err.detail) errMsg = JSON.stringify(err.detail);
+                            showCustomAlert(errMsg, "Error");
+                            updateSystemMessage(errMsg, "error");
+                        }
+                    },
+                    "Confirm Job Completion"
+                );
             }
         }
 
@@ -2095,7 +2165,7 @@
                     } else if (log.action === 'REACTIVATED_AND_UNBLOCKED') {
                         label = "Reactivated & Unblocked";
                         colorClass = "text-amber-400 font-bold";
-                    } else if (log.action === 'COMPLETED_AND_BLOCKED') {
+                    } else if (log.action === 'COMPLETED_AND_BLOCKED' || log.action === 'COMPLETED') {
                         label = "Completed & Blocked";
                         colorClass = "text-red-400 font-bold";
                     } else if (log.action === 'DELETED') {
@@ -2673,6 +2743,15 @@
                 const res = await fetch('/api/admin/jobs/bulk-status', { method: 'POST', body });
                 if (res.ok) {
                     closeBulkStatusModal();
+
+                    // Live State Synchronization: update the loaded terminal if affected
+                    if (activeJobId && checked.includes(activeJobId)) {
+                        activeJobStatus = targetStatus;
+                        const total = parseInt(document.getElementById('kpi-total').innerText.replace(/,/g, '')) || 0;
+                        const consumed = parseInt(document.getElementById('kpi-consumed').innerText.replace(/,/g, '')) || 0;
+                        selectJob(activeJobId, escape(activeJobDesc), targetStatus, consumed, total);
+                    }
+
                     showCustomAlert(`Status updated to ${targetStatus} for selected jobs.`, "Success");
                     await loadMasterJobs(currentMasterTab);
                     updateSystemMessage(`Bulk status updated to ${targetStatus} (${checked.length} jobs)`, "success");
