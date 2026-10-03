@@ -58,7 +58,6 @@ def init_db():
             cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS staged_file_path TEXT;")
             cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS ingestion_progress TEXT DEFAULT '0%';")
 
-            # Force type expansions to prevent truncation errors on existing databases
             cur.execute("ALTER TABLE job_cards ALTER COLUMN ingestion_progress TYPE TEXT;")
             cur.execute("ALTER TABLE job_cards ALTER COLUMN status TYPE VARCHAR(100);")
 
@@ -109,7 +108,7 @@ def init_db():
                 );
             """)
 
-            # Permanent System Audit Logs Table (Survives job purges for global audit trail)
+            # Permanent System Audit Logs Table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS system_audit_logs (
                     id SERIAL PRIMARY KEY,
@@ -151,6 +150,25 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_lifecycle_jc ON job_lifecycle_logs(job_card_id);
                 CREATE INDEX IF NOT EXISTS idx_system_audit_time ON system_audit_logs(timestamp DESC);
             """)
+
+            # Backfill migration: Pull all historical job lifecycle logs into system_audit_logs if empty
+            cur.execute("SELECT COUNT(*) FROM system_audit_logs;")
+            if cur.fetchone()[0] == 0:
+                cur.execute("""
+                    INSERT INTO system_audit_logs (category, job_card_id, action, performed_by, details, timestamp)
+                    SELECT 'JOB_LIFECYCLE', job_card_id, action, performed_by, reason, timestamp
+                    FROM job_lifecycle_logs;
+                """)
+                cur.execute("""
+                    INSERT INTO system_audit_logs (category, job_card_id, action, performed_by, details, timestamp)
+                    SELECT 'SCAN_VERIFICATION', job_card_id, 'SCAN_' || result, scanned_by, 'Scanned code: ' || code_scanned || ' [' || result || ']', scanned_at
+                    FROM scan_logs;
+                """)
+                cur.execute("""
+                    INSERT INTO system_audit_logs (category, job_card_id, action, performed_by, details, timestamp)
+                    SELECT 'FINAL_QC', job_card_id, 'FINAL_QC_PACK', tested_by, 'Tested code for packing: ' || code_scanned, tested_at
+                    FROM packing_qc_logs;
+                """)
 
             # Seed default admin if missing
             cur.execute("SELECT id FROM users WHERE LOWER(username) = 'admin';")
