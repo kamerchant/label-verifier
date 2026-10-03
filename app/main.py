@@ -377,6 +377,37 @@ def toggle_user_upload(
     finally:
         release_connection(conn)
 
+# --------------------------------------------------------------------------------------
+# REAL-TIME FIELD VALIDATION ENDPOINT
+# --------------------------------------------------------------------------------------
+
+@app.get("/api/jobs/check-availability")
+def check_job_card_availability(job_card_id: str, user: dict = Depends(get_current_user)):
+    jc_id = job_card_id.strip()
+    if not jc_id:
+        return {"exists": False}
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT run_id, status, total_codes 
+                FROM job_cards 
+                WHERE LOWER(job_card_id) = LOWER(%s) AND status != 'DELETED'
+                ORDER BY created_at DESC LIMIT 1
+            """, (jc_id,))
+            row = cur.fetchone()
+            if row:
+                return {
+                    "exists": True,
+                    "run_id": row[0],
+                    "status": row[1],
+                    "total_codes": row[2] or 0
+                }
+            return {"exists": False}
+    finally:
+        release_connection(conn)
+
 @app.get("/api/jobs")
 def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
     conn = get_connection()

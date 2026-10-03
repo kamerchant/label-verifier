@@ -464,7 +464,7 @@
         </div>
     </footer>
 
-    <!-- Duplicate Warning Modal with 3 Action Choices (Cancel, Skip, Override) -->
+    <!-- Duplicate Warning Modal with 3 Action Choices -->
     <div id="duplicate-warning-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
         <div id="duplicate-modal-card" class="linear-card p-5 sm:p-6 rounded-lg max-w-lg w-full border border-amber-500/40 shadow-2xl text-center">
             <h3 id="duplicate-modal-title" class="text-base sm:text-lg font-bold mb-2 text-amber-400">Batch Uniqueness Report</h3>
@@ -760,7 +760,7 @@
                     <div></div>
                     <div class="flex gap-2">
                         <button onclick="window.print()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Print Log</button>
-                        <button onclick="toggleModal('lifecycle-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Close</button>
+                        <button onclick="toggleModal('lifecycle-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Close</button>
                     </div>
                 </div>
                 <h3 class="text-2xl font-black modal-title-theme text-center mb-3">LIFE CYCLE AUDIT REPORT</h3>
@@ -900,14 +900,15 @@
         </div>
     </div>
 
-    <!-- Create Job Upload Modal -->
+    <!-- Create Job Upload Modal with Inline Real-time Uniqueness Check -->
     <div id="upload-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full shadow-2xl">
             <h3 class="text-base font-bold mb-3 table-text-theme">Create New Job & Ingest Code Pool</h3>
             <form id="create-job-form" onsubmit="uploadJob(event, false)" class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Job Card # *</label>
-                    <input type="text" id="new-job-id" required placeholder="e.g. JC-2026-99" class="linear-input w-full p-2.5 text-sm rounded">
+                    <input type="text" id="new-job-id" required placeholder="e.g. JC-2026-99" onblur="checkJobCardAvailability()" oninput="clearJobCardAvailabilityError()" class="linear-input w-full p-2.5 text-sm rounded transition-all">
+                    <p id="job-id-availability-error" class="text-xs text-red-400 font-semibold mt-1 hidden"></p>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Job Description (Optional)</label>
@@ -1375,7 +1376,6 @@
             lifeBtn.disabled = false;
             lifeBtn.classList.remove('opacity-30', 'pointer-events-none');
 
-            // Initial render of passed arguments
             const numTotal = Number(total) || 0;
             const numConsumed = Number(consumed) || 0;
             const pending = Math.max(0, numTotal - numConsumed);
@@ -1408,7 +1408,6 @@
                 toggleBtn.disabled = true;
             }
 
-            // Immediately query fresh accurate metrics to avoid any 0-count display
             try {
                 const rptRes = await fetch(`/api/reports/${encodeURIComponent(id)}`);
                 if (rptRes.ok) {
@@ -2463,6 +2462,64 @@
         }
 
         // --------------------------------------------------------------------------------------
+        // REAL-TIME INLINE JOB CARD AVAILABILITY VALIDATION
+        // --------------------------------------------------------------------------------------
+
+        async function checkJobCardAvailability() {
+            const input = document.getElementById('new-job-id');
+            const errBox = document.getElementById('job-id-availability-error');
+            const uploadBtn = document.getElementById('upload-btn');
+            const jcId = input.value.trim();
+
+            if (!jcId) {
+                if (errBox) errBox.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/jobs/check-availability?job_card_id=${encodeURIComponent(jcId)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.exists) {
+                        errBox.innerText = `Job Card '${jcId}' already exists (${data.status}). Please choose a unique ID or purge the existing job.`;
+                        errBox.classList.remove('hidden');
+                        input.classList.add('border-red-500');
+                        input.classList.remove('border-white/[0.12]');
+                        if (uploadBtn) {
+                            uploadBtn.disabled = true;
+                            uploadBtn.classList.add('opacity-40', 'cursor-not-allowed');
+                        }
+                    } else {
+                        errBox.classList.add('hidden');
+                        input.classList.remove('border-red-500');
+                        input.classList.add('border-white/[0.12]');
+                        if (uploadBtn) {
+                            uploadBtn.disabled = false;
+                            uploadBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error("Availability check failed", e);
+            }
+        }
+
+        function clearJobCardAvailabilityError() {
+            const input = document.getElementById('new-job-id');
+            const errBox = document.getElementById('job-id-availability-error');
+            const uploadBtn = document.getElementById('upload-btn');
+            if (errBox) errBox.classList.add('hidden');
+            if (input) {
+                input.classList.remove('border-red-500');
+                input.classList.add('border-white/[0.12]');
+            }
+            if (uploadBtn) {
+                uploadBtn.disabled = false;
+                uploadBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+            }
+        }
+
+        // --------------------------------------------------------------------------------------
         // INGESTION & CONFLICT LIFECYCLE (CHUNKED WITH REAL-TIME PROGRESS)
         // --------------------------------------------------------------------------------------
 
@@ -2478,6 +2535,12 @@
             const jcId = document.getElementById('new-job-id').value.trim();
             const desc = document.getElementById('new-job-desc').value.trim();
             const fileInput = document.getElementById('new-job-file');
+            const errBox = document.getElementById('job-id-availability-error');
+
+            if (errBox && !errBox.classList.contains('hidden')) {
+                showCustomAlert("Please enter a unique Job Card ID before creating a job.");
+                return;
+            }
 
             if (!fileInput.files || fileInput.files.length === 0) {
                 showCustomAlert("Please select a batch CSV or TXT file.");
@@ -2580,6 +2643,7 @@
                         document.getElementById('duplicate-warning-modal').classList.add('hidden');
                         resetUploadUI();
                         document.getElementById('create-job-form').reset();
+                        clearJobCardAvailabilityError();
                         activeIngestionRunId = null;
 
                         const finalCount = Number(data.total_codes) || 0;
@@ -2790,6 +2854,9 @@
                         clearInterval(masterJobsPollTimer);
                         masterJobsPollTimer = null;
                     }
+                }
+                if (id === 'upload-modal' && el.classList.contains('hidden')) {
+                    clearJobCardAvailabilityError();
                 }
             }
         }
