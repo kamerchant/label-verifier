@@ -42,7 +42,8 @@ def init_db():
                     total_codes INTEGER DEFAULT 0,
                     consumed_codes INTEGER DEFAULT 0,
                     conflict_count INTEGER DEFAULT 0,
-                    ingestion_progress VARCHAR(50) DEFAULT '0%',
+                    ingestion_progress VARCHAR(255) DEFAULT '0%',
+                    staged_file_path TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     deleted_by VARCHAR(100),
                     deleted_at TIMESTAMP,
@@ -50,13 +51,14 @@ def init_db():
                 );
             """)
 
-            # Safe database migrations for existing production environments
+            # Safe database migrations
             cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS total_codes INTEGER DEFAULT 0;")
             cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS consumed_codes INTEGER DEFAULT 0;")
             cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS conflict_count INTEGER DEFAULT 0;")
-            cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS ingestion_progress VARCHAR(50) DEFAULT '0%';")
+            cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS ingestion_progress VARCHAR(255) DEFAULT '0%';")
+            cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS staged_file_path TEXT;")
 
-            # Codes Table (BIGSERIAL primary key handles billions of multi-million batch rows)
+            # Codes Table (BIGSERIAL primary key handles multi-million batches)
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS codes (
                     id BIGSERIAL PRIMARY KEY,
@@ -132,7 +134,7 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_lifecycle_jc ON job_lifecycle_logs(job_card_id);
             """)
 
-            # Seed default admin if missing
+            # Ensure default admin account exists
             cur.execute("SELECT id FROM users WHERE LOWER(username) = 'admin';")
             if not cur.fetchone():
                 admin_hash = hash_password("Admin@123")

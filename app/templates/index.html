@@ -515,7 +515,7 @@
         </div>
     </footer>
 
-    <!-- Duplicate Warning Modal for Job Creation (Styled Clean Linear Card) -->
+    <!-- Duplicate Warning Modal for Job Creation -->
     <div id="duplicate-warning-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
         <div id="duplicate-modal-card" class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full border border-amber-500/40 shadow-2xl text-center">
             <h3 id="duplicate-modal-title" class="text-base sm:text-lg font-bold mb-2 text-amber-400">Batch Uniqueness Report</h3>
@@ -595,7 +595,7 @@
                         <div class="linear-subcard" style="margin-bottom: 12px;">
                             <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Job Card:</strong> <span id="print-qc-job"></span></p>
                             <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Description:</strong> <span id="print-qc-desc"></span></p>
-                            <p style="font-size: 9.5pt; margin-2px;"><strong>Status:</strong> <span id="print-qc-status">Completed</span></p>
+                            <p style="font-size: 9.5pt; margin-bottom: 2px;"><strong>Status:</strong> <span id="print-qc-status">Completed</span></p>
                         </div>
 
                         <p style="font-size: 9.5pt; margin-bottom: 10px;"><strong>Total Codes Verified:</strong> <span id="print-qc-count"></span></p>
@@ -946,7 +946,7 @@
         </div>
     </div>
 
-    <!-- Create Job Upload Modal with Progress Bar & Polling -->
+    <!-- Create Job Upload Modal with Dynamic Multi-Million Batch Progress -->
     <div id="upload-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full shadow-2xl">
             <h3 class="text-base font-bold mb-3 table-text-theme">Create New Job & Ingest Code Pool</h3>
@@ -962,10 +962,10 @@
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Batch Data File (CSV / TXT) *</label>
                     <input type="file" id="new-job-file" accept=".csv,.txt" required class="linear-input w-full p-2.5 text-xs rounded text-slate-400">
-                    <p class="text-xs text-slate-500 mt-1">Supports large production runs up to 4 million codes.</p>
+                    <p class="text-xs text-slate-500 mt-1">Supports high-capacity files up to 4 million codes.</p>
                 </div>
 
-                <!-- Live Progress Display -->
+                <!-- Live Progress Box -->
                 <div id="upload-progress-box" class="hidden linear-subcard p-3 rounded mt-3 border border-indigo-500/20">
                     <div class="flex justify-between items-center text-xs mb-1.5">
                         <span id="upload-status-label" class="text-slate-300 font-medium">Uploading file...</span>
@@ -2594,8 +2594,10 @@
                     else if (data.status === 'ACTIVE') {
                         clearInterval(ingestionPollTimer);
                         document.getElementById('upload-modal').classList.add('hidden');
+                        document.getElementById('duplicate-warning-modal').classList.add('hidden');
                         resetUploadUI();
                         document.getElementById('create-job-form').reset();
+                        activeIngestionRunId = null;
 
                         showCustomAlert(`Job Card '${data.job_card_id}' created with ${data.total_codes.toLocaleString()} codes.`, "Success");
                         updateSystemMessage(`Job Card '${data.job_card_id}' ingested (${data.total_codes.toLocaleString()} codes)`, "success");
@@ -2604,6 +2606,7 @@
                     else if (data.status === 'FAILED') {
                         clearInterval(ingestionPollTimer);
                         resetUploadUI();
+                        document.getElementById('duplicate-warning-modal').classList.add('hidden');
                         showCustomAlert(`Ingestion failed: ${data.progress_message}`, "Ingestion Error");
                     }
                 } catch(e) {
@@ -2624,22 +2627,35 @@
             proceedBtn.innerHTML = `${spinnerSvg} Overriding...`;
 
             try {
-                // Instant 50ms activation of staged batch
+                // Starts background insertion without hitting reverse proxy timeouts
                 const res = await fetch(`/api/jobs/${activeIngestionRunId}/proceed-override`, { method: 'POST' });
-                if (res.ok) {
-                    const data = await res.json();
+                if (res.status === 202) {
                     document.getElementById('duplicate-warning-modal').classList.add('hidden');
-                    document.getElementById('create-job-form').reset();
-                    activeIngestionRunId = null;
+                    
+                    // Switch back to upload progress modal with live background polling
+                    document.getElementById('upload-modal').classList.remove('hidden');
+                    const uploadBtn = document.getElementById('upload-btn');
+                    const uploadCancelBtn = document.getElementById('upload-cancel-btn');
+                    const progressBox = document.getElementById('upload-progress-box');
+                    const progressBar = document.getElementById('upload-progress-bar');
+                    const percentageLabel = document.getElementById('upload-percentage');
+                    const statusLabel = document.getElementById('upload-status-label');
 
-                    showCustomAlert(`Job Card '${data.job_card_id}' created with ${data.total_codes.toLocaleString()} codes.`, "Success");
-                    updateSystemMessage(`Job Card '${data.job_card_id}' activated (${data.total_codes.toLocaleString()} codes)`, "success");
+                    uploadBtn.disabled = true;
+                    uploadCancelBtn.disabled = true;
+                    uploadBtn.innerHTML = `${spinnerSvg} Processing...`;
+                    progressBox.classList.remove('hidden');
+                    progressBar.style.width = '75%';
+                    percentageLabel.innerText = 'Overriding...';
+                    statusLabel.innerText = 'Bulk ingesting codes into database...';
+
+                    startIngestionPolling(activeIngestionRunId);
                 } else {
-                    const err = await res.json();
-                    showCustomAlert(err.detail || "Failed to override duplicate warning.");
+                    const err = await res.json().catch(() => ({}));
+                    showCustomAlert(err.detail || "Failed to initiate override ingestion.");
                 }
             } catch(e) {
-                showCustomAlert("Network error while confirming duplicate override.");
+                showCustomAlert("Network error while connecting to server.");
             } finally {
                 proceedBtn.disabled = false;
                 cancelBtn.disabled = false;
@@ -2724,7 +2740,6 @@
                 if (res.ok) {
                     closeBulkStatusModal();
 
-                    // Live UI state synchronization for currently loaded job
                     if (activeJobId && checked.includes(activeJobId)) {
                         activeJobStatus = targetStatus;
                         const total = parseInt(document.getElementById('kpi-total').innerText.replace(/,/g, '')) || 0;
