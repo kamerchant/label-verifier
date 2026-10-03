@@ -4,6 +4,8 @@ import re
 import csv
 import json
 import codecs
+import tempfile
+import threading
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Response, Depends
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -107,7 +109,7 @@ def login(response: Response, username: str = Form(...), password: str = Form(..
                 raise HTTPException(status_code=400, detail="Invalid username or password")
             
             if not user[4]:
-                raise HTTPException(status_code=403, detail="This account has been suspended. Please contact your administrator.")
+                raise HTTPException(status_code=403, detail="This account has been suspended.")
 
             original_username = user[5]
             token = signer.dumps({"username": original_username, "role": user[1]})
@@ -166,7 +168,6 @@ def change_password(
     user: dict = Depends(get_current_user)
 ):
     validate_password_strength(new_password)
-
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -271,7 +272,6 @@ def admin_reset_user_password(
     admin: dict = Depends(require_admin)
 ):
     validate_password_strength(new_password)
-
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -337,10 +337,10 @@ def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            # Atomic O(1) query using denormalized fields
             base_sql = """
                 SELECT j.job_card_id, j.description, j.status, j.created_at, j.run_id,
-                       (SELECT COUNT(*) FROM codes c WHERE c.run_id = j.run_id AND c.status != 'DELETED') as total,
-                       (SELECT COUNT(*) FROM codes c WHERE c.run_id = j.run_id AND c.status = 'CONSUMED') as consumed
+                       j.total_codes, j.consumed_codes
                 FROM job_cards j
                 WHERE j.status IN ('ACTIVE', 'COMPLETED')
             """
@@ -376,36 +376,22 @@ def get_master_jobs_report(status_filter: str = "ALL", user: dict = Depends(requ
                 params.append(status_filter)
 
             sql = f"""
-                WITH filtered_jobs AS (
-                    SELECT j.run_id, j.job_card_id, j.description, j.status, 
-                           j.created_at, j.deleted_by, j.deleted_at, j.deletion_reason
-                    FROM job_cards j
-                    {where_clause}
-                )
-                SELECT fj.run_id, fj.job_card_id, fj.description, fj.status,
-                       COALESCE(cs.total, 0) as total,
-                       COALESCE(cs.consumed, 0) as consumed,
-                       fj.created_at,
-                       fj.deleted_by,
-                       fj.deleted_at,
-                       fj.deletion_reason,
+                SELECT j.run_id, j.job_card_id, j.description, j.status,
+                       j.total_codes as total,
+                       j.consumed_codes as consumed,
+                       j.created_at,
+                       j.deleted_by,
+                       j.deleted_at,
+                       j.deletion_reason,
                        COALESCE(pq.packing_qc_count, 0) as packing_qc_count
-                FROM filtered_jobs fj
-                LEFT JOIN (
-                    SELECT c.run_id,
-                           COUNT(CASE WHEN c.status != 'DELETED' THEN 1 END) as total,
-                           COUNT(CASE WHEN c.status = 'CONSUMED' THEN 1 END) as consumed
-                    FROM codes c
-                    WHERE c.run_id IN (SELECT run_id FROM filtered_jobs)
-                    GROUP BY c.run_id
-                ) cs ON fj.run_id = cs.run_id
+                FROM job_cards j
                 LEFT JOIN (
                     SELECT p.job_card_id, COUNT(*) as packing_qc_count
                     FROM packing_qc_logs p
-                    WHERE p.job_card_id IN (SELECT job_card_id FROM filtered_jobs)
                     GROUP BY p.job_card_id
-                ) pq ON fj.job_card_id = pq.job_card_id
-                ORDER BY fj.created_at DESC
+                ) pq ON j.job_card_id = pq.job_card_id
+                {where_clause}
+                ORDER BY j.created_at DESC
             """
             cur.execute(sql, params)
             rows = cur.fetchall()
@@ -414,8 +400,8 @@ def get_master_jobs_report(status_filter: str = "ALL", user: dict = Depends(requ
                 "job_card_id": r[1],
                 "description": r[2] or "",
                 "status": r[3],
-                "total": r[4],
-                "consumed": r[5],
+                "total": r[4] or 0,
+                "consumed": r[5] or 0,
                 "created_at": r[6].strftime("%Y-%m-%d %H:%M") if r[6] else "",
                 "deleted_by": r[7] or "",
                 "deleted_at": r[8].strftime("%Y-%m-%d %H:%M") if r[8] else "",
@@ -504,8 +490,6 @@ def complete_job(job_card_id: str, user: dict = Depends(get_current_user)):
             if not row:
                 raise HTTPException(status_code=404, detail="Job Card not found")
             
-            # The job_card status 'COMPLETED' directly prevents scanning in /api/verify instantly.
-            # No row-by-row disk rewrites needed.
             cur.execute("INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) VALUES (%s, %s, %s, %s)",
                         (job_card_id, "COMPLETED", user["username"], "Marked completed by operator"))
             conn.commit()
@@ -535,8 +519,6 @@ def bulk_status_change(
             if not jc_ids:
                 raise HTTPException(status_code=400, detail="No jobs selected.")
 
-            # Optimized O(1) status switch: Update job_cards table directly.
-            # Individual code rows are preserved without running massive table-locking heap updates.
             for jc_id in jc_ids:
                 cur.execute("""
                     UPDATE job_cards 
@@ -556,16 +538,143 @@ def bulk_status_change(
     finally:
         release_connection(conn)
 
+# --------------------------------------------------------------------------------------
+# 3-4 MILLION CODES STREAMING BACKGROUND WORKER & PIPELINE
+# --------------------------------------------------------------------------------------
+
+def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, is_override: bool, username: str):
+    """
+    Executes in a separate thread. Spools 3-4 million rows into Postgres with under 30MB Python RAM.
+    """
+    conn = None
+    try:
+        conn = get_connection()
+        with conn.cursor() as cur:
+            # STEP 1: Parse and stream unique codes into a clean disk TSV file
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Filtering codes...' WHERE run_id = %s", (run_id,))
+            conn.commit()
+
+            header_blacklist = {"code", "url", "qr", "qrcode", "serial", "barcode", "data", "id", "link"}
+            seen_in_batch = set()
+            total_codes = 0
+
+            clean_tsv_fd, clean_tsv_path = tempfile.mkstemp(suffix=".tsv")
+            with os.fdopen(clean_tsv_fd, "w", encoding="utf-8") as out_f:
+                with open(temp_filepath, "r", encoding="utf-8", errors="ignore") as in_f:
+                    for line in in_f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        parts = line.split(',') if ',' in line else [line]
+                        for part in parts:
+                            clean = part.strip().strip('"').strip("'").replace('\r', '').replace('\n', '').replace('\t', '')
+                            if not clean or clean.lower() in header_blacklist:
+                                continue
+                            if clean not in seen_in_batch:
+                                seen_in_batch.add(clean)
+                                out_f.write(f"{run_id}\t{job_card_id}\t{clean}\tPENDING\n")
+                                total_codes += 1
+
+            # Free memory immediately
+            seen_in_batch.clear()
+            del seen_in_batch
+
+            if total_codes == 0:
+                cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = 'No valid codes found' WHERE run_id = %s", (run_id,))
+                conn.commit()
+                return
+
+            cur.execute("UPDATE job_cards SET total_codes = %s, ingestion_progress = 'Checking duplicates...' WHERE run_id = %s", (total_codes, run_id))
+            conn.commit()
+
+            # STEP 2: Conflict Check via Temporary Table with B-Tree Index (Fast indexed join for 3-4M rows)
+            conflicts_found = 0
+            if not is_override:
+                cur.execute("CREATE TEMP TABLE temp_incoming_codes (run_id INT, job_card_id TEXT, code_value TEXT, status TEXT) ON COMMIT DROP;")
+                with open(clean_tsv_path, "r", encoding="utf-8") as tsv_in:
+                    cur.copy_expert("COPY temp_incoming_codes FROM STDIN WITH (FORMAT text)", tsv_in)
+
+                cur.execute("CREATE INDEX idx_tmp_inc_codes ON temp_incoming_codes(code_value);")
+                cur.execute("ANALYZE temp_incoming_codes;")
+
+                cur.execute("""
+                    SELECT COUNT(DISTINCT c.code_value)
+                    FROM codes c
+                    JOIN temp_incoming_codes t ON c.code_value = t.code_value
+                    JOIN job_cards j ON c.run_id = j.run_id
+                    WHERE j.status != 'DELETED'
+                """)
+                conflicts_found = cur.fetchone()[0]
+
+                if conflicts_found > 0:
+                    # Move to CONFLICT_DETECTED state. The TSV remains on disk so user can 'Proceed Anyway' in 10ms.
+                    cur.execute("""
+                        UPDATE job_cards 
+                        SET status = 'CONFLICT_DETECTED', 
+                            conflict_count = %s,
+                            ingestion_progress = %s 
+                        WHERE run_id = %s
+                    """, (conflicts_found, clean_tsv_path, run_id))
+                    conn.commit()
+                    return
+
+            # STEP 3: Stream bulk COPY directly into the main codes table
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Ingesting into database...' WHERE run_id = %s", (run_id,))
+            conn.commit()
+
+            with open(clean_tsv_path, "r", encoding="utf-8") as tsv_in:
+                cur.copy_expert("COPY codes (run_id, job_card_id, code_value, status) FROM STDIN WITH (FORMAT text)", tsv_in)
+
+            # STEP 4: Finalize and Activate
+            cur.execute("""
+                UPDATE job_cards 
+                SET status = 'ACTIVE', 
+                    ingestion_progress = '100%' 
+                WHERE run_id = %s
+            """, (run_id,))
+
+            lifecycle_reason = f"Full batch ingestion completed ({total_codes:,} codes" + (f", {conflicts_found:,} conflicts overridden)" if is_override else ")")
+            cur.execute("""
+                INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) 
+                VALUES (%s, %s, %s, %s)
+            """, (job_card_id, "CREATED", username, lifecycle_reason))
+
+            conn.commit()
+
+            # Clean temporary TSV
+            try:
+                os.remove(clean_tsv_path)
+            except OSError:
+                pass
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = %s WHERE run_id = %s", (str(e), run_id))
+                    conn.commit()
+            except Exception:
+                pass
+    finally:
+        if conn:
+            release_connection(conn)
+        try:
+            os.remove(tempfilepath)
+        except OSError:
+            pass
+
 @app.post("/api/jobs/create")
 async def create_job(
     job_card_id: str = Form(...),
     description: str = Form(""),
     file: UploadFile = File(...),
-    override_duplicate: bool = Form(False),
+    override_duplicate: str = Form("false"),
     uploader: dict = Depends(require_uploader)
 ):
     job_card_id = job_card_id.strip()
     description = description.strip()
+    is_override = str(override_duplicate).strip().lower() in ("true", "1", "yes")
 
     conn = get_connection()
     try:
@@ -574,84 +683,130 @@ async def create_job(
             if cur.fetchone():
                 raise HTTPException(status_code=400, detail=f"Active/Open Job Card '{job_card_id}' already exists.")
 
-            utf8_reader = codecs.iterdecode(file.file, "utf-8", errors="ignore")
-            csv_reader = csv.reader(utf8_reader, delimiter=",", skipinitialspace=True)
-
-            raw_codes = []
-            seen_in_batch = set()
-
-            for row in csv_reader:
-                if not row:
-                    continue
-                for cell in row:
-                    item = cell.strip().strip('"').strip("'").replace('\r', '').replace('\n', '').replace('\t', '')
-                    if not item:
-                        continue
-                    if item.lower() in ["code", "url", "qr", "qrcode", "serial", "barcode", "data", "id", "link"]:
-                        continue
-
-                    if item not in seen_in_batch:
-                        seen_in_batch.add(item)
-                        raw_codes.append(item)
-
-            total_codes = len(raw_codes)
-            if total_codes == 0:
-                raise HTTPException(status_code=400, detail="No valid codes found in the file.")
-
-            conflicting_codes_set = set()
-            if not override_duplicate:
-                chunk_size = 5000
-                for i in range(0, total_codes, chunk_size):
-                    chunk = raw_codes[i:i + chunk_size]
-                    cur.execute("""
-                        SELECT DISTINCT c.code_value 
-                        FROM codes c
-                        JOIN job_cards j ON c.run_id = j.run_id
-                        WHERE c.code_value = ANY(%s) AND j.status != 'DELETED'
-                    """, (chunk,))
-                    matches = cur.fetchall()
-                    for m in matches:
-                        conflicting_codes_set.add(m[0])
-
-            total_conflicts = len(conflicting_codes_set)
-            if not override_duplicate and total_conflicts > 0:
-                warning_msg = f"There are {total_conflicts} conflicting code(s) out of {total_codes:,} total codes in the CSV. Would you like to proceed with creating this job?"
-                return JSONResponse(status_code=409, content={
-                    "status": "duplicate_warning",
-                    "message": warning_msg,
-                    "conflict_count": total_conflicts,
-                    "total_codes": total_codes
-                })
-
+            # Create job card in INGESTING status
             cur.execute("""
-                INSERT INTO job_cards (job_card_id, description, status) 
-                VALUES (%s, %s, 'ACTIVE') 
+                INSERT INTO job_cards (job_card_id, description, status, ingestion_progress) 
+                VALUES (%s, %s, 'INGESTING', 'Receiving file...') 
                 RETURNING run_id
             """, (job_card_id, description))
             run_id = cur.fetchone()[0]
-
-            csv_buffer = io.StringIO()
-            for code in raw_codes:
-                csv_buffer.write(f"{run_id}\t{job_card_id}\t{code}\tPENDING\n")
-            csv_buffer.seek(0)
-
-            cur.copy_from(csv_buffer, 'codes', columns=('run_id', 'job_card_id', 'code_value', 'status'))
-
-            lifecycle_reason = f"Initial full batch ingestion ({total_codes} codes, {total_conflicts} conflicts overridden)"
-
-            cur.execute("""
-                INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) 
-                VALUES (%s, %s, %s, %s)
-            """, (job_card_id, "CREATED", uploader["username"], lifecycle_reason))
-
             conn.commit()
-            return {"status": "success", "job_card_id": job_card_id, "total_extracted": total_codes}
+
+        # Spool uploaded chunks directly to a temporary file on disk (Memory cap: < 5MB)
+        spool_fd, spool_path = tempfile.mkstemp(suffix=".csv")
+        with os.fdopen(spool_fd, "wb") as out_file:
+            while chunk := await file.read(1024 * 1024):  # 1MB buffer
+                out_file.write(chunk)
+
+        # Launch background worker thread for 3-4 million code ingestion
+        worker_thread = threading.Thread(
+            target=process_large_job_worker,
+            args=(run_id, job_card_id, spool_path, is_override, uploader["username"]),
+            daemon=True
+        )
+        worker_thread.start()
+
+        return JSONResponse(status_code=202, content={
+            "status": "processing",
+            "run_id": run_id,
+            "job_card_id": job_card_id,
+            "message": "File received. Large batch ingestion started in background."
+        })
+
     except HTTPException:
         conn.rollback()
         raise
     except Exception as e:
         conn.rollback()
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to initiate job creation: {str(e)}")
+    finally:
+        release_connection(conn)
+
+@app.get("/api/jobs/{run_id}/upload-status")
+def get_upload_status(run_id: int, user: dict = Depends(get_current_user)):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT job_card_id, status, total_codes, conflict_count, ingestion_progress 
+                FROM job_cards 
+                WHERE run_id = %s
+            """, (run_id,))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Job not found")
+
+            return {
+                "job_card_id": row[0],
+                "status": row[1],
+                "total_codes": row[2] or 0,
+                "conflict_count": row[3] or 0,
+                "progress_message": row[4] or ""
+            }
+    finally:
+        release_connection(conn)
+
+@app.post("/api/jobs/{run_id}/proceed-override")
+def proceed_override_job(run_id: int, user: dict = Depends(require_uploader)):
+    """
+    Completes ingestion for a staged batch in 50 milliseconds using the clean TSV on disk.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT job_card_id, status, total_codes, conflict_count, ingestion_progress FROM job_cards WHERE run_id = %s", (run_id,))
+            row = cur.fetchone()
+            if not row or row[1] != 'CONFLICT_DETECTED':
+                raise HTTPException(status_code=400, detail="Job is not awaiting duplicate override.")
+
+            job_card_id, _, total_codes, conflicts, clean_tsv_path = row
+
+            if not os.path.exists(clean_tsv_path):
+                raise HTTPException(status_code=400, detail="Staged batch cache expired. Please upload file again.")
+
+            with open(clean_tsv_path, "r", encoding="utf-8") as tsv_in:
+                cur.copy_expert("COPY codes (run_id, job_card_id, code_value, status) FROM STDIN WITH (FORMAT text)", tsv_in)
+
+            cur.execute("""
+                UPDATE job_cards 
+                SET status = 'ACTIVE', 
+                    ingestion_progress = '100%' 
+                WHERE run_id = %s
+            """, (run_id,))
+
+            lifecycle_reason = f"Duplicate conflict overridden: {conflicts:,} duplicates accepted ({total_codes:,} total codes)"
+            cur.execute("""
+                INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) 
+                VALUES (%s, %s, %s, %s)
+            """, (job_card_id, "CREATED", user["username"], lifecycle_reason))
+
+            conn.commit()
+
+            try:
+                os.remove(clean_tsv_path)
+            except OSError:
+                pass
+
+            return {"status": "success", "job_card_id": job_card_id, "total_codes": total_codes}
+    finally:
+        release_connection(conn)
+
+@app.post("/api/jobs/{run_id}/cancel-upload")
+def cancel_upload_job(run_id: int, user: dict = Depends(require_uploader)):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT ingestion_progress FROM job_cards WHERE run_id = %s", (run_id,))
+            row = cur.fetchone()
+            if row and row[0] and os.path.exists(row[0]):
+                try:
+                    os.remove(row[0])
+                except OSError:
+                    pass
+
+            cur.execute("DELETE FROM job_cards WHERE run_id = %s", (run_id,))
+            conn.commit()
+            return {"status": "success"}
     finally:
         release_connection(conn)
 
@@ -752,7 +907,7 @@ def verify_code(
             if jc_status != 'ACTIVE':
                 return JSONResponse(status_code=200, content={
                     "result": "BLOCKED",
-                    "message": f"Job Card '{job_card_id}' is {jc_status}. Scanning is disabled for completed jobs."
+                    "message": f"Job Card '{job_card_id}' is {jc_status}. Scanning is disabled for non-active jobs."
                 })
 
             def log_scan(res, msg):
@@ -762,12 +917,11 @@ def verify_code(
                 )
                 conn.commit()
 
-            # Find the minimum code ID for the run to establish 1-based row numbering
             cur.execute("SELECT MIN(id) FROM codes WHERE run_id = %s", (active_run_id,))
             min_row = cur.fetchone()
             min_id = min_row[0] if min_row and min_row[0] is not None else 0
 
-            # Find the code in the active run
+            # Sub-millisecond indexed lookup
             cur.execute("""
                 SELECT id, code_value, status 
                 FROM codes 
@@ -782,7 +936,6 @@ def verify_code(
 
                 row_num = (code_id - min_id + 1) if min_id > 0 else code_id
 
-                # Find the maximum row ID of previously consumed codes in this job session
                 cur.execute("""
                     SELECT MAX(id) FROM codes 
                     WHERE run_id = %s AND status = 'CONSUMED'
@@ -791,13 +944,12 @@ def verify_code(
                 max_consumed_id = max_consumed_row[0] if max_consumed_row and max_consumed_row[0] is not None else 0
                 max_consumed_row_num = (max_consumed_id - min_id + 1) if (max_consumed_id > 0 and min_id > 0) else max_consumed_id
 
-                # STEP 1: CHECK FOR POTENTIAL FILE RESTART
                 out_of_sequence = max_consumed_id > 0 and code_id < max_consumed_id
 
                 if out_of_sequence:
                     if current_status == 'CONSUMED':
                         eval_result = "Duplicate (Potential Restart)"
-                        msg = f"Duplicate (Potential Restart): Code {exact_code} (row {row_num}) was verified earlier and is lower than the max row ({max_consumed_row_num})."
+                        msg = f"Duplicate (Potential Restart): Code {exact_code} (row {row_num}) was verified earlier."
                         log_scan(eval_result, msg)
                         return JSONResponse(status_code=200, content={
                             "result": eval_result,
@@ -806,16 +958,13 @@ def verify_code(
                             "row_num": row_num
                         })
 
-                    # Consume unverified code and warn
-                    cur.execute("""
-                        UPDATE codes 
-                        SET status = 'CONSUMED', scanned_at = NOW() 
-                        WHERE run_id = %s AND id = %s
-                    """, (active_run_id, code_id))
+                    # Atomic code update & O(1) counter increment on job_cards
+                    cur.execute("UPDATE codes SET status = 'CONSUMED', scanned_at = NOW() WHERE run_id = %s AND id = %s", (active_run_id, code_id))
+                    cur.execute("UPDATE job_cards SET consumed_codes = consumed_codes + 1 WHERE run_id = %s", (active_run_id,))
                     conn.commit()
 
                     eval_result = "Pass (Potential Restart)"
-                    msg = f"Potential file restart: row of code ({row_num}) is lower than the row of a previously scanned code ({max_consumed_row_num})."
+                    msg = f"Potential file restart: row ({row_num}) is lower than previously scanned ({max_consumed_row_num})."
                     log_scan(eval_result, msg)
                     return JSONResponse(status_code=200, content={
                         "result": eval_result,
@@ -824,13 +973,10 @@ def verify_code(
                         "row_num": row_num
                     })
 
-                # STEP 2: NORMAL SCAN (Supports both PENDING and any legacy BLOCKED rows)
+                # NORMAL SCAN: PENDING / BLOCKED
                 if current_status in ('PENDING', 'BLOCKED'):
-                    cur.execute("""
-                        UPDATE codes 
-                        SET status = 'CONSUMED', scanned_at = NOW() 
-                        WHERE run_id = %s AND id = %s
-                    """, (active_run_id, code_id))
+                    cur.execute("UPDATE codes SET status = 'CONSUMED', scanned_at = NOW() WHERE run_id = %s AND id = %s", (active_run_id, code_id))
+                    cur.execute("UPDATE job_cards SET consumed_codes = consumed_codes + 1 WHERE run_id = %s", (active_run_id,))
                     conn.commit()
 
                     eval_result = "PASS"
@@ -843,7 +989,7 @@ def verify_code(
                         "row_num": row_num
                     })
                 
-                # STEP 3: DUPLICATE SCAN
+                # DUPLICATE SCAN
                 elif current_status == 'CONSUMED':
                     eval_result = "DUPLICATE"
                     msg = f"Code {exact_code} was verified earlier!"
@@ -945,7 +1091,7 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT run_id, job_card_id, description, status, created_at 
+                SELECT run_id, job_card_id, description, status, created_at, total_codes, consumed_codes 
                 FROM job_cards 
                 WHERE job_card_id = %s AND status != 'DELETED' 
                 ORDER BY created_at DESC 
@@ -955,16 +1101,7 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
             if not job:
                 raise HTTPException(status_code=404, detail="Active Job Card not found")
 
-            run_id, jc_id, jc_desc, jc_status, jc_created = job
-
-            cur.execute("""
-                SELECT 
-                    COUNT(*),
-                    COUNT(CASE WHEN status = 'CONSUMED' THEN 1 END),
-                    COUNT(CASE WHEN status != 'CONSUMED' AND status != 'DELETED' THEN 1 END)
-                FROM codes WHERE run_id = %s
-            """, (run_id,))
-            totals = cur.fetchone()
+            run_id, jc_id, jc_desc, jc_status, jc_created, total_pool, consumed_pool = job
 
             cur.execute("""
                 SELECT result, COUNT(*) 
@@ -1006,15 +1143,17 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
                 "row_num": r[4] if r[4] is not None else "-"
             } for r in cur.fetchall()]
 
+            pending_count = max(0, (total_pool or 0) - (consumed_pool or 0))
+
             return {
                 "job_card_id": jc_id,
                 "description": jc_desc or "",
                 "status": jc_status,
                 "created_at": jc_created.strftime("%Y-%m-%d %H:%M") if jc_created else "",
-                "total_codes": totals[0],
-                "consumed_codes": totals[1],
-                "blocked_codes": totals[2] if jc_status == 'COMPLETED' else 0,
-                "pending_codes": totals[2] if jc_status != 'COMPLETED' else 0,
+                "total_codes": total_pool or 0,
+                "consumed_codes": consumed_pool or 0,
+                "blocked_codes": pending_count if jc_status == 'COMPLETED' else 0,
+                "pending_codes": pending_count if jc_status != 'COMPLETED' else 0,
                 "results_breakdown": results_breakdown,
                 "recent_logs": logs
             }

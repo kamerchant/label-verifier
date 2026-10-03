@@ -20,7 +20,7 @@ def get_connection():
     if db_pool is None:
         if not DATABASE_URL:
             raise RuntimeError("DATABASE_URL environment variable is not set.")
-        db_pool = psycopg2.pool.SimpleConnectionPool(minconn=1, maxconn=20, dsn=DATABASE_URL)
+        db_pool = psycopg2.pool.SimpleConnectionPool(minconn=2, maxconn=25, dsn=DATABASE_URL)
     return db_pool.getconn()
 
 def release_connection(conn):
@@ -39,6 +39,10 @@ def init_db():
                     job_card_id VARCHAR(100) NOT NULL,
                     description TEXT,
                     status VARCHAR(50) DEFAULT 'ACTIVE',
+                    total_codes INTEGER DEFAULT 0,
+                    consumed_codes INTEGER DEFAULT 0,
+                    conflict_count INTEGER DEFAULT 0,
+                    ingestion_progress VARCHAR(50) DEFAULT '0%',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     deleted_by VARCHAR(100),
                     deleted_at TIMESTAMP,
@@ -46,10 +50,16 @@ def init_db():
                 );
             """)
 
-            # Codes Table
+            # Safe database migrations for existing production environments
+            cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS total_codes INTEGER DEFAULT 0;")
+            cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS consumed_codes INTEGER DEFAULT 0;")
+            cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS conflict_count INTEGER DEFAULT 0;")
+            cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS ingestion_progress VARCHAR(50) DEFAULT '0%';")
+
+            # Codes Table (BIGSERIAL primary key handles billions of multi-million batch rows)
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS codes (
-                    id SERIAL PRIMARY KEY,
+                    id BIGSERIAL PRIMARY KEY,
                     run_id INTEGER REFERENCES job_cards(run_id) ON DELETE CASCADE,
                     job_card_id VARCHAR(100) NOT NULL,
                     code_value TEXT NOT NULL,
@@ -61,7 +71,7 @@ def init_db():
             # Scan Logs Table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS scan_logs (
-                    id SERIAL PRIMARY KEY,
+                    id BIGSERIAL PRIMARY KEY,
                     job_card_id VARCHAR(100) NOT NULL,
                     code_scanned TEXT NOT NULL,
                     result VARCHAR(50) NOT NULL,
@@ -109,7 +119,7 @@ def init_db():
                 );
             """)
 
-            # High-Performance Indexes
+            # High-Performance Indexes for 3-4M Rows
             cur.execute("""
                 CREATE INDEX IF NOT EXISTS idx_job_cards_jc_id ON job_cards(job_card_id);
                 CREATE INDEX IF NOT EXISTS idx_job_cards_status ON job_cards(status);
@@ -122,7 +132,7 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_lifecycle_jc ON job_lifecycle_logs(job_card_id);
             """)
 
-            # Ensure default admin account exists
+            # Seed default admin if missing
             cur.execute("SELECT id FROM users WHERE LOWER(username) = 'admin';")
             if not cur.fetchone():
                 admin_hash = hash_password("Admin@123")

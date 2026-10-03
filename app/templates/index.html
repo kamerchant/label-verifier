@@ -21,7 +21,6 @@
             }
         }
 
-        /* --- THEME 1: Titanium Obsidian (Default Dark) --- */
         body {
             background-color: #0d0e11;
             color: #d0d6e0;
@@ -95,7 +94,6 @@
             background-color: #161821 !important;
         }
 
-        /* --- THEME 2: Parchment (Warm Paper Neutral) --- */
         html.theme-parchment body {
             background-color: #f7f5f0;
             color: #2c3531;
@@ -177,7 +175,6 @@
             background-color: #f0ece1 !important;
         }
 
-        /* Status Bar Dynamic Color States */
         .status-state-black {
             background-color: #000000 !important;
             color: #f8fafc !important;
@@ -226,18 +223,15 @@
         .print-brand-box {
             display: none;
         }
-
         .print-timestamp-footer {
             display: none !important;
         }
 
-        /* Clean Full-Width A4 Print Stylesheet */
         @media print {
             @page {
                 size: A4 portrait;
                 margin: 10mm 12mm;
             }
-
             html, body {
                 background: #ffffff !important;
                 color: #0f172a !important;
@@ -251,69 +245,24 @@
                 padding: 0 !important;
                 display: block !important;
             }
-
-            /* Completely remove UI chrome from the print flow */
-            body > header,
-            body > main,
-            body > footer,
-            #login-modal,
-            #pw-modal,
-            #upload-modal,
-            #master-jobs-modal,
-            #user-modal,
-            #custom-alert-modal,
-            #duplicate-warning-modal,
-            #custom-confirm-modal,
-            #admin-reset-pw-modal,
-            #user-admin-pw-modal,
-            #bulk-status-modal,
-            .no-print {
+            body > header, body > main, body > footer, #login-modal, #pw-modal, #upload-modal,
+            #master-jobs-modal, #user-modal, #custom-alert-modal, #duplicate-warning-modal,
+            #custom-confirm-modal, #admin-reset-pw-modal, #user-admin-pw-modal, #bulk-status-modal, .no-print {
                 display: none !important;
-                height: 0 !important;
-                margin: 0 !important;
-                padding: 0 !important;
                 visibility: hidden !important;
             }
-
-            /* Make target printable modal flow naturally at top left */
             .printable-modal:not(.hidden) {
                 display: block !important;
                 position: static !important;
                 width: 100% !important;
-                max-width: 100% !important;
-                min-width: 100% !important;
-                height: auto !important;
-                min-height: 0 !important;
-                max-height: none !important;
-                margin: 0 !important;
-                padding: 0 !important;
                 background: #ffffff !important;
                 box-shadow: none !important;
                 border: none !important;
                 visibility: visible !important;
             }
-
-            .printable-modal:not(.hidden) > div,
-            .printable-modal:not(.hidden) .linear-card {
-                display: block !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                min-width: 100% !important;
-                height: auto !important;
-                min-height: 0 !important;
-                max-height: none !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                background: #ffffff !important;
-                box-shadow: none !important;
-                border: none !important;
-            }
-
             .printable-modal:not(.hidden) * {
                 visibility: visible !important;
             }
-
-            /* Report Brand Header */
             .print-brand-box {
                 display: flex !important;
                 align-items: center !important;
@@ -323,62 +272,33 @@
             .print-brand-logo {
                 height: 26px !important;
                 width: auto !important;
-                object-fit: contain !important;
             }
-
             .modal-title-theme, .table-text-theme {
                 color: #0f172a !important;
             }
-
             .linear-subcard {
                 background: #f8fafc !important;
                 border: 1px solid #cbd5e1 !important;
                 color: #0f172a !important;
-                width: 100% !important;
-                box-sizing: border-box !important;
                 margin-bottom: 10px !important;
                 padding: 8px 10px !important;
-                border-radius: 4px !important;
             }
-
             #report-stats {
                 display: grid !important;
                 grid-template-columns: 1fr 1fr !important;
                 gap: 10px !important;
-                width: 100% !important;
                 margin-bottom: 10px !important;
             }
             #report-stats > div {
                 border: 1px solid #cbd5e1 !important;
                 background: #f8fafc !important;
                 padding: 6px 8px !important;
-                border-radius: 4px !important;
                 text-align: center !important;
             }
-
-            /* Tables full width */
-            .print-table-container,
-            .printable-modal .overflow-y-auto {
-                width: 100% !important;
-                max-width: 100% !important;
-                min-width: 100% !important;
-                height: auto !important;
-                max-height: none !important;
-                overflow: visible !important;
-                border: none !important;
-                margin-bottom: 10px !important;
-            }
-
             table {
                 width: 100% !important;
-                min-width: 100% !important;
-                max-width: 100% !important;
                 font-size: 8.5pt !important;
                 border-collapse: collapse !important;
-                page-break-inside: auto !important;
-            }
-            tr {
-                page-break-inside: avoid !important;
             }
             th, td {
                 padding: 4px 6px !important;
@@ -389,58 +309,23 @@
                 background-color: #f1f5f9 !important;
                 font-weight: bold !important;
             }
-
-            /* QC Report & Lifecycle Audit footer timestamp */
             #report-modal .print-timestamp-footer,
-            #lifecycle-modal .print-timestamp-footer {
+            #lifecycle-modal .print-timestamp-footer,
+            #print-qc-footer-timestamp {
                 display: block !important;
                 visibility: visible !important;
-                position: static !important;
-                width: 100% !important;
                 margin-top: 14px !important;
                 padding-top: 6px !important;
                 border-top: 1px solid #cbd5e1 !important;
                 font-size: 8pt !important;
                 color: #475569 !important;
-                clear: both !important;
-                page-break-before: avoid !important;
             }
-
-            /* Final QC Terminal Print Layout */
             #packing-qc-printable {
                 display: block !important;
                 visibility: visible !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-            #packing-qc-printable-content {
-                display: flex !important;
-                flex-direction: column !important;
-                min-height: 220mm !important;
-                max-height: 250mm !important;
-                box-sizing: border-box !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
             }
             #packing-qc-modal > div > *:not(#packing-qc-printable) {
                 display: none !important;
-            }
-            #print-qc-footer-timestamp {
-                display: block !important;
-                visibility: visible !important;
-                width: 100% !important;
-                margin-top: auto !important;
-                padding-top: 6px !important;
-                border-top: 1px solid #cbd5e1 !important;
-                font-size: 8pt !important;
-                color: #475569 !important;
-                page-break-before: avoid !important;
             }
         }
     </style>
@@ -460,7 +345,6 @@
         </div>
 
         <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto py-0.5 sm:py-0">
-            <!-- Distinct Green Final QC Terminal Action Button -->
             <button onclick="openPackingQCModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap min-h-[34px] flex items-center shadow-md transition-colors">Final QC</button>
             <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-2.5 py-1.5 rounded text-xs font-semibold whitespace-nowrap min-h-[34px] flex items-center">Create Job</button>
             <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-2.5 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center">Job Control Center</button>
@@ -470,7 +354,7 @@
         </div>
     </header>
 
-    <!-- Main Workspace (Scrollable) -->
+    <!-- Main Workspace -->
     <main class="max-w-6xl w-full mx-auto px-3 sm:px-6 py-3 sm:py-4 flex-1 overflow-y-auto flex flex-col gap-3 sm:gap-4">
 
         <!-- Job Context Ribbon, Search Bar, & Action Buttons -->
@@ -485,7 +369,6 @@
                 <p id="header-job-desc" class="text-xs text-slate-400 mt-0.5 truncate">Search active production jobs using the search field.</p>
             </div>
 
-            <!-- Action Buttons Group & Mobile-Optimized Job Search Bar -->
             <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto shrink-0">
                 <div class="flex items-center gap-1.5 shrink-0 overflow-x-auto no-scrollbar py-0.5">
                     <button id="report-btn" onclick="openReportModal()" disabled 
@@ -510,7 +393,7 @@
             </div>
         </div>
 
-        <!-- Metric Figures (Centered with Operators) -->
+        <!-- Metric Figures (Atomic O(1) KPI Counters) -->
         <div class="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2 shrink-0">
             <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center">
                 <span class="text-[11px] text-slate-400 block font-medium">Total Pool</span>
@@ -562,14 +445,13 @@
             </form>
         </div>
 
-        <!-- Verification Stream Table Container with Side Bar -->
+        <!-- Verification Stream Table -->
         <div class="linear-card rounded overflow-hidden flex-1 flex flex-col min-h-[220px]">
             <div class="px-3 py-2.5 border-b border-white/[0.08] flex items-center justify-center text-xs shrink-0 bg-[#12141a]">
                 <span class="text-sm sm:text-base font-bold text-white tracking-wide text-center block">Verification Stream</span>
             </div>
 
             <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
-                <!-- Stream Sidebar Filters -->
                 <div class="w-full md:w-52 bg-black/20 border-b md:border-b-0 md:border-r border-white/[0.08] p-2.5 flex md:flex-col gap-2 shrink-0 text-sm">
                     <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1 mb-0.5 hidden md:block">Filter Stream</span>
                     <button onclick="filterStream('ALL')" id="stream-filter-all" class="flex-1 md:flex-initial text-left px-3 py-2 rounded bg-white/20 text-black font-bold transition-colors hover:bg-white/25 flex justify-between items-center text-sm">
@@ -586,7 +468,6 @@
                     </button>
                 </div>
 
-                <!-- Table Area -->
                 <div class="flex-1 overflow-x-auto overflow-y-auto">
                     <table class="w-full text-left whitespace-nowrap">
                         <thead>
@@ -610,7 +491,7 @@
 
     </main>
 
-    <!-- Footer Information Bar (Pinned) -->
+    <!-- Footer Information Bar -->
     <footer class="border-t px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between text-xs text-slate-300 shrink-0 bg-[#0d0e11] z-40 gap-2">
         <div class="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
             <div class="flex items-center gap-2 shrink-0">
@@ -624,7 +505,6 @@
                 Theme: <span id="theme-name-text" class="table-text-theme font-semibold">Obsidian</span>
             </button>
             <span class="text-slate-600 shrink-0">&middot;</span>
-            <!-- Live System Event Message Output -->
             <div id="footer-sys-msg-box" class="flex items-center gap-1.5 text-xs truncate transition-all">
                 <span id="footer-sys-dot" class="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0"></span>
                 <span id="footer-sys-msg" class="truncate text-slate-400 max-w-[200px] sm:max-w-xs md:max-w-md">System Ready</span>
@@ -634,6 +514,28 @@
             Press <kbd class="bg-[#1e2029] text-white px-1.5 py-0.5 rounded">Enter</kbd> to submit
         </div>
     </footer>
+
+    <!-- Duplicate Warning Modal for Job Creation (Styled Clean Linear Card) -->
+    <div id="duplicate-warning-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
+        <div id="duplicate-modal-card" class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full border border-amber-500/40 shadow-2xl text-center">
+            <h3 id="duplicate-modal-title" class="text-base sm:text-lg font-bold mb-2 text-amber-400">Batch Uniqueness Report</h3>
+            
+            <div class="linear-subcard p-3.5 rounded text-xs mb-5 text-left border border-white/[0.08]">
+                <p id="duplicate-warning-msg" class="leading-relaxed table-text-theme font-medium text-xs sm:text-sm"></p>
+            </div>
+            
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="cancelDuplicateUpload()" id="duplicate-cancel-btn" 
+                        class="linear-button-secondary px-4 py-2 rounded text-xs font-medium min-h-[40px]">
+                    Cancel / Discard
+                </button>
+                <button type="button" onclick="confirmDuplicateUpload()" id="duplicate-proceed-btn" 
+                        class="bg-amber-600 hover:bg-amber-500 text-white px-5 py-2 rounded text-xs font-bold transition-all min-h-[40px] shadow-md flex items-center justify-center">
+                    Proceed Anyway
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Final QC Modal -->
     <div id="packing-qc-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
@@ -664,7 +566,6 @@
                 <span id="packing-qc-detail-text" class="text-xs block"></span>
             </div>
 
-            <!-- Tested Codes Audit Chart / Table -->
             <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded mb-4 no-print">
                 <table class="w-full text-left text-xs whitespace-nowrap">
                     <thead>
@@ -683,19 +584,18 @@
                 </table>
             </div>
 
-            <!-- Printable report container: visible in print, flex container pushes timestamp to page bottom -->
             <div id="packing-qc-printable" class="hidden">
                 <div id="packing-qc-printable-content">
                     <div>
                         <div class="print-brand-box">
-                            <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.style.display='none';">
+                            <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
                         </div>
                         <h3 style="font-size: 14pt; font-weight: bold; text-align: center; margin-bottom: 12px; color: #0f172a;">Final QC Certificate</h3>
                         
                         <div class="linear-subcard" style="margin-bottom: 12px;">
                             <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Job Card:</strong> <span id="print-qc-job"></span></p>
                             <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Description:</strong> <span id="print-qc-desc"></span></p>
-                            <p style="font-size: 9.5pt; margin-bottom: 2px;"><strong>Status:</strong> <span id="print-qc-status">Completed</span></p>
+                            <p style="font-size: 9.5pt; margin-2px;"><strong>Status:</strong> <span id="print-qc-status">Completed</span></p>
                         </div>
 
                         <p style="font-size: 9.5pt; margin-bottom: 10px;"><strong>Total Codes Verified:</strong> <span id="print-qc-count"></span></p>
@@ -779,7 +679,7 @@
         </div>
     </div>
 
-    <!-- User Administration Modal -->
+    <!-- User Management Modal -->
     <div id="user-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
         <div class="linear-card p-4 sm:p-6 rounded-lg max-w-3xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="flex justify-between items-center mb-3 pb-2 border-b border-white/[0.08]">
@@ -789,7 +689,6 @@
                 </div>
             </div>
             
-            <!-- User Staging Form -->
             <form onsubmit="stageNewUser(event)" class="linear-subcard p-4 rounded mb-4 space-y-3 shrink-0">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                     <input type="text" id="new-user-name" placeholder="Username *" required class="linear-input p-2.5 text-xs rounded">
@@ -813,7 +712,6 @@
                 </div>
             </form>
 
-            <!-- Staged Users Table -->
             <div class="flex-1 overflow-y-auto text-xs border border-white/[0.08] rounded mb-3">
                 <table class="w-full text-left">
                     <thead>
@@ -828,7 +726,6 @@
                 </table>
             </div>
 
-            <!-- Bottom Actions Bar: Close and Submit Changes on bottom right -->
             <div class="flex justify-end items-center gap-2 pt-3 border-t border-white/[0.08] shrink-0">
                 <button type="button" id="btn-close-user-modal" onclick="closeUserModal()" class="linear-button-secondary px-4 py-2 rounded text-xs font-medium">Close</button>
                 <button type="button" id="btn-submit-user-changes" onclick="promptUserAdminSubmit()" disabled class="linear-button-primary px-5 py-2 rounded text-xs font-semibold opacity-30 pointer-events-none transition-all flex items-center justify-center">Submit Changes</button>
@@ -836,7 +733,7 @@
         </div>
     </div>
 
-    <!-- User Admin Submit Changes Password Confirmation Modal -->
+    <!-- User Admin Submit Password Modal -->
     <div id="user-admin-pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[85]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/30 shadow-2xl">
             <h3 class="text-base font-bold mb-1 table-text-theme">Confirm Admin Password</h3>
@@ -894,7 +791,6 @@
                     <tbody id="report-log-rows" class="divide-y divide-white/[0.04] table-text-theme text-xs"></tbody>
                 </table>
             </div>
-            <!-- Clean document-flow footer below the table -->
             <div id="print-report-timestamp" class="print-timestamp-footer"></div>
         </div>
     </div>
@@ -935,7 +831,6 @@
                     <tbody id="lifecycle-log-rows" class="divide-y divide-white/[0.04] table-text-theme text-xs"></tbody>
                 </table>
             </div>
-            <!-- Clean document-flow footer below the table -->
             <div id="print-lifecycle-timestamp" class="print-timestamp-footer"></div>
         </div>
     </div>
@@ -949,19 +844,7 @@
         </div>
     </div>
 
-    <!-- Duplicate Warning Modal for Job Creation -->
-    <div id="duplicate-warning-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
-        <div id="duplicate-modal-card" class="p-5 sm:p-6 rounded-lg max-w-sm w-full border shadow-2xl text-center transition-colors">
-            <h3 id="duplicate-modal-title" class="text-base font-bold mb-1">Batch Uniqueness Report</h3>
-            <p id="duplicate-warning-msg" class="text-xs mb-5 leading-relaxed"></p>
-            <div class="flex justify-end gap-2">
-                <button type="button" onclick="cancelDuplicateUpload()" id="duplicate-cancel-btn" class="px-4 py-2 rounded text-xs font-medium min-h-[40px]">Cancel / Stop</button>
-                <button type="button" onclick="confirmDuplicateUpload()" id="duplicate-proceed-btn" class="px-4 py-2 rounded text-xs font-medium min-h-[40px]">Proceed Anyway</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Custom Confirm Modal with Processing Spinner -->
+    <!-- Custom Confirm Modal -->
     <div id="custom-confirm-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-amber-500/35 shadow-2xl text-center">
             <h3 id="custom-confirm-title" class="text-base font-bold mb-1 text-amber-400">Please Verify!</h3>
@@ -973,7 +856,7 @@
         </div>
     </div>
 
-    <!-- Admin Reset Operator Password Modal (Single Password Field, No Admin Password Prompt Here) -->
+    <!-- Admin Reset Password Modal -->
     <div id="admin-reset-pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[80]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/30 shadow-2xl">
             <h3 id="admin-reset-pw-title" class="text-base font-bold mb-1 table-text-theme">Set Operator Password</h3>
@@ -1017,7 +900,7 @@
         </div>
     </div>
 
-    <!-- Modals -->
+    <!-- Login Modal -->
     <div id="login-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full shadow-2xl">
             <div class="flex items-center gap-3 mb-4">
@@ -1041,23 +924,7 @@
         </div>
     </div>
 
-    <div id="auth-confirm-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[70]">
-        <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-amber-500/25 shadow-2xl">
-            <h3 id="auth-confirm-title" class="text-base font-bold mb-1 text-amber-400">Authorization Required</h3>
-            <p id="auth-confirm-subtitle" class="text-xs text-slate-400 mb-4">Enter password to proceed.</p>
-            <form onsubmit="executeAuthorizedAction(event)" class="space-y-3.5">
-                <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Enter password</label>
-                    <input type="password" id="auth-admin-pass" required class="linear-input w-full p-2.5 text-sm rounded focus:border-amber-400">
-                </div>
-                <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="closeAuthModal()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
-                    <button type="submit" id="auth-confirm-btn" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-medium">Authorize</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
+    <!-- Password Modal -->
     <div id="pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full shadow-2xl">
             <h3 id="pw-title" class="text-base font-bold mb-1 table-text-theme">Change Password</h3>
@@ -1079,6 +946,7 @@
         </div>
     </div>
 
+    <!-- Create Job Upload Modal with Progress Bar & Polling -->
     <div id="upload-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full shadow-2xl">
             <h3 class="text-base font-bold mb-3 table-text-theme">Create New Job & Ingest Code Pool</h3>
@@ -1089,15 +957,27 @@
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Job Description (Optional)</label>
-                    <input type="text" id="new-job-desc" placeholder="e.g. 500ml Shampoo labels - 50k run" class="linear-input w-full p-2.5 text-sm rounded">
+                    <input type="text" id="new-job-desc" placeholder="e.g. 500ml Shampoo labels - 3M batch" class="linear-input w-full p-2.5 text-sm rounded">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Batch Data File (CSV / TXT) *</label>
                     <input type="file" id="new-job-file" accept=".csv,.txt" required class="linear-input w-full p-2.5 text-xs rounded text-slate-400">
-                    <p class="text-xs text-slate-500 mt-1">Codes are checked against active and completed jobs.</p>
+                    <p class="text-xs text-slate-500 mt-1">Supports large production runs up to 4 million codes.</p>
                 </div>
+
+                <!-- Live Progress Display -->
+                <div id="upload-progress-box" class="hidden linear-subcard p-3 rounded mt-3 border border-indigo-500/20">
+                    <div class="flex justify-between items-center text-xs mb-1.5">
+                        <span id="upload-status-label" class="text-slate-300 font-medium">Uploading file...</span>
+                        <span id="upload-percentage" class="text-indigo-400 font-bold">0%</span>
+                    </div>
+                    <div class="w-full bg-black/40 rounded-full h-2 overflow-hidden border border-white/[0.08]">
+                        <div id="upload-progress-bar" class="bg-indigo-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+
                 <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="toggleModal('upload-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
+                    <button type="button" id="upload-cancel-btn" onclick="toggleModal('upload-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
                     <button type="submit" id="upload-btn" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold">Create Job</button>
                 </div>
             </form>
@@ -1109,8 +989,6 @@
         let activeJobId = null;
         let activeJobDesc = "";
         let activeJobStatus = null;
-        let pendingAction = null;
-        let targetDeleteJobId = null;
         let targetResetUsername = null;
         let currentMasterTab = 'ALL';
         let rawMasterJobs = [];
@@ -1119,7 +997,10 @@
         let alarmCount = 0;
         let alarmInterval = null;
         let searchDebounceTimer = null;
-        let pendingUploadFormData = null;
+
+        let activeIngestionRunId = null;
+        let activeIngestionJobCardId = null;
+        let ingestionPollTimer = null;
 
         let originalUsers = [];
         let stagedUsers = [];
@@ -1406,13 +1287,9 @@
                 } else {
                     const err = await res.json();
                     let errMsg = "Authentication failed";
-                    if (typeof err.detail === 'string') {
-                        errMsg = err.detail;
-                    } else if (Array.isArray(err.detail)) {
-                        errMsg = err.detail.map(d => d.msg || JSON.stringify(d)).join(', ');
-                    } else if (err.detail) {
-                        errMsg = JSON.stringify(err.detail);
-                    }
+                    if (typeof err.detail === 'string') errMsg = err.detail;
+                    else if (Array.isArray(err.detail)) errMsg = err.detail.map(d => d.msg || JSON.stringify(d)).join(', ');
+                    else if (err.detail) errMsg = JSON.stringify(err.detail);
                     showCustomAlert(errMsg);
                     updateSystemMessage(errMsg, "error");
                 }
@@ -1491,7 +1368,7 @@
                         </div>
                         <div class="text-right shrink-0">
                             <span class="text-[10px] px-1.5 py-0.5 rounded linear-badge-pass">${j.status}</span>
-                            <span class="block text-[10px] text-slate-500 mt-0.5">${j.consumed} / ${j.total}</span>
+                            <span class="block text-[10px] text-slate-500 mt-0.5">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</span>
                         </div>
                     </div>
                 `).join('');
@@ -2165,8 +2042,8 @@
                     } else if (log.action === 'REACTIVATED_AND_UNBLOCKED') {
                         label = "Reactivated & Unblocked";
                         colorClass = "text-amber-400 font-bold";
-                    } else if (log.action === 'COMPLETED_AND_BLOCKED' || log.action === 'COMPLETED') {
-                        label = "Completed & Blocked";
+                    } else if (log.action === 'COMPLETED') {
+                        label = "Completed";
                         colorClass = "text-red-400 font-bold";
                     } else if (log.action === 'DELETED') {
                         label = "Soft Deleted";
@@ -2458,7 +2335,6 @@
             modalSubmitBtn.innerHTML = `${spinnerSvg} Verifying...`;
 
             try {
-                // Verify admin password before making any changes
                 const verifyBody = new FormData();
                 verifyBody.append('username', currentUser ? currentUser.username : '');
                 verifyBody.append('password', adminPass);
@@ -2481,7 +2357,6 @@
                 closeBtn.classList.add('pointer-events-none');
                 btn.innerHTML = `${spinnerSvg} Processing...`;
 
-                // 1. Create staged new users
                 for (const nu of pendingNewUsers) {
                     const body = new FormData();
                     body.append('username', nu.username);
@@ -2498,7 +2373,6 @@
                     }
                 }
 
-                // 2. Apply updates to existing users
                 for (const su of stagedUsers) {
                     const orig = originalUsers.find(o => o.username.toLowerCase() === su.username.toLowerCase());
                     if (!orig) continue;
@@ -2533,7 +2407,6 @@
                         }
                     }
 
-                    // Apply staged password reset if present
                     if (stagedPasswordResets[su.username]) {
                         const body = new FormData();
                         body.append('new_password', stagedPasswordResets[su.username]);
@@ -2616,76 +2489,183 @@
             updateSystemMessage(`Password revision staged for ${targetResetUsername}`, "warn");
         }
 
+        // --------------------------------------------------------------------------------------
+        // ASYNC PROGRESSIVE INGESTION PIPELINE (HANDLES 3-4 MILLION CODES)
+        // --------------------------------------------------------------------------------------
+
         async function uploadJob(e, overrideDuplicate = false) {
             if (e) e.preventDefault();
             const uploadBtn = document.getElementById('upload-btn');
-            const originalText = uploadBtn ? uploadBtn.innerHTML : 'Create Job';
+            const cancelBtn = document.getElementById('upload-cancel-btn');
+            const progressBox = document.getElementById('upload-progress-box');
+            const progressBar = document.getElementById('upload-progress-bar');
+            const percentageLabel = document.getElementById('upload-percentage');
+            const statusLabel = document.getElementById('upload-status-label');
 
             const jcId = document.getElementById('new-job-id').value.trim();
             const desc = document.getElementById('new-job-desc').value.trim();
             const fileInput = document.getElementById('new-job-file');
 
-            if (!overrideDuplicate && (!fileInput.files || fileInput.files.length === 0)) {
+            if (!fileInput.files || fileInput.files.length === 0) {
                 showCustomAlert("Please select a batch CSV or TXT file.");
                 return;
             }
 
-            const body = new FormData();
-            body.append('job_card_id', jcId);
-            body.append('description', desc);
-            if (fileInput.files[0]) {
-                body.append('file', fileInput.files[0]);
-            } else if (pendingUploadFormData && pendingUploadFormData.get('file')) {
-                body.append('file', pendingUploadFormData.get('file'));
-            }
-            body.append('override_duplicate', overrideDuplicate);
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('job_card_id', jcId);
+            formData.append('description', desc);
+            formData.append('file', file);
+            formData.append('override_duplicate', overrideDuplicate ? 'true' : 'false');
 
-            if (uploadBtn) {
-                uploadBtn.disabled = true;
-                uploadBtn.innerHTML = `${spinnerSvg} Ingesting...`;
-            }
+            uploadBtn.disabled = true;
+            cancelBtn.disabled = true;
+            uploadBtn.innerHTML = `${spinnerSvg} Uploading...`;
+            progressBox.classList.remove('hidden');
+            progressBar.style.width = '0%';
+            percentageLabel.innerText = '0%';
+            statusLabel.innerText = 'Streaming file to server...';
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/api/jobs/create', true);
+
+            xhr.upload.onprogress = function(event) {
+                if (event.lengthComputable) {
+                    const percentComplete = Math.round((event.loaded / event.total) * 100);
+                    progressBar.style.width = percentComplete + '%';
+                    percentageLabel.innerText = percentComplete + '%';
+                    if (percentComplete >= 100) {
+                        statusLabel.innerText = 'Processing & ingesting batch in database...';
+                    }
+                }
+            };
+
+            xhr.onload = function() {
+                if (xhr.status === 202) {
+                    const data = JSON.parse(xhr.responseText);
+                    activeIngestionRunId = data.run_id;
+                    activeIngestionJobCardId = data.job_card_id;
+                    statusLabel.innerText = 'Analyzing batch uniqueness across historical records...';
+                    startIngestionPolling(data.run_id);
+                } else {
+                    let errMsg = "Failed to upload batch file.";
+                    try {
+                        const err = JSON.parse(xhr.responseText);
+                        errMsg = err.detail || errMsg;
+                    } catch(e) {}
+                    showCustomAlert(errMsg, "Upload Error");
+                    resetUploadUI();
+                }
+            };
+
+            xhr.onerror = function() {
+                showCustomAlert("Network connection error during file upload.", "Upload Error");
+                resetUploadUI();
+            };
+
+            xhr.send(formData);
+        }
+
+        function startIngestionPolling(runId) {
+            if (ingestionPollTimer) clearInterval(ingestionPollTimer);
+
+            ingestionPollTimer = setInterval(async () => {
+                try {
+                    const res = await fetch(`/api/jobs/${runId}/upload-status`);
+                    if (!res.ok) return;
+                    const data = await res.json();
+
+                    const statusLabel = document.getElementById('upload-status-label');
+                    if (statusLabel && data.progress_message) {
+                        statusLabel.innerText = data.progress_message;
+                    }
+
+                    // 1. DUPLICATE CONFLICT FOUND
+                    if (data.status === 'CONFLICT_DETECTED') {
+                        clearInterval(ingestionPollTimer);
+                        document.getElementById('upload-modal').classList.add('hidden');
+                        resetUploadUI();
+
+                        const warningMsg = `Found ${data.conflict_count.toLocaleString()} conflicting code(s) out of ${data.total_codes.toLocaleString()} total codes in the CSV that already exist in active or completed jobs. Do you want to override and proceed?`;
+                        document.getElementById('duplicate-warning-msg').innerText = warningMsg;
+                        document.getElementById('duplicate-warning-modal').classList.remove('hidden');
+                    }
+                    // 2. COMPLETED SUCCESSFULLY
+                    else if (data.status === 'ACTIVE') {
+                        clearInterval(ingestionPollTimer);
+                        document.getElementById('upload-modal').classList.add('hidden');
+                        resetUploadUI();
+                        document.getElementById('create-job-form').reset();
+
+                        showCustomAlert(`Job Card '${data.job_card_id}' created with ${data.total_codes.toLocaleString()} codes.`, "Success");
+                        updateSystemMessage(`Job Card '${data.job_card_id}' ingested (${data.total_codes.toLocaleString()} codes)`, "success");
+                    }
+                    // 3. FAILED
+                    else if (data.status === 'FAILED') {
+                        clearInterval(ingestionPollTimer);
+                        resetUploadUI();
+                        showCustomAlert(`Ingestion failed: ${data.progress_message}`, "Ingestion Error");
+                    }
+                } catch(e) {
+                    console.error("Polling error", e);
+                }
+            }, 1200);
+        }
+
+        async function confirmDuplicateUpload() {
+            if (!activeIngestionRunId) return;
+
+            const proceedBtn = document.getElementById('duplicate-proceed-btn');
+            const cancelBtn = document.getElementById('duplicate-cancel-btn');
+            const originalText = proceedBtn.innerHTML;
+
+            proceedBtn.disabled = true;
+            cancelBtn.disabled = true;
+            proceedBtn.innerHTML = `${spinnerSvg} Overriding...`;
 
             try {
-                const res = await fetch('/api/jobs/create', { method: 'POST', body });
-                if (res.status === 409) {
-                    const data = await res.json();
-                    pendingUploadFormData = body;
-                    document.getElementById('duplicate-warning-msg').innerText = data.message;
-                    document.getElementById('duplicate-warning-modal').classList.remove('hidden');
-                    return;
-                }
-
+                // Instant 50ms activation of staged batch
+                const res = await fetch(`/api/jobs/${activeIngestionRunId}/proceed-override`, { method: 'POST' });
                 if (res.ok) {
                     const data = await res.json();
-                    toggleModal('upload-modal');
+                    document.getElementById('duplicate-warning-modal').classList.add('hidden');
                     document.getElementById('create-job-form').reset();
-                    pendingUploadFormData = null;
-                    showCustomAlert(`Job Card '${data.job_card_id}' created with ${data.total_extracted.toLocaleString()} codes.`, "Success");
-                    updateSystemMessage(`Job Card '${data.job_card_id}' created (${data.total_extracted.toLocaleString()} codes)`, "success");
+                    activeIngestionRunId = null;
+
+                    showCustomAlert(`Job Card '${data.job_card_id}' created with ${data.total_codes.toLocaleString()} codes.`, "Success");
+                    updateSystemMessage(`Job Card '${data.job_card_id}' activated (${data.total_codes.toLocaleString()} codes)`, "success");
                 } else {
                     const err = await res.json();
-                    showCustomAlert(err.detail || "Failed to create job");
-                    updateSystemMessage(err.detail || "Failed to create job", "error");
+                    showCustomAlert(err.detail || "Failed to override duplicate warning.");
                 }
-            } catch(ex) {
-                showCustomAlert("Network error or upload failed");
-                updateSystemMessage("Job creation network error", "error");
+            } catch(e) {
+                showCustomAlert("Network error while confirming duplicate override.");
             } finally {
-                if (uploadBtn) {
-                    uploadBtn.disabled = false;
-                    uploadBtn.innerHTML = originalText;
-                }
+                proceedBtn.disabled = false;
+                cancelBtn.disabled = false;
+                proceedBtn.innerHTML = originalText;
             }
         }
 
-        function confirmDuplicateUpload() {
+        async function cancelDuplicateUpload() {
+            if (activeIngestionRunId) {
+                await fetch(`/api/jobs/${activeIngestionRunId}/cancel-upload`, { method: 'POST' });
+                activeIngestionRunId = null;
+            }
             document.getElementById('duplicate-warning-modal').classList.add('hidden');
-            uploadJob(null, true);
+            resetUploadUI();
         }
 
-        function cancelDuplicateUpload() {
-            document.getElementById('duplicate-warning-modal').classList.add('hidden');
-            pendingUploadFormData = null;
+        function resetUploadUI() {
+            const uploadBtn = document.getElementById('upload-btn');
+            const cancelBtn = document.getElementById('upload-cancel-btn');
+            const progressBox = document.getElementById('upload-progress-box');
+            if (uploadBtn) {
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = 'Create Job';
+            }
+            if (cancelBtn) cancelBtn.disabled = false;
+            if (progressBox) progressBox.classList.add('hidden');
         }
 
         function toggleSelectAllJobs(master) {
@@ -2744,7 +2724,7 @@
                 if (res.ok) {
                     closeBulkStatusModal();
 
-                    // Live State Synchronization: update the loaded terminal if affected
+                    // Live UI state synchronization for currently loaded job
                     if (activeJobId && checked.includes(activeJobId)) {
                         activeJobStatus = targetStatus;
                         const total = parseInt(document.getElementById('kpi-total').innerText.replace(/,/g, '')) || 0;
@@ -2817,7 +2797,7 @@
             }
         }
 
-        filterMasterJobs = (filterType) => {
+        function filterMasterJobs(filterType) {
             loadMasterJobs(filterType);
         }
 
