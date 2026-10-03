@@ -84,6 +84,12 @@ def startup():
     finally:
         release_connection(conn)
 
+def log_system_event(cur, category: str, job_card_id: str, action: str, performed_by: str, details: str):
+    cur.execute("""
+        INSERT INTO system_audit_logs (category, job_card_id, action, performed_by, details)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (category, job_card_id, action, performed_by, details))
+
 def validate_password_strength(password: str):
     if len(password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters long.")
@@ -385,68 +391,24 @@ def get_global_audit_trail(user: dict = Depends(require_manager_or_admin)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # 1. Fetch Job Lifecycle Logs (Job created, completed, status changes, purges)
             cur.execute("""
-                SELECT job_card_id, action, performed_by, reason, timestamp 
-                FROM job_lifecycle_logs 
+                SELECT category, job_card_id, action, performed_by, details, timestamp 
+                FROM system_audit_logs 
                 ORDER BY timestamp DESC 
                 LIMIT 5000
             """)
-            lifecycle_rows = cur.fetchall()
+            rows = cur.fetchall()
 
-            # 2. Fetch Scan Audit Logs (Verifications, mismatches, duplicates)
-            cur.execute("""
-                SELECT job_card_id, code_scanned, result, scanned_by, scanned_at 
-                FROM scan_logs 
-                ORDER BY scanned_at DESC 
-                LIMIT 5000
-            """)
-            scan_rows = cur.fetchall()
+            events = [{
+                "category": r[0],
+                "job_card_id": r[1] or "-",
+                "activity_type": r[2],
+                "user": r[3] or "System",
+                "details": r[4] or "-",
+                "timestamp": r[5].strftime("%Y-%m-%d %H:%M:%S") if r[5] else ""
+            } for r in rows]
 
-            # 3. Fetch Final QC Packing Logs
-            cur.execute("""
-                SELECT job_card_id, code_scanned, tested_by, tested_at 
-                FROM packing_qc_logs 
-                ORDER BY tested_at DESC 
-                LIMIT 5000
-            """)
-            packing_rows = cur.fetchall()
-
-            events = []
-
-            for r in lifecycle_rows:
-                events.append({
-                    "category": "JOB_LIFECYCLE",
-                    "timestamp": r[4].strftime("%Y-%m-%d %H:%M:%S") if r[4] else "",
-                    "user": r[2] or "System",
-                    "job_card_id": r[0],
-                    "activity_type": r[1],
-                    "details": r[3] or "-"
-                })
-
-            for r in scan_rows:
-                events.append({
-                    "category": "SCAN_VERIFICATION",
-                    "timestamp": r[4].strftime("%Y-%m-%d %H:%M:%S") if r[4] else "",
-                    "user": r[3] or "Operator",
-                    "job_card_id": r[0],
-                    "activity_type": f"SCAN_{r[2]}",
-                    "details": f"Scanned code: {r[1]} [{r[2]}]"
-                })
-
-            for r in packing_rows:
-                events.append({
-                    "category": "FINAL_QC",
-                    "timestamp": r[3].strftime("%Y-%m-%d %H:%M:%S") if r[3] else "",
-                    "user": r[2] or "Operator",
-                    "job_card_id": r[0],
-                    "activity_type": "FINAL_QC_PACK",
-                    "details": f"Tested code for packing: {r[1]}"
-                })
-
-            # Sort globally by timestamp descending
-            events.sort(key=lambda x: x["timestamp"], reverse=True)
-            return {"events": events[:5000]}
+            return {"events": events}
     finally:
         release_connection(conn)
 
@@ -643,6 +605,7 @@ def complete_job(job_card_id: str, user: dict = Depends(get_current_user)):
             
             cur.execute("INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) VALUES (%s, %s, %s, %s)",
                         (job_card_id, "COMPLETED", user["username"], "Marked completed by operator"))
+            log_system_event(cur, "JOB_LIFECYCLE", job_card_id, "COMPLETED", user["username"], "Marked completed by operator")
             conn.commit()
             return {"status": "success"}
     finally:
@@ -683,6 +646,7 @@ def bulk_status_change(
                         "INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) VALUES (%s, %s, %s, %s)",
                         (jc_id, f"STATUS_CHANGED_TO_{target_status}", user["username"], "Status updated in Job Control Center")
                     )
+                    log_system_event(cur, "JOB_LIFECYCLE", jc_id, f"STATUS_CHANGED_TO_{target_status}", user["username"], "Status updated in Job Control Center")
 
             conn.commit()
             return {"status": "success"}
@@ -819,6 +783,7 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) 
                 VALUES (%s, %s, %s, %s)
             """, (job_card_id, "CREATED", username, lifecycle_reason))
+            log_system_event(cur, "JOB_LIFECYCLE", job_card_id, "CREATED", username, lifecycle_reason)
 
             conn.commit()
 
@@ -920,6 +885,7 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) 
                 VALUES (%s, %s, %s, %s)
             """, (job_card_id, "CREATED", username, lifecycle_reason))
+            log_system_event(cur, "JOB_LIFECYCLE", job_card_id, "CREATED", username, lifecycle_reason)
 
             conn.commit()
 
@@ -1097,7 +1063,7 @@ def cancel_upload_job(run_id: int, user: dict = Depends(require_uploader)):
         release_connection(conn)
 
 # --------------------------------------------------------------------------------------
-# SECURE PASSWORD-PROTECTED CONDITIONAL PURGE ENDPOINT
+# SECURE PASSWORD-PROTECTED CONDITIONAL PURGE (LOGS TO PERMANENT system_audit_logs)
 # --------------------------------------------------------------------------------------
 
 @app.post("/api/admin/jobs/{run_id}/purge")
@@ -1109,7 +1075,6 @@ def purge_job(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # Verify admin/manager password
             cur.execute("SELECT password_hash FROM users WHERE LOWER(username) = LOWER(%s)", (user["username"],))
             user_row = cur.fetchone()
             if not user_row or not verify_password(admin_password, user_row[0]):
@@ -1136,6 +1101,8 @@ def purge_job(
                     os.remove(staged_file_path)
                 except OSError:
                     pass
+
+            log_system_event(cur, "JOB_LIFECYCLE", jc_id, "PURGE_JOB", user["username"], f"Purged unused job card '{jc_id}'")
 
             cur.execute("DELETE FROM codes WHERE run_id = %s", (run_id,))
             cur.execute("DELETE FROM packing_qc_logs WHERE job_card_id = %s", (jc_id,))
@@ -1200,6 +1167,7 @@ def packing_qc_verify(
                 INSERT INTO packing_qc_logs (job_card_id, code_scanned, tested_by) 
                 VALUES (%s, %s, %s)
             """, (jc_id, scanned_code, user["username"]))
+            log_system_event(cur, "FINAL_QC", jc_id, "FINAL_QC_PACK", user["username"], f"Tested code for packing: {scanned_code}")
             conn.commit()
 
             return JSONResponse(status_code=200, content={
@@ -1251,6 +1219,7 @@ def verify_code(
                     "INSERT INTO scan_logs (job_card_id, code_scanned, result, scanned_by) VALUES (%s, %s, %s, %s)",
                     (job_card_id, scanned, res, operator)
                 )
+                log_system_event(cur, "SCAN_VERIFICATION", job_card_id, f"SCAN_{res}", operator, f"Scanned code: {scanned} [{res}]")
                 conn.commit()
 
             cur.execute("SELECT MIN(id) FROM codes WHERE run_id = %s", (active_run_id,))

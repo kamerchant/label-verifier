@@ -447,8 +447,6 @@
         <div class="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
             <div class="flex items-center gap-2 shrink-0">
                 <span class="w-2 h-2 rounded-full bg-[#2ed573]"></span>
-                <span class="table-text-theme">Online</span>
-                <span class="text-slate-600">&middot;</span>
                 <button onclick="openGlobalAuditTrailModal()" class="text-indigo-400 hover:text-indigo-300 underline font-semibold cursor-pointer bg-transparent border-none p-0 text-xs transition-colors flex items-center gap-1">
                     <svg class="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
@@ -2956,140 +2954,7 @@
             document.getElementById('duplicate-warning-modal').classList.remove('hidden');
         }
 
-        function purgeJobFromAdmin(runId, jcId) {
-            targetPurgeRunId = runId;
-            targetPurgeJobId = jcId;
-            document.getElementById('purge-admin-password-input').value = '';
-            document.getElementById('purge-modal-subtitle').innerText = `Enter your password to authorize the permanent deletion of Job Card '${jcId}'.`;
-            document.getElementById('purge-admin-pw-modal').classList.remove('hidden');
-            setTimeout(() => {
-                document.getElementById('purge-admin-password-input').focus();
-            }, 100);
-        }
-
-        function closePurgeModal() {
-            targetPurgeRunId = null;
-            targetPurgeJobId = null;
-            document.getElementById('purge-admin-pw-modal').classList.add('hidden');
-            document.getElementById('purge-admin-password-input').value = '';
-        }
-
-        async function executePurgeJobWithPassword(e) {
-            e.preventDefault();
-            const password = document.getElementById('purge-admin-password-input').value;
-            if (!password || !targetPurgeRunId) return;
-
-            const submitBtn = document.getElementById('purge-submit-btn');
-            const originalText = submitBtn.innerHTML;
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = `${spinnerSvg} Purging...`;
-
-            try {
-                const body = new FormData();
-                body.append("admin_password", password);
-
-                const res = await fetch(`/api/admin/jobs/${targetPurgeRunId}/purge`, {
-                    method: 'POST',
-                    body
-                });
-
-                if (res.ok) {
-                    closePurgeModal();
-                    showCustomAlert(`Job Card '${targetPurgeJobId}' successfully purged.`, "Purged");
-                    await loadMasterJobs(currentMasterTab);
-                    updateSystemMessage(`Purged Job Card: ${targetPurgeJobId}`, "success");
-                } else {
-                    const err = await res.json().catch(() => ({}));
-                    showCustomAlert(err.detail || "Purge failed. Invalid password or job has verified scans.");
-                }
-            } catch (ex) {
-                showCustomAlert("Network error while connecting to server.");
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalText;
-            }
-        }
-
-        function toggleSelectAllJobs(master) {
-            const checkboxes = document.querySelectorAll('.job-select-checkbox');
-            checkboxes.forEach(cb => cb.checked = master.checked);
-            updateBulkStatusButtonState();
-        }
-
-        function updateBulkStatusButtonState() {
-            const checked = document.querySelectorAll('.job-select-checkbox:checked');
-            const btn = document.getElementById('btn-bulk-status');
-            if (btn) {
-                if (checked.length > 0) {
-                    btn.disabled = false;
-                    btn.classList.remove('opacity-30', 'pointer-events-none');
-                    btn.innerText = `Update Status (${checked.length})`;
-                } else {
-                    btn.disabled = true;
-                    btn.classList.add('opacity-30', 'pointer-events-none');
-                    btn.innerText = 'Update Job Status';
-                }
-            }
-        }
-
-        function promptBulkStatusChange() {
-            const checked = Array.from(document.querySelectorAll('.job-select-checkbox:checked')).map(cb => cb.value);
-            if (checked.length === 0) return;
-            document.getElementById('bulk-status-subtitle').innerText = `Apply status change to ${checked.length} selected job(s).`;
-            document.getElementById('bulk-status-admin-pass').value = '';
-            document.getElementById('bulk-status-modal').classList.remove('hidden');
-        }
-
-        function closeBulkStatusModal() {
-            document.getElementById('bulk-status-modal').classList.add('hidden');
-            document.getElementById('bulk-status-admin-pass').value = '';
-        }
-
-        async function submitBulkStatusChange(e) {
-            e.preventDefault();
-            const checked = Array.from(document.querySelectorAll('.job-select-checkbox:checked')).map(cb => cb.value);
-            const targetStatus = document.getElementById('bulk-target-status').value;
-            const adminPass = document.getElementById('bulk-status-admin-pass').value;
-            const submitBtn = document.getElementById('bulk-status-submit-btn');
-
-            const originalText = submitBtn.innerHTML;
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = `${spinnerSvg} Updating...`;
-
-            const body = new FormData();
-            body.append('job_card_ids', JSON.stringify(checked));
-            body.append('target_status', targetStatus);
-            body.append('admin_password', adminPass);
-
-            try {
-                const res = await fetch('/api/admin/jobs/bulk-status', { method: 'POST', body });
-                if (res.ok) {
-                    closeBulkStatusModal();
-
-                    if (activeJobId && checked.includes(activeJobId)) {
-                        activeJobStatus = targetStatus;
-                        const total = parseInt(document.getElementById('kpi-total').innerText.replace(/,/g, '')) || 0;
-                        const consumed = parseInt(document.getElementById('kpi-consumed').innerText.replace(/,/g, '')) || 0;
-                        selectJob(activeJobId, escape(activeJobDesc), targetStatus, consumed, total);
-                    }
-
-                    showCustomAlert(`Status updated to ${targetStatus} for selected jobs.`, "Success");
-                    await loadMasterJobs(currentMasterTab);
-                    updateSystemMessage(`Bulk status updated to ${targetStatus} (${checked.length} jobs)`, "success");
-                } else {
-                    const err = await res.json();
-                    showCustomAlert(err.detail || "Bulk status update failed");
-                    updateSystemMessage(err.detail || "Bulk update failed", "error");
-                }
-            } catch(ex) {
-                showCustomAlert("Network error or server unreachable");
-                updateSystemMessage("Bulk update network error", "error");
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalText;
-            }
-        }
-
+        // Master Jobs Modal and Purge Actions
         function toggleModal(id) {
             const el = document.getElementById(id);
             if (el) {
@@ -3103,13 +2968,6 @@
                 if (id === 'upload-modal' && el.classList.contains('hidden')) {
                     clearJobCardAvailabilityError();
                 }
-            }
-        }
-
-        function resetInput() {
-            const input = document.getElementById('barcode-input');
-            if (input && !input.disabled) {
-                input.focus();
             }
         }
 
@@ -3210,7 +3068,7 @@
                     `;
                 } else if (j.status === 'FAILED' || j.status === 'INGESTING' || j.status === 'OVERRIDING') {
                     actionHtml = `
-                        <button onclick="purgeJobFromAdmin(${j.run_id}, '${j.job_card_id}')" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-2 py-1 rounded text-[11px] font-bold">Purge Stuck</button>
+                        <button onclick="purgeJobFromAdmin(${j.run_id}, '${j.job_card_id}')" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-2.5 py-1 rounded text-[11px] font-bold">Purge Stuck</button>
                     `;
                 } else if (consumedNum === 0) {
                     actionHtml = `

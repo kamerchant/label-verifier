@@ -109,6 +109,19 @@ def init_db():
                 );
             """)
 
+            # Permanent System Audit Logs Table (Survives job purges for global audit trail)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS system_audit_logs (
+                    id SERIAL PRIMARY KEY,
+                    category VARCHAR(50) NOT NULL,
+                    job_card_id VARCHAR(100),
+                    action VARCHAR(100) NOT NULL,
+                    performed_by VARCHAR(100),
+                    details TEXT,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+
             # Users Table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
@@ -136,6 +149,7 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_scan_logs_jc_time ON scan_logs(job_card_id, scanned_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_packing_qc_jc ON packing_qc_logs(job_card_id);
                 CREATE INDEX IF NOT EXISTS idx_lifecycle_jc ON job_lifecycle_logs(job_card_id);
+                CREATE INDEX IF NOT EXISTS idx_system_audit_time ON system_audit_logs(timestamp DESC);
             """)
 
             # Seed default admin if missing
