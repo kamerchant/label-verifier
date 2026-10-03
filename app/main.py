@@ -369,31 +369,43 @@ def get_master_jobs_report(status_filter: str = "ALL", user: dict = Depends(requ
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            sql = """
-                SELECT j.run_id, j.job_card_id, j.description, j.status,
-                       COUNT(CASE WHEN c.status != 'DELETED' THEN c.code_value END) as total,
-                       COUNT(CASE WHEN c.status = 'CONSUMED' THEN 1 END) as consumed,
-                       j.created_at,
-                       j.deleted_by,
-                       j.deleted_at,
-                       j.deletion_reason,
-                       (SELECT COUNT(*) FROM packing_qc_logs p WHERE p.job_card_id = j.job_card_id) as packing_qc_count
-                FROM job_cards j
-                LEFT JOIN codes c ON j.run_id = c.run_id
-            """
+            where_clause = ""
             params = []
-            if status_filter == "ACTIVE":
-                sql += " WHERE j.status = 'ACTIVE'"
-            elif status_filter == "INACTIVE":
-                sql += " WHERE j.status = 'INACTIVE'"
-            elif status_filter == "COMPLETED":
-                sql += " WHERE j.status = 'COMPLETED'"
-            elif status_filter == "DELETED":
-                sql += " WHERE j.status = 'DELETED'"
+            if status_filter in ["ACTIVE", "INACTIVE", "COMPLETED", "DELETED"]:
+                where_clause = "WHERE j.status = %s"
+                params.append(status_filter)
 
-            sql += """
-                GROUP BY j.run_id, j.job_card_id, j.description, j.status, j.created_at, j.deleted_by, j.deleted_at, j.deletion_reason
-                ORDER BY j.created_at DESC
+            sql = f"""
+                WITH filtered_jobs AS (
+                    SELECT j.run_id, j.job_card_id, j.description, j.status, 
+                           j.created_at, j.deleted_by, j.deleted_at, j.deletion_reason
+                    FROM job_cards j
+                    {where_clause}
+                )
+                SELECT fj.run_id, fj.job_card_id, fj.description, fj.status,
+                       COALESCE(cs.total, 0) as total,
+                       COALESCE(cs.consumed, 0) as consumed,
+                       fj.created_at,
+                       fj.deleted_by,
+                       fj.deleted_at,
+                       fj.deletion_reason,
+                       COALESCE(pq.packing_qc_count, 0) as packing_qc_count
+                FROM filtered_jobs fj
+                LEFT JOIN (
+                    SELECT c.run_id,
+                           COUNT(CASE WHEN c.status != 'DELETED' THEN 1 END) as total,
+                           COUNT(CASE WHEN c.status = 'CONSUMED' THEN 1 END) as consumed
+                    FROM codes c
+                    WHERE c.run_id IN (SELECT run_id FROM filtered_jobs)
+                    GROUP BY c.run_id
+                ) cs ON fj.run_id = cs.run_id
+                LEFT JOIN (
+                    SELECT p.job_card_id, COUNT(*) as packing_qc_count
+                    FROM packing_qc_logs p
+                    WHERE p.job_card_id IN (SELECT job_card_id FROM filtered_jobs)
+                    GROUP BY p.job_card_id
+                ) pq ON fj.job_card_id = pq.job_card_id
+                ORDER BY fj.created_at DESC
             """
             cur.execute(sql, params)
             rows = cur.fetchall()
@@ -491,10 +503,11 @@ def complete_job(job_card_id: str, user: dict = Depends(get_current_user)):
             row = cur.fetchone()
             if not row:
                 raise HTTPException(status_code=404, detail="Job Card not found")
-            run_id = row[0]
-            cur.execute("UPDATE codes SET status = 'BLOCKED' WHERE run_id = %s AND status = 'PENDING'", (run_id,))
+            
+            # The job_card status 'COMPLETED' directly prevents scanning in /api/verify instantly.
+            # No row-by-row disk rewrites needed.
             cur.execute("INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) VALUES (%s, %s, %s, %s)",
-                        (job_card_id, "COMPLETED_AND_BLOCKED", user["username"], "Marked completed by operator"))
+                        (job_card_id, "COMPLETED", user["username"], "Marked completed by operator"))
             conn.commit()
             return {"status": "success"}
     finally:
@@ -522,6 +535,8 @@ def bulk_status_change(
             if not jc_ids:
                 raise HTTPException(status_code=400, detail="No jobs selected.")
 
+            # Optimized O(1) status switch: Update job_cards table directly.
+            # Individual code rows are preserved without running massive table-locking heap updates.
             for jc_id in jc_ids:
                 cur.execute("""
                     UPDATE job_cards 
@@ -531,15 +546,9 @@ def bulk_status_change(
                 """, (target_status, jc_id))
                 jc_row = cur.fetchone()
                 if jc_row:
-                    run_id = jc_row[0]
-                    if target_status == "COMPLETED":
-                        cur.execute("UPDATE codes SET status = 'BLOCKED' WHERE run_id = %s AND status = 'PENDING'", (run_id,))
-                    elif target_status == "ACTIVE":
-                        cur.execute("UPDATE codes SET status = 'PENDING' WHERE run_id = %s AND status = 'BLOCKED'", (run_id,))
-                    
                     cur.execute(
                         "INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) VALUES (%s, %s, %s, %s)",
-                        (jc_id, f"STATUS_CHANGED_TO_{target_status}", user["username"], "Bulk status update in Job Control Center")
+                        (jc_id, f"STATUS_CHANGED_TO_{target_status}", user["username"], "Status updated in Job Control Center")
                     )
 
             conn.commit()
@@ -605,7 +614,7 @@ async def create_job(
                         conflicting_codes_set.add(m[0])
 
             total_conflicts = len(conflicting_codes_set)
-            if not override_duplicate:
+            if not override_duplicate and total_conflicts > 0:
                 warning_msg = f"There are {total_conflicts} conflicting code(s) out of {total_codes:,} total codes in the CSV. Would you like to proceed with creating this job?"
                 return JSONResponse(status_code=409, content={
                     "status": "duplicate_warning",
@@ -782,7 +791,7 @@ def verify_code(
                 max_consumed_id = max_consumed_row[0] if max_consumed_row and max_consumed_row[0] is not None else 0
                 max_consumed_row_num = (max_consumed_id - min_id + 1) if (max_consumed_id > 0 and min_id > 0) else max_consumed_id
 
-                # STEP 1: CHECK FOR POTENTIAL FILE RESTART (ROW IS LOWER THAN PREVIOUSLY SCANNED ROW)
+                # STEP 1: CHECK FOR POTENTIAL FILE RESTART
                 out_of_sequence = max_consumed_id > 0 and code_id < max_consumed_id
 
                 if out_of_sequence:
@@ -797,7 +806,7 @@ def verify_code(
                             "row_num": row_num
                         })
 
-                    # If PENDING, consume it and trigger warning pass
+                    # Consume unverified code and warn
                     cur.execute("""
                         UPDATE codes 
                         SET status = 'CONSUMED', scanned_at = NOW() 
@@ -815,8 +824,8 @@ def verify_code(
                         "row_num": row_num
                     })
 
-                # STEP 2: NORMAL PENDING SCAN
-                if current_status == 'PENDING':
+                # STEP 2: NORMAL SCAN (Supports both PENDING and any legacy BLOCKED rows)
+                if current_status in ('PENDING', 'BLOCKED'):
                     cur.execute("""
                         UPDATE codes 
                         SET status = 'CONSUMED', scanned_at = NOW() 
@@ -952,8 +961,7 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
                 SELECT 
                     COUNT(*),
                     COUNT(CASE WHEN status = 'CONSUMED' THEN 1 END),
-                    COUNT(CASE WHEN status = 'BLOCKED' THEN 1 END),
-                    COUNT(CASE WHEN status = 'PENDING' THEN 1 END)
+                    COUNT(CASE WHEN status != 'CONSUMED' AND status != 'DELETED' THEN 1 END)
                 FROM codes WHERE run_id = %s
             """, (run_id,))
             totals = cur.fetchone()
@@ -1005,8 +1013,8 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
                 "created_at": jc_created.strftime("%Y-%m-%d %H:%M") if jc_created else "",
                 "total_codes": totals[0],
                 "consumed_codes": totals[1],
-                "blocked_codes": totals[2],
-                "pending_codes": totals[3],
+                "blocked_codes": totals[2] if jc_status == 'COMPLETED' else 0,
+                "pending_codes": totals[2] if jc_status != 'COMPLETED' else 0,
                 "results_breakdown": results_breakdown,
                 "recent_logs": logs
             }
