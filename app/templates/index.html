@@ -492,6 +492,7 @@
                     <button onclick="filterAuditCategory('SCAN_VERIFICATION')" id="audit-filter-scan" class="linear-button-secondary px-3 py-1 rounded text-xs font-semibold">Verifications & Scans</button>
                     <button onclick="filterAuditCategory('JOB_LIFECYCLE')" id="audit-filter-life" class="linear-button-secondary px-3 py-1 rounded text-xs font-semibold">Job Lifecycle & Purges</button>
                     <button onclick="filterAuditCategory('FINAL_QC')" id="audit-filter-qc" class="linear-button-secondary px-3 py-1 rounded text-xs font-semibold">Final QC Packing</button>
+                    <button onclick="filterAuditCategory('USER_MGMT')" id="audit-filter-user" class="linear-button-secondary px-3 py-1 rounded text-xs font-semibold">User Management</button>
                 </div>
             </div>
 
@@ -2134,7 +2135,7 @@
 
         function filterAuditCategory(cat) {
             currentAuditCategory = cat;
-            ['all', 'scan', 'life', 'qc'].forEach(t => {
+            ['all', 'scan', 'life', 'qc', 'user'].forEach(t => {
                 const btn = document.getElementById(`audit-filter-${t}`);
                 if (btn) {
                     btn.className = "linear-button-secondary px-3 py-1 rounded text-xs font-semibold";
@@ -2145,6 +2146,7 @@
             if (cat === 'SCAN_VERIFICATION') activeBtnId = 'audit-filter-scan';
             else if (cat === 'JOB_LIFECYCLE') activeBtnId = 'audit-filter-life';
             else if (cat === 'FINAL_QC') activeBtnId = 'audit-filter-qc';
+            else if (cat === 'USER_MGMT') activeBtnId = 'audit-filter-user';
 
             const activeBtn = document.getElementById(activeBtnId);
             if (activeBtn) {

@@ -88,7 +88,7 @@ def log_system_event(cur, category: str, job_card_id: str, action: str, performe
     cur.execute("""
         INSERT INTO system_audit_logs (category, job_card_id, action, performed_by, details)
         VALUES (%s, %s, %s, %s, %s)
-    """, (category, job_card_id, action, performed_by, details))
+    """, (category, job_card_id or "-", action, performed_by or "System", details))
 
 def validate_password_strength(password: str):
     if len(password) < 8:
@@ -156,12 +156,17 @@ def login(response: Response, username: str = Form(...), password: str = Form(..
             cur.execute("SELECT password_hash, role, must_change_password, can_upload, is_active, username FROM users WHERE LOWER(username) = LOWER(%s)", (clean_username,))
             user = cur.fetchone()
             if not user or not verify_password(password, user[0]):
+                log_system_event(cur, "USER_MGMT", "-", "LOGIN_FAILED", clean_username, f"Failed login attempt for username '{clean_username}'")
+                conn.commit()
                 raise HTTPException(status_code=400, detail="Invalid username or password")
             
             if not user[4]:
                 raise HTTPException(status_code=403, detail="This account has been suspended.")
 
             original_username = user[5]
+            log_system_event(cur, "USER_MGMT", "-", "LOGIN_SUCCESS", original_username, f"User '{original_username}' signed in successfully")
+            conn.commit()
+
             token = signer.dumps({"username": original_username, "role": user[1]})
             response.set_cookie(
                 key="qc_session",
@@ -182,7 +187,19 @@ def login(response: Response, username: str = Form(...), password: str = Form(..
         release_connection(conn)
 
 @app.post("/api/auth/logout")
-def logout(response: Response):
+def logout(response: Response, request: Request):
+    try:
+        user = get_current_user(request)
+        conn = get_connection()
+        try:
+            with conn.cursor() as cur:
+                log_system_event(cur, "USER_MGMT", "-", "LOGOUT", user["username"], f"User '{user['username']}' signed out")
+                conn.commit()
+        finally:
+            release_connection(conn)
+    except Exception:
+        pass
+
     response.delete_cookie("qc_session")
     return {"status": "success"}
 
@@ -231,6 +248,7 @@ def change_password(
                 "UPDATE users SET password_hash = %s, must_change_password = FALSE WHERE LOWER(username) = LOWER(%s)",
                 (new_hash, user["username"])
             )
+            log_system_event(cur, "USER_MGMT", "-", "CHANGE_PASSWORD", user["username"], f"User '{user['username']}' updated their password")
             conn.commit()
             return {"status": "success", "message": "Password updated successfully"}
     finally:
@@ -285,6 +303,7 @@ def create_user(
                    VALUES (%s, %s, %s, TRUE, %s, TRUE, %s, %s)""",
                 (clean_username, pw_hash, role, can_upload, employee_name.strip(), employee_id.strip())
             )
+            log_system_event(cur, "USER_MGMT", "-", "CREATE_USER", admin["username"], f"Created new user account '{clean_username}' with role '{role}'")
             conn.commit()
             return {"status": "success"}
     finally:
@@ -309,6 +328,8 @@ def update_user_role(
                 cur.execute("UPDATE users SET role = %s, can_upload = TRUE WHERE LOWER(username) = LOWER(%s)", (role, username))
             else:
                 cur.execute("UPDATE users SET role = %s WHERE LOWER(username) = LOWER(%s)", (role, username))
+            
+            log_system_event(cur, "USER_MGMT", "-", "UPDATE_ROLE", admin["username"], f"Updated role for user '{username}' to '{role}'")
             conn.commit()
             return {"status": "success"}
     finally:
@@ -339,6 +360,7 @@ def admin_reset_user_password(
                 "UPDATE users SET password_hash = %s, must_change_password = TRUE WHERE LOWER(username) = LOWER(%s)",
                 (new_hash, username)
             )
+            log_system_event(cur, "USER_MGMT", "-", "ADMIN_RESET_PASSWORD", admin["username"], f"Reset password for user '{username}'")
             conn.commit()
             return {"status": "success", "message": f"Password reset for user {username}"}
     finally:
@@ -357,6 +379,8 @@ def toggle_user_active(
     try:
         with conn.cursor() as cur:
             cur.execute("UPDATE users SET is_active = %s WHERE LOWER(username) = LOWER(%s)", (is_active, username))
+            action_label = "ACTIVATE_USER" if is_active else "SUSPEND_USER"
+            log_system_event(cur, "USER_MGMT", "-", action_label, admin["username"], f"{'Activated' if is_active else 'Suspended'} user account '{username}'")
             conn.commit()
             return {"status": "success"}
     finally:
@@ -377,6 +401,7 @@ def toggle_user_upload(
                 raise HTTPException(status_code=400, detail="Admin and QC Manager have permanent job creation rights.")
 
             cur.execute("UPDATE users SET can_upload = %s WHERE LOWER(username) = LOWER(%s)", (can_upload, username))
+            log_system_event(cur, "USER_MGMT", "-", "TOGGLE_UPLOAD_RIGHTS", admin["username"], f"Set job creation permission for '{username}' to {can_upload}")
             conn.commit()
             return {"status": "success"}
     finally:
