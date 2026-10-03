@@ -464,7 +464,7 @@
         </div>
     </footer>
 
-    <!-- Duplicate Warning Modal with 3 Action Choices -->
+    <!-- Duplicate Warning Modal with 3 Action Choices (Cancel, Skip, Override) -->
     <div id="duplicate-warning-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
         <div id="duplicate-modal-card" class="linear-card p-5 sm:p-6 rounded-lg max-w-lg w-full border border-amber-500/40 shadow-2xl text-center">
             <h3 id="duplicate-modal-title" class="text-base sm:text-lg font-bold mb-2 text-amber-400">Batch Uniqueness Report</h3>
@@ -760,7 +760,7 @@
                     <div></div>
                     <div class="flex gap-2">
                         <button onclick="window.print()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Print Log</button>
-                        <button onclick="toggleModal('lifecycle-modal')" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Close</button>
+                        <button onclick="toggleModal('lifecycle-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Close</button>
                     </div>
                 </div>
                 <h3 class="text-2xl font-black modal-title-theme text-center mb-3">LIFE CYCLE AUDIT REPORT</h3>
@@ -1321,7 +1321,7 @@
                         </div>
                         <div class="text-right shrink-0">
                             <span class="text-[10px] px-1.5 py-0.5 rounded linear-badge-pass">${j.status}</span>
-                            <span class="block text-[10px] text-slate-500 mt-0.5">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</span>
+                            <span class="block text-[10px] text-slate-500 mt-0.5">${(Number(j.consumed) || 0).toLocaleString()} / ${(Number(j.total) || 0).toLocaleString()}</span>
                         </div>
                     </div>
                 `).join('');
@@ -1342,7 +1342,7 @@
 
         async function selectJob(id, descEncoded, status, consumed, total) {
             activeJobId = id;
-            activeJobDesc = unescape(descEncoded);
+            activeJobDesc = unescape(descEncoded || "");
             activeJobStatus = status;
             allScans = [];
 
@@ -1375,9 +1375,12 @@
             lifeBtn.disabled = false;
             lifeBtn.classList.remove('opacity-30', 'pointer-events-none');
 
-            const pending = Math.max(0, total - consumed);
-            document.getElementById('kpi-total').innerText = total.toLocaleString();
-            document.getElementById('kpi-consumed').innerText = consumed.toLocaleString();
+            // Initial render of passed arguments
+            const numTotal = Number(total) || 0;
+            const numConsumed = Number(consumed) || 0;
+            const pending = Math.max(0, numTotal - numConsumed);
+            document.getElementById('kpi-total').innerText = numTotal.toLocaleString();
+            document.getElementById('kpi-consumed').innerText = numConsumed.toLocaleString();
             document.getElementById('kpi-pending').innerText = pending.toLocaleString();
 
             if (status === 'ACTIVE') {
@@ -1403,6 +1406,21 @@
                 toggleBtn.innerText = status;
                 toggleBtn.className = "linear-button-secondary text-slate-400 text-xs px-2.5 py-2 rounded min-h-[38px] font-medium shadow-sm whitespace-nowrap opacity-50 pointer-events-none";
                 toggleBtn.disabled = true;
+            }
+
+            // Immediately query fresh accurate metrics to avoid any 0-count display
+            try {
+                const rptRes = await fetch(`/api/reports/${encodeURIComponent(id)}`);
+                if (rptRes.ok) {
+                    const rptData = await rptRes.json();
+                    const liveTotal = Number(rptData.total_codes) || 0;
+                    const liveConsumed = Number(rptData.consumed_codes) || 0;
+                    document.getElementById('kpi-total').innerText = liveTotal.toLocaleString();
+                    document.getElementById('kpi-consumed').innerText = liveConsumed.toLocaleString();
+                    document.getElementById('kpi-pending').innerText = Math.max(0, liveTotal - liveConsumed).toLocaleString();
+                }
+            } catch (e) {
+                console.error("Live KPI fetch error", e);
             }
 
             await loadJobScanStream(id);
@@ -1925,7 +1943,7 @@
 
         async function openReportModal() {
             if (!activeJobId) return;
-            const res = await fetch(`/api/reports/${activeJobId}`);
+            const res = await fetch(`/api/reports/${encodeURIComponent(activeJobId)}`);
             if (!res.ok) return;
             const data = await res.json();
 
@@ -1938,13 +1956,15 @@
             if (rptTs) rptTs.innerText = printTimestampStr;
 
             document.getElementById('download-csv-btn').onclick = () => {
-                window.location.href = `/api/reports/${activeJobId}/csv`;
+                window.location.href = `/api/reports/${encodeURIComponent(activeJobId)}/csv`;
             };
 
             const stats = document.getElementById('report-stats');
+            const totalVal = Number(data.total_codes) || 0;
+            const consumedVal = Number(data.consumed_codes) || 0;
             stats.innerHTML = `
-                <div><span class="block text-xs uppercase font-semibold text-slate-400">TOTAL POOL</span><span class="font-black text-lg table-text-theme">${data.total_codes.toLocaleString()}</span></div>
-                <div><span class="block text-xs uppercase font-semibold text-[#2ed573]">VERIFIED</span><span class="font-black text-lg table-text-theme">${data.consumed_codes.toLocaleString()}</span></div>
+                <div><span class="block text-xs uppercase font-semibold text-slate-400">TOTAL POOL</span><span class="font-black text-lg table-text-theme">${totalVal.toLocaleString()}</span></div>
+                <div><span class="block text-xs uppercase font-semibold text-[#2ed573]">VERIFIED</span><span class="font-black text-lg table-text-theme">${consumedVal.toLocaleString()}</span></div>
             `;
 
             const tbody = document.getElementById('report-log-rows');
@@ -1970,7 +1990,7 @@
 
         async function openLifecycleModal() {
             if (!activeJobId) return;
-            const res = await fetch(`/api/jobs/${activeJobId}/lifecycle-logs`);
+            const res = await fetch(`/api/jobs/${encodeURIComponent(activeJobId)}/lifecycle-logs`);
             if (!res.ok) return;
             const data = await res.json();
 
@@ -2548,7 +2568,9 @@
                         document.getElementById('upload-modal').classList.add('hidden');
                         resetUploadUI();
 
-                        const warningMsg = `Found ${data.conflict_count.toLocaleString()} conflicting code(s) out of ${data.total_codes.toLocaleString()} total codes in the CSV that already exist in active or completed jobs.`;
+                        const conflictCount = Number(data.conflict_count) || 0;
+                        const totalCount = Number(data.total_codes) || 0;
+                        const warningMsg = `Found ${conflictCount.toLocaleString()} conflicting code(s) out of ${totalCount.toLocaleString()} total codes in the CSV that already exist in active or completed jobs.`;
                         document.getElementById('duplicate-warning-msg').innerText = warningMsg;
                         document.getElementById('duplicate-warning-modal').classList.remove('hidden');
                     }
@@ -2560,8 +2582,9 @@
                         document.getElementById('create-job-form').reset();
                         activeIngestionRunId = null;
 
-                        showCustomAlert(`Job Card '${data.job_card_id}' created with ${data.total_codes.toLocaleString()} codes.`, "Success");
-                        updateSystemMessage(`Job Card '${data.job_card_id}' ingested (${data.total_codes.toLocaleString()} codes)`, "success");
+                        const finalCount = Number(data.total_codes) || 0;
+                        showCustomAlert(`Job Card '${data.job_card_id}' created with ${finalCount.toLocaleString()} codes.`, "Success");
+                        updateSystemMessage(`Job Card '${data.job_card_id}' ingested (${finalCount.toLocaleString()} codes)`, "success");
                     }
                     else if (data.status === 'FAILED') {
                         clearInterval(ingestionPollTimer);
@@ -2653,7 +2676,9 @@
 
         function resolveJobFromAdmin(runId, conflictCount, totalCodes) {
             activeIngestionRunId = runId;
-            const warningMsg = `Found ${conflictCount.toLocaleString()} conflicting code(s) out of ${totalCodes.toLocaleString()} total codes in the CSV that already exist in active or completed jobs.`;
+            const cCount = Number(conflictCount) || 0;
+            const tCount = Number(totalCodes) || 0;
+            const warningMsg = `Found ${cCount.toLocaleString()} conflicting code(s) out of ${tCount.toLocaleString()} total codes in the CSV that already exist in active or completed jobs.`;
             document.getElementById('duplicate-warning-msg').innerText = warningMsg;
             toggleModal('master-jobs-modal');
             document.getElementById('duplicate-warning-modal').classList.remove('hidden');
@@ -2868,7 +2893,7 @@
                     `;
                 } else if (j.status === 'FAILED' || j.status === 'INGESTING' || j.status === 'OVERRIDING') {
                     actionHtml = `
-                        <button onclick="purgeJobFromAdmin(${j.run_id}, '${j.job_card_id}')" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-2 py-1 rounded text-[11px] font-bold">Purge Stuck</button>
+                        <button onclick="purgeJobFromAdmin(${j.run_id}, '${j.job_card_id}')" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-2.5 py-1 rounded text-[11px] font-bold">Purge Stuck</button>
                     `;
                 }
 
@@ -2879,6 +2904,9 @@
                 const timeDetail = j.status === 'DELETED' 
                     ? `<span class="text-slate-400 block text-[10px]">Created: ${j.created_at}</span><span class="text-red-400 block text-[10px]">Deleted: ${j.deleted_at}</span>`
                     : `<span class="table-text-theme block text-[10px]">${j.created_at}</span>`;
+
+                const totalNum = Number(j.total) || 0;
+                const consumedNum = Number(j.consumed) || 0;
 
                 return `
                     <tr class="hover:bg-black/[0.02]">
@@ -2902,7 +2930,7 @@
                                 ${j.status}
                             </span>
                         </td>
-                        <td class="p-3 text-right text-xs table-text-theme font-semibold">${j.consumed.toLocaleString()} / ${j.total.toLocaleString()}</td>
+                        <td class="p-3 text-right text-xs table-text-theme font-semibold">${consumedNum.toLocaleString()} / ${totalNum.toLocaleString()}</td>
                         <td class="p-3 text-center">
                             <button onclick="openPackingQCReportFromAdmin('${j.job_card_id}')" class="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded text-xs font-bold transition-colors cursor-pointer">
                                 Verified: ${j.packing_qc_count || 0}

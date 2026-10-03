@@ -51,6 +51,36 @@ def startup():
                     ingestion_progress = 'Interrupted by server restart. You can safely purge or re-upload.'
                 WHERE status IN ('INGESTING', 'OVERRIDING');
             """)
+
+            # Self-healing sync: Repair total_codes and consumed_codes for any jobs showing 0
+            cur.execute("""
+                UPDATE job_cards j
+                SET total_codes = sub.cnt,
+                    consumed_codes = sub.consumed_cnt
+                FROM (
+                    SELECT run_id, 
+                           COUNT(*) as cnt,
+                           COUNT(*) FILTER (WHERE status = 'CONSUMED') as consumed_cnt
+                    FROM codes
+                    GROUP BY run_id
+                ) sub
+                WHERE j.run_id = sub.run_id 
+                  AND (j.total_codes IS NULL OR j.total_codes = 0);
+            """)
+
+            cur.execute("""
+                UPDATE job_cards j
+                SET consumed_codes = sub.consumed_cnt
+                FROM (
+                    SELECT run_id, 
+                           COUNT(*) FILTER (WHERE status = 'CONSUMED') as consumed_cnt
+                    FROM codes
+                    GROUP BY run_id
+                ) sub
+                WHERE j.run_id = sub.run_id 
+                  AND (j.consumed_codes IS NULL OR j.consumed_codes = 0)
+                  AND sub.consumed_cnt > 0;
+            """)
             conn.commit()
     finally:
         release_connection(conn)
@@ -354,7 +384,8 @@ def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
         with conn.cursor() as cur:
             base_sql = """
                 SELECT j.job_card_id, j.description, j.status, j.created_at, j.run_id,
-                       j.total_codes, j.consumed_codes
+                       COALESCE(NULLIF(j.total_codes, 0), (SELECT COUNT(*) FROM codes c WHERE c.run_id = j.run_id), 0) AS total_codes,
+                       COALESCE(NULLIF(j.consumed_codes, 0), (SELECT COUNT(*) FROM codes c WHERE c.run_id = j.run_id AND c.status = 'CONSUMED'), 0) AS consumed_codes
                 FROM job_cards j
                 WHERE j.status IN ('ACTIVE', 'COMPLETED')
             """
@@ -393,8 +424,8 @@ def get_master_jobs_report(status_filter: str = "ALL", user: dict = Depends(requ
 
             sql = f"""
                 SELECT j.run_id, j.job_card_id, j.description, j.status,
-                       j.total_codes as total,
-                       j.consumed_codes as consumed,
+                       COALESCE(NULLIF(j.total_codes, 0), (SELECT COUNT(*) FROM codes c WHERE c.run_id = j.run_id), 0) as total,
+                       COALESCE(NULLIF(j.consumed_codes, 0), (SELECT COUNT(*) FROM codes c WHERE c.run_id = j.run_id AND c.status = 'CONSUMED'), 0) as consumed,
                        j.created_at,
                        j.deleted_by,
                        j.deleted_at,
@@ -579,7 +610,6 @@ def stream_file_to_codes_chunked(cur, conn, run_id: int, target_tsv_path: str, t
                 cur.copy_expert("COPY codes (run_id, job_card_id, code_value, status) FROM STDIN WITH (FORMAT text)", chunk_buffer)
                 inserted += lines_in_buffer
                 pct = int((inserted / max(1, total_to_insert)) * 100)
-                # Pass formatted message as parameter to prevent psycopg2 tuple substitution bugs
                 progress_msg = f"Ingesting: {pct}% ({inserted:,} / {total_to_insert:,} codes)..."
                 cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", (progress_msg, run_id))
                 conn.commit()
@@ -593,6 +623,8 @@ def stream_file_to_codes_chunked(cur, conn, run_id: int, target_tsv_path: str, t
             progress_msg = f"Ingesting: 100% ({inserted:,} / {total_to_insert:,} codes)..."
             cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", (progress_msg, run_id))
             conn.commit()
+    
+    return inserted
 
 def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, is_override: bool, username: str):
     conn = None
@@ -672,17 +704,17 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                     conn.commit()
                     return
 
-            stream_file_to_codes_chunked(cur, conn, run_id, clean_tsv_path, total_codes)
+            actual_inserted = stream_file_to_codes_chunked(cur, conn, run_id, clean_tsv_path, total_codes)
 
-            # Pass '100%' as parameter to avoid psycopg2 tuple parameter substitution bug
             cur.execute("""
                 UPDATE job_cards 
                 SET status = 'ACTIVE', 
+                    total_codes = %s,
                     ingestion_progress = %s 
                 WHERE run_id = %s
-            """, ('100%', run_id))
+            """, (actual_inserted, '100%', run_id))
 
-            lifecycle_reason = f"Full batch ingestion completed ({total_codes:,} codes" + (f", {conflicts_found:,} conflicts overridden)" if is_override else ")")
+            lifecycle_reason = f"Full batch ingestion completed ({actual_inserted:,} codes" + (f", {conflicts_found:,} conflicts overridden)" if is_override else ")")
             cur.execute("""
                 INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) 
                 VALUES (%s, %s, %s, %s)
@@ -769,20 +801,20 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 cur.execute("UPDATE job_cards SET total_codes = %s WHERE run_id = %s", (effective_total, run_id))
                 conn.commit()
 
-            stream_file_to_codes_chunked(cur, conn, run_id, target_tsv, effective_total)
+            actual_inserted = stream_file_to_codes_chunked(cur, conn, run_id, target_tsv, effective_total)
 
-            # Pass '100%' as parameter to prevent psycopg2 tuple index errors
             cur.execute("""
                 UPDATE job_cards 
                 SET status = 'ACTIVE', 
+                    total_codes = %s,
                     ingestion_progress = %s 
                 WHERE run_id = %s
-            """, ('100%', run_id))
+            """, (actual_inserted, '100%', run_id))
 
             if skip_conflicts:
-                lifecycle_reason = f"Batch ingested with conflicts skipped: {effective_total:,} clean codes kept ({conflicts:,} conflicts skipped)"
+                lifecycle_reason = f"Batch ingested with conflicts skipped: {actual_inserted:,} clean codes kept ({conflicts:,} conflicts skipped)"
             else:
-                lifecycle_reason = f"Duplicate conflict overridden: {conflicts:,} duplicates accepted ({effective_total:,} total codes)"
+                lifecycle_reason = f"Duplicate conflict overridden: {conflicts:,} duplicates accepted ({actual_inserted:,} total codes)"
 
             cur.execute("""
                 INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) 
@@ -1273,6 +1305,24 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
                 raise HTTPException(status_code=404, detail="Active Job Card not found")
 
             run_id, jc_id, jc_desc, jc_status, jc_created, total_pool, consumed_pool = job
+
+            # Instant self-healing fallback if total_codes or consumed_codes were 0
+            if not total_pool or total_pool == 0:
+                cur.execute("SELECT COUNT(*) FROM codes WHERE run_id = %s", (run_id,))
+                cnt_r = cur.fetchone()
+                total_pool = cnt_r[0] if cnt_r else 0
+                if total_pool > 0:
+                    cur.execute("UPDATE job_cards SET total_codes = %s WHERE run_id = %s", (total_pool, run_id))
+                    conn.commit()
+
+            if not consumed_pool or consumed_pool == 0:
+                cur.execute("SELECT COUNT(*) FROM codes WHERE run_id = %s AND status = 'CONSUMED'", (run_id,))
+                cons_r = cur.fetchone()
+                real_consumed = cons_r[0] if cons_r else 0
+                if real_consumed > 0:
+                    consumed_pool = real_consumed
+                    cur.execute("UPDATE job_cards SET consumed_codes = %s WHERE run_id = %s", (consumed_pool, run_id))
+                    conn.commit()
 
             cur.execute("""
                 SELECT result, COUNT(*) 
