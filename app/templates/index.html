@@ -541,6 +541,7 @@
                 <div class="flex justify-between items-start no-print mb-2">
                     <div></div>
                     <div class="flex gap-2">
+                        <button onclick="downloadAuditTrailCSV()" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-medium">Download CSV</button>
                         <button onclick="window.print()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Print Report</button>
                         <button onclick="toggleModal('global-audit-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Close</button>
                     </div>
@@ -548,13 +549,20 @@
                 <h3 class="text-xl sm:text-2xl font-extrabold modal-title-theme text-center mb-1">Global Activity Audit Trail</h3>
                 <p class="text-xs modal-subtitle-theme text-center mb-3">Immutable record of all inspection scans, job lifecycles, and user administration events</p>
                 
-                <div class="flex flex-wrap gap-1.5 items-center justify-center no-print pt-1">
-                    <button onclick="filterAuditCategory('ALL')" id="audit-filter-all" class="linear-button-primary px-3 py-1 rounded text-xs font-bold">All Activities</button>
-                    <button onclick="filterAuditCategory('SCAN_VERIFICATION')" id="audit-filter-scan" class="linear-button-secondary px-3 py-1 rounded text-xs font-semibold">Verifications & Scans</button>
-                    <button onclick="filterAuditCategory('JOB_LIFECYCLE')" id="audit-filter-life" class="linear-button-secondary px-3 py-1 rounded text-xs font-semibold">Job Lifecycle & Purges</button>
-                    <button onclick="filterAuditCategory('FINAL_QC')" id="audit-filter-qc" class="linear-button-secondary px-3 py-1 rounded text-xs font-semibold">Final QC Packing</button>
-                    <button onclick="filterAuditCategory('USER_MGMT')" id="audit-filter-user" class="linear-button-secondary px-3 py-1 rounded text-xs font-semibold">User Management</button>
+                                <div class="flex flex-col sm:flex-row items-center justify-between gap-2.5 no-print pt-2">
+                    <div class="flex flex-wrap gap-1.5 items-center">
+                        <button onclick="filterAuditCategory('ALL')" id="audit-filter-all" class="linear-button-primary px-3 py-1 rounded text-xs font-bold">All Activities</button>
+                        <button onclick="filterAuditCategory('SCAN_VERIFICATION')" id="audit-filter-scan" class="linear-button-secondary px-3 py-1 rounded text-xs font-semibold">Verifications & Scans</button>
+                        <button onclick="filterAuditCategory('JOB_LIFECYCLE')" id="audit-filter-life" class="linear-button-secondary px-3 py-1 rounded text-xs font-semibold">Job Lifecycle & Purges</button>
+                        <button onclick="filterAuditCategory('FINAL_QC')" id="audit-filter-qc" class="linear-button-secondary px-3 py-1 rounded text-xs font-semibold">Final QC Packing</button>
+                        <button onclick="filterAuditCategory('USER_MGMT')" id="audit-filter-user" class="linear-button-secondary px-3 py-1 rounded text-xs font-semibold">User Management</button>
+                    </div>
+                    <div class="relative w-full sm:w-64">
+                        <input type="text" id="audit-job-search" oninput="renderGlobalAuditTable()" placeholder="Search by Job Card, user, code..." 
+                               class="linear-input w-full px-3 py-1.5 text-xs rounded placeholder-slate-400">
+                    </div>
                 </div>
+
             </div>
 
             <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded">
@@ -946,7 +954,7 @@
                     <thead>
                         <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0">
                             <th class="px-3.5 py-2.5">Timestamp</th>
-                            <th class="px-3.5 py-2.5">Authorized User</th>
+                            <th class="px-3.5 py-2.5">User</th>
                             <th class="px-3.5 py-2.5">Action Performed</th>
                             <th class="px-3.5 py-2.5">Reason / Details</th>
                         </tr>
@@ -2321,7 +2329,7 @@
             toggleModal('lifecycle-modal');
         }
 
-        async function openGlobalAuditTrailModal() {
+                async function openGlobalAuditTrailModal() {
             try {
                 const res = await fetch('/api/admin/audit-trail');
                 if (!res.ok) {
@@ -2331,6 +2339,10 @@
                 }
                 const data = await res.json();
                 globalAuditEvents = data.events || [];
+                
+                const searchInput = document.getElementById('audit-job-search');
+                if (searchInput) searchInput.value = '';
+
                 filterAuditCategory('ALL');
                 toggleModal('global-audit-modal');
 
@@ -2340,6 +2352,7 @@
                 showCustomAlert("Failed to load global audit trail.");
             }
         }
+
 
         function filterAuditCategory(cat) {
             currentAuditCategory = cat;
@@ -2362,15 +2375,27 @@
 
         function renderGlobalAuditTable() {
             const tbody = document.getElementById('global-audit-rows');
+            const searchVal = (document.getElementById('audit-job-search')?.value || '').toLowerCase().trim();
+
             let filtered = globalAuditEvents;
             if (currentAuditCategory !== 'ALL') {
                 filtered = globalAuditEvents.filter(e => e.category === currentAuditCategory);
             }
 
+            if (searchVal) {
+                filtered = filtered.filter(e => 
+                    (e.job_card_id && e.job_card_id.toLowerCase().includes(searchVal)) ||
+                    (e.user && e.user.toLowerCase().includes(searchVal)) ||
+                    (e.activity_type && e.activity_type.toLowerCase().includes(searchVal)) ||
+                    (e.details && e.details.toLowerCase().includes(searchVal))
+                );
+            }
+
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 italic">No audit records found</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 italic">No audit records matching your search</td></tr>`;
                 return;
             }
+
 
             tbody.innerHTML = filtered.map(e => {
                 let badgeColor = "text-indigo-400 font-semibold";
@@ -3355,6 +3380,62 @@
             }
             checkSession();
         });
+            function downloadAuditTrailCSV() {
+            const searchVal = (document.getElementById('audit-job-search')?.value || '').toLowerCase().trim();
+
+            let filtered = globalAuditEvents;
+            if (currentAuditCategory !== 'ALL') {
+                filtered = globalAuditEvents.filter(e => e.category === currentAuditCategory);
+            }
+
+            if (searchVal) {
+                filtered = filtered.filter(e => 
+                    (e.job_card_id && e.job_card_id.toLowerCase().includes(searchVal)) ||
+                    (e.user && e.user.toLowerCase().includes(searchVal)) ||
+                    (e.activity_type && e.activity_type.toLowerCase().includes(searchVal)) ||
+                    (e.details && e.details.toLowerCase().includes(searchVal))
+                );
+            }
+
+            if (filtered.length === 0) {
+                showCustomAlert("There are no audit records matching your current filter to export.", "No Data");
+                return;
+            }
+
+            const escapeCsv = (val) => {
+                if (val == null) return '""';
+                const str = String(val).replace(/"/g, '""');
+                return `"${str}"`;
+            };
+
+            const headers = ["Timestamp", "User / Inspector", "Job Card", "Activity Type", "Activity Details"];
+            const rows = filtered.map(e => [
+                escapeCsv(e.timestamp),
+                escapeCsv(e.user),
+                escapeCsv(e.job_card_id),
+                escapeCsv(e.activity_type),
+                escapeCsv(e.details)
+            ].join(','));
+
+            const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const fileName = `Audit_Trail_${currentAuditCategory}_${timestamp}.csv`;
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', fileName);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            updateSystemMessage(`Exported ${filtered.length} audit records to CSV`, "success");
+        }
+
+    
     </script>
 </body>
 </html>
