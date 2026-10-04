@@ -43,6 +43,26 @@
             box-shadow: 0 0 0 2px rgba(94, 106, 210, 0.25);
             outline: none;
         }
+
+        /* Compact status dropdown style matching table row typography */
+        .job-status-select {
+            background-color: #12141a;
+            font-size: 11px !important;
+            line-height: 1.2 !important;
+            padding: 2px 6px !important;
+            height: 24px !important;
+            border-radius: 4px;
+            font-weight: 700;
+            cursor: pointer;
+            outline: none;
+            border-width: 1px;
+            transition: border-color 0.15s ease;
+        }
+        html.theme-parchment .job-status-select {
+            background-color: #fcfbfa;
+            color: #1a211e;
+        }
+
         .linear-button-primary {
             background-color: #5e6ad2;
             color: #ffffff;
@@ -487,9 +507,6 @@
             <div class="flex items-center gap-2 shrink-0">
                 <span class="w-2 h-2 rounded-full bg-[#2ed573]"></span>
                 <button onclick="openGlobalAuditTrailModal()" class="text-indigo-400 hover:text-indigo-300 underline font-semibold cursor-pointer bg-transparent border-none p-0 text-xs transition-colors flex items-center gap-1">
-                    <svg class="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
-                    </svg>
                     Audit Trail
                 </button>
                 <span class="text-slate-600">&middot;</span>
@@ -677,7 +694,7 @@
                         <div class="linear-subcard" style="margin-bottom: 12px;">
                             <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Job Card:</strong> <span id="print-qc-job"></span></p>
                             <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Description:</strong> <span id="print-qc-desc"></span></p>
-                            <p style="font-size: 9.5pt; margin-bottom: 2px;"><strong>Status:</strong> <span id="print-qc-status">Completed</span></p>
+                            <p style="font-size: 9.5pt; margin-2px;"><strong>Status:</strong> <span id="print-qc-status">Completed</span></p>
                         </div>
 
                         <p style="font-size: 9.5pt; margin-bottom: 10px;"><strong>Total Codes Verified:</strong> <span id="print-qc-count"></span></p>
@@ -736,7 +753,7 @@
                     <button onclick="filterMasterJobs('DELETED')" id="filter-tab-deleted" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Deleted Only</button>
                 </div>
                 <div class="relative w-full md:w-72">
-                    <input type="text" id="master-job-search" oninput="renderMasterJobsTable()" placeholder="Search in all jobs..." 
+                    <input type="text" id="master-job-search" onfocus="recordJobInteraction()" oninput="recordJobInteraction(); renderMasterJobsTable()" placeholder="Search in all jobs..." 
                            class="linear-input w-full px-3 py-1.5 text-xs rounded placeholder-slate-500">
                 </div>
             </div>
@@ -1084,7 +1101,7 @@
         </div>
     </div>
 
-    <!-- Complete Client Script Layer -->
+    <!-- Client Script Layer -->
     <script>
         function toggleModal(id) {
             const el = document.getElementById(id);
@@ -1151,8 +1168,28 @@
         let confirmCallback = null;
         let confirmActionFn = null;
 
-        // Individual Job Status Dropdown Transition State
+        // Status dropdown state & interaction guard
         let pendingStatusChange = null;
+        let lastMasterJobInteractionTime = 0;
+
+        function recordJobInteraction() {
+            lastMasterJobInteractionTime = Date.now();
+        }
+
+        function isUserInteractingWithMasterJobs() {
+            const authModal = document.getElementById('bulk-status-modal');
+            if (authModal && (!authModal.classList.contains('hidden') && authModal.style.display !== 'none')) {
+                return true;
+            }
+            if (pendingStatusChange) return true;
+
+            if (document.activeElement) {
+                if (document.activeElement.tagName === 'SELECT') return true;
+                if (document.activeElement.id === 'master-job-search') return true;
+            }
+
+            return (Date.now() - lastMasterJobInteractionTime < 6000);
+        }
 
         // Interactive sorting state
         let currentSortCol = 'default';
@@ -1178,7 +1215,7 @@
             return audioCtx;
         }
 
-        const spinnerSvg = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+        const spinnerHtml = '<span class="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-1.5 align-middle"></span>';
 
         function resetInput() {
             const barcodeInput = document.getElementById('barcode-input');
@@ -1290,7 +1327,7 @@
                 const originalText = okBtn.innerHTML;
                 okBtn.disabled = true;
                 if (cancelBtn) cancelBtn.disabled = true;
-                okBtn.innerHTML = `${spinnerSvg} Processing...`;
+                okBtn.innerHTML = `${spinnerHtml} Processing...`;
 
                 try {
                     await confirmActionFn();
@@ -1338,7 +1375,7 @@
         function copyJobCardNumber(text, btnElement) {
             navigator.clipboard.writeText(text).then(() => {
                 const originalHTML = btnElement.innerHTML;
-                btnElement.innerHTML = `<svg class="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>`;
+                btnElement.innerHTML = `<span class="text-green-400 font-bold text-xs">✓</span>`;
                 btnElement.className = "bg-green-500/20 border border-green-500/30 p-1 rounded transition-colors inline-flex items-center justify-center shrink-0 ml-1.5";
                 setTimeout(() => {
                     btnElement.innerHTML = originalHTML;
@@ -1483,7 +1520,7 @@
             const loginBtn = document.getElementById('login-submit-btn');
             const originalText = loginBtn.innerHTML;
             loginBtn.disabled = true;
-            loginBtn.innerHTML = `${spinnerSvg} Signing In...`;
+            loginBtn.innerHTML = `${spinnerHtml} Signing In...`;
 
             const body = new FormData();
             body.append("username", document.getElementById('login-user').value);
@@ -1514,7 +1551,7 @@
             const pwBtn = document.getElementById('pw-submit-btn');
             const originalText = pwBtn.innerHTML;
             pwBtn.disabled = true;
-            pwBtn.innerHTML = `${spinnerSvg} Saving...`;
+            pwBtn.innerHTML = `${spinnerHtml} Saving...`;
 
             const body = new FormData();
             body.append("old_password", document.getElementById('pw-current').value);
@@ -2095,7 +2132,7 @@
 
             const originalBtnText = submitBtn.innerHTML;
             submitBtn.disabled = true;
-            submitBtn.innerHTML = `${spinnerSvg} Verifying...`;
+            submitBtn.innerHTML = `${spinnerHtml} Verifying...`;
 
             jcInput.disabled = true;
             unlockBtn.classList.remove('hidden');
@@ -2377,7 +2414,7 @@
             const submitBtn = document.getElementById('purge-submit-btn');
             const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
-            submitBtn.innerHTML = `${spinnerSvg} Purging...`;
+            submitBtn.innerHTML = `${spinnerHtml} Purging...`;
 
             try {
                 const body = new FormData();
@@ -2427,10 +2464,12 @@
             });
         }
 
-        // Direct Row Dropdown Status Change Logic
+        // Direct Row Dropdown Status Change
         function handleJobStatusDropdownChange(selectEl, jobCardId, previousStatus) {
             const newStatus = selectEl.value;
             if (newStatus === previousStatus) return;
+
+            recordJobInteraction();
 
             pendingStatusChange = {
                 selectEl: selectEl,
@@ -2455,8 +2494,10 @@
         function cancelJobStatusChange() {
             if (pendingStatusChange && pendingStatusChange.selectEl) {
                 pendingStatusChange.selectEl.value = pendingStatusChange.previousStatus;
+                pendingStatusChange.selectEl.blur();
             }
             pendingStatusChange = null;
+            lastMasterJobInteractionTime = 0;
             toggleModal('bulk-status-modal');
             const passInput = document.getElementById('bulk-status-admin-pass');
             if (passInput) passInput.value = '';
@@ -2473,7 +2514,7 @@
             const submitBtn = document.getElementById('bulk-status-submit-btn');
             const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
-            submitBtn.innerHTML = `${spinnerSvg} Updating...`;
+            submitBtn.innerHTML = `${spinnerHtml} Updating...`;
 
             try {
                 const body = new FormData();
@@ -2487,6 +2528,7 @@
                     const passInput = document.getElementById('bulk-status-admin-pass');
                     if (passInput) passInput.value = '';
                     pendingStatusChange = null;
+                    lastMasterJobInteractionTime = 0;
 
                     showCustomAlert(`Job Card '${jobCardId}' status updated to ${newStatus}.`, "Status Updated");
                     updateSystemMessage(`Job Card ${jobCardId} updated to ${newStatus}`, "success");
@@ -2499,12 +2541,14 @@
                     const passInput = document.getElementById('bulk-status-admin-pass');
                     if (passInput) passInput.value = '';
                     pendingStatusChange = null;
+                    lastMasterJobInteractionTime = 0;
                 }
             } catch (ex) {
                 showCustomAlert("Network error while connecting to server.");
                 if (selectEl) selectEl.value = previousStatus;
                 toggleModal('bulk-status-modal');
                 pendingStatusChange = null;
+                lastMasterJobInteractionTime = 0;
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalText;
@@ -2712,7 +2756,7 @@
             const modalSubmitBtn = document.getElementById('user-admin-pw-confirm-btn');
             const originalModalBtnText = modalSubmitBtn.innerHTML;
             modalSubmitBtn.disabled = true;
-            modalSubmitBtn.innerHTML = `${spinnerSvg} Verifying...`;
+            modalSubmitBtn.innerHTML = `${spinnerHtml} Verifying...`;
 
             try {
                 const verifyBody = new FormData();
@@ -2731,7 +2775,7 @@
 
                 const btn = document.getElementById('btn-submit-user-changes');
                 btn.disabled = true;
-                btn.innerHTML = `${spinnerSvg} Processing...`;
+                btn.innerHTML = `${spinnerHtml} Processing...`;
 
                 for (const nu of pendingNewUsers) {
                     const body = new FormData();
@@ -2891,7 +2935,7 @@
 
             uploadBtn.disabled = true;
             cancelBtn.disabled = true;
-            uploadBtn.innerHTML = `${spinnerSvg} Uploading...`;
+            uploadBtn.innerHTML = `${spinnerHtml} Uploading...`;
             progressBox.classList.remove('hidden');
             progressBar.style.width = '0%';
             percentageLabel.innerText = '0%';
@@ -2981,7 +3025,7 @@
 
             const activeBtn = skipConflicts ? skipBtn : proceedBtn;
             const originalText = activeBtn ? activeBtn.innerHTML : '';
-            if (activeBtn) activeBtn.innerHTML = `${spinnerSvg} Processing...`;
+            if (activeBtn) activeBtn.innerHTML = `${spinnerHtml} Processing...`;
 
             if (progressBox) progressBox.classList.remove('hidden');
             if (progressBar) progressBar.style.width = '10%';
@@ -3117,18 +3161,19 @@
             if (masterJobsPollTimer) clearInterval(masterJobsPollTimer);
             masterJobsPollTimer = setInterval(async () => {
                 const modal = document.getElementById('master-jobs-modal');
-                if (!modal || modal.classList.contains('hidden')) {
+                if (!modal || modal.classList.contains('hidden') || modal.style.display === 'none') {
                     clearInterval(masterJobsPollTimer);
                     masterJobsPollTimer = null;
                     return;
                 }
-                // Pause background refresh if authorization modal is currently open
-                const authModal = document.getElementById('bulk-status-modal');
-                if (authModal && !authModal.classList.contains('hidden')) {
+
+                // Pause refresh if user is clicking or interacting with dropdowns
+                if (isUserInteractingWithMasterJobs()) {
                     return;
                 }
+
                 await loadMasterJobs(currentMasterTab, false);
-            }, 3000);
+            }, 4000);
         }
 
         async function loadMasterJobs(filterType, showLoadingError = true) {
@@ -3204,20 +3249,22 @@
                 const consumedNum = Number(j.consumed) || 0;
                 const conflictCount = Number(j.conflict_count) || 0;
 
-                // Status dropdown or static badge
+                // Status dropdown (compact styled) or static badge
                 let statusCellHtml = '';
                 if (['ACTIVE', 'INACTIVE', 'COMPLETED'].includes(j.status)) {
-                    let selectBorderColor = 'border-emerald-500/35 text-emerald-300';
-                    if (j.status === 'INACTIVE') selectBorderColor = 'border-amber-500/35 text-amber-300';
-                    else if (j.status === 'COMPLETED') selectBorderColor = 'border-blue-500/35 text-blue-300';
+                    let selectBorderColor = 'border-emerald-500/50 text-emerald-400';
+                    if (j.status === 'INACTIVE') selectBorderColor = 'border-amber-500/50 text-amber-400';
+                    else if (j.status === 'COMPLETED') selectBorderColor = 'border-blue-500/50 text-blue-400';
 
                     statusCellHtml = `
                         <select id="status-select-${j.job_card_id}"
-                                onchange="handleJobStatusDropdownChange(this, '${j.job_card_id}', '${j.status}')"
-                                class="linear-input text-xs px-2 py-1 rounded font-bold cursor-pointer ${selectBorderColor}">
-                            <option value="ACTIVE" class="bg-[#12141a] text-emerald-400 font-bold" ${j.status === 'ACTIVE' ? 'selected' : ''}>ACTIVE</option>
-                            <option value="INACTIVE" class="bg-[#12141a] text-amber-400 font-bold" ${j.status === 'INACTIVE' ? 'selected' : ''}>INACTIVE</option>
-                            <option value="COMPLETED" class="bg-[#12141a] text-blue-400 font-bold" ${j.status === 'COMPLETED' ? 'selected' : ''}>COMPLETED</option>
+                                onfocus="recordJobInteraction()"
+                                onmousedown="recordJobInteraction()"
+                                onchange="recordJobInteraction(); handleJobStatusDropdownChange(this, '${j.job_card_id}', '${j.status}')"
+                                class="job-status-select ${selectBorderColor}">
+                            <option value="ACTIVE" class="bg-[#12141a] text-emerald-400" ${j.status === 'ACTIVE' ? 'selected' : ''}>ACTIVE</option>
+                            <option value="INACTIVE" class="bg-[#12141a] text-amber-400" ${j.status === 'INACTIVE' ? 'selected' : ''}>INACTIVE</option>
+                            <option value="COMPLETED" class="bg-[#12141a] text-blue-400" ${j.status === 'COMPLETED' ? 'selected' : ''}>COMPLETED</option>
                         </select>
                     `;
                 } else {
@@ -3278,7 +3325,7 @@
                             <div class="inline-flex items-center gap-1.5">
                                 <span class="truncate cursor-pointer hover:underline text-indigo-400" onclick="toggleModal('master-jobs-modal'); selectJob('${j.job_card_id}', '${encodeURIComponent(j.description || '')}', '${j.status}', ${j.consumed}, ${j.total});">${j.job_card_id}</span>
                                 <button onclick="copyJobCardNumber('${j.job_card_id}', this)" class="linear-button-secondary p-1 rounded inline-flex items-center justify-center">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                    <span class="text-[10px] leading-none text-slate-400">📋</span>
                                 </button>
                             </div>
                         </td>
