@@ -733,7 +733,7 @@
                     <button onclick="filterMasterJobs('ACTIVE')" id="filter-tab-active" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Active Only</button>
                     <button onclick="filterMasterJobs('INACTIVE')" id="filter-tab-inactive" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Inactive Only</button>
                     <button onclick="filterMasterJobs('COMPLETED')" id="filter-tab-completed" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Completed Only</button>
-                    <button onclick="filterMasterJobs('STUCK')" id="filter-tab-stuck" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Pending & Conflicts</button>
+                    <button onclick="filterMasterJobs('STUCK')" id="filter-tab-stuck" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Pending</button>
                     <button onclick="filterMasterJobs('DELETED')" id="filter-tab-deleted" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Deleted Only</button>
                 </div>
                 <div class="relative w-full md:w-72">
@@ -747,13 +747,27 @@
                     <thead>
                         <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0 z-10">
                             <th class="px-3.5 py-2.5 w-10 text-center"><input type="checkbox" id="select-all-jobs" onclick="toggleSelectAllJobs(this)"></th>
-                            <th class="px-3.5 py-2.5">Job Card</th>
-                            <th class="px-3.5 py-2.5">Description</th>
-                            <th class="px-3.5 py-2.5">Timestamps</th>
-                            <th class="px-3.5 py-2.5 text-center">Status</th>
-                            <th class="px-3.5 py-2.5 text-right">Codes Verified</th>
-                            <th class="px-3.5 py-2.5 text-center">Conflicts</th>
-                            <th class="px-3.5 py-2.5 text-center">Final QC</th>
+                            <th class="px-3.5 py-2.5 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('job_card_id')">
+                                Job Card <span id="sort-indicator-job_card_id" class="text-[10px] text-slate-400"></span>
+                            </th>
+                            <th class="px-3.5 py-2.5 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('description')">
+                                Description <span id="sort-indicator-description" class="text-[10px] text-slate-400"></span>
+                            </th>
+                            <th class="px-3.5 py-2.5 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('created_at')">
+                                Timestamps <span id="sort-indicator-created_at" class="text-[10px] text-slate-400"></span>
+                            </th>
+                            <th class="px-3.5 py-2.5 text-center cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('status')">
+                                Status <span id="sort-indicator-status" class="text-[10px] text-slate-400"></span>
+                            </th>
+                            <th class="px-3.5 py-2.5 text-right cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('consumed')">
+                                Codes Verified <span id="sort-indicator-consumed" class="text-[10px] text-slate-400"></span>
+                            </th>
+                            <th class="px-3.5 py-2.5 text-center cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('conflict_count')">
+                                Conflicts <span id="sort-indicator-conflict_count" class="text-[10px] text-slate-400"></span>
+                            </th>
+                            <th class="px-3.5 py-2.5 text-center cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('packing_qc_count')">
+                                Final QC <span id="sort-indicator-packing_qc_count" class="text-[10px] text-slate-400"></span>
+                            </th>
                             <th class="px-3.5 py-2.5 text-center">Action</th>
                         </tr>
                     </thead>
@@ -1092,9 +1106,13 @@
             } else {
                 el.classList.add('hidden');
                 el.style.display = 'none';
-                if (id === 'master-jobs-modal' && masterJobsPollTimer) {
-                    clearInterval(masterJobsPollTimer);
-                    masterJobsPollTimer = null;
+                if (id === 'master-jobs-modal') {
+                    if (masterJobsPollTimer) {
+                        clearInterval(masterJobsPollTimer);
+                        masterJobsPollTimer = null;
+                    }
+                    selectedJobCardIds.clear();
+                    updateBulkStatusButtonState();
                 }
                 if (id === 'upload-modal') {
                     clearJobCardAvailabilityError();
@@ -1109,8 +1127,8 @@
                 modal.style.display = 'flex';
                 const searchEl = document.getElementById('master-job-search');
                 if (searchEl) searchEl.value = "";
-                const selectAll = document.getElementById('select-all-jobs');
-                if (selectAll) selectAll.checked = false;
+                selectedJobCardIds.clear();
+                updateBulkStatusButtonState();
                 await loadMasterJobs('ALL');
                 startMasterJobsAutoRefresh();
             }
@@ -1146,6 +1164,22 @@
 
         let confirmCallback = null;
         let confirmActionFn = null;
+
+        // Persistent selection and interactive sorting state
+        let selectedJobCardIds = new Set();
+        let currentSortCol = 'default';
+        let currentSortAsc = true;
+
+        const statusUrgencyRank = {
+            'CONFLICT_DETECTED': 1,
+            'INGESTING': 2,
+            'OVERRIDING': 3,
+            'FAILED': 4,
+            'ACTIVE': 5,
+            'INACTIVE': 6,
+            'COMPLETED': 7,
+            'DELETED': 8
+        };
 
         let audioCtx = null;
         function getAudioContext() {
@@ -2379,31 +2413,81 @@
             }
         }
 
+        // Selection Handlers (Persistent across auto-refreshes)
+        function toggleJobSelection(jobCardId, isChecked) {
+            if (isChecked) {
+                selectedJobCardIds.add(jobCardId);
+            } else {
+                selectedJobCardIds.delete(jobCardId);
+            }
+            updateBulkStatusButtonState();
+        }
+
         function toggleSelectAllJobs(masterCheckbox) {
             const checkboxes = document.querySelectorAll('.job-select-checkbox');
-            checkboxes.forEach(cb => { cb.checked = masterCheckbox.checked; });
+            checkboxes.forEach(cb => {
+                cb.checked = masterCheckbox.checked;
+                if (masterCheckbox.checked) {
+                    selectedJobCardIds.add(cb.value);
+                } else {
+                    selectedJobCardIds.delete(cb.value);
+                }
+            });
             updateBulkStatusButtonState();
         }
 
         function updateBulkStatusButtonState() {
-            const checkboxes = document.querySelectorAll('.job-select-checkbox:checked');
             const btn = document.getElementById('btn-bulk-status');
+            const selectAll = document.getElementById('select-all-jobs');
+            const checkboxes = document.querySelectorAll('.job-select-checkbox');
+
             if (btn) {
-                if (checkboxes.length > 0) {
+                if (selectedJobCardIds.size > 0) {
                     btn.disabled = false;
                     btn.classList.remove('opacity-30', 'pointer-events-none');
+                    btn.innerText = `Update Status (${selectedJobCardIds.size})`;
                 } else {
                     btn.disabled = true;
                     btn.classList.add('opacity-30', 'pointer-events-none');
+                    btn.innerText = "Update Job Status";
                 }
+            }
+
+            if (selectAll && checkboxes.length > 0) {
+                selectAll.checked = Array.from(checkboxes).every(cb => selectedJobCardIds.has(cb.value));
             }
         }
 
-        function promptBulkStatusChange() {
-            const checkboxes = document.querySelectorAll('.job-select-checkbox:checked');
-            if (checkboxes.length === 0) return;
+        // Clickable Table Headers Sorting
+        function sortMasterJobs(col) {
+            if (currentSortCol === col) {
+                currentSortAsc = !currentSortAsc;
+            } else {
+                currentSortCol = col;
+                currentSortAsc = true;
+            }
+            updateSortIndicators();
+            renderMasterJobsTable();
+        }
 
-            document.getElementById('bulk-status-subtitle').innerText = `Update status for ${checkboxes.length} selected job(s). Enter your password to authorize.`;
+        function updateSortIndicators() {
+            const cols = ['job_card_id', 'description', 'created_at', 'status', 'consumed', 'conflict_count', 'packing_qc_count'];
+            cols.forEach(c => {
+                const el = document.getElementById(`sort-indicator-${c}`);
+                if (!el) return;
+                if (currentSortCol === c) {
+                    el.innerText = currentSortAsc ? '▲' : '▼';
+                    el.className = 'text-[10px] text-indigo-400 font-bold ml-0.5';
+                } else {
+                    el.innerText = '';
+                }
+            });
+        }
+
+        function promptBulkStatusChange() {
+            if (selectedJobCardIds.size === 0) return;
+
+            document.getElementById('bulk-status-subtitle').innerText = `Update status for ${selectedJobCardIds.size} selected job(s). Enter your password to authorize.`;
             document.getElementById('bulk-status-admin-pass').value = '';
             toggleModal('bulk-status-modal');
             setTimeout(() => document.getElementById('bulk-status-admin-pass').focus(), 100);
@@ -2420,9 +2504,7 @@
             const targetStatus = document.getElementById('bulk-target-status').value;
             if (!password) return;
 
-            const checkboxes = document.querySelectorAll('.job-select-checkbox:checked');
-            const jobCardIds = Array.from(checkboxes).map(cb => cb.value);
-
+            const jobCardIds = Array.from(selectedJobCardIds);
             const submitBtn = document.getElementById('bulk-status-submit-btn');
             const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
@@ -2437,6 +2519,7 @@
                 const res = await fetch('/api/admin/jobs/bulk-status', { method: 'POST', body });
                 if (res.ok) {
                     closeBulkStatusModal();
+                    selectedJobCardIds.clear();
                     showCustomAlert(`Successfully updated ${jobCardIds.length} job(s) to ${targetStatus}.`, "Status Updated");
                     await loadMasterJobs(currentMasterTab);
                     updateSystemMessage(`Updated ${jobCardIds.length} job(s) status to ${targetStatus}`, "success");
@@ -2449,6 +2532,7 @@
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalText;
+                updateBulkStatusButtonState();
             }
         }
 
@@ -3093,11 +3177,42 @@
 
         function renderMasterJobsTable() {
             const query = (document.getElementById('master-job-search').value || "").toLowerCase().trim();
-            const filtered = rawMasterJobs.filter(j => 
+            let filtered = rawMasterJobs.filter(j => 
                 j.job_card_id.toLowerCase().includes(query) ||
                 (j.description && j.description.toLowerCase().includes(query)) ||
                 (j.status && j.status.toLowerCase().includes(query))
             );
+
+            // Sorting handler
+            if (currentSortCol === 'default') {
+                // Default: Urgent status priority, then newest created_at DESC
+                filtered.sort((a, b) => {
+                    const rankA = statusUrgencyRank[a.status] || 99;
+                    const rankB = statusUrgencyRank[b.status] || 99;
+                    if (rankA !== rankB) return rankA - rankB;
+                    return (b.created_at || '').localeCompare(a.created_at || '');
+                });
+            } else {
+                filtered.sort((a, b) => {
+                    let valA = a[currentSortCol];
+                    let valB = b[currentSortCol];
+
+                    if (currentSortCol === 'status') {
+                        valA = statusUrgencyRank[a.status] || 99;
+                        valB = statusUrgencyRank[b.status] || 99;
+                    } else if (typeof valA === 'number' || typeof valB === 'number') {
+                        valA = Number(valA) || 0;
+                        valB = Number(valB) || 0;
+                    } else {
+                        valA = (valA || '').toString().toLowerCase();
+                        valB = (valB || '').toString().toLowerCase();
+                    }
+
+                    if (valA < valB) return currentSortAsc ? -1 : 1;
+                    if (valA > valB) return currentSortAsc ? 1 : -1;
+                    return 0;
+                });
+            }
 
             const tbody = document.getElementById('master-jobs-rows');
             if (filtered.length === 0) {
@@ -3162,11 +3277,14 @@
                     statusDisplay += `<span class="block text-[9px] text-slate-400 font-normal truncate max-w-[140px]">${j.ingestion_progress}</span>`;
                 }
 
+                const isChecked = selectedJobCardIds.has(j.job_card_id);
+                const checkboxHtml = (j.status !== 'DELETED' && j.status !== 'FAILED')
+                    ? `<input type="checkbox" value="${j.job_card_id}" ${isChecked ? 'checked' : ''} onchange="toggleJobSelection('${j.job_card_id}', this.checked)" class="job-select-checkbox rounded w-4 h-4 cursor-pointer">`
+                    : '';
+
                 return `
                     <tr class="hover:bg-black/[0.02]">
-                        <td class="p-3 text-center">
-                            ${(j.status !== 'DELETED' && j.status !== 'FAILED') ? `<input type="checkbox" value="${j.job_card_id}" onchange="updateBulkStatusButtonState()" class="job-select-checkbox rounded w-4 h-4 cursor-pointer">` : ''}
-                        </td>
+                        <td class="p-3 text-center">${checkboxHtml}</td>
                         <td class="p-3 font-bold table-text-theme">
                             <div class="inline-flex items-center gap-1.5">
                                 <span class="truncate cursor-pointer hover:underline text-indigo-400" onclick="toggleModal('master-jobs-modal'); selectJob('${j.job_card_id}', '${encodeURIComponent(j.description || '')}', '${j.status}', ${j.consumed}, ${j.total});">${j.job_card_id}</span>
@@ -3189,6 +3307,7 @@
                     </tr>
                 `;
             }).join('');
+
             updateBulkStatusButtonState();
         }
 

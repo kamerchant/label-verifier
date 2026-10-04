@@ -861,7 +861,19 @@ def get_master_jobs_report(status_filter: str = "ALL", user: dict = Depends(requ
                     GROUP BY p.job_card_id
                 ) pq ON j.job_card_id = pq.job_card_id
                 {where_clause}
-                ORDER BY j.created_at DESC
+                ORDER BY 
+                    CASE j.status
+                        WHEN 'CONFLICT_DETECTED' THEN 1
+                        WHEN 'INGESTING' THEN 2
+                        WHEN 'OVERRIDING' THEN 3
+                        WHEN 'FAILED' THEN 4
+                        WHEN 'ACTIVE' THEN 5
+                        WHEN 'INACTIVE' THEN 6
+                        WHEN 'COMPLETED' THEN 7
+                        WHEN 'DELETED' THEN 8
+                        ELSE 9
+                    END ASC,
+                    j.created_at DESC
             """
             cur.execute(sql, params)
             rows = cur.fetchall()
@@ -883,6 +895,7 @@ def get_master_jobs_report(status_filter: str = "ALL", user: dict = Depends(requ
             } for r in rows]
     finally:
         release_connection(conn)
+
 
 @app.get("/api/admin/packing-qc/{job_card_id}")
 def get_packing_qc_logs(job_card_id: str, user: dict = Depends(get_current_user)):
