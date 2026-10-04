@@ -719,10 +719,9 @@
             <div class="flex justify-between items-center mb-3 border-b border-white/[0.08] pb-3">
                 <div>
                     <h3 class="text-lg sm:text-xl font-extrabold modal-title-theme">Job Control Center</h3>
-                    <p class="text-xs modal-subtitle-theme mt-0.5">View live status, change job status, or resolve conflict batches</p>
+                    <p class="text-xs modal-subtitle-theme mt-0.5">Select a status from any job row to change state directly</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button id="btn-bulk-status" onclick="promptBulkStatusChange()" disabled class="linear-button-primary px-3 py-1.5 text-xs rounded font-medium opacity-30 pointer-events-none transition-opacity">Update Job Status</button>
                     <button onclick="toggleModal('master-jobs-modal')" class="linear-button-secondary px-3.5 py-1.5 text-xs rounded font-medium">Close</button>
                 </div>
             </div>
@@ -746,7 +745,6 @@
                 <table class="w-full text-left whitespace-nowrap">
                     <thead>
                         <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0 z-10">
-                            <th class="px-3.5 py-2.5 w-10 text-center"><input type="checkbox" id="select-all-jobs" onclick="toggleSelectAllJobs(this)"></th>
                             <th class="px-3.5 py-2.5 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('job_card_id')">
                                 Job Card <span id="sort-indicator-job_card_id" class="text-[10px] text-slate-400"></span>
                             </th>
@@ -982,27 +980,19 @@
         </div>
     </div>
 
-    <!-- Update Job Status Modal -->
+    <!-- Authorization Password Modal for Changing Individual Job Status -->
     <div id="bulk-status-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[70]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-amber-500/25 shadow-2xl">
-            <h3 class="text-base sm:text-lg font-extrabold text-amber-400 mb-1">Update Job Status</h3>
+            <h3 class="text-base sm:text-lg font-extrabold text-amber-400 mb-1">Authorize Status Change</h3>
             <p id="bulk-status-subtitle" class="text-xs modal-subtitle-theme mb-4 leading-relaxed"></p>
-            <form onsubmit="submitBulkStatusChange(event)" class="space-y-3.5">
+            <form onsubmit="submitJobStatusChange(event)" class="space-y-3.5">
                 <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">New Status *</label>
-                    <select id="bulk-target-status" class="linear-input w-full p-2.5 text-xs rounded">
-                        <option value="INACTIVE">INACTIVE (Disable Live Verification)</option>
-                        <option value="ACTIVE">ACTIVE</option>
-                        <option value="COMPLETED">COMPLETED</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Enter password *</label>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Enter your password *</label>
                     <input type="password" id="bulk-status-admin-pass" required class="linear-input w-full p-2.5 text-sm rounded focus:border-amber-400">
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="closeBulkStatusModal()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
-                    <button type="submit" id="bulk-status-submit-btn" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-medium">Update Status</button>
+                    <button type="button" onclick="cancelJobStatusChange()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
+                    <button type="submit" id="bulk-status-submit-btn" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-medium">Authorize Change</button>
                 </div>
             </form>
         </div>
@@ -1111,8 +1101,6 @@
                         clearInterval(masterJobsPollTimer);
                         masterJobsPollTimer = null;
                     }
-                    selectedJobCardIds.clear();
-                    updateBulkStatusButtonState();
                 }
                 if (id === 'upload-modal') {
                     clearJobCardAvailabilityError();
@@ -1127,8 +1115,6 @@
                 modal.style.display = 'flex';
                 const searchEl = document.getElementById('master-job-search');
                 if (searchEl) searchEl.value = "";
-                selectedJobCardIds.clear();
-                updateBulkStatusButtonState();
                 await loadMasterJobs('ALL');
                 startMasterJobsAutoRefresh();
             }
@@ -1165,8 +1151,10 @@
         let confirmCallback = null;
         let confirmActionFn = null;
 
-        // Persistent selection and interactive sorting state
-        let selectedJobCardIds = new Set();
+        // Individual Job Status Dropdown Transition State
+        let pendingStatusChange = null;
+
+        // Interactive sorting state
         let currentSortCol = 'default';
         let currentSortAsc = true;
 
@@ -2413,51 +2401,6 @@
             }
         }
 
-        // Selection Handlers (Persistent across auto-refreshes)
-        function toggleJobSelection(jobCardId, isChecked) {
-            if (isChecked) {
-                selectedJobCardIds.add(jobCardId);
-            } else {
-                selectedJobCardIds.delete(jobCardId);
-            }
-            updateBulkStatusButtonState();
-        }
-
-        function toggleSelectAllJobs(masterCheckbox) {
-            const checkboxes = document.querySelectorAll('.job-select-checkbox');
-            checkboxes.forEach(cb => {
-                cb.checked = masterCheckbox.checked;
-                if (masterCheckbox.checked) {
-                    selectedJobCardIds.add(cb.value);
-                } else {
-                    selectedJobCardIds.delete(cb.value);
-                }
-            });
-            updateBulkStatusButtonState();
-        }
-
-        function updateBulkStatusButtonState() {
-            const btn = document.getElementById('btn-bulk-status');
-            const selectAll = document.getElementById('select-all-jobs');
-            const checkboxes = document.querySelectorAll('.job-select-checkbox');
-
-            if (btn) {
-                if (selectedJobCardIds.size > 0) {
-                    btn.disabled = false;
-                    btn.classList.remove('opacity-30', 'pointer-events-none');
-                    btn.innerText = `Update Status (${selectedJobCardIds.size})`;
-                } else {
-                    btn.disabled = true;
-                    btn.classList.add('opacity-30', 'pointer-events-none');
-                    btn.innerText = "Update Job Status";
-                }
-            }
-
-            if (selectAll && checkboxes.length > 0) {
-                selectAll.checked = Array.from(checkboxes).every(cb => selectedJobCardIds.has(cb.value));
-            }
-        }
-
         // Clickable Table Headers Sorting
         function sortMasterJobs(col) {
             if (currentSortCol === col) {
@@ -2484,27 +2427,49 @@
             });
         }
 
-        function promptBulkStatusChange() {
-            if (selectedJobCardIds.size === 0) return;
+        // Direct Row Dropdown Status Change Logic
+        function handleJobStatusDropdownChange(selectEl, jobCardId, previousStatus) {
+            const newStatus = selectEl.value;
+            if (newStatus === previousStatus) return;
 
-            document.getElementById('bulk-status-subtitle').innerText = `Update status for ${selectedJobCardIds.size} selected job(s). Enter your password to authorize.`;
-            document.getElementById('bulk-status-admin-pass').value = '';
+            pendingStatusChange = {
+                selectEl: selectEl,
+                jobCardId: jobCardId,
+                previousStatus: previousStatus,
+                newStatus: newStatus
+            };
+
+            const subtitle = document.getElementById('bulk-status-subtitle');
+            if (subtitle) {
+                subtitle.innerText = `Enter your password to authorize changing Job Card '${jobCardId}' from ${previousStatus} to ${newStatus}.`;
+            }
+            const passInput = document.getElementById('bulk-status-admin-pass');
+            if (passInput) passInput.value = '';
+
             toggleModal('bulk-status-modal');
-            setTimeout(() => document.getElementById('bulk-status-admin-pass').focus(), 100);
+            setTimeout(() => {
+                if (passInput) passInput.focus();
+            }, 100);
         }
 
-        function closeBulkStatusModal() {
+        function cancelJobStatusChange() {
+            if (pendingStatusChange && pendingStatusChange.selectEl) {
+                pendingStatusChange.selectEl.value = pendingStatusChange.previousStatus;
+            }
+            pendingStatusChange = null;
             toggleModal('bulk-status-modal');
-            document.getElementById('bulk-status-admin-pass').value = '';
+            const passInput = document.getElementById('bulk-status-admin-pass');
+            if (passInput) passInput.value = '';
         }
 
-        async function submitBulkStatusChange(e) {
+        async function submitJobStatusChange(e) {
             e.preventDefault();
+            if (!pendingStatusChange) return;
+
             const password = document.getElementById('bulk-status-admin-pass').value;
-            const targetStatus = document.getElementById('bulk-target-status').value;
             if (!password) return;
 
-            const jobCardIds = Array.from(selectedJobCardIds);
+            const { selectEl, jobCardId, previousStatus, newStatus } = pendingStatusChange;
             const submitBtn = document.getElementById('bulk-status-submit-btn');
             const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
@@ -2512,27 +2477,37 @@
 
             try {
                 const body = new FormData();
-                body.append("job_card_ids", JSON.stringify(jobCardIds));
-                body.append("target_status", targetStatus);
+                body.append("job_card_ids", JSON.stringify([jobCardId]));
+                body.append("target_status", newStatus);
                 body.append("admin_password", password);
 
                 const res = await fetch('/api/admin/jobs/bulk-status', { method: 'POST', body });
                 if (res.ok) {
-                    closeBulkStatusModal();
-                    selectedJobCardIds.clear();
-                    showCustomAlert(`Successfully updated ${jobCardIds.length} job(s) to ${targetStatus}.`, "Status Updated");
+                    toggleModal('bulk-status-modal');
+                    const passInput = document.getElementById('bulk-status-admin-pass');
+                    if (passInput) passInput.value = '';
+                    pendingStatusChange = null;
+
+                    showCustomAlert(`Job Card '${jobCardId}' status updated to ${newStatus}.`, "Status Updated");
+                    updateSystemMessage(`Job Card ${jobCardId} updated to ${newStatus}`, "success");
                     await loadMasterJobs(currentMasterTab);
-                    updateSystemMessage(`Updated ${jobCardIds.length} job(s) status to ${targetStatus}`, "success");
                 } else {
                     const err = await res.json().catch(() => ({}));
-                    showCustomAlert(err.detail || "Failed to update job status.");
+                    showCustomAlert(err.detail || "Failed to update job status. Password may be incorrect.");
+                    if (selectEl) selectEl.value = previousStatus;
+                    toggleModal('bulk-status-modal');
+                    const passInput = document.getElementById('bulk-status-admin-pass');
+                    if (passInput) passInput.value = '';
+                    pendingStatusChange = null;
                 }
             } catch (ex) {
                 showCustomAlert("Network error while connecting to server.");
+                if (selectEl) selectEl.value = previousStatus;
+                toggleModal('bulk-status-modal');
+                pendingStatusChange = null;
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalText;
-                updateBulkStatusButtonState();
             }
         }
 
@@ -3147,6 +3122,11 @@
                     masterJobsPollTimer = null;
                     return;
                 }
+                // Pause background refresh if authorization modal is currently open
+                const authModal = document.getElementById('bulk-status-modal');
+                if (authModal && !authModal.classList.contains('hidden')) {
+                    return;
+                }
                 await loadMasterJobs(currentMasterTab, false);
             }, 3000);
         }
@@ -3183,9 +3163,8 @@
                 (j.status && j.status.toLowerCase().includes(query))
             );
 
-            // Sorting handler
+            // Sorting logic
             if (currentSortCol === 'default') {
-                // Default: Urgent status priority, then newest created_at DESC
                 filtered.sort((a, b) => {
                     const rankA = statusUrgencyRank[a.status] || 99;
                     const rankB = statusUrgencyRank[b.status] || 99;
@@ -3216,21 +3195,41 @@
 
             const tbody = document.getElementById('master-jobs-rows');
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-slate-400 italic text-xs">No job cards found matching '${query}'</td></tr>`;
-                updateBulkStatusButtonState();
+                tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400 italic text-xs">No job cards found matching '${query}'</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = filtered.map(j => {
-                let badgeClass = "linear-badge-pass";
-                if (j.status === 'INACTIVE') badgeClass = "linear-badge-warn";
-                else if (j.status === 'COMPLETED') badgeClass = "bg-blue-500/10 text-blue-400 border border-blue-500/25";
-                else if (j.status !== 'ACTIVE') badgeClass = "linear-badge-fail";
-
                 const totalNum = Number(j.total) || 0;
                 const consumedNum = Number(j.consumed) || 0;
                 const conflictCount = Number(j.conflict_count) || 0;
 
+                // Status dropdown or static badge
+                let statusCellHtml = '';
+                if (['ACTIVE', 'INACTIVE', 'COMPLETED'].includes(j.status)) {
+                    let selectBorderColor = 'border-emerald-500/35 text-emerald-300';
+                    if (j.status === 'INACTIVE') selectBorderColor = 'border-amber-500/35 text-amber-300';
+                    else if (j.status === 'COMPLETED') selectBorderColor = 'border-blue-500/35 text-blue-300';
+
+                    statusCellHtml = `
+                        <select id="status-select-${j.job_card_id}"
+                                onchange="handleJobStatusDropdownChange(this, '${j.job_card_id}', '${j.status}')"
+                                class="linear-input text-xs px-2 py-1 rounded font-bold cursor-pointer ${selectBorderColor}">
+                            <option value="ACTIVE" class="bg-[#12141a] text-emerald-400 font-bold" ${j.status === 'ACTIVE' ? 'selected' : ''}>ACTIVE</option>
+                            <option value="INACTIVE" class="bg-[#12141a] text-amber-400 font-bold" ${j.status === 'INACTIVE' ? 'selected' : ''}>INACTIVE</option>
+                            <option value="COMPLETED" class="bg-[#12141a] text-blue-400 font-bold" ${j.status === 'COMPLETED' ? 'selected' : ''}>COMPLETED</option>
+                        </select>
+                    `;
+                } else {
+                    let badgeClass = "linear-badge-fail";
+                    let statusDisplay = j.status;
+                    if (j.ingestion_progress && (j.status === 'INGESTING' || j.status === 'OVERRIDING' || j.status === 'FAILED')) {
+                        statusDisplay += `<span class="block text-[9px] text-slate-400 font-normal truncate max-w-[140px]">${j.ingestion_progress}</span>`;
+                    }
+                    statusCellHtml = `<span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">${statusDisplay}</span>`;
+                }
+
+                // Conflict badge
                 let conflictBadgeHtml = `<span class="text-slate-500 text-xs font-medium">0 (Clean)</span>`;
                 if (conflictCount > 0) {
                     if (j.conflict_resolution === 'OVERRIDDEN') {
@@ -3263,6 +3262,7 @@
                     }
                 }
 
+                // Action Column
                 let actionHtml = `<span class="text-slate-400 italic text-[11px]">Locked (${consumedNum.toLocaleString()} verified)</span>`;
                 if (j.status === 'DELETED') {
                     actionHtml = `<span class="text-slate-500 italic text-[11px]">Deleted</span>`;
@@ -3272,19 +3272,8 @@
                     actionHtml = `<button onclick="purgeJobFromAdmin(${j.run_id}, '${j.job_card_id}')" class="bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 px-2.5 py-1 rounded text-[11px] font-bold">Purge Job</button>`;
                 }
 
-                let statusDisplay = j.status;
-                if (j.ingestion_progress && (j.status === 'INGESTING' || j.status === 'OVERRIDING' || j.status === 'FAILED')) {
-                    statusDisplay += `<span class="block text-[9px] text-slate-400 font-normal truncate max-w-[140px]">${j.ingestion_progress}</span>`;
-                }
-
-                const isChecked = selectedJobCardIds.has(j.job_card_id);
-                const checkboxHtml = (j.status !== 'DELETED' && j.status !== 'FAILED')
-                    ? `<input type="checkbox" value="${j.job_card_id}" ${isChecked ? 'checked' : ''} onchange="toggleJobSelection('${j.job_card_id}', this.checked)" class="job-select-checkbox rounded w-4 h-4 cursor-pointer">`
-                    : '';
-
                 return `
                     <tr class="hover:bg-black/[0.02]">
-                        <td class="p-3 text-center">${checkboxHtml}</td>
                         <td class="p-3 font-bold table-text-theme">
                             <div class="inline-flex items-center gap-1.5">
                                 <span class="truncate cursor-pointer hover:underline text-indigo-400" onclick="toggleModal('master-jobs-modal'); selectJob('${j.job_card_id}', '${encodeURIComponent(j.description || '')}', '${j.status}', ${j.consumed}, ${j.total});">${j.job_card_id}</span>
@@ -3295,7 +3284,7 @@
                         </td>
                         <td class="p-3 max-w-[200px] text-xs table-text-theme opacity-90 truncate">${j.description || '-'}</td>
                         <td class="p-3 text-[10px] text-slate-300">${j.created_at}</td>
-                        <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">${statusDisplay}</span></td>
+                        <td class="p-3 text-center">${statusCellHtml}</td>
                         <td class="p-3 text-right text-xs table-text-theme font-semibold">${consumedNum.toLocaleString()} / ${totalNum.toLocaleString()}</td>
                         <td class="p-3 text-center">${conflictBadgeHtml}</td>
                         <td class="p-3 text-center">
@@ -3307,8 +3296,6 @@
                     </tr>
                 `;
             }).join('');
-
-            updateBulkStatusButtonState();
         }
 
         window.addEventListener('DOMContentLoaded', () => {
