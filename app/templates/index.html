@@ -752,6 +752,7 @@
                             <th class="px-3.5 py-2.5">Timestamps</th>
                             <th class="px-3.5 py-2.5 text-center">Status</th>
                             <th class="px-3.5 py-2.5 text-right">Codes Verified</th>
+                            <th class="px-3.5 py-2.5 text-center">Conflicts</th>
                             <th class="px-3.5 py-2.5 text-center">Final QC</th>
                             <th class="px-3.5 py-2.5 text-center">Action</th>
                         </tr>
@@ -1081,7 +1082,6 @@
 
     <!-- Complete Client Script Layer -->
     <script>
-        // Modal Visibility Handler
         function toggleModal(id) {
             const el = document.getElementById(id);
             if (!el) return;
@@ -1102,7 +1102,6 @@
             }
         }
 
-        // Job Control Center Launch Handler
         window.openMasterJobsModal = async function() {
             const modal = document.getElementById('master-jobs-modal');
             if (modal) {
@@ -2879,15 +2878,12 @@
                         clearInterval(ingestionPollTimer);
                         ingestionPollTimer = null;
                         
-                        // Close upload modal cleanly without resetting so form doesn't flicker
                         toggleModal('upload-modal');
                         resetUploadUI();
 
-                        // Present conflict modal with exact conflict totals
                         document.getElementById('duplicate-warning-msg').innerText = 
                             `Found ${Number(data.conflict_count).toLocaleString()} conflicting code(s) out of ${Number(data.total_codes).toLocaleString()} total codes in this batch that already exist in active or completed jobs.`;
                         
-                        // Reset progress tracker in duplicate modal
                         const dupProgress = document.getElementById('duplicate-progress-box');
                         if (dupProgress) dupProgress.classList.add('hidden');
                         
@@ -3077,8 +3073,8 @@
                 const btn = document.getElementById(`filter-tab-${t}`);
                 if (btn) {
                     btn.className = (t === filterType.toLowerCase())
-                        ? "linear-button-primary px-3 py-1.5 rounded text-xs font-medium"
-                        : "linear-button-secondary px-3 py-1.5 rounded text-xs font-medium";
+                        ? "linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold"
+                        : "linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium";
                 }
             });
 
@@ -3105,7 +3101,7 @@
 
             const tbody = document.getElementById('master-jobs-rows');
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400 italic text-xs">No job cards found matching '${query}'</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-slate-400 italic text-xs">No job cards found matching '${query}'</td></tr>`;
                 updateBulkStatusButtonState();
                 return;
             }
@@ -3118,6 +3114,39 @@
 
                 const totalNum = Number(j.total) || 0;
                 const consumedNum = Number(j.consumed) || 0;
+                const conflictCount = Number(j.conflict_count) || 0;
+
+                let conflictBadgeHtml = `<span class="text-slate-500 text-xs font-medium">0 (Clean)</span>`;
+                if (conflictCount > 0) {
+                    if (j.conflict_resolution === 'OVERRIDDEN') {
+                        conflictBadgeHtml = `
+                            <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/35" 
+                                  title="${conflictCount.toLocaleString()} duplicate codes were overridden into this job">
+                                ⚠ ${conflictCount.toLocaleString()} Overridden
+                            </span>
+                        `;
+                    } else if (j.conflict_resolution === 'SKIPPED') {
+                        conflictBadgeHtml = `
+                            <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/35" 
+                                  title="${conflictCount.toLocaleString()} duplicate codes were skipped during upload">
+                                ${conflictCount.toLocaleString()} Skipped
+                            </span>
+                        `;
+                    } else if (j.status === 'CONFLICT_DETECTED') {
+                        conflictBadgeHtml = `
+                            <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-red-500/20 text-red-300 border border-red-500/35 animate-pulse" 
+                                  title="Awaiting duplicate resolution">
+                                ${conflictCount.toLocaleString()} Detected
+                            </span>
+                        `;
+                    } else {
+                        conflictBadgeHtml = `
+                            <span class="px-2 py-0.5 rounded text-[11px] font-medium text-slate-400">
+                                ${conflictCount.toLocaleString()}
+                            </span>
+                        `;
+                    }
+                }
 
                 let actionHtml = `<span class="text-slate-400 italic text-[11px]">Locked (${consumedNum.toLocaleString()} verified)</span>`;
                 if (j.status === 'DELETED') {
@@ -3150,6 +3179,7 @@
                         <td class="p-3 text-[10px] text-slate-300">${j.created_at}</td>
                         <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">${statusDisplay}</span></td>
                         <td class="p-3 text-right text-xs table-text-theme font-semibold">${consumedNum.toLocaleString()} / ${totalNum.toLocaleString()}</td>
+                        <td class="p-3 text-center">${conflictBadgeHtml}</td>
                         <td class="p-3 text-center">
                             <button onclick="openPackingQCReportFromAdmin('${j.job_card_id}')" class="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded text-xs font-bold">
                                 Verified: ${j.packing_qc_count || 0}
@@ -3162,7 +3192,6 @@
             updateBulkStatusButtonState();
         }
 
-        // DOM Ready Initializer
         window.addEventListener('DOMContentLoaded', () => {
             const allJobsBtn = document.getElementById('btn-all-jobs');
             if (allJobsBtn) {

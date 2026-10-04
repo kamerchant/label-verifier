@@ -43,6 +43,8 @@ def startup():
         with conn.cursor() as cur:
             cur.execute("ALTER TABLE job_cards ALTER COLUMN ingestion_progress TYPE TEXT;")
             cur.execute("ALTER TABLE job_cards ALTER COLUMN status TYPE VARCHAR(100);")
+            cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS conflict_resolution VARCHAR(50) DEFAULT 'NONE';")
+            
             cur.execute("""
                 UPDATE job_cards 
                 SET status = 'FAILED', 
@@ -147,7 +149,7 @@ def require_uploader(user: dict = Depends(get_current_user)):
 # ---------------------------------------------------------
 
 def drop_secondary_indexes(cur):
-    """Drops secondary B-Tree indexes to allow maximum bulk write throughput."""
+    """Drops secondary B-Tree indexes to maximize bulk write throughput."""
     cur.execute("DROP INDEX IF EXISTS idx_codes_code_value;")
     cur.execute("DROP INDEX IF EXISTS idx_codes_run_val;")
     cur.execute("DROP INDEX IF EXISTS idx_codes_run_status;")
@@ -273,6 +275,7 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                         UPDATE job_cards 
                         SET status = 'CONFLICT_DETECTED', 
                             conflict_count = %s, 
+                            conflict_resolution = 'PENDING',
                             ingestion_progress = 'Duplicate conflicts detected. Awaiting authorization.' 
                         WHERE run_id = %s
                     """, (conflicts_found, run_id))
@@ -297,6 +300,7 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 UPDATE job_cards 
                 SET status = 'ACTIVE', 
                     total_codes = %s,
+                    conflict_resolution = 'NONE',
                     ingestion_progress = %s 
                 WHERE run_id = %s
             """, (actual_inserted, '100%', run_id))
@@ -412,13 +416,16 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
             conn.commit()
             indexes_dropped = False
 
+            resolution_type = 'SKIPPED' if skip_conflicts else 'OVERRIDDEN'
+
             cur.execute("""
                 UPDATE job_cards 
                 SET status = 'ACTIVE', 
                     total_codes = %s,
+                    conflict_resolution = %s,
                     ingestion_progress = %s 
                 WHERE run_id = %s
-            """, (actual_inserted, '100%', run_id))
+            """, (actual_inserted, resolution_type, '100%', run_id))
 
             if skip_conflicts:
                 lifecycle_reason = f"Batch ingested with conflicts skipped: {actual_inserted:,} clean codes kept ({conflicts:,} conflicts skipped)"
@@ -588,7 +595,7 @@ def list_users(admin: dict = Depends(require_admin)):
                 "is_active": r[4] if r[4] is not None else True,
                 "employee_name": r[5] or "",
                 "employee_id": r[6] or "",
-                "created_at": r[7].strftime("%Y-%m-%d %H:%M")
+                "created_at": r[7].strftime("%Y-%m-%d %H:%M") if r[7] else ""
             } for r in rows]
     finally:
         release_connection(conn)
@@ -839,7 +846,8 @@ def get_master_jobs_report(status_filter: str = "ALL", user: dict = Depends(requ
                        j.deletion_reason,
                        COALESCE(pq.packing_qc_count, 0) as packing_qc_count,
                        j.ingestion_progress,
-                       j.conflict_count
+                       j.conflict_count,
+                       COALESCE(j.conflict_resolution, 'NONE') as conflict_resolution
                 FROM job_cards j
                 LEFT JOIN (
                     SELECT p.job_card_id, COUNT(*) as packing_qc_count
@@ -864,7 +872,8 @@ def get_master_jobs_report(status_filter: str = "ALL", user: dict = Depends(requ
                 "deletion_reason": r[9] or "",
                 "packing_qc_count": r[10] or 0,
                 "ingestion_progress": r[11] or "",
-                "conflict_count": r[12] or 0
+                "conflict_count": r[12] or 0,
+                "conflict_resolution": r[13] or "NONE"
             } for r in rows]
     finally:
         release_connection(conn)
