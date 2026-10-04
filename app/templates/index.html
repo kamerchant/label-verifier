@@ -478,7 +478,8 @@
                     </button>
                 </div>
 
-                <div class="flex-1 overflow-x-auto overflow-y-auto">
+                <!-- Desktop Table View (Hidden on Mobile) -->
+                <div class="hidden md:block flex-1 overflow-x-auto overflow-y-auto">
                     <table class="w-full text-left whitespace-nowrap">
                         <thead>
                             <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0 z-10">
@@ -495,6 +496,11 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Mobile Card Feed (Visible Only on Mobile Screens) -->
+                <div id="recent-scans-mobile" class="md:hidden flex-1 overflow-y-auto p-2.5 space-y-2">
+                    <div class="p-6 text-center text-slate-400 italic text-xs">No Job Card selected</div>
                 </div>
             </div>
         </div>
@@ -1932,6 +1938,7 @@
 
         function renderStreamTable() {
             const tbody = document.getElementById('recent-scans-rows');
+            const mobileContainer = document.getElementById('recent-scans-mobile');
             
             let countAll = allScans.length;
             let countPass = allScans.filter(s => s.result === 'PASS' || s.result === 'Pass (Potential Restart)').length;
@@ -1942,7 +1949,8 @@
             document.getElementById('stream-count-error').innerText = countError;
 
             if (!activeJobId) {
-                tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-8 text-center text-slate-400 italic text-xs">No Job Card selected</td></tr>`;
+                if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-8 text-center text-slate-400 italic text-xs">No Job Card selected</td></tr>`;
+                if (mobileContainer) mobileContainer.innerHTML = `<div class="p-6 text-center text-slate-400 italic text-xs">No Job Card selected</div>`;
                 return;
             }
 
@@ -1954,25 +1962,55 @@
             }
 
             if (filteredScans.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-6 text-center text-slate-400 italic text-xs">No scan events recorded for this view</td></tr>`;
+                if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-6 text-center text-slate-400 italic text-xs">No scan events recorded for this view</td></tr>`;
+                if (mobileContainer) mobileContainer.innerHTML = `<div class="p-6 text-center text-slate-400 italic text-xs">No scan events recorded for this view</div>`;
                 return;
             }
 
             const visibleScans = filteredScans.slice(0, 50);
 
-            tbody.innerHTML = visibleScans.map((s) => {
-                let badge = (s.result === 'PASS' || s.result === 'Pass (Potential Restart)') ? "linear-badge-pass" : "linear-badge-fail";
-                let rowDisplay = (s.row_num && s.row_num !== '-') ? `Row ${s.row_num}` : '-';
-                return `
-                    <tr class="hover:bg-black/[0.02]">
-                        <td class="px-3.5 py-2 font-bold text-xs table-text-theme">${s.code}</td>
-                        <td class="px-3.5 py-2 text-slate-300 text-xs font-semibold">${rowDisplay}</td>
-                        <td class="px-3.5 py-2"><span class="${badge} px-2 py-0.5 rounded text-xs font-bold">${s.result}</span></td>
-                        <td class="px-3.5 py-2 text-slate-200 text-xs">${s.time}</td>
-                        <td class="px-3.5 py-2 text-xs table-text-theme font-medium">${s.user}</td>
-                    </tr>
-                `;
-            }).join('');
+            // 1. Render Desktop Table Rows
+            if (tbody) {
+                tbody.innerHTML = visibleScans.map((s) => {
+                    let badge = (s.result === 'PASS' || s.result === 'Pass (Potential Restart)') ? "linear-badge-pass" : "linear-badge-fail";
+                    let rowDisplay = (s.row_num && s.row_num !== '-') ? `Row ${s.row_num}` : '-';
+                    return `
+                        <tr class="hover:bg-black/[0.02]">
+                            <td class="px-3.5 py-2 font-bold text-xs table-text-theme">${s.code}</td>
+                            <td class="px-3.5 py-2 text-slate-300 text-xs font-semibold">${rowDisplay}</td>
+                            <td class="px-3.5 py-2"><span class="${badge} px-2 py-0.5 rounded text-xs font-bold">${s.result}</span></td>
+                            <td class="px-3.5 py-2 text-slate-200 text-xs">${s.time}</td>
+                            <td class="px-3.5 py-2 text-xs table-text-theme font-medium">${s.user}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // 2. Render Mobile Touch Cards
+            if (mobileContainer) {
+                mobileContainer.innerHTML = visibleScans.map((s) => {
+                    const isPass = (s.result === 'PASS' || s.result === 'Pass (Potential Restart)');
+                    const badge = isPass ? "linear-badge-pass" : "linear-badge-fail";
+                    const borderAccent = isPass ? "border-l-emerald-500" : "border-l-red-500";
+                    const rowDisplay = (s.row_num && s.row_num !== '-') ? `Row ${s.row_num}` : '';
+
+                    return `
+                        <div class="linear-subcard p-2.5 rounded border-l-4 ${borderAccent} flex flex-col gap-1 shadow-sm">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="font-bold text-sm tracking-tight table-text-theme break-all font-mono">${s.code}</span>
+                                <span class="${badge} px-2 py-0.5 rounded text-[10px] font-extrabold uppercase shrink-0">${s.result}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-[11px] text-slate-400 pt-0.5 border-t border-white/[0.04]">
+                                <div class="flex items-center gap-1.5 truncate">
+                                    <span class="font-medium text-slate-300">${s.user}</span>
+                                    ${rowDisplay ? `<span class="text-slate-600">&middot;</span><span class="text-indigo-300 font-semibold">${rowDisplay}</span>` : ''}
+                                </div>
+                                <span class="text-[10px] text-slate-400 shrink-0 font-medium">${s.time}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
         }
 
         let currentPackingQCLogs = [];
