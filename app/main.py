@@ -258,6 +258,7 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 cur.execute("CREATE INDEX idx_temp_inc_val ON temp_incoming_codes (code_value);")
                 cur.execute("ANALYZE temp_incoming_codes;")
 
+                # Explicit check against ACTIVE, INACTIVE, and COMPLETED jobs
                 cur.execute("""
                     SELECT COUNT(*)
                     FROM temp_incoming_codes t
@@ -265,7 +266,9 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                         SELECT 1 
                         FROM codes c
                         JOIN job_cards j ON c.run_id = j.run_id
-                        WHERE c.code_value = t.code_value AND j.status != 'DELETED'
+                        WHERE c.code_value = t.code_value 
+                          AND j.status IN ('ACTIVE', 'INACTIVE', 'COMPLETED')
+                          AND c.status != 'DELETED'
                     )
                 """)
                 conflicts_found = cur.fetchone()[0]
@@ -374,6 +377,7 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 cur.execute("CREATE INDEX idx_temp_ovr_val ON temp_override_all (code_value);")
                 cur.execute("ANALYZE temp_override_all;")
 
+                # Explicit check against ACTIVE, INACTIVE, and COMPLETED jobs
                 cur.execute("""
                     CREATE TEMP TABLE temp_override_filtered ON COMMIT DROP AS
                     SELECT t.run_id, t.job_card_id, t.code_value, t.status
@@ -382,7 +386,9 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                         SELECT 1 
                         FROM codes c
                         JOIN job_cards j ON c.run_id = j.run_id
-                        WHERE c.code_value = t.code_value AND j.status != 'DELETED'
+                        WHERE c.code_value = t.code_value 
+                          AND j.status IN ('ACTIVE', 'INACTIVE', 'COMPLETED')
+                          AND c.status != 'DELETED'
                     );
                 """)
 
@@ -1393,11 +1399,14 @@ def verify_code(
                         "row_num": row_num
                     })
 
+            # Explicit check against ACTIVE, INACTIVE, and COMPLETED jobs
             cur.execute("""
-                SELECT c.run_id, j.job_card_id, c.status, c.code_value 
+                SELECT c.run_id, j.job_card_id, j.status, c.code_value 
                 FROM codes c
                 JOIN job_cards j ON c.run_id = j.run_id
-                WHERE j.status = 'ACTIVE' AND c.status != 'DELETED' AND c.code_value = %s
+                WHERE j.status IN ('ACTIVE', 'INACTIVE', 'COMPLETED') 
+                  AND c.status != 'DELETED' 
+                  AND c.code_value = %s
             """, (scanned,))
             rows = cur.fetchall()
 
@@ -1410,7 +1419,7 @@ def verify_code(
                     "row_num": "-"
                 })
 
-            owning_jobs = ", ".join(list(set([r[1] for r in rows])))
+            owning_jobs = ", ".join(sorted(list(set([f"{r[1]} ({r[2]})" for r in rows]))))
             msg = f"Code Belongs to Another Job Card: {owning_jobs}"
             log_scan("MISMATCH", msg)
             return JSONResponse(status_code=200, content={
