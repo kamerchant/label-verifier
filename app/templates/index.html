@@ -816,46 +816,56 @@
                 </div>
             </div>
             
-            <form onsubmit="stageNewUser(event)" class="linear-subcard p-4 rounded mb-4 space-y-3 shrink-0">
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                    <input type="text" id="new-user-name" placeholder="Username *" required class="linear-input p-2.5 text-xs rounded">
-                    <input type="password" id="new-user-pass" placeholder="Password *" title="Minimum 8 characters, at least 1 uppercase, 1 lowercase, and 1 number." required class="linear-input p-2.5 text-xs rounded">
-                    <select id="new-user-role" onchange="handleNewUserRoleChange()" class="linear-input p-2.5 text-xs rounded">
-                        <option value="QC officer">QC officer</option>
-                        <option value="QC manager">QC manager</option>
-                        <option value="admin">admin</option>
+            <form onsubmit="stageNewUser(event)" class="linear-subcard p-3 rounded mb-3 space-y-2 shrink-0">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <input type="text" id="new-user-name" placeholder="Username *" required 
+                           style="font-size: 11px !important;"
+                           class="bg-[#090a0d] border border-white/[0.12] text-white px-2.5 py-1.5 rounded placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                    <input type="password" id="new-user-pass" placeholder="Password *" title="Minimum 8 characters, at least 1 uppercase, 1 lowercase, and 1 number." required 
+                           style="font-size: 11px !important;"
+                           class="bg-[#090a0d] border border-white/[0.12] text-white px-2.5 py-1.5 rounded placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                    <select id="new-user-role" onchange="handleNewUserRoleChange()" 
+                            style="font-size: 11px !important;"
+                            class="bg-[#090a0d] border border-white/[0.12] text-white px-2 py-1.5 rounded cursor-pointer focus:outline-none focus:border-indigo-500">
+                        <option value="QC officer" class="bg-[#12141a] text-white">QC officer</option>
+                        <option value="QC manager" class="bg-[#12141a] text-white">QC manager</option>
+                        <option value="admin" class="bg-[#12141a] text-white">admin</option>
                     </select>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <input type="text" id="new-employee-name" placeholder="Employee Name (Optional)" class="linear-input p-2.5 text-xs rounded">
-                    <input type="text" id="new-employee-id" placeholder="Employee ID (Optional)" class="linear-input p-2.5 text-xs rounded">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input type="text" id="new-employee-name" placeholder="Employee Name (Optional)" 
+                           style="font-size: 11px !important;"
+                           class="bg-[#090a0d] border border-white/[0.12] text-white px-2.5 py-1.5 rounded placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                    <input type="text" id="new-employee-id" placeholder="Employee ID (Optional)" 
+                           style="font-size: 11px !important;"
+                           class="bg-[#090a0d] border border-white/[0.12] text-white px-2.5 py-1.5 rounded placeholder-slate-500 focus:outline-none focus:border-indigo-500">
                 </div>
                 <div class="flex justify-between items-center pt-2 border-t border-white/[0.06]">
-                    <label class="flex items-center gap-1.5 text-xs cursor-pointer table-text-theme">
-                        <input type="checkbox" id="new-user-can-upload" class="rounded">
+                    <label class="flex items-center gap-1.5 text-[11px] cursor-pointer table-text-theme">
+                        <input type="checkbox" id="new-user-can-upload" class="rounded w-3.5 h-3.5">
                         <span id="new-user-can-upload-label">Allow creating new job cards</span>
                     </label>
-                    <button type="submit" id="create-user-btn" class="linear-button-secondary px-4 py-2 rounded text-xs font-semibold hover:bg-white/10">Add User to List</button>
+                    <button type="submit" id="create-user-btn" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-semibold hover:bg-white/10">Add User to List</button>
                 </div>
             </form>
 
-            <div class="flex-1 overflow-y-auto text-xs border border-white/[0.08] rounded mb-3">
-                <table class="w-full text-left">
+            <div class="flex-1 overflow-y-auto border border-white/[0.08] rounded mb-3">
+                <table class="w-full text-left whitespace-nowrap">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0 z-10">
-                            <th class="px-3 py-2">User Name</th>
-                            <th class="px-3 py-2 text-center">User Type</th>
-                            <th class="px-3 py-2 text-center">Can Create Jobs?</th>
-                            <th class="px-3 py-2 text-right">Action</th>
+                        <tr class="border-b border-white/[0.08] text-xs font-semibold table-header-theme sticky top-0 z-10">
+                            <th class="px-3.5 py-2">User Name</th>
+                            <th class="px-3.5 py-2 text-center">User Type</th>
+                            <th class="px-3.5 py-2 text-center">Can Create Jobs?</th>
+                            <th class="px-3.5 py-2 text-right">Action</th>
                         </tr>
                     </thead>
-                    <tbody id="users-table" class="divide-y divide-white/[0.04] table-text-theme"></tbody>
+                    <tbody id="users-table" class="divide-y divide-white/[0.04] table-text-theme text-xs"></tbody>
                 </table>
             </div>
 
-            <div class="flex justify-end items-center gap-2 pt-3 border-t border-white/[0.08] shrink-0">
-                <button type="button" id="btn-close-user-modal" onclick="closeUserModal()" class="linear-button-secondary px-4 py-2 rounded text-xs font-medium">Close</button>
-                <button type="button" id="btn-submit-user-changes" onclick="promptUserAdminSubmit()" disabled class="linear-button-primary px-5 py-2 rounded text-xs font-semibold opacity-30 pointer-events-none transition-all flex items-center justify-center">Submit Changes</button>
+            <div class="flex justify-end items-center gap-2 pt-2.5 border-t border-white/[0.08] shrink-0">
+                <button type="button" id="btn-close-user-modal" onclick="closeUserModal()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Close</button>
+                <button type="button" id="btn-submit-user-changes" onclick="promptUserAdminSubmit()" disabled class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold opacity-30 pointer-events-none transition-all flex items-center justify-center">Submit Changes</button>
             </div>
         </div>
     </div>
@@ -2758,45 +2768,45 @@
                 const hasStagedPw = !!stagedPasswordResets[u.username];
 
                 let uploadCheckboxHtml = isPerm 
-                    ? `<input type="checkbox" checked disabled class="rounded w-4 h-4 cursor-not-allowed opacity-60">`
-                    : `<input type="checkbox" ${u.can_upload ? 'checked' : ''} onchange="stageUserUpload('${u.username}', this.checked)" class="rounded cursor-pointer w-4 h-4">`;
+                    ? `<input type="checkbox" checked disabled class="rounded w-3.5 h-3.5 cursor-not-allowed opacity-60">`
+                    : `<input type="checkbox" ${u.can_upload ? 'checked' : ''} onchange="stageUserUpload('${u.username}', this.checked)" class="rounded cursor-pointer w-3.5 h-3.5">`;
 
                 let actionsHtml = '';
                 if (u.is_new) {
                     actionsHtml = `
-                        <span class="text-xs text-amber-400 font-bold mr-2">(Unsaved)</span>
-                        <button type="button" onclick="removeStagedNewUser('${u.username}')" class="text-xs text-red-400 hover:text-red-300 font-bold">Remove</button>
+                        <span class="text-[10px] text-amber-400 font-bold mr-1.5">(Unsaved)</span>
+                        <button type="button" onclick="removeStagedNewUser('${u.username}')" class="text-xs text-red-400 hover:text-red-300 font-medium">Remove</button>
                     `;
                 } else if (isCurrent) {
                     actionsHtml = `<span class="text-xs text-slate-400 font-medium">Current User</span>`;
                 } else {
                     let pwBtnHtml = hasStagedPw
-                        ? `<button type="button" onclick="promptAdminResetPassword('${u.username}')" class="text-amber-400 hover:text-amber-300 font-bold text-xs mr-1">Edit PW</button>
-                           <button type="button" onclick="cancelStagedPasswordReset('${u.username}')" class="text-slate-400 hover:text-slate-300 text-xs mr-2">Undo</button>`
-                        : `<button type="button" onclick="promptAdminResetPassword('${u.username}')" class="text-indigo-400 hover:text-indigo-300 font-bold text-xs mr-2">Reset PW</button>`;
+                        ? `<button type="button" onclick="promptAdminResetPassword('${u.username}')" class="text-amber-400 hover:text-amber-300 font-medium text-xs mr-1.5">Edit PW</button>
+                           <button type="button" onclick="cancelStagedPasswordReset('${u.username}')" class="text-slate-400 hover:text-slate-300 text-xs mr-1.5">Undo</button>`
+                        : `<button type="button" onclick="promptAdminResetPassword('${u.username}')" class="text-indigo-400 hover:text-indigo-300 font-medium text-xs mr-1.5">Reset PW</button>`;
 
                     actionsHtml = `
                         ${pwBtnHtml}
-                        <button type="button" onclick="stageUserActive('${u.username}')" class="${u.is_active ? 'text-amber-400 hover:text-amber-300' : 'text-green-400 hover:text-green-300'} font-bold text-xs">${u.is_active ? 'Suspend' : 'Activate'}</button>
+                        <button type="button" onclick="stageUserActive('${u.username}')" class="${u.is_active ? 'text-amber-400 hover:text-amber-300' : 'text-green-400 hover:text-green-300'} font-medium text-xs">${u.is_active ? 'Suspend' : 'Activate'}</button>
                     `;
                 }
 
                 return `
                     <tr class="hover:bg-black/[0.02]">
-                        <td class="px-3 py-1.5">
+                        <td class="px-3.5 py-2">
                             <span class="font-bold table-text-theme text-xs">${u.username}</span>
                             ${hasStagedPw ? '<span class="text-[10px] text-amber-400 font-bold block mt-0.5">(PW Revision Staged)</span>' : ''}
                             ${!u.is_active ? '<span class="text-[10px] text-red-400 font-bold block mt-0.5">(Suspended)</span>' : ''}
                         </td>
-                        <td class="px-3 py-1.5 text-center">
-                            <select onchange="stageUserRole('${u.username}', this.value)" class="linear-input text-xs px-2 py-1 rounded cursor-pointer">
-                                <option value="QC officer" ${u.role === 'QC officer' ? 'selected' : ''}>QC officer</option>
-                                <option value="QC manager" ${u.role === 'QC manager' ? 'selected' : ''}>QC manager</option>
-                                <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
+                        <td class="px-3.5 py-2 text-center">
+                            <select onchange="stageUserRole('${u.username}', this.value)" style="font-size: 11px !important;" class="bg-[#12141a] border border-white/[0.12] text-white px-2 py-0.5 rounded cursor-pointer leading-tight focus:outline-none focus:border-indigo-500">
+                                <option value="QC officer" class="bg-[#12141a] text-white" ${u.role === 'QC officer' ? 'selected' : ''}>QC officer</option>
+                                <option value="QC manager" class="bg-[#12141a] text-white" ${u.role === 'QC manager' ? 'selected' : ''}>QC manager</option>
+                                <option value="admin" class="bg-[#12141a] text-white" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
                             </select>
                         </td>
-                        <td class="px-3 py-1.5 text-center">${uploadCheckboxHtml}</td>
-                        <td class="px-3 py-1.5 text-right">${actionsHtml}</td>
+                        <td class="px-3.5 py-2 text-center">${uploadCheckboxHtml}</td>
+                        <td class="px-3.5 py-2 text-right space-x-1">${actionsHtml}</td>
                     </tr>
                 `;
             }).join('');
