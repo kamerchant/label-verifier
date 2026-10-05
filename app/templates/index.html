@@ -573,15 +573,17 @@
 
             <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded">
                 <table class="w-full text-left whitespace-nowrap">
-                    <thead>
-                        <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0">
-                            <th class="px-3.5 py-2.5">Timestamp</th>
-                            <th class="px-3.5 py-2.5">User / Inspector</th>
-                            <th class="px-3.5 py-2.5">Job Card</th>
-                            <th class="px-3.5 py-2.5">Activity Type</th>
-                            <th class="px-3.5 py-2.5">Activity Details</th>
+                                        <thead>
+                        <tr class="border-b border-white/[0.08] text-xs font-semibold table-header-theme sticky top-0 z-10">
+                            <th class="px-3.5 py-2">User Name</th>
+                            <th class="px-3.5 py-2">Employee Name</th>
+                            <th class="px-3.5 py-2">Employee ID</th>
+                            <th class="px-3.5 py-2 text-center">User Type</th>
+                            <th class="px-3.5 py-2 text-center">Can Create Jobs?</th>
+                            <th class="px-3.5 py-2 text-right">Action</th>
                         </tr>
                     </thead>
+
                     <tbody id="global-audit-rows" class="divide-y divide-white/[0.04] table-text-theme text-xs"></tbody>
                 </table>
             </div>
@@ -808,7 +810,7 @@
 
     <!-- User Management Modal -->
     <div id="user-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
-        <div class="linear-card p-4 sm:p-6 rounded-lg max-w-3xl w-full shadow-2xl flex flex-col max-h-[92vh]">
+        <div class="linear-card p-4 sm:p-6 rounded-lg max-w-4xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="flex justify-between items-center mb-3 pb-2 border-b border-white/[0.08]">
                 <div>
                     <h3 class="text-lg sm:text-xl font-extrabold modal-title-theme">User Management</h3>
@@ -2799,6 +2801,8 @@
                             ${hasStagedPw ? '<span class="text-[10px] text-amber-400 font-bold block mt-0.5">(PW Revision Staged)</span>' : ''}
                             ${!u.is_active ? '<span class="text-[10px] text-red-400 font-bold block mt-0.5">(Suspended)</span>' : ''}
                         </td>
+                        <td class="px-3.5 py-2 text-xs table-text-theme font-medium">${u.employee_name || '-'}</td>
+                        <td class="px-3.5 py-2 text-xs text-slate-400 font-mono">${u.employee_id || '-'}</td>
                         <td class="px-3.5 py-2 text-center">
                             <select onchange="stageUserRole('${u.username}', this.value)" 
                                     style="font-size: 11px !important; padding: 2px 6px !important; height: 24px !important;" 
