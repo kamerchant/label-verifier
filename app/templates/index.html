@@ -819,26 +819,26 @@
             <form onsubmit="stageNewUser(event)" class="linear-subcard p-3 rounded mb-3 space-y-2 shrink-0">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <input type="text" id="new-user-name" placeholder="Username *" required 
-                           style="font-size: 11px !important;"
-                           class="bg-[#090a0d] border border-white/[0.12] text-white px-2.5 py-1.5 rounded placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                           style="font-size: 11px !important; padding: 5px 8px !important;"
+                           class="linear-input w-full rounded">
                     <input type="password" id="new-user-pass" placeholder="Password *" title="Minimum 8 characters, at least 1 uppercase, 1 lowercase, and 1 number." required 
-                           style="font-size: 11px !important;"
-                           class="bg-[#090a0d] border border-white/[0.12] text-white px-2.5 py-1.5 rounded placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                           style="font-size: 11px !important; padding: 5px 8px !important;"
+                           class="linear-input w-full rounded">
                     <select id="new-user-role" onchange="handleNewUserRoleChange()" 
-                            style="font-size: 11px !important;"
-                            class="bg-[#090a0d] border border-white/[0.12] text-white px-2 py-1.5 rounded cursor-pointer focus:outline-none focus:border-indigo-500">
-                        <option value="QC officer" class="bg-[#12141a] text-white">QC officer</option>
-                        <option value="QC manager" class="bg-[#12141a] text-white">QC manager</option>
-                        <option value="admin" class="bg-[#12141a] text-white">admin</option>
+                            style="font-size: 11px !important; padding: 5px 8px !important;"
+                            class="linear-input w-full rounded cursor-pointer">
+                        <option value="QC officer">QC officer</option>
+                        <option value="QC manager">QC manager</option>
+                        <option value="admin">admin</option>
                     </select>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input type="text" id="new-employee-name" placeholder="Employee Name (Optional)" 
-                           style="font-size: 11px !important;"
-                           class="bg-[#090a0d] border border-white/[0.12] text-white px-2.5 py-1.5 rounded placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                           style="font-size: 11px !important; padding: 5px 8px !important;"
+                           class="linear-input w-full rounded">
                     <input type="text" id="new-employee-id" placeholder="Employee ID (Optional)" 
-                           style="font-size: 11px !important;"
-                           class="bg-[#090a0d] border border-white/[0.12] text-white px-2.5 py-1.5 rounded placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                           style="font-size: 11px !important; padding: 5px 8px !important;"
+                           class="linear-input w-full rounded">
                 </div>
                 <div class="flex justify-between items-center pt-2 border-t border-white/[0.06]">
                     <label class="flex items-center gap-1.5 text-[11px] cursor-pointer table-text-theme">
@@ -848,6 +848,7 @@
                     <button type="submit" id="create-user-btn" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-semibold hover:bg-white/10">Add User to List</button>
                 </div>
             </form>
+            
 
             <div class="flex-1 overflow-y-auto border border-white/[0.08] rounded mb-3">
                 <table class="w-full text-left whitespace-nowrap">
@@ -2799,10 +2800,12 @@
                             ${!u.is_active ? '<span class="text-[10px] text-red-400 font-bold block mt-0.5">(Suspended)</span>' : ''}
                         </td>
                         <td class="px-3.5 py-2 text-center">
-                            <select onchange="stageUserRole('${u.username}', this.value)" style="font-size: 11px !important;" class="bg-[#12141a] border border-white/[0.12] text-white px-2 py-0.5 rounded cursor-pointer leading-tight focus:outline-none focus:border-indigo-500">
-                                <option value="QC officer" class="bg-[#12141a] text-white" ${u.role === 'QC officer' ? 'selected' : ''}>QC officer</option>
-                                <option value="QC manager" class="bg-[#12141a] text-white" ${u.role === 'QC manager' ? 'selected' : ''}>QC manager</option>
-                                <option value="admin" class="bg-[#12141a] text-white" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
+                            <select onchange="stageUserRole('${u.username}', this.value)" 
+                                    style="font-size: 11px !important; padding: 2px 6px !important; height: 24px !important;" 
+                                    class="linear-input rounded cursor-pointer">
+                                <option value="QC officer" ${u.role === 'QC officer' ? 'selected' : ''}>QC officer</option>
+                                <option value="QC manager" ${u.role === 'QC manager' ? 'selected' : ''}>QC manager</option>
+                                <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
                             </select>
                         </td>
                         <td class="px-3.5 py-2 text-center">${uploadCheckboxHtml}</td>
