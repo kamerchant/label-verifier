@@ -792,7 +792,7 @@
                                 Codes Verified <span id="sort-indicator-consumed" class="text-[10px] text-slate-400"></span>
                             </th>
                             <th class="px-3.5 py-2.5 text-center cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('conflict_count')">
-                                Conflicts <span id="sort-indicator-conflict_count" class="text-[10px] text-slate-400"></span>
+                                Conflicts Detected <span id="sort-indicator-conflict_count" class="text-[10px] text-slate-400"></span>
                             </th>
                             <th class="px-3.5 py-2.5 text-center cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('packing_qc_count')">
                                 Final QC <span id="sort-indicator-packing_qc_count" class="text-[10px] text-slate-400"></span>
@@ -2485,11 +2485,13 @@
 
                 const res = await fetch(`/api/admin/jobs/${targetPurgeRunId}/purge`, { method: 'POST', body });
                 if (res.ok) {
+                    const purgedJobId = targetPurgeJobId;
                     closePurgeModal();
-                    showCustomAlert(`Job Card '${targetPurgeJobId}' successfully purged.`, "Purged");
+                    showCustomAlert(`Job Card '${purgedJobId}' successfully purged.`, "Purged");
                     await loadMasterJobs(currentMasterTab);
-                    updateSystemMessage(`Purged Job Card: ${targetPurgeJobId}`, "success");
+                    updateSystemMessage(`Purged Job Card: ${purgedJobId}`, "success");
                 } else {
+
                     const err = await res.json().catch(() => ({}));
                     showCustomAlert(err.detail || "Purge failed. Invalid password or job has verified scans.");
                 }
