@@ -5,38 +5,27 @@ import csv
 import json
 import tempfile
 import threading
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Response, Depends
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
-from app.database import init_db, get_connection, release_connection, hash_password, verify_password
 
-app = FastAPI(title="CCL ME - PK - Variable Data Verification")
+from app.database import (
+    init_db,
+    get_connection,
+    release_connection,
+    hash_password,
+    verify_password,
+    close_connection_pool,
+)
 
-SECRET_KEY = os.environ.get("SESSION_SECRET", "ccl-variable-data-secret-floor-key-2026")
-signer = URLSafeTimedSerializer(SECRET_KEY)
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-HTML_PATH = os.path.join(BASE_DIR, "templates", "index.html")
-STATIC_DIR = os.path.join(BASE_DIR, "static")
-
-if not os.path.exists(STATIC_DIR):
-    os.makedirs(STATIC_DIR, exist_ok=True)
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-
-@app.get("/static/logo.jpg")
-@app.get("/logo.jpg")
-async def get_logo():
-    logo_path = os.path.join(STATIC_DIR, "logo.jpg")
-    if os.path.exists(logo_path):
-        return FileResponse(logo_path, media_type="image/jpeg")
-    parent_logo = os.path.join(os.path.dirname(BASE_DIR), "static", "logo.jpg")
-    if os.path.exists(parent_logo):
-        return FileResponse(parent_logo, media_type="image/jpeg")
-    raise HTTPException(status_code=404, detail="Logo not found")
-
-@app.on_event("startup")
-def startup():
+# ---------------------------------------------------------------------------
+# Application Lifespan (Preserves your startup SQL & adds graceful shutdown)
+# ---------------------------------------------------------------------------
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 1. Startup: Run schema checks and pending batch cleanups
     init_db()
     conn = get_connection()
     try:
@@ -83,6 +72,60 @@ def startup():
             conn.commit()
     finally:
         release_connection(conn)
+
+    yield  # Application handles incoming HTTP requests
+
+    # 2. Shutdown: Cleanly release DB connections on deploy/restart
+    try:
+        close_connection_pool()
+    except Exception:
+        pass
+
+
+app = FastAPI(
+    title="CCL ME - PK - Variable Data Verification",
+    lifespan=lifespan
+)
+
+SECRET_KEY = os.environ.get("SESSION_SECRET", "ccl-variable-data-secret-floor-key-2026")
+signer = URLSafeTimedSerializer(SECRET_KEY)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+HTML_PATH = os.path.join(BASE_DIR, "templates", "index.html")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+
+if not os.path.exists(STATIC_DIR):
+    os.makedirs(STATIC_DIR, exist_ok=True)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.get("/static/logo.jpg")
+@app.get("/logo.jpg")
+async def get_logo():
+    logo_path = os.path.join(STATIC_DIR, "logo.jpg")
+    if os.path.exists(logo_path):
+        return FileResponse(logo_path, media_type="image/jpeg")
+    parent_logo = os.path.join(os.path.dirname(BASE_DIR), "static", "logo.jpg")
+    if os.path.exists(parent_logo):
+        return FileResponse(parent_logo, media_type="image/jpeg")
+    raise HTTPException(status_code=404, detail="Logo not found")
+
+
+@app.get("/healthz", tags=["System"])
+def deployment_health_check():
+    """Deployment health probe for Railway and Render."""
+    conn = None
+    try:
+        conn = get_connection()
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1;")
+            cur.fetchone()
+        return {"status": "healthy", "database": "connected"}
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Database probe failed: {e}")
+    finally:
+        if conn:
+            release_connection(conn)
 
 def log_system_event(cur, category: str, job_card_id: str, action: str, performed_by: str, details: str):
     cur.execute("""
@@ -149,18 +192,16 @@ def require_uploader(user: dict = Depends(get_current_user)):
 # ---------------------------------------------------------
 
 def drop_secondary_indexes(cur):
-    """Drops secondary B-Tree indexes to maximize bulk write throughput."""
-    cur.execute("DROP INDEX IF EXISTS idx_codes_code_value;")
+    """Drops run-specific indexes to maximize bulk write throughput without full table rebuilds."""
     cur.execute("DROP INDEX IF EXISTS idx_codes_run_val;")
     cur.execute("DROP INDEX IF EXISTS idx_codes_run_status;")
     cur.execute("DROP INDEX IF EXISTS idx_codes_run_id_id;")
 
 def restore_secondary_indexes(cur):
-    """Rebuilds secondary indexes sequentially in RAM using maintenance_work_mem."""
-    cur.execute("SET maintenance_work_mem = '256MB';")
+    """Rebuilds run-specific indexes safely using conservative memory settings."""
+    cur.execute("SET maintenance_work_mem = '64MB';")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_val ON codes(run_id, code_value);")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_status ON codes(run_id, status);")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_code_value ON codes(code_value);")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_id_id ON codes(run_id, id);")
     cur.execute("ANALYZE codes;")
 
@@ -1643,3 +1684,8 @@ def export_report_csv(job_card_id: str, user: dict = Depends(get_current_user)):
             )
     finally:
         release_connection(conn)
+if __name__ == "__main__":
+    import uvicorn
+    # Dynamically bind to the platform's assigned PORT and accept external traffic via 0.0.0.0
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=False)
