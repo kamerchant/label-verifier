@@ -216,10 +216,9 @@ def init_db():
         scanned_at TIMESTAMP WITH TIME ZONE
     );
 
-    -- Base index on codes (secondary indexes are dropped/rebuilt during bulk COPY)
+    -- Base index on codes (run-specific indexes only to prevent startup disk overflow)
     CREATE INDEX IF NOT EXISTS idx_codes_run_val ON codes(run_id, code_value);
     CREATE INDEX IF NOT EXISTS idx_codes_run_status ON codes(run_id, status);
-    CREATE INDEX IF NOT EXISTS idx_codes_code_value ON codes(code_value);
     CREATE INDEX IF NOT EXISTS idx_codes_run_id_id ON codes(run_id, id);
 
     -- 4. Verification Scan Logs Table
