@@ -1492,14 +1492,19 @@ def get_recent_scans(job_card_id: str, limit: int = 50, user: dict = Depends(get
 
             if active_run_id and min_id is not None:
                 cur.execute("""
-                    SELECT s.code_scanned, s.result, s.scanned_by, s.scanned_at,
+                    WITH recent AS (
+                        SELECT s.code_scanned, s.result, s.scanned_by, s.scanned_at
+                        FROM scan_logs s
+                        WHERE s.job_card_id = %s
+                        ORDER BY s.id DESC
+                        LIMIT %s
+                    )
+                    SELECT r.code_scanned, r.result, r.scanned_by, r.scanned_at,
                            (c.id - %s + 1) AS row_num
-                    FROM scan_logs s
-                    LEFT JOIN codes c ON c.run_id = %s AND c.code_value = s.code_scanned
-                    WHERE s.job_card_id = %s 
-                    ORDER BY s.scanned_at DESC 
-                    LIMIT %s
-                """, (min_id, active_run_id, job_card_id, limit))
+                    FROM recent r
+                    LEFT JOIN codes c ON c.run_id = %s AND c.code_value = r.code_scanned
+                    ORDER BY r.scanned_at DESC;
+                """, (job_card_id, limit, min_id, active_run_id))
             else:
                 cur.execute("""
                     SELECT s.code_scanned, s.result, s.scanned_by, s.scanned_at,
