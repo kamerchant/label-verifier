@@ -41,33 +41,24 @@ async def lifespan(app: FastAPI):
                 WHERE status IN ('INGESTING', 'OVERRIDING');
             """)
 
+            # Only calculate counts for jobs that are actually missing them
             cur.execute("""
                 UPDATE job_cards j
-                SET total_codes = sub.cnt,
-                    consumed_codes = sub.consumed_cnt
+                SET total_codes = COALESCE(sub.cnt, 0),
+                    consumed_codes = COALESCE(sub.consumed_cnt, 0)
                 FROM (
-                    SELECT run_id, 
+                    SELECT c.run_id, 
                            COUNT(*) as cnt,
-                           COUNT(*) FILTER (WHERE status = 'CONSUMED') as consumed_cnt
-                    FROM codes
-                    GROUP BY run_id
+                           COUNT(*) FILTER (WHERE c.status = 'CONSUMED') as consumed_cnt
+                    FROM codes c
+                    WHERE c.run_id IN (
+                        SELECT run_id FROM job_cards 
+                        WHERE (total_codes IS NULL OR total_codes = 0) 
+                          AND status NOT IN ('DELETED', 'FAILED')
+                    )
+                    GROUP BY c.run_id
                 ) sub
-                WHERE j.run_id = sub.run_id 
-                  AND (j.total_codes IS NULL OR j.total_codes = 0);
-            """)
-
-            cur.execute("""
-                UPDATE job_cards j
-                SET consumed_codes = sub.consumed_cnt
-                FROM (
-                    SELECT run_id, 
-                           COUNT(*) FILTER (WHERE status = 'CONSUMED') as consumed_cnt
-                    FROM codes
-                    GROUP BY run_id
-                ) sub
-                WHERE j.run_id = sub.run_id 
-                  AND (j.consumed_codes IS NULL OR j.consumed_codes = 0)
-                  AND sub.consumed_cnt > 0;
+                WHERE j.run_id = sub.run_id;
             """)
             conn.commit()
     finally:
@@ -192,17 +183,11 @@ def require_uploader(user: dict = Depends(get_current_user)):
 # ---------------------------------------------------------
 
 def drop_secondary_indexes(cur):
-    """Drops run-specific indexes to maximize bulk write throughput without full table rebuilds."""
-    cur.execute("DROP INDEX IF EXISTS idx_codes_run_val;")
-    cur.execute("DROP INDEX IF EXISTS idx_codes_run_status;")
-    cur.execute("DROP INDEX IF EXISTS idx_codes_run_id_id;")
+    """No-op: Retain persistent indexes to eliminate full-table rebuilds and table locks."""
+    pass
 
 def restore_secondary_indexes(cur):
-    """Rebuilds run-specific indexes safely using conservative memory settings."""
-    cur.execute("SET maintenance_work_mem = '64MB';")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_val ON codes(run_id, code_value);")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_status ON codes(run_id, status);")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_id_id ON codes(run_id, id);")
+    """Fast statistics update without re-indexing historical records."""
     cur.execute("ANALYZE codes;")
 
 def stream_file_to_codes_chunked(cur, conn, run_id: int, target_tsv_path: str, total_to_insert: int):
@@ -299,18 +284,14 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 cur.execute("CREATE INDEX idx_temp_inc_val ON temp_incoming_codes (code_value);")
                 cur.execute("ANALYZE temp_incoming_codes;")
 
-                # Explicit check against ACTIVE, INACTIVE, and COMPLETED jobs
+                # Fast indexed join for conflict checking
                 cur.execute("""
                     SELECT COUNT(*)
                     FROM temp_incoming_codes t
-                    WHERE EXISTS (
-                        SELECT 1 
-                        FROM codes c
-                        JOIN job_cards j ON c.run_id = j.run_id
-                        WHERE c.code_value = t.code_value 
-                          AND j.status IN ('ACTIVE', 'INACTIVE', 'COMPLETED')
-                          AND c.status != 'DELETED'
-                    )
+                    JOIN codes c ON c.code_value = t.code_value
+                    JOIN job_cards j ON j.run_id = c.run_id
+                    WHERE j.status IN ('ACTIVE', 'INACTIVE', 'COMPLETED')
+                      AND c.status != 'DELETED';
                 """)
                 conflicts_found = cur.fetchone()[0]
 
@@ -418,7 +399,6 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 cur.execute("CREATE INDEX idx_temp_ovr_val ON temp_override_all (code_value);")
                 cur.execute("ANALYZE temp_override_all;")
 
-                # Explicit check against ACTIVE, INACTIVE, and COMPLETED jobs
                 cur.execute("""
                     CREATE TEMP TABLE temp_override_filtered ON COMMIT DROP AS
                     SELECT t.run_id, t.job_card_id, t.code_value, t.status
@@ -426,10 +406,11 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                     WHERE NOT EXISTS (
                         SELECT 1 
                         FROM codes c
-                        JOIN job_cards j ON c.run_id = j.run_id
-                        WHERE c.code_value = t.code_value 
-                          AND j.status IN ('ACTIVE', 'INACTIVE', 'COMPLETED')
+                        WHERE c.code_value = t.code_value
                           AND c.status != 'DELETED'
+                          AND c.run_id IN (
+                              SELECT run_id FROM job_cards WHERE status IN ('ACTIVE', 'INACTIVE', 'COMPLETED')
+                          )
                     );
                 """)
 
