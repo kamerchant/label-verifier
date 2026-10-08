@@ -206,7 +206,7 @@ def restore_secondary_indexes(cur):
     cur.execute("ANALYZE codes;")
 
 def stream_file_to_codes_chunked(cur, conn, run_id: int, target_tsv_path: str, total_to_insert: int):
-    CHUNK_SIZE = 150_000
+    CHUNK_SIZE = 25_000
     inserted = 0
 
     with open(target_tsv_path, "r", encoding="utf-8") as tsv_file:
