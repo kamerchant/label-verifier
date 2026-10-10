@@ -239,6 +239,8 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
 
             header_blacklist = {"code", "url", "qr", "qrcode", "serial", "barcode", "data", "id", "link"}
             seen_in_batch = set()
+            internal_duplicates_count = 0
+            sample_internal_duplicates = []
             total_codes = 0
 
             clean_tsv_fd, clean_tsv_path = tempfile.mkstemp(suffix=".tsv")
@@ -253,13 +255,40 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                             clean = part.strip().strip('"').strip("'").replace('\r', '').replace('\n', '').replace('\t', '')
                             if not clean or clean.lower() in header_blacklist:
                                 continue
-                            if clean not in seen_in_batch:
+                            
+                            # Check for duplicates WITHIN the file itself
+                            if clean in seen_in_batch:
+                                internal_duplicates_count += 1
+                                if len(sample_internal_duplicates) < 5:
+                                    sample_internal_duplicates.append(clean)
+                            else:
                                 seen_in_batch.add(clean)
                                 out_f.write(f"{run_id}\t{job_card_id}\t{clean}\tPENDING\n")
                                 total_codes += 1
 
             seen_in_batch.clear()
             del seen_in_batch
+
+            # If the CSV has internal repetitions, halt before touching the database
+            if internal_duplicates_count > 0:
+                sample_str = ", ".join(sample_internal_duplicates)
+                error_msg = (
+                    f"File Integrity Error: Found {internal_duplicates_count:,} duplicate code(s) "
+                    f"within the CSV itself (Samples: {sample_str})."
+                )
+                cur.execute("""
+                    UPDATE job_cards 
+                    SET status = 'FAILED', 
+                        ingestion_progress = %s 
+                    WHERE run_id = %s
+                """, (error_msg, run_id))
+                conn.commit()
+                return
+
+            if total_codes == 0:
+                cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = 'No valid codes found in uploaded file' WHERE run_id = %s", (run_id,))
+                conn.commit()
+                return
 
             if total_codes == 0:
                 cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = 'No valid codes found in uploaded file' WHERE run_id = %s", (run_id,))
