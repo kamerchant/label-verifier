@@ -826,7 +826,7 @@
                             class="linear-input w-full p-2.5 text-xs sm:text-sm rounded cursor-pointer">
                         <option value="QC officer">QC officer</option>
                         <option value="QC manager">QC manager</option>
-                        <option value="admin">admin</option>
+                        <option value="admin">Administrator</option>
                     </select>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1476,7 +1476,8 @@
                     const loginModal = document.getElementById('login-modal');
                     loginModal.classList.add('hidden');
                     loginModal.style.display = 'none';
-                    document.getElementById('user-display').innerText = `${data.username} (${data.role})`;
+                    const roleLabel = String(data.role || "").toLowerCase() === "admin" ? "Administrator" : data.role;
+                    document.getElementById('user-display').innerText = `${data.username} (${roleLabel})`;
                     
                     const roleLower = String(data.role || "").toLowerCase().trim();
                     const isManagerOrAdmin = roleLower === 'admin' || roleLower === 'qc manager';
@@ -2802,7 +2803,7 @@
                                     class="linear-input rounded cursor-pointer text-xs sm:text-sm px-2.5 py-1">
                                 <option value="QC officer" ${u.role === 'QC officer' ? 'selected' : ''}>QC officer</option>
                                 <option value="QC manager" ${u.role === 'QC manager' ? 'selected' : ''}>QC manager</option>
-                                <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
+                                <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Administrator</option>
                             </select>
                         </td>
                         <td class="px-3.5 py-2.5 text-center">${uploadCheckboxHtml}</td>
