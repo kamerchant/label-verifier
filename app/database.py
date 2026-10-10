@@ -158,8 +158,8 @@ def get_db_cursor(commit: bool = False, cursor_factory=RealDictCursor):
 # ---------------------------------------------------------------------------
 def init_db():
     """
-    Initializes required database schema tables and safely applies migrations
-    aligned with the exact column names queried in main.py.
+    Initializes required database schema tables, applied migrations, and
+    builds the high-speed indexes needed for real-time verification and bulk ingestion.
     """
     schema_sql = """
     -- 1. Users Table
@@ -206,6 +206,9 @@ def init_db():
     ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS deletion_reason TEXT;
     ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS conflict_resolution VARCHAR(50) DEFAULT 'NONE';
 
+    CREATE INDEX IF NOT EXISTS idx_job_cards_jc_id ON job_cards(job_card_id);
+    CREATE INDEX IF NOT EXISTS idx_job_cards_status ON job_cards(status);
+
     -- 3. Serialized Codes Table (High-speed barcode pool)
     CREATE TABLE IF NOT EXISTS codes (
         id SERIAL PRIMARY KEY,
@@ -215,6 +218,12 @@ def init_db():
         status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
         scanned_at TIMESTAMP WITH TIME ZONE
     );
+
+    -- Core Verification & Conflict Indexes
+    CREATE INDEX IF NOT EXISTS idx_codes_code_value ON codes(code_value);
+    CREATE INDEX IF NOT EXISTS idx_codes_run_val ON codes(run_id, code_value);
+    CREATE INDEX IF NOT EXISTS idx_codes_run_status ON codes(run_id, status, id);
+    CREATE INDEX IF NOT EXISTS idx_codes_run_id ON codes(run_id, id);
 
     -- 4. Verification Scan Logs Table
     CREATE TABLE IF NOT EXISTS scan_logs (
@@ -228,6 +237,7 @@ def init_db():
 
     CREATE INDEX IF NOT EXISTS idx_scan_logs_jc ON scan_logs(job_card_id);
     CREATE INDEX IF NOT EXISTS idx_scan_logs_code ON scan_logs(code_scanned);
+    CREATE INDEX IF NOT EXISTS idx_scan_logs_jc_id ON scan_logs(job_card_id, id DESC);
 
     -- 5. Final Packing QC Logs Table
     CREATE TABLE IF NOT EXISTS packing_qc_logs (
@@ -266,4 +276,17 @@ def init_db():
     """
     with get_db_cursor(commit=True) as cursor:
         cursor.execute(schema_sql)
+
+        # Seed default admin if database is brand new
+        cursor.execute("SELECT COUNT(*) AS cnt FROM users;")
+        row = cursor.fetchone()
+        user_count = row["cnt"] if isinstance(row, dict) else row[0]
+        if user_count == 0:
+            default_admin_hash = hash_password("Admin@1234")
+            cursor.execute("""
+                INSERT INTO users (username, password_hash, role, can_upload, is_active, must_change_password)
+                VALUES ('admin', %s, 'admin', TRUE, TRUE, TRUE);
+            """, (default_admin_hash,))
+            logger.info("Brand new database initialized: default admin seeded (Username: admin, Password: Admin@1234).")
+
         logger.info("Database schema initialized and verified.")
