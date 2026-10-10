@@ -2830,9 +2830,14 @@
             if (!adminPass) return;
 
             const modalSubmitBtn = document.getElementById('user-admin-pw-confirm-btn');
-            const originalModalBtnText = modalSubmitBtn.innerHTML;
-            modalSubmitBtn.disabled = true;
-            modalSubmitBtn.innerHTML = `${spinnerHtml} Verifying...`;
+            const originalModalBtnText = modalSubmitBtn ? modalSubmitBtn.innerHTML : 'Authorize & Save';
+            const btn = document.getElementById('btn-submit-user-changes');
+            const originalBtnText = btn ? btn.innerHTML : 'Submit Changes';
+
+            if (modalSubmitBtn) {
+                modalSubmitBtn.disabled = true;
+                modalSubmitBtn.innerHTML = `${spinnerHtml} Verifying...`;
+            }
 
             try {
                 const verifyBody = new FormData();
@@ -2842,17 +2847,17 @@
                 const verifyRes = await fetch('/api/auth/login', { method: 'POST', body: verifyBody });
                 if (!verifyRes.ok) {
                     showCustomAlert("Invalid administrator password. Changes were not saved.");
-                    modalSubmitBtn.disabled = false;
-                    modalSubmitBtn.innerHTML = originalModalBtnText;
                     return;
                 }
 
                 closeUserAdminPwModal();
 
-                const btn = document.getElementById('btn-submit-user-changes');
-                btn.disabled = true;
-                btn.innerHTML = `${spinnerHtml} Processing...`;
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = `${spinnerHtml} Processing...`;
+                }
 
+                // 1. Create staged new users
                 for (const nu of pendingNewUsers) {
                     const body = new FormData();
                     body.append('username', nu.username);
@@ -2861,9 +2866,14 @@
                     body.append('can_upload', nu.can_upload);
                     body.append('employee_name', nu.employee_name);
                     body.append('employee_id', nu.employee_id);
-                    await fetch('/api/users/create', { method: 'POST', body });
+                    const res = await fetch('/api/users/create', { method: 'POST', body });
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        throw new Error(err.detail || `Failed to create user '${nu.username}'`);
+                    }
                 }
 
+                // 2. Apply modifications to existing users
                 for (const su of stagedUsers) {
                     const orig = originalUsers.find(o => o.username.toLowerCase() === su.username.toLowerCase());
                     if (!orig) continue;
@@ -2871,23 +2881,43 @@
                     if (su.role !== orig.role) {
                         const body = new FormData();
                         body.append('role', su.role);
-                        await fetch(`/api/users/${encodeURIComponent(su.username)}/role`, { method: 'POST', body });
+                        const res = await fetch(`/api/users/${encodeURIComponent(su.username)}/role`, { method: 'POST', body });
+                        if (!res.ok) {
+                            const err = await res.json().catch(() => ({}));
+                            throw new Error(err.detail || `Failed to update role for '${su.username}'`);
+                        }
                     }
                     if (su.is_active !== orig.is_active) {
                         const body = new FormData();
                         body.append('is_active', su.is_active);
-                        await fetch(`/api/users/${encodeURIComponent(su.username)}/toggle-active`, { method: 'POST', body });
+                        const res = await fetch(`/api/users/${encodeURIComponent(su.username)}/toggle-active`, { method: 'POST', body });
+                        if (!res.ok) {
+                            const err = await res.json().catch(() => ({}));
+                            throw new Error(err.detail || `Failed to update status for '${su.username}'`);
+                        }
                     }
                     if (su.can_upload !== orig.can_upload && su.role !== 'admin' && su.role !== 'QC manager') {
                         const body = new FormData();
                         body.append('can_upload', su.can_upload);
-                        await fetch(`/api/users/${encodeURIComponent(su.username)}/toggle-upload`, { method: 'POST', body });
+                        const res = await fetch(`/api/users/${encodeURIComponent(su.username)}/toggle-upload`, { method: 'POST', body });
+                        if (!res.ok) {
+                            const err = await res.json().catch(() => ({}));
+                            throw new Error(err.detail || `Failed to update upload rights for '${su.username}'`);
+                        }
                     }
-                    if (stagedPasswordResets[su.username]) {
+
+                    // Reset password with case-insensitive key lookup and error validation
+                    const resetPw = stagedPasswordResets[su.username] || 
+                                    Object.entries(stagedPasswordResets).find(([k]) => k.toLowerCase() === su.username.toLowerCase())?.[1];
+                    if (resetPw) {
                         const body = new FormData();
-                        body.append('new_password', stagedPasswordResets[su.username]);
+                        body.append('new_password', resetPw);
                         body.append('admin_password', adminPass);
-                        await fetch(`/api/users/${encodeURIComponent(su.username)}/reset-password`, { method: 'POST', body });
+                        const res = await fetch(`/api/users/${encodeURIComponent(su.username)}/reset-password`, { method: 'POST', body });
+                        if (!res.ok) {
+                            const err = await res.json().catch(() => ({}));
+                            throw new Error(err.detail || `Failed to reset password for user '${su.username}'`);
+                        }
                     }
                 }
 
@@ -2907,9 +2937,13 @@
             } catch(ex) {
                 showCustomAlert(ex.message || "Failed to submit user changes.");
             } finally {
-                modalSubmitBtn.disabled = false;
-                modalSubmitBtn.innerHTML = originalModalBtnText;
-                btn.innerHTML = "Submit Changes";
+                if (modalSubmitBtn) {
+                    modalSubmitBtn.disabled = false;
+                    modalSubmitBtn.innerHTML = originalModalBtnText;
+                }
+                if (btn) {
+                    btn.innerHTML = originalBtnText;
+                }
                 checkUserAdminDirty();
             }
         }
