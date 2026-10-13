@@ -209,6 +209,17 @@
         .print-brand-box { display: none; }
         .print-timestamp-footer { display: none !important; }
 
+        /* Flat, desaturated disabled state */
+        .btn-flat-disabled {
+            opacity: 0.25 !important;
+            pointer-events: none !important;
+            box-shadow: none !important;
+            filter: grayscale(100%) !important;
+            cursor: not-allowed !important;
+            border-color: rgba(255, 255, 255, 0.05) !important;
+            transform: none !important;
+        }
+
         @media print {
             @page {
                 size: A4 portrait;
@@ -3106,52 +3117,67 @@
         }
 
                 function setJobProcessingLock(locked) {
-            // 1. Disengage top navigation bar controls
+            // 1. Flatten and disable all top header navigation buttons
             const headerBtns = document.querySelectorAll('header button');
             headerBtns.forEach(btn => {
                 btn.disabled = locked;
                 if (locked) {
-                    btn.classList.add('opacity-30', 'pointer-events-none');
+                    btn.classList.add('btn-flat-disabled');
                 } else {
-                    btn.classList.remove('opacity-30', 'pointer-events-none');
+                    btn.classList.remove('btn-flat-disabled');
                 }
             });
 
-            // 2. Disengage workspace action buttons and inputs
+            // 2. Flatten and disable workspace action buttons
             const workspaceIds = ['report-btn', 'lifecycle-btn', 'job-toggle-btn', 'close-job-btn', 'verify-btn'];
             workspaceIds.forEach(id => {
                 const el = document.getElementById(id);
-                if (el && locked) {
-                    el.disabled = true;
-                    el.classList.add('opacity-30', 'pointer-events-none');
+                if (el) {
+                    el.disabled = locked;
+                    if (locked) {
+                        el.classList.add('btn-flat-disabled');
+                    } else {
+                        el.classList.remove('btn-flat-disabled');
+                    }
                 }
             });
 
+            // 3. Flatten and disable modal cancel button
+            const cancelBtn = document.getElementById('upload-cancel-btn');
+            if (cancelBtn) {
+                cancelBtn.disabled = locked;
+                if (locked) {
+                    cancelBtn.classList.add('btn-flat-disabled');
+                } else {
+                    cancelBtn.classList.remove('btn-flat-disabled');
+                }
+            }
+
+            // 4. Flatten and disable footer buttons
+            const footerBtns = document.querySelectorAll('footer button');
+            footerBtns.forEach(btn => {
+                btn.disabled = locked;
+                if (locked) {
+                    btn.classList.add('btn-flat-disabled');
+                } else {
+                    btn.classList.remove('btn-flat-disabled');
+                }
+            });
+
+            // 5. Disable inputs to prevent alteration mid-process
             const searchInput = document.getElementById('job-search');
             if (searchInput) searchInput.disabled = locked;
 
             const barcodeInput = document.getElementById('barcode-input');
             if (barcodeInput && locked) barcodeInput.disabled = true;
 
-            // 3. Disengage footer controls
-            const footerBtns = document.querySelectorAll('footer button');
-            footerBtns.forEach(btn => {
-                btn.disabled = locked;
-                if (locked) {
-                    btn.classList.add('opacity-30', 'pointer-events-none');
-                } else {
-                    btn.classList.remove('opacity-30', 'pointer-events-none');
-                }
-            });
-
-            // 4. Lock modal input elements during ingestion
             const modalInputs = ['new-job-id', 'new-job-desc', 'new-job-file'];
             modalInputs.forEach(id => {
                 const input = document.getElementById(id);
                 if (input) input.disabled = locked;
             });
 
-            // 5. Restore operational availability upon release
+            // 6. Restore active states and sessions when unlocked
             if (!locked) {
                 checkSession();
                 if (activeJobId) {
