@@ -1063,16 +1063,16 @@
     <!-- Password Modal -->
     <div id="pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full shadow-2xl">
-            <h3 id="pw-title" class="text-base sm:text-lg font-extrabold modal-title-theme mb-1">Change Password</h3>
-            <p id="pw-subtitle" class="text-xs modal-subtitle-theme mb-4">Enter current and new credentials</p>
+            <h3 id="pw-title" class="text-base sm:text-lg font-extrabold modal-title-theme mb-1">Set New Password</h3>
+            <p id="pw-subtitle" class="text-xs modal-subtitle-theme mb-4">Enter and confirm your new password</p>
             <form onsubmit="handleChangePassword(event)" class="space-y-3.5">
                 <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Current Password</label>
-                    <input type="password" id="pw-current" required class="linear-input w-full p-2.5 text-sm rounded">
+                    <label class="block text-xs font-medium text-slate-400 mb-1">New Password *</label>
+                    <input type="password" id="pw-new" required minlength="8" title="Minimum 8 characters, at least 1 uppercase, 1 lowercase, and 1 number." placeholder="Enter new password" class="linear-input w-full p-2.5 text-sm rounded">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">New Password</label>
-                    <input type="password" id="pw-new" required minlength="8" title="Minimum 8 characters, at least 1 uppercase, 1 lowercase, and 1 number." class="linear-input w-full p-2.5 text-sm rounded">
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Confirm New Password *</label>
+                    <input type="password" id="pw-confirm" required minlength="8" placeholder="Re-enter new password" class="linear-input w-full p-2.5 text-sm rounded">
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" id="pw-cancel-btn" onclick="toggleModal('pw-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
@@ -1570,29 +1570,40 @@
 
         async function handleChangePassword(e) {
             e.preventDefault();
+            const newPassword = document.getElementById('pw-new').value;
+            const confirmPassword = document.getElementById('pw-confirm').value;
+
+            if (newPassword !== confirmPassword) {
+                showCustomAlert("Passwords do not match. Please re-enter.", "Validation Error");
+                return;
+            }
+
             const pwBtn = document.getElementById('pw-submit-btn');
             const originalText = pwBtn.innerHTML;
             pwBtn.disabled = true;
             pwBtn.innerHTML = `${spinnerHtml} Saving...`;
 
             const body = new FormData();
-            body.append("old_password", document.getElementById('pw-current').value);
-            body.append("new_password", document.getElementById('pw-new').value);
+            body.append("new_password", newPassword);
+            body.append("confirm_password", confirmPassword);
 
             try {
                 const res = await fetch('/api/auth/change-password', { method: 'POST', body });
                 if (res.ok) {
                     showCustomAlert("Password updated successfully!", "Success");
                     toggleModal('pw-modal');
-                    document.getElementById('pw-current').value = "";
                     document.getElementById('pw-new').value = "";
+                    document.getElementById('pw-confirm').value = "";
                     await checkSession();
                     updateSystemMessage("Password changed successfully", "success");
                 } else {
-                    const err = await res.json();
-                    showCustomAlert(err.detail || "Password change failed");
+                    const err = await res.json().catch(() => ({}));
+                    showCustomAlert(err.detail || "Password change failed", "Error");
                     updateSystemMessage(err.detail || "Password change failed", "error");
                 }
+            } catch (ex) {
+                showCustomAlert("Network error or server unreachable", "Error");
+                updateSystemMessage("Network error during password update", "error");
             } finally {
                 pwBtn.disabled = false;
                 pwBtn.innerHTML = originalText;

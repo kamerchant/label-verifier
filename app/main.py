@@ -613,19 +613,16 @@ def get_me(request: Request):
 
 @app.post("/api/auth/change-password")
 def change_password(
-    old_password: str = Form(...),
     new_password: str = Form(...),
+    confirm_password: str = Form(...),
     user: dict = Depends(get_current_user)
 ):
+    if new_password != confirm_password:
+        raise HTTPException(status_code=400, detail="New passwords do not match.")
     validate_password_strength(new_password)
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT password_hash FROM users WHERE LOWER(username) = LOWER(%s)", (user["username"],))
-            row = cur.fetchone()
-            if not row or not verify_password(old_password, row[0]):
-                raise HTTPException(status_code=400, detail="Current password is incorrect")
-
             new_hash = hash_password(new_password)
             cur.execute(
                 "UPDATE users SET password_hash = %s, must_change_password = FALSE WHERE LOWER(username) = LOWER(%s)",
