@@ -3152,6 +3152,12 @@
                     const data = JSON.parse(xhr.responseText);
                     activeIngestionRunId = data.run_id;
                     activeIngestionJobCardId = data.job_card_id;
+                    
+                    // Reset progress bar from HTTP upload to 0% for database ingestion
+                    progressBar.style.width = '0%';
+                    percentageLabel.innerText = '0%';
+                    statusLabel.innerText = 'File uploaded. Processing unique codes...';
+                    
                     startIngestionPolling(data.run_id);
                 } else {
                     showCustomAlert("Failed to initiate ingestion.");
