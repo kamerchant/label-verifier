@@ -3105,6 +3105,63 @@
             }
         }
 
+                function setJobProcessingLock(locked) {
+            // 1. Disengage top navigation bar controls
+            const headerBtns = document.querySelectorAll('header button');
+            headerBtns.forEach(btn => {
+                btn.disabled = locked;
+                if (locked) {
+                    btn.classList.add('opacity-30', 'pointer-events-none');
+                } else {
+                    btn.classList.remove('opacity-30', 'pointer-events-none');
+                }
+            });
+
+            // 2. Disengage workspace action buttons and inputs
+            const workspaceIds = ['report-btn', 'lifecycle-btn', 'job-toggle-btn', 'close-job-btn', 'verify-btn'];
+            workspaceIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el && locked) {
+                    el.disabled = true;
+                    el.classList.add('opacity-30', 'pointer-events-none');
+                }
+            });
+
+            const searchInput = document.getElementById('job-search');
+            if (searchInput) searchInput.disabled = locked;
+
+            const barcodeInput = document.getElementById('barcode-input');
+            if (barcodeInput && locked) barcodeInput.disabled = true;
+
+            // 3. Disengage footer controls
+            const footerBtns = document.querySelectorAll('footer button');
+            footerBtns.forEach(btn => {
+                btn.disabled = locked;
+                if (locked) {
+                    btn.classList.add('opacity-30', 'pointer-events-none');
+                } else {
+                    btn.classList.remove('opacity-30', 'pointer-events-none');
+                }
+            });
+
+            // 4. Lock modal input elements during ingestion
+            const modalInputs = ['new-job-id', 'new-job-desc', 'new-job-file'];
+            modalInputs.forEach(id => {
+                const input = document.getElementById(id);
+                if (input) input.disabled = locked;
+            });
+
+            // 5. Restore operational availability upon release
+            if (!locked) {
+                checkSession();
+                if (activeJobId) {
+                    const total = document.getElementById('kpi-total').innerText.replace(/,/g, '');
+                    const consumed = document.getElementById('kpi-consumed').innerText.replace(/,/g, '');
+                    selectJob(activeJobId, encodeURIComponent(activeJobDesc), activeJobStatus, consumed, total);
+                }
+            }
+        }
+
         async function uploadJob(e, overrideDuplicate = false) {
             if (e) e.preventDefault();
             const uploadBtn = document.getElementById('upload-btn');
@@ -3128,22 +3185,29 @@
             formData.append('file', fileInput.files[0]);
             formData.append('override_duplicate', overrideDuplicate ? 'true' : 'false');
 
+            // Disengage all buttons immediately
+            setJobProcessingLock(true);
             uploadBtn.disabled = true;
-            cancelBtn.disabled = true;
+            if (cancelBtn) {
+                cancelBtn.disabled = true;
+                cancelBtn.classList.add('opacity-30', 'pointer-events-none');
+            }
             uploadBtn.innerHTML = `${spinnerHtml} Uploading...`;
             progressBox.classList.remove('hidden');
             progressBar.style.width = '0%';
             percentageLabel.innerText = '0%';
-            statusLabel.innerText = 'Streaming file to server...';
+            statusLabel.innerText = 'Uploading file to server...';
 
             const xhr = new XMLHttpRequest();
             xhr.open('POST', '/api/jobs/create', true);
 
+            // Network upload progress: capped at 90% so it doesn't give a false 100% reading before database insertion starts
             xhr.upload.onprogress = function(event) {
                 if (event.lengthComputable) {
                     const pct = Math.round((event.loaded / event.total) * 100);
-                    progressBar.style.width = pct + '%';
-                    percentageLabel.innerText = pct + '%';
+                    const displayPct = Math.min(90, pct);
+                    progressBar.style.width = displayPct + '%';
+                    percentageLabel.innerText = displayPct + '%';
                 }
             };
 
@@ -3153,10 +3217,10 @@
                     activeIngestionRunId = data.run_id;
                     activeIngestionJobCardId = data.job_card_id;
                     
-                    // Reset progress bar from HTTP upload to 0% for database ingestion
+                    // Reset progress bar to 0% for database ingestion
                     progressBar.style.width = '0%';
                     percentageLabel.innerText = '0%';
-                    statusLabel.innerText = 'File uploaded. Processing unique codes...';
+                    statusLabel.innerText = 'Processing and verifying unique codes...';
                     
                     startIngestionPolling(data.run_id);
                 } else {
@@ -3164,19 +3228,37 @@
                     resetUploadUI();
                 }
             };
+
+            xhr.onerror = function() {
+                showCustomAlert("Network error while uploading file.");
+                resetUploadUI();
+            };
+
             xhr.send(formData);
         }
 
         function startIngestionPolling(runId) {
             if (ingestionPollTimer) clearInterval(ingestionPollTimer);
+            const progressBar = document.getElementById('upload-progress-bar');
+            const percentageLabel = document.getElementById('upload-percentage');
+            const statusLabel = document.getElementById('upload-status-label');
+
             ingestionPollTimer = setInterval(async () => {
                 try {
                     const res = await fetch(`/api/jobs/${runId}/upload-status`);
                     if (!res.ok) return;
                     const data = await res.json();
 
-                    const statusLabel = document.getElementById('upload-status-label');
-                    if (statusLabel && data.progress_message) statusLabel.innerText = data.progress_message;
+                    if (statusLabel && data.progress_message) {
+                        statusLabel.innerText = data.progress_message;
+
+                        // Parse the database ingestion percentage (e.g., "Ingesting: 10% (25,000 / 250,000 codes)...")
+                        const match = data.progress_message.match(/(\d+)%/);
+                        if (match && progressBar && percentageLabel) {
+                            progressBar.style.width = match[1] + '%';
+                            percentageLabel.innerText = match[1] + '%';
+                        }
+                    }
 
                     if (data.status === 'CONFLICT_DETECTED') {
                         clearInterval(ingestionPollTimer);
@@ -3195,10 +3277,19 @@
                     } else if (data.status === 'ACTIVE') {
                         clearInterval(ingestionPollTimer);
                         ingestionPollTimer = null;
+                        if (progressBar) progressBar.style.width = '100%';
+                        if (percentageLabel) percentageLabel.innerText = '100%';
+
                         toggleModal('upload-modal');
                         resetUploadUI();
                         document.getElementById('create-job-form').reset();
                         showCustomAlert(`Job Card '${data.job_card_id}' is now active with ${Number(data.total_codes).toLocaleString()} codes.`, "Success");
+                        updateSystemMessage(`Job Card ${data.job_card_id} activated (${Number(data.total_codes).toLocaleString()} codes)`, "success");
+
+                        const masterModal = document.getElementById('master-jobs-modal');
+                        if (masterModal && !masterModal.classList.contains('hidden')) {
+                            loadMasterJobs(currentMasterTab, false);
+                        }
                     } else if (data.status === 'FAILED') {
                         clearInterval(ingestionPollTimer);
                         ingestionPollTimer = null;
@@ -3220,6 +3311,7 @@
             const percentageLabel = document.getElementById('duplicate-percentage');
             const statusLabel = document.getElementById('duplicate-status-label');
 
+            setJobProcessingLock(true);
             if (proceedBtn) proceedBtn.disabled = true;
             if (skipBtn) skipBtn.disabled = true;
             if (cancelBtn) cancelBtn.disabled = true;
@@ -3241,6 +3333,7 @@
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
                     showCustomAlert(err.detail || "Failed to proceed with override.");
+                    setJobProcessingLock(false);
                     if (progressBox) progressBox.classList.add('hidden');
                     if (activeBtn) activeBtn.innerHTML = originalText;
                     if (proceedBtn) proceedBtn.disabled = false;
@@ -3252,6 +3345,7 @@
                 startDuplicateIngestionPolling(activeIngestionRunId, activeBtn, originalText);
             } catch (ex) {
                 showCustomAlert("Network error while connecting to server.");
+                setJobProcessingLock(false);
                 if (progressBox) progressBox.classList.add('hidden');
                 if (activeBtn) activeBtn.innerHTML = originalText;
                 if (proceedBtn) proceedBtn.disabled = false;
@@ -3317,6 +3411,7 @@
                         if (proceedBtn) proceedBtn.disabled = false;
                         if (skipBtn) skipBtn.disabled = false;
                         if (cancelBtn) cancelBtn.disabled = false;
+                        setJobProcessingLock(false);
                         showCustomAlert(`Ingestion failed: ${data.progress_message}`, "Ingestion Error");
                     }
                 } catch(e) {}
@@ -3340,9 +3435,17 @@
                 uploadBtn.disabled = false;
                 uploadBtn.innerHTML = 'Create Job';
             }
-            if (cancelBtn) cancelBtn.disabled = false;
+            if (cancelBtn) {
+                cancelBtn.disabled = false;
+                cancelBtn.classList.remove('opacity-30', 'pointer-events-none');
+            }
             if (progressBox) progressBox.classList.add('hidden');
+
+            // Re-engage all buttons across the application
+            setJobProcessingLock(false);
         }
+
+
 
         function resolveJobFromAdmin(runId, conflictCount, totalCodes) {
             activeIngestionRunId = runId;
