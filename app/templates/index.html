@@ -359,7 +359,7 @@
             <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-2.5 py-1.5 rounded text-xs font-semibold whitespace-nowrap min-h-[34px] flex items-center">Create Job</button>
             <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-2.5 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center">Job Control Center</button>
             <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-2.5 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center">User Management</button>
-            <button onclick="toggleModal('pw-modal')" class="linear-button-secondary px-2.5 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center">Change Password</button>
+            <button onclick="openChangePasswordModal()" class="linear-button-secondary px-2.5 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center">Change Password</button>
             <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-2.5 py-1.5 rounded text-xs font-medium transition-colors whitespace-nowrap min-h-[34px] flex items-center">Logout</button>
         </div>
     </header>
@@ -1063,9 +1063,13 @@
     <!-- Password Modal -->
     <div id="pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full shadow-2xl">
-            <h3 id="pw-title" class="text-base sm:text-lg font-extrabold modal-title-theme mb-1">Set New Password</h3>
-            <p id="pw-subtitle" class="text-xs modal-subtitle-theme mb-4">Enter and confirm your new password</p>
+            <h3 id="pw-title" class="text-base sm:text-lg font-extrabold modal-title-theme mb-1">Change Password</h3>
+            <p id="pw-subtitle" class="text-xs modal-subtitle-theme mb-4">Enter current and new credentials</p>
             <form onsubmit="handleChangePassword(event)" class="space-y-3.5">
+                <div id="pw-current-group">
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Current Password *</label>
+                    <input type="password" id="pw-current" placeholder="Enter current password" class="linear-input w-full p-2.5 text-sm rounded">
+                </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">New Password *</label>
                     <input type="password" id="pw-new" required minlength="8" title="Minimum 8 characters, at least 1 uppercase, 1 lowercase, and 1 number." placeholder="Enter new password" class="linear-input w-full p-2.5 text-sm rounded">
@@ -1075,7 +1079,7 @@
                     <input type="password" id="pw-confirm" required minlength="8" placeholder="Re-enter new password" class="linear-input w-full p-2.5 text-sm rounded">
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" id="pw-cancel-btn" onclick="toggleModal('pw-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
+                    <button type="button" id="pw-cancel-btn" onclick="closePasswordModal()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
                     <button type="submit" id="pw-submit-btn" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold">Save Password</button>
                 </div>
             </form>
@@ -1528,13 +1532,75 @@
             }
         }
 
-        function forcePasswordChange() {
-            document.getElementById('pw-title').innerText = "First Login Password Change Required";
-            document.getElementById('pw-subtitle').innerText = "For security, you must update your password before proceeding.";
-            document.getElementById('pw-cancel-btn').classList.add('hidden');
+        let isForcedPasswordChange = false;
+
+        function openChangePasswordModal() {
+            isForcedPasswordChange = false;
+            document.getElementById('pw-title').innerText = "Change Password";
+            document.getElementById('pw-subtitle').innerText = "Enter your current password and your new password.";
+            
+            // Show the current password field and make it required
+            const currentGroup = document.getElementById('pw-current-group');
+            const currentInput = document.getElementById('pw-current');
+            if (currentGroup) currentGroup.classList.remove('hidden');
+            if (currentInput) {
+                currentInput.required = true;
+                currentInput.value = "";
+            }
+
+            // Show and enable the cancel button
+            const cancelBtn = document.getElementById('pw-cancel-btn');
+            if (cancelBtn) {
+                cancelBtn.classList.remove('hidden');
+                cancelBtn.style.display = 'inline-flex';
+            }
+
+            document.getElementById('pw-new').value = "";
+            document.getElementById('pw-confirm').value = "";
+
             const pwModal = document.getElementById('pw-modal');
             pwModal.classList.remove('hidden');
             pwModal.style.display = 'flex';
+        }
+
+        function forcePasswordChange() {
+            isForcedPasswordChange = true;
+            document.getElementById('pw-title').innerText = "First Login Password Change Required";
+            document.getElementById('pw-subtitle').innerText = "For security, please enter and confirm a new permanent password.";
+            
+            // Hide current password input (user already authenticated on this turn)
+            const currentGroup = document.getElementById('pw-current-group');
+            const currentInput = document.getElementById('pw-current');
+            if (currentGroup) currentGroup.classList.add('hidden');
+            if (currentInput) {
+                currentInput.required = false;
+                currentInput.value = "";
+            }
+
+            // Hide cancel button to prevent bypassing forced setup
+            const cancelBtn = document.getElementById('pw-cancel-btn');
+            if (cancelBtn) {
+                cancelBtn.classList.add('hidden');
+                cancelBtn.style.display = 'none';
+            }
+
+            document.getElementById('pw-new').value = "";
+            document.getElementById('pw-confirm').value = "";
+
+            const pwModal = document.getElementById('pw-modal');
+            pwModal.classList.remove('hidden');
+            pwModal.style.display = 'flex';
+        }
+
+        function closePasswordModal() {
+            if (isForcedPasswordChange) return;
+            const pwModal = document.getElementById('pw-modal');
+            pwModal.classList.add('hidden');
+            pwModal.style.display = 'none';
+            const curInput = document.getElementById('pw-current');
+            if (curInput) curInput.value = "";
+            document.getElementById('pw-new').value = "";
+            document.getElementById('pw-confirm').value = "";
         }
 
         async function handleLogin(e) {
@@ -1570,11 +1636,17 @@
 
         async function handleChangePassword(e) {
             e.preventDefault();
+            const currentPass = document.getElementById('pw-current') ? document.getElementById('pw-current').value : '';
             const newPassword = document.getElementById('pw-new').value;
             const confirmPassword = document.getElementById('pw-confirm').value;
 
+            if (!isForcedPasswordChange && !currentPass) {
+                showCustomAlert("Please enter your current password.", "Validation Error");
+                return;
+            }
+
             if (newPassword !== confirmPassword) {
-                showCustomAlert("Passwords do not match. Please re-enter.", "Validation Error");
+                showCustomAlert("New passwords do not match. Please re-enter.", "Validation Error");
                 return;
             }
 
@@ -1586,14 +1658,16 @@
             const body = new FormData();
             body.append("new_password", newPassword);
             body.append("confirm_password", confirmPassword);
+            if (!isForcedPasswordChange) {
+                body.append("old_password", currentPass);
+            }
 
             try {
                 const res = await fetch('/api/auth/change-password', { method: 'POST', body });
                 if (res.ok) {
                     showCustomAlert("Password updated successfully!", "Success");
-                    toggleModal('pw-modal');
-                    document.getElementById('pw-new').value = "";
-                    document.getElementById('pw-confirm').value = "";
+                    isForcedPasswordChange = false;
+                    closePasswordModal();
                     await checkSession();
                     updateSystemMessage("Password changed successfully", "success");
                 } else {

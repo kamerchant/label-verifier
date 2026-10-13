@@ -5,6 +5,7 @@ import csv
 import json
 import tempfile
 import threading
+from typing import Optional
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Response, Depends
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -21,7 +22,7 @@ from app.database import (
 )
 
 # ---------------------------------------------------------------------------
-# Application Lifespan (Preserves your startup SQL & adds graceful shutdown)
+# Application Lifespan (Preserves startup SQL & adds graceful shutdown)
 # ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -156,13 +157,14 @@ def get_current_user(request: Request):
         raise HTTPException(status_code=401, detail="Session expired or invalid")
 
 def require_admin(user: dict = Depends(get_current_user)):
-    if str(user.get("role", "")).lower() != "admin":
+    role = str(user.get("role", "")).lower().strip()
+    if role not in ["admin", "administrator"]:
         raise HTTPException(status_code=403, detail="Admin permissions required")
     return user
 
 def require_manager_or_admin(user: dict = Depends(get_current_user)):
-    role = str(user.get("role", "")).lower()
-    if role not in ["admin", "qc manager"]:
+    role = str(user.get("role", "")).lower().strip()
+    if role not in ["admin", "administrator", "qc manager"]:
         raise HTTPException(status_code=403, detail="QC Manager or Admin permissions required")
     return user
 
@@ -172,7 +174,8 @@ def require_uploader(user: dict = Depends(get_current_user)):
         with conn.cursor() as cur:
             cur.execute("SELECT can_upload, role FROM users WHERE LOWER(username) = LOWER(%s)", (user["username"],))
             row = cur.fetchone()
-            if not row or (not row[0] and str(row[1]).lower() not in ["admin", "qc manager"]):
+            role_clean = str(row[1]).lower().strip() if row else ""
+            if not row or (not row[0] and role_clean not in ["admin", "administrator", "qc manager"]):
                 raise HTTPException(status_code=403, detail="You do not have permission to create jobs.")
             return user
     finally:
@@ -290,11 +293,6 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 conn.commit()
                 return
 
-            if total_codes == 0:
-                cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = 'No valid codes found in uploaded file' WHERE run_id = %s", (run_id,))
-                conn.commit()
-                return
-
             cur.execute("""
                 UPDATE job_cards 
                 SET total_codes = %s, 
@@ -344,7 +342,7 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
 
             actual_inserted = stream_file_to_codes_chunked(cur, conn, run_id, clean_tsv_path, total_codes)
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Rebuilding search indexes in memory...' WHERE run_id = %s", (run_id,))
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Finalizing database index statistics...' WHERE run_id = %s", (run_id,))
             conn.commit()
             restore_secondary_indexes(cur)
             conn.commit()
@@ -467,7 +465,7 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
 
             actual_inserted = stream_file_to_codes_chunked(cur, conn, run_id, target_tsv, effective_total)
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Rebuilding search indexes in memory...' WHERE run_id = %s", (run_id,))
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Finalizing database index statistics...' WHERE run_id = %s", (run_id,))
             conn.commit()
             restore_secondary_indexes(cur)
             conn.commit()
@@ -550,6 +548,7 @@ def login(response: Response, username: str = Form(...), password: str = Form(..
             log_system_event(cur, "USER_MGMT", "-", "LOGIN_SUCCESS", original_username, f"User '{original_username}' signed in successfully")
             conn.commit()
 
+            role_clean = str(user[1]).lower().strip()
             token = signer.dumps({"username": original_username, "role": user[1]})
             response.set_cookie(
                 key="qc_session",
@@ -564,7 +563,7 @@ def login(response: Response, username: str = Form(...), password: str = Form(..
                 "username": original_username,
                 "role": user[1],
                 "must_change_password": user[2],
-                "can_upload": user[3] or str(user[1]).lower() in ["admin", "qc manager"]
+                "can_upload": user[3] or role_clean in ["admin", "administrator", "qc manager"]
             }
     finally:
         release_connection(conn)
@@ -598,6 +597,7 @@ def get_me(request: Request):
                 must_change = row[0] if row else False
                 can_upload = row[1] if row else False
                 role = row[2] if row else user["role"]
+                role_clean = str(role).lower().strip()
         finally:
             release_connection(conn)
 
@@ -606,7 +606,7 @@ def get_me(request: Request):
             "username": user["username"],
             "role": role,
             "must_change_password": must_change,
-            "can_upload": can_upload or str(role).lower() in ["admin", "qc manager"]
+            "can_upload": can_upload or role_clean in ["admin", "administrator", "qc manager"]
         }
     except HTTPException:
         return {"authenticated": False}
@@ -615,14 +615,30 @@ def get_me(request: Request):
 def change_password(
     new_password: str = Form(...),
     confirm_password: str = Form(...),
+    old_password: Optional[str] = Form(None),
     user: dict = Depends(get_current_user)
 ):
     if new_password != confirm_password:
         raise HTTPException(status_code=400, detail="New passwords do not match.")
     validate_password_strength(new_password)
+
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            cur.execute("SELECT password_hash, must_change_password FROM users WHERE LOWER(username) = LOWER(%s)", (user["username"],))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="User not found.")
+
+            stored_hash, must_change = row[0], row[1]
+
+            # Require current password ONLY for voluntary changes (not first-time setup)
+            if not must_change:
+                if not old_password:
+                    raise HTTPException(status_code=400, detail="Current password is required.")
+                if not verify_password(old_password, stored_hash):
+                    raise HTTPException(status_code=400, detail="Current password is incorrect.")
+
             new_hash = hash_password(new_password)
             cur.execute(
                 "UPDATE users SET password_hash = %s, must_change_password = FALSE WHERE LOWER(username) = LOWER(%s)",
@@ -645,7 +661,7 @@ def list_users(admin: dict = Depends(require_admin)):
                 "username": r[0],
                 "role": r[1],
                 "must_change_password": r[2],
-                "can_upload": True if str(r[1]).lower() in ["admin", "qc manager"] else (r[3] or False),
+                "can_upload": True if str(r[1]).lower().strip() in ["admin", "administrator", "qc manager"] else (r[3] or False),
                 "is_active": r[4] if r[4] is not None else True,
                 "employee_name": r[5] or "",
                 "employee_id": r[6] or "",
@@ -667,7 +683,7 @@ def create_user(
     clean_username = username.strip()
     validate_password_strength(password)
 
-    if str(role).lower() in ["admin", "qc manager"]:
+    if str(role).lower().strip() in ["admin", "administrator", "qc manager"]:
         can_upload = True
 
     conn = get_connection()
@@ -695,21 +711,23 @@ def update_user_role(
     role: str = Form(...),
     admin: dict = Depends(require_admin)
 ):
-    if role not in ["QC officer", "QC operator", "QC manager", "admin"]:
+    role_norm = role.strip()
+    valid_roles = ["QC officer", "QC operator", "QC manager", "admin", "Administrator"]
+    if not any(r.lower() == role_norm.lower() for r in valid_roles):
         raise HTTPException(status_code=400, detail="Invalid role specified.")
 
-    if username.lower() == admin["username"].lower() and role != "admin":
+    if username.lower() == admin["username"].lower() and role_norm.lower() not in ["admin", "administrator"]:
         raise HTTPException(status_code=400, detail="Cannot downgrade your own admin account.")
 
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            if str(role).lower() in ["admin", "qc manager"]:
-                cur.execute("UPDATE users SET role = %s, can_upload = TRUE WHERE LOWER(username) = LOWER(%s)", (role, username))
+            if role_norm.lower() in ["admin", "administrator", "qc manager"]:
+                cur.execute("UPDATE users SET role = %s, can_upload = TRUE WHERE LOWER(username) = LOWER(%s)", (role_norm, username))
             else:
-                cur.execute("UPDATE users SET role = %s WHERE LOWER(username) = LOWER(%s)", (role, username))
+                cur.execute("UPDATE users SET role = %s WHERE LOWER(username) = LOWER(%s)", (role_norm, username))
             
-            log_system_event(cur, "USER_MGMT", "-", "UPDATE_ROLE", admin["username"], f"Updated role for user '{username}' to '{role}'")
+            log_system_event(cur, "USER_MGMT", "-", "UPDATE_ROLE", admin["username"], f"Updated role for user '{username}' to '{role_norm}'")
             conn.commit()
             return {"status": "success"}
     finally:
@@ -777,7 +795,7 @@ def toggle_user_upload(
         with conn.cursor() as cur:
             cur.execute("SELECT role FROM users WHERE LOWER(username) = LOWER(%s)", (username,))
             row = cur.fetchone()
-            if row and str(row[0]).lower() in ["admin", "qc manager"] and not can_upload:
+            if row and str(row[0]).lower().strip() in ["admin", "administrator", "qc manager"] and not can_upload:
                 raise HTTPException(status_code=400, detail="Admin and QC Manager have permanent job creation rights.")
 
             cur.execute("UPDATE users SET can_upload = %s WHERE LOWER(username) = LOWER(%s)", (can_upload, username))
@@ -943,7 +961,6 @@ def get_master_jobs_report(status_filter: str = "ALL", user: dict = Depends(requ
             } for r in rows]
     finally:
         release_connection(conn)
-
 
 @app.get("/api/admin/packing-qc/{job_card_id}")
 def get_packing_qc_logs(job_card_id: str, user: dict = Depends(get_current_user)):
@@ -1599,16 +1616,22 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
             min_row = cur.fetchone()
             min_id = min_row[0] if min_row else None
 
+            # High-speed CTE scan to prevent full table scans on large jobs
             if min_id is not None:
                 cur.execute("""
-                    SELECT s.code_scanned, s.result, s.scanned_by, s.scanned_at,
+                    WITH recent AS (
+                        SELECT s.code_scanned, s.result, s.scanned_by, s.scanned_at
+                        FROM scan_logs s
+                        WHERE s.job_card_id = %s
+                        ORDER BY s.id DESC
+                        LIMIT 5000
+                    )
+                    SELECT r.code_scanned, r.result, r.scanned_by, r.scanned_at,
                            (c.id - %s + 1) AS row_num
-                    FROM scan_logs s
-                    LEFT JOIN codes c ON c.run_id = %s AND c.code_value = s.code_scanned
-                    WHERE s.job_card_id = %s 
-                    ORDER BY s.scanned_at DESC 
-                    LIMIT 5000
-                """, (min_id, run_id, jc_id))
+                    FROM recent r
+                    LEFT JOIN codes c ON c.run_id = %s AND c.code_value = r.code_scanned
+                    ORDER BY r.scanned_at DESC;
+                """, (jc_id, min_id, run_id))
             else:
                 cur.execute("""
                     SELECT s.code_scanned, s.result, s.scanned_by, s.scanned_at,
@@ -1696,6 +1719,8 @@ def export_report_csv(job_card_id: str, user: dict = Depends(get_current_user)):
             )
     finally:
         release_connection(conn)
+
+
 if __name__ == "__main__":
     import uvicorn
     # Dynamically bind to the platform's assigned PORT and accept external traffic via 0.0.0.0
