@@ -3338,17 +3338,29 @@
             const statusLabel = document.getElementById('duplicate-status-label');
 
             setJobProcessingLock(true);
-            if (proceedBtn) proceedBtn.disabled = true;
-            if (skipBtn) skipBtn.disabled = true;
-            if (cancelBtn) cancelBtn.disabled = true;
 
+            // Identify the clicked button vs the unclicked buttons
             const activeBtn = skipConflicts ? skipBtn : proceedBtn;
+            const otherBtns = skipConflicts ? [proceedBtn, cancelBtn] : [skipBtn, cancelBtn];
+
+            // Lock the active button with spinner, and flatten the other buttons completely
+            if (activeBtn) {
+                activeBtn.disabled = true;
+                activeBtn.classList.remove('btn-flat-disabled');
+            }
+            otherBtns.forEach(btn => {
+                if (btn) {
+                    btn.disabled = true;
+                    btn.classList.add('btn-flat-disabled');
+                }
+            });
+
             const originalText = activeBtn ? activeBtn.innerHTML : '';
             if (activeBtn) activeBtn.innerHTML = `${spinnerHtml} Processing...`;
 
             if (progressBox) progressBox.classList.remove('hidden');
-            if (progressBar) progressBar.style.width = '10%';
-            if (percentageLabel) percentageLabel.innerText = '10%';
+            if (progressBar) progressBar.style.width = '0%';
+            percentageLabel.innerText = '0%';
             if (statusLabel) statusLabel.innerText = skipConflicts ? 'Filtering conflicting codes...' : 'Authorizing duplicate override...';
 
             try {
@@ -3362,9 +3374,12 @@
                     setJobProcessingLock(false);
                     if (progressBox) progressBox.classList.add('hidden');
                     if (activeBtn) activeBtn.innerHTML = originalText;
-                    if (proceedBtn) proceedBtn.disabled = false;
-                    if (skipBtn) skipBtn.disabled = false;
-                    if (cancelBtn) cancelBtn.disabled = false;
+                    [proceedBtn, skipBtn, cancelBtn].forEach(btn => {
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.classList.remove('btn-flat-disabled');
+                        }
+                    });
                     return;
                 }
 
@@ -3374,9 +3389,12 @@
                 setJobProcessingLock(false);
                 if (progressBox) progressBox.classList.add('hidden');
                 if (activeBtn) activeBtn.innerHTML = originalText;
-                if (proceedBtn) proceedBtn.disabled = false;
-                if (skipBtn) skipBtn.disabled = false;
-                if (cancelBtn) cancelBtn.disabled = false;
+                [proceedBtn, skipBtn, cancelBtn].forEach(btn => {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.classList.remove('btn-flat-disabled');
+                    }
+                });
             }
         }
 
@@ -3414,9 +3432,12 @@
 
                         if (progressBox) progressBox.classList.add('hidden');
                         if (activeBtn) activeBtn.innerHTML = originalText;
-                        if (proceedBtn) proceedBtn.disabled = false;
-                        if (skipBtn) skipBtn.disabled = false;
-                        if (cancelBtn) cancelBtn.disabled = false;
+                        [proceedBtn, skipBtn, cancelBtn].forEach(btn => {
+                            if (btn) {
+                                btn.disabled = false;
+                                btn.classList.remove('btn-flat-disabled');
+                            }
+                        });
 
                         const createForm = document.getElementById('create-job-form');
                         if (createForm) createForm.reset();
@@ -3434,9 +3455,12 @@
                         ingestionPollTimer = null;
                         if (progressBox) progressBox.classList.add('hidden');
                         if (activeBtn) activeBtn.innerHTML = originalText;
-                        if (proceedBtn) proceedBtn.disabled = false;
-                        if (skipBtn) skipBtn.disabled = false;
-                        if (cancelBtn) cancelBtn.disabled = false;
+                        [proceedBtn, skipBtn, cancelBtn].forEach(btn => {
+                            if (btn) {
+                                btn.disabled = false;
+                                btn.classList.remove('btn-flat-disabled');
+                            }
+                        });
                         setJobProcessingLock(false);
                         showCustomAlert(`Ingestion failed: ${data.progress_message}`, "Ingestion Error");
                     }
@@ -3445,10 +3469,31 @@
         }
 
         async function cancelDuplicateUpload() {
+            const cancelBtn = document.getElementById('duplicate-cancel-btn');
+            const proceedBtn = document.getElementById('duplicate-proceed-btn');
+            const skipBtn = document.getElementById('duplicate-skip-btn');
+
+            if (cancelBtn) cancelBtn.innerHTML = `${spinnerHtml} Cancelling...`;
+            [proceedBtn, skipBtn].forEach(btn => {
+                if (btn) {
+                    btn.disabled = true;
+                    btn.classList.add('btn-flat-disabled');
+                }
+            });
+
             if (activeIngestionRunId) {
                 await fetch(`/api/jobs/${activeIngestionRunId}/cancel-upload`, { method: 'POST' });
                 activeIngestionRunId = null;
             }
+
+            [proceedBtn, skipBtn, cancelBtn].forEach(btn => {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.classList.remove('btn-flat-disabled');
+                }
+            });
+            if (cancelBtn) cancelBtn.innerHTML = 'Cancel / Discard';
+
             toggleModal('duplicate-warning-modal');
             resetUploadUI();
         }
