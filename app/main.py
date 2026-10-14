@@ -311,14 +311,18 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 cur.execute("CREATE INDEX idx_temp_inc_val ON temp_incoming_codes (code_value);")
                 cur.execute("ANALYZE temp_incoming_codes;")
 
-                # Fast indexed join for conflict checking
+                # Exact 1-to-1 conflict check (caps conflicts at total incoming codes)
                 cur.execute("""
                     SELECT COUNT(*)
                     FROM temp_incoming_codes t
-                    JOIN codes c ON c.code_value = t.code_value
-                    JOIN job_cards j ON j.run_id = c.run_id
-                    WHERE j.status IN ('ACTIVE', 'INACTIVE', 'COMPLETED')
-                      AND c.status != 'DELETED';
+                    WHERE EXISTS (
+                        SELECT 1
+                        FROM codes c
+                        JOIN job_cards j ON j.run_id = c.run_id
+                        WHERE c.code_value = t.code_value
+                          AND j.status IN ('ACTIVE', 'INACTIVE', 'COMPLETED')
+                          AND c.status != 'DELETED'
+                    );
                 """)
                 conflicts_found = cur.fetchone()[0]
 
