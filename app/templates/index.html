@@ -340,6 +340,7 @@
             #lifecycle-modal .print-timestamp-footer,
             #global-audit-modal .print-timestamp-footer,
             #duplicate-warning-modal .print-timestamp-footer,
+            #conflict-viewer-modal .print-timestamp-footer,
             #print-qc-footer-timestamp {
                 display: block !important;
                 visibility: visible !important;
@@ -697,6 +698,63 @@
 
             <!-- Print Timestamp Footer -->
             <div id="print-conflict-timestamp" class="print-timestamp-footer text-black"></div>
+        </div>
+    </div>
+
+    <!-- Dedicated Conflict Analysis Report Viewer Modal (Job Control Center Read-Only View) -->
+    <div id="conflict-viewer-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
+        <div class="bg-white text-black p-5 sm:p-6 rounded-lg max-w-xl w-full border border-slate-300 shadow-2xl flex flex-col max-h-[90vh]">
+            
+            <!-- Printable Brand Header (Only visible on print) -->
+            <div class="print-brand-box">
+                <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
+                <div style="display: flex; flex-direction: column; text-align: right;">
+                    <span style="font-size: 13pt; font-weight: bold; color: #0f172a; line-height: 1.1;">CCL Middle East – Pakistan</span>
+                    <span style="font-size: 8.5pt; color: #475569;">Variable Data Verification System</span>
+                </div>
+            </div>
+
+            <div class="text-center shrink-0 mb-3">
+                <h3 class="text-base sm:text-lg font-extrabold text-black mb-0.5">Batch Uniqueness & Conflict Analysis Report</h3>
+                <p class="text-xs text-slate-600">Collision audit against registered production job cards</p>
+            </div>
+            
+            <div class="bg-slate-100 p-3 rounded text-xs mb-3 text-left border border-slate-200 shrink-0">
+                <p id="viewer-conflict-msg" class="leading-relaxed text-black font-medium text-xs sm:text-sm"></p>
+            </div>
+
+            <!-- Scrollable Summary Table of Conflicting Job Cards -->
+            <div class="print-table-container flex-1 overflow-y-auto border border-slate-300 rounded mb-3 max-h-52 bg-white">
+                <table class="w-full text-left text-xs whitespace-nowrap">
+                    <thead>
+                        <tr class="border-b border-slate-300 text-xs font-bold sticky top-0 bg-slate-100 text-black z-10">
+                            <th class="px-3 py-2 text-black font-bold">Conflicting Job Card</th>
+                            <th class="px-3 py-2 text-center text-black font-bold">Status</th>
+                            <th class="px-3 py-2 text-right text-black font-bold">Conflicting Codes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="viewer-breakdown-rows" class="divide-y divide-slate-200 text-black text-xs">
+                        <tr>
+                            <td colspan="3" class="p-3 text-center text-slate-500 italic">No breakdown available</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Modal Actions: Only Print and Close -->
+            <div class="flex justify-between items-center gap-2 pt-2 border-t border-slate-200 shrink-0 no-print">
+                <button type="button" onclick="printViewerConflictReport()" 
+                        class="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-3.5 py-2 rounded text-xs font-semibold min-h-[38px] flex items-center justify-center gap-1.5">
+                    <span>🖨 Print Report</span>
+                </button>
+                <button type="button" onclick="closeConflictViewerModal()" 
+                        class="linear-button-secondary px-4 py-2 rounded text-xs font-medium min-h-[38px]">
+                    Close
+                </button>
+            </div>
+
+            <!-- Print Timestamp Footer -->
+            <div id="print-viewer-conflict-timestamp" class="print-timestamp-footer text-black"></div>
         </div>
     </div>
 
@@ -3428,6 +3486,20 @@
                         
                         const dupProgress = document.getElementById('duplicate-progress-box');
                         if (dupProgress) dupProgress.classList.add('hidden');
+
+                        // Guarantee that all action buttons are visible and enabled for new batch decision
+                        const skipBtn = document.getElementById('duplicate-skip-btn');
+                        const proceedBtn = document.getElementById('duplicate-proceed-btn');
+                        const cancelBtn = document.getElementById('duplicate-cancel-btn');
+                        const printBtn = document.getElementById('duplicate-print-btn');
+
+                        [skipBtn, proceedBtn, cancelBtn, printBtn].forEach(b => {
+                            if (b) {
+                                b.classList.remove('hidden', 'btn-flat-disabled');
+                                b.disabled = false;
+                            }
+                        });
+                        if (cancelBtn) cancelBtn.innerText = 'Cancel / Discard';
                         
                         toggleModal('duplicate-warning-modal');
                     } else if (data.status === 'ACTIVE') {
@@ -3598,11 +3670,79 @@
             }, 1000);
         }
 
-        let openedConflictReportFromMaster = false;
-
+        // -------------------------------------------------------------
+        // Read-Only Conflict Report Viewer (For Job Control Center)
+        // -------------------------------------------------------------
         async function openConflictReportFromMasterJobs(runId, jobCardId, conflictCount, totalCodes, status) {
+            let breakdown = [];
+            let jc = jobCardId;
+            let tCodes = totalCodes;
+            let cCount = conflictCount;
+
+            try {
+                const res = await fetch(`/api/jobs/${runId}/upload-status`);
+                if (res.ok) {
+                    const data = await res.json();
+                    breakdown = data.conflict_breakdown || [];
+                    jc = data.job_card_id || jobCardId;
+                    tCodes = data.total_codes || totalCodes;
+                    cCount = data.conflict_count || conflictCount;
+                }
+            } catch(e) {}
+
+            const msgEl = document.getElementById('viewer-conflict-msg');
+            const tbody = document.getElementById('viewer-breakdown-rows');
+
+            if (msgEl) {
+                msgEl.innerHTML = `
+                    Batch for Job Card <strong class="text-black font-extrabold">${jc}</strong> registered 
+                    <strong class="text-black font-extrabold">${(Number(cCount) || 0).toLocaleString()}</strong> unique conflicting code(s) 
+                    out of <strong class="text-black font-extrabold">${(Number(tCodes) || 0).toLocaleString()}</strong> total batch codes.
+                `;
+            }
+
+            if (tbody) {
+                if (!breakdown || breakdown.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="3" class="p-3 text-center text-slate-500 italic">No breakdown details recorded.</td></tr>`;
+                } else {
+                    tbody.innerHTML = breakdown.map(item => {
+                        let statusBadge = "bg-amber-100 text-amber-900 border border-amber-300";
+                        if (item.status === 'ACTIVE') statusBadge = "bg-emerald-100 text-emerald-900 border border-emerald-300";
+                        else if (item.status === 'COMPLETED') statusBadge = "bg-blue-100 text-blue-900 border border-blue-300";
+
+                        return `
+                            <tr class="hover:bg-slate-50 border-b border-slate-200">
+                                <td class="px-3 py-2 font-bold text-black font-mono">${item.job_card_id}</td>
+                                <td class="px-3 py-2 text-center">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge}">${item.status}</span>
+                                </td>
+                                <td class="px-3 py-2 text-right font-extrabold text-black">${(Number(item.conflict_count) || 0).toLocaleString()}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            }
+
+            toggleModal('master-jobs-modal');
+            toggleModal('conflict-viewer-modal');
+        }
+
+        function closeConflictViewerModal() {
+            toggleModal('conflict-viewer-modal');
+            toggleModal('master-jobs-modal');
+        }
+
+        function printViewerConflictReport() {
+            const tsElem = document.getElementById('print-viewer-conflict-timestamp');
+            if (tsElem) tsElem.innerText = `Report Generated On: ${new Date().toLocaleString()}`;
+            window.print();
+        }
+
+        // -------------------------------------------------------------
+        // Actionable Conflict Resolution (For Ingestion & Pending Overrides)
+        // -------------------------------------------------------------
+        async function resolveJobFromAdmin(runId, conflictCount, totalCodes) {
             activeIngestionRunId = runId;
-            openedConflictReportFromMaster = true;
 
             try {
                 const res = await fetch(`/api/jobs/${runId}/upload-status`);
@@ -3610,15 +3750,15 @@
                     const data = await res.json();
                     renderConflictBreakdownTable(
                         data.conflict_breakdown, 
-                        data.job_card_id || jobCardId, 
+                        data.job_card_id, 
                         data.total_codes || totalCodes, 
                         data.conflict_count || conflictCount
                     );
                 } else {
-                    renderConflictBreakdownTable([], jobCardId, totalCodes, conflictCount);
+                    renderConflictBreakdownTable([], '', totalCodes, conflictCount);
                 }
             } catch(e) {
-                renderConflictBreakdownTable([], jobCardId, totalCodes, conflictCount);
+                renderConflictBreakdownTable([], '', totalCodes, conflictCount);
             }
 
             const dupProgress = document.getElementById('duplicate-progress-box');
@@ -3627,17 +3767,15 @@
             const skipBtn = document.getElementById('duplicate-skip-btn');
             const proceedBtn = document.getElementById('duplicate-proceed-btn');
             const cancelBtn = document.getElementById('duplicate-cancel-btn');
+            const printBtn = document.getElementById('duplicate-print-btn');
 
-            if (status === 'CONFLICT_DETECTED') {
-                if (skipBtn) skipBtn.classList.remove('hidden');
-                if (proceedBtn) proceedBtn.classList.remove('hidden');
-                if (cancelBtn) cancelBtn.innerText = 'Cancel / Discard';
-            } else {
-                // Read-only report view for already ingested jobs
-                if (skipBtn) skipBtn.classList.add('hidden');
-                if (proceedBtn) proceedBtn.classList.add('hidden');
-                if (cancelBtn) cancelBtn.innerText = 'Close';
-            }
+            [skipBtn, proceedBtn, cancelBtn, printBtn].forEach(b => {
+                if (b) {
+                    b.classList.remove('hidden', 'btn-flat-disabled');
+                    b.disabled = false;
+                }
+            });
+            if (cancelBtn) cancelBtn.innerText = 'Cancel / Discard';
 
             toggleModal('master-jobs-modal');
             toggleModal('duplicate-warning-modal');
@@ -3648,16 +3786,6 @@
             const proceedBtn = document.getElementById('duplicate-proceed-btn');
             const skipBtn = document.getElementById('duplicate-skip-btn');
             const printBtn = document.getElementById('duplicate-print-btn');
-
-            // Safe close for active/completed jobs viewed from Job Control Center
-            if (cancelBtn && cancelBtn.innerText.trim() === 'Close') {
-                toggleModal('duplicate-warning-modal');
-                if (openedConflictReportFromMaster) {
-                    toggleModal('master-jobs-modal');
-                    openedConflictReportFromMaster = false;
-                }
-                return;
-            }
 
             if (cancelBtn) cancelBtn.innerHTML = `${spinnerHtml} Cancelling...`;
             [proceedBtn, skipBtn, printBtn].forEach(btn => {
@@ -3683,9 +3811,8 @@
             toggleModal('duplicate-warning-modal');
             resetUploadUI();
 
-            if (openedConflictReportFromMaster) {
-                toggleModal('master-jobs-modal');
-                openedConflictReportFromMaster = false;
+            const masterModal = document.getElementById('master-jobs-modal');
+            if (masterModal && !masterModal.classList.contains('hidden')) {
                 loadMasterJobs(currentMasterTab, false);
             }
         }
@@ -3704,14 +3831,7 @@
             }
             if (progressBox) progressBox.classList.add('hidden');
 
-            // Re-engage all buttons across the application
             setJobProcessingLock(false);
-        }
-
-
-
-        function resolveJobFromAdmin(runId, conflictCount, totalCodes) {
-            openConflictReportFromMasterJobs(runId, '', conflictCount, totalCodes, 'CONFLICT_DETECTED');
         }
 
         function startMasterJobsAutoRefresh() {
