@@ -1198,11 +1198,31 @@
                         clearInterval(masterJobsPollTimer);
                         masterJobsPollTimer = null;
                     }
+                    if (activeJobId) {
+                        refreshActiveJobState();
+                    }
                 }
                 if (id === 'upload-modal') {
                     clearJobCardAvailabilityError();
                 }
             }
+        }
+
+        async function refreshActiveJobState() {
+            if (!activeJobId) return;
+            try {
+                const res = await fetch(`/api/reports/${encodeURIComponent(activeJobId)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.status && data.status !== activeJobStatus) {
+                        const total = data.total_codes || document.getElementById('kpi-total').innerText.replace(/,/g, '');
+                        const consumed = data.consumed_codes || document.getElementById('kpi-consumed').innerText.replace(/,/g, '');
+                        await selectJob(data.job_card_id, encodeURIComponent(data.description || activeJobDesc), data.status, consumed, total);
+                    }
+                } else if (res.status === 404) {
+                    clearLoadedJob();
+                }
+            } catch (e) {}
         }
 
         window.openMasterJobsModal = async function() {
@@ -2798,13 +2818,15 @@
                     showCustomAlert(`Job Card '${jobCardId}' status updated to ${newStatus}.`, "Status Updated");
                     updateSystemMessage(`Job Card ${jobCardId} updated to ${newStatus}`, "success");
 
-                    // Immediately sync the main workspace if this job is currently open
-                    if (activeJobId && activeJobId.toLowerCase() === jobCardId.toLowerCase()) {
+                    // 1. Immediately re-sync the main workspace if this job is currently open
+                    if (activeJobId && activeJobId.trim().toLowerCase() === jobCardId.trim().toLowerCase()) {
+                        activeJobStatus = newStatus;
                         const total = document.getElementById('kpi-total').innerText.replace(/,/g, '');
                         const consumed = document.getElementById('kpi-consumed').innerText.replace(/,/g, '');
                         await selectJob(jobCardId, encodeURIComponent(activeJobDesc), newStatus, consumed, total);
                     }
 
+                    // 2. Refresh the master jobs table in the background
                     await loadMasterJobs(currentMasterTab);
                 } else {
                     const err = await res.json().catch(() => ({}));
