@@ -34,7 +34,14 @@ async def lifespan(app: FastAPI):
             cur.execute("ALTER TABLE job_cards ALTER COLUMN ingestion_progress TYPE TEXT;")
             cur.execute("ALTER TABLE job_cards ALTER COLUMN status TYPE VARCHAR(100);")
             cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS conflict_resolution VARCHAR(50) DEFAULT 'NONE';")
+            cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS conflict_details TEXT;")
             
+            # Auto-ensure high-speed verification indexes on startup
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_val ON codes (run_id, code_value);")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_id_asc ON codes (run_id, id ASC);")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_status_id ON codes (run_id, status, id);")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_val_active ON codes (code_value) WHERE status != 'DELETED';")
+
             cur.execute("""
                 UPDATE job_cards 
                 SET status = 'FAILED', 
@@ -327,14 +334,31 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 conflicts_found = cur.fetchone()[0]
 
                 if conflicts_found > 0:
+                    # Breakdown conflicts by Job Card and Status
+                    cur.execute("""
+                        SELECT j.job_card_id, j.status, COUNT(DISTINCT t.code_value) as cnt
+                        FROM temp_incoming_codes t
+                        JOIN codes c ON c.code_value = t.code_value
+                        JOIN job_cards j ON j.run_id = c.run_id
+                        WHERE j.status IN ('ACTIVE', 'INACTIVE', 'COMPLETED')
+                          AND c.status != 'DELETED'
+                        GROUP BY j.job_card_id, j.status
+                        ORDER BY cnt DESC;
+                    """)
+                    breakdown = [
+                        {"job_card_id": r[0], "status": r[1], "conflict_count": r[2]}
+                        for r in cur.fetchall()
+                    ]
+
                     cur.execute("""
                         UPDATE job_cards 
                         SET status = 'CONFLICT_DETECTED', 
                             conflict_count = %s, 
                             conflict_resolution = 'PENDING',
+                            conflict_details = %s,
                             ingestion_progress = 'Duplicate conflicts detected. Awaiting authorization.' 
                         WHERE run_id = %s
-                    """, (conflicts_found, run_id))
+                    """, (conflicts_found, json.dumps(breakdown), run_id))
                     conn.commit()
                     return
 
@@ -1162,7 +1186,7 @@ def get_upload_status(run_id: int, user: dict = Depends(get_current_user)):
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT job_card_id, status, total_codes, conflict_count, ingestion_progress 
+                SELECT job_card_id, status, total_codes, conflict_count, ingestion_progress, conflict_details 
                 FROM job_cards 
                 WHERE run_id = %s
             """, (run_id,))
@@ -1170,12 +1194,20 @@ def get_upload_status(run_id: int, user: dict = Depends(get_current_user)):
             if not row:
                 raise HTTPException(status_code=404, detail="Job not found")
 
+            breakdown = []
+            if row[5]:
+                try:
+                    breakdown = json.loads(row[5])
+                except Exception:
+                    breakdown = []
+
             return {
                 "job_card_id": row[0],
                 "status": row[1],
                 "total_codes": row[2] or 0,
                 "conflict_count": row[3] or 0,
-                "progress_message": row[4] or ""
+                "progress_message": row[4] or "",
+                "conflict_breakdown": breakdown
             }
     finally:
         release_connection(conn)
@@ -1374,10 +1406,12 @@ def verify_code(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            # 1. Fast active job status check
             cur.execute("""
                 SELECT run_id, status 
                 FROM job_cards 
                 WHERE job_card_id = %s AND status != 'DELETED'
+                LIMIT 1;
             """, (job_card_id,))
             active_jc = cur.fetchone()
             if not active_jc:
@@ -1387,7 +1421,6 @@ def verify_code(
                 })
 
             active_run_id, jc_status = active_jc
-            
             if jc_status != 'ACTIVE':
                 return JSONResponse(status_code=200, content={
                     "result": "BLOCKED",
@@ -1402,30 +1435,36 @@ def verify_code(
                 log_system_event(cur, "SCAN_VERIFICATION", job_card_id, f"SCAN_{res}", operator, f"Scanned code: {scanned} [{res}]")
                 conn.commit()
 
-            cur.execute("SELECT MIN(id) FROM codes WHERE run_id = %s", (active_run_id,))
+            # 2. O(1) index-backed MIN(id) lookup (replaces table scan)
+            cur.execute("""
+                SELECT id FROM codes 
+                WHERE run_id = %s 
+                ORDER BY id ASC LIMIT 1;
+            """, (active_run_id,))
             min_row = cur.fetchone()
-            min_id = min_row[0] if min_row and min_row[0] is not None else 0
+            min_id = min_row[0] if min_row else 0
 
+            # 3. Direct indexed lookup for scanned code
             cur.execute("""
                 SELECT id, code_value, status 
                 FROM codes 
                 WHERE run_id = %s AND code_value = %s
+                LIMIT 1;
             """, (active_run_id, scanned))
             code_row = cur.fetchone()
 
             if code_row:
-                code_id = code_row[0]
-                exact_code = code_row[1]
-                current_status = code_row[2]
-
+                code_id, exact_code, current_status = code_row
                 row_num = (code_id - min_id + 1) if min_id > 0 else code_id
 
+                # 4. O(1) index-backed MAX consumed lookup
                 cur.execute("""
-                    SELECT MAX(id) FROM codes 
-                    WHERE run_id = %s AND status = 'CONSUMED'
+                    SELECT id FROM codes 
+                    WHERE run_id = %s AND status = 'CONSUMED' 
+                    ORDER BY id DESC LIMIT 1;
                 """, (active_run_id,))
                 max_consumed_row = cur.fetchone()
-                max_consumed_id = max_consumed_row[0] if max_consumed_row and max_consumed_row[0] is not None else 0
+                max_consumed_id = max_consumed_row[0] if max_consumed_row else 0
                 max_consumed_row_num = (max_consumed_id - min_id + 1) if (max_consumed_id > 0 and min_id > 0) else max_consumed_id
 
                 out_of_sequence = max_consumed_id > 0 and code_id < max_consumed_id
@@ -1442,7 +1481,7 @@ def verify_code(
                             "row_num": row_num
                         })
 
-                    cur.execute("UPDATE codes SET status = 'CONSUMED', scanned_at = NOW() WHERE run_id = %s AND id = %s", (active_run_id, code_id))
+                    cur.execute("UPDATE codes SET status = 'CONSUMED', scanned_at = NOW() WHERE id = %s", (code_id,))
                     cur.execute("UPDATE job_cards SET consumed_codes = consumed_codes + 1 WHERE run_id = %s", (active_run_id,))
                     conn.commit()
 
@@ -1457,7 +1496,7 @@ def verify_code(
                     })
 
                 if current_status in ('PENDING', 'BLOCKED'):
-                    cur.execute("UPDATE codes SET status = 'CONSUMED', scanned_at = NOW() WHERE run_id = %s AND id = %s", (active_run_id, code_id))
+                    cur.execute("UPDATE codes SET status = 'CONSUMED', scanned_at = NOW() WHERE id = %s", (code_id,))
                     cur.execute("UPDATE job_cards SET consumed_codes = consumed_codes + 1 WHERE run_id = %s", (active_run_id,))
                     conn.commit()
 
@@ -1481,14 +1520,15 @@ def verify_code(
                         "row_num": row_num
                     })
 
-            # Explicit check against ACTIVE, INACTIVE, and COMPLETED jobs
+            # 5. Targeted cross-job collision check (uses partial index, capped with LIMIT 10)
             cur.execute("""
-                SELECT c.run_id, j.job_card_id, j.status, c.code_value 
+                SELECT j.job_card_id, j.status 
                 FROM codes c
                 JOIN job_cards j ON c.run_id = j.run_id
-                WHERE j.status IN ('ACTIVE', 'INACTIVE', 'COMPLETED') 
-                  AND c.status != 'DELETED' 
-                  AND c.code_value = %s
+                WHERE c.code_value = %s
+                  AND j.status IN ('ACTIVE', 'INACTIVE', 'COMPLETED') 
+                  AND c.status != 'DELETED'
+                LIMIT 10;
             """, (scanned,))
             rows = cur.fetchall()
 
@@ -1501,7 +1541,7 @@ def verify_code(
                     "row_num": "-"
                 })
 
-            owning_jobs = ", ".join(sorted(list(set([f"{r[1]} ({r[2]})" for r in rows]))))
+            owning_jobs = ", ".join(sorted(list(set([f"{r[0]} ({r[1]})" for r in rows]))))
             msg = f"Code Belongs to Another Job Card: {owning_jobs}"
             log_scan("MISMATCH", msg)
             return JSONResponse(status_code=200, content={
