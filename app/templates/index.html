@@ -216,7 +216,10 @@
             box-shadow: none !important;
             filter: grayscale(100%) !important;
             cursor: not-allowed !important;
-            border-color: rgba(255, 255, 255, 0.05) !important;
+            background-color: #161821 !important;
+            background-image: none !important;
+            color: #475569 !important;
+            border: 1px solid rgba(255, 255, 255, 0.05) !important;
             transform: none !important;
         }
 
@@ -239,7 +242,7 @@
                 display: block !important;
             }
             body > header, body > main, body > footer, #login-modal, #pw-modal, #upload-modal,
-            #master-jobs-modal, #user-modal, #custom-alert-modal, #duplicate-warning-modal,
+            #master-jobs-modal, #user-modal, #custom-alert-modal,
             #custom-confirm-modal, #admin-reset-pw-modal, #user-admin-pw-modal, #bulk-status-modal,
             #purge-admin-pw-modal, .no-print {
                 display: none !important;
@@ -336,6 +339,7 @@
             #report-modal .print-timestamp-footer,
             #lifecycle-modal .print-timestamp-footer,
             #global-audit-modal .print-timestamp-footer,
+            #duplicate-warning-modal .print-timestamp-footer,
             #print-qc-footer-timestamp {
                 display: block !important;
                 visibility: visible !important;
@@ -619,17 +623,47 @@
     </div>
 
     <!-- Duplicate Warning Modal with In-Modal Progress Tracking -->
-    <div id="duplicate-warning-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
-        <div id="duplicate-modal-card" class="linear-card p-5 sm:p-6 rounded-lg max-w-lg w-full border border-amber-500/40 shadow-2xl text-center">
-            <h3 id="duplicate-modal-title" class="text-base sm:text-lg font-extrabold text-amber-400 mb-1">Batch Uniqueness & Conflict Report</h3>
-            <p class="text-xs modal-subtitle-theme mb-3">Review duplicate barcode conflicts detected against existing production job cards</p>
+    <div id="duplicate-warning-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
+        <div id="duplicate-modal-card" class="linear-card p-5 sm:p-6 rounded-lg max-w-xl w-full border border-amber-500/40 shadow-2xl flex flex-col max-h-[90vh]">
             
-            <div class="linear-subcard p-3.5 rounded text-xs mb-4 text-left border border-white/[0.08]">
+            <!-- Printable Brand Header (Only visible on print) -->
+            <div class="print-brand-box">
+                <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
+                <div style="display: flex; flex-direction: column; text-align: right;">
+                    <span style="font-size: 13pt; font-weight: bold; color: #0f172a; line-height: 1.1;">CCL Middle East – Pakistan</span>
+                    <span style="font-size: 8.5pt; color: #475569;">Variable Data Verification System</span>
+                </div>
+            </div>
+
+            <div class="text-center shrink-0 mb-3">
+                <h3 id="duplicate-modal-title" class="text-base sm:text-lg font-extrabold text-amber-400 mb-0.5">Batch Uniqueness & Conflict Analysis Report</h3>
+                <p class="text-xs modal-subtitle-theme">Collision audit against registered production job cards</p>
+            </div>
+            
+            <div class="linear-subcard p-3 rounded text-xs mb-3 text-left border border-white/[0.08] shrink-0">
                 <p id="duplicate-warning-msg" class="leading-relaxed table-text-theme font-medium text-xs sm:text-sm"></p>
             </div>
 
+            <!-- Scrollable Summary Table of Conflicting Job Cards -->
+            <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded mb-3 max-h-52">
+                <table class="w-full text-left text-xs whitespace-nowrap">
+                    <thead>
+                        <tr class="border-b border-white/[0.08] text-xs font-bold table-header-theme sticky top-0 bg-[#161821] z-10">
+                            <th class="px-3 py-2">Conflicting Job Card</th>
+                            <th class="px-3 py-2 text-center">Status</th>
+                            <th class="px-3 py-2 text-right">Conflicting Codes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="duplicate-breakdown-rows" class="divide-y divide-white/[0.04] table-text-theme text-xs">
+                        <tr>
+                            <td colspan="3" class="p-3 text-center text-slate-400 italic">No breakdown available</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
             <!-- In-Modal Ingestion Progress Tracker -->
-            <div id="duplicate-progress-box" class="hidden linear-subcard p-3.5 rounded mb-4 border border-indigo-500/30 text-left">
+            <div id="duplicate-progress-box" class="hidden linear-subcard p-3.5 rounded mb-3 border border-indigo-500/30 text-left shrink-0 no-print">
                 <div class="flex justify-between items-center text-xs mb-1.5">
                     <span id="duplicate-status-label" class="table-text-theme font-medium">Authorizing batch ingestion...</span>
                     <span id="duplicate-percentage" class="text-indigo-400 font-bold">0%</span>
@@ -639,20 +673,30 @@
                 </div>
             </div>
             
-            <div class="flex flex-col sm:flex-row justify-end gap-2">
-                <button type="button" onclick="cancelDuplicateUpload()" id="duplicate-cancel-btn" 
-                        class="linear-button-secondary px-3.5 py-2 rounded text-xs font-medium min-h-[40px]">
-                    Cancel / Discard
+            <!-- Modal Actions (Hidden automatically when printing) -->
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-2 pt-1 border-t border-white/[0.06] shrink-0 no-print">
+                <button type="button" onclick="printConflictReport()" id="duplicate-print-btn" 
+                        class="linear-button-secondary w-full sm:w-auto px-3.5 py-2 rounded text-xs font-semibold min-h-[38px] flex items-center justify-center gap-1.5">
+                    <span>🖨 Print Report</span>
                 </button>
-                <button type="button" onclick="confirmDuplicateUpload(true)" id="duplicate-skip-btn" 
-                        class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded text-xs font-bold transition-all min-h-[40px] shadow-md flex items-center justify-center">
-                    Skip Conflicting Codes
-                </button>
-                <button type="button" onclick="confirmDuplicateUpload(false)" id="duplicate-proceed-btn" 
-                        class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded text-xs font-bold transition-all min-h-[40px] shadow-md flex items-center justify-center">
-                    Proceed with All (Override)
-                </button>
+                <div class="flex flex-col sm:flex-row w-full sm:w-auto justify-end gap-2">
+                    <button type="button" onclick="cancelDuplicateUpload()" id="duplicate-cancel-btn" 
+                            class="linear-button-secondary px-3.5 py-2 rounded text-xs font-medium min-h-[38px]">
+                        Cancel / Discard
+                    </button>
+                    <button type="button" onclick="confirmDuplicateUpload(true)" id="duplicate-skip-btn" 
+                            class="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded text-xs font-bold transition-all min-h-[38px] shadow-md flex items-center justify-center">
+                        Skip Conflicting Codes
+                    </button>
+                    <button type="button" onclick="confirmDuplicateUpload(false)" id="duplicate-proceed-btn" 
+                            class="bg-amber-600 hover:bg-amber-500 text-white px-3.5 py-2 rounded text-xs font-bold transition-all min-h-[38px] shadow-md flex items-center justify-center">
+                        Proceed with All (Override)
+                    </button>
+                </div>
             </div>
+
+            <!-- Print Timestamp Footer -->
+            <div id="print-conflict-timestamp" class="print-timestamp-footer"></div>
         </div>
     </div>
 
@@ -3293,8 +3337,12 @@
                         toggleModal('upload-modal');
                         resetUploadUI();
 
-                        document.getElementById('duplicate-warning-msg').innerText = 
-                            `Found ${Number(data.conflict_count).toLocaleString()} conflicting code(s) out of ${Number(data.total_codes).toLocaleString()} total codes in this batch that already exist in active or completed jobs.`;
+                        renderConflictBreakdownTable(
+                            data.conflict_breakdown, 
+                            data.job_card_id, 
+                            data.total_codes, 
+                            data.conflict_count
+                        );
                         
                         const dupProgress = document.getElementById('duplicate-progress-box');
                         if (dupProgress) dupProgress.classList.add('hidden');
@@ -3332,6 +3380,7 @@
             const proceedBtn = document.getElementById('duplicate-proceed-btn');
             const skipBtn = document.getElementById('duplicate-skip-btn');
             const cancelBtn = document.getElementById('duplicate-cancel-btn');
+            const printBtn = document.getElementById('duplicate-print-btn');
             const progressBox = document.getElementById('duplicate-progress-box');
             const progressBar = document.getElementById('duplicate-progress-bar');
             const percentageLabel = document.getElementById('duplicate-percentage');
@@ -3339,18 +3388,16 @@
 
             setJobProcessingLock(true);
 
-            // Identify the clicked button vs the unclicked buttons
+            // Target the active button vs all other buttons in this modal (including print)
             const activeBtn = skipConflicts ? skipBtn : proceedBtn;
-            const otherBtns = skipConflicts ? [proceedBtn, cancelBtn] : [skipBtn, cancelBtn];
+            const modalBtns = [proceedBtn, skipBtn, cancelBtn, printBtn];
 
-            // Lock the active button with spinner, and flatten the other buttons completely
-            if (activeBtn) {
-                activeBtn.disabled = true;
-                activeBtn.classList.remove('btn-flat-disabled');
-            }
-            otherBtns.forEach(btn => {
-                if (btn) {
-                    btn.disabled = true;
+            modalBtns.forEach(btn => {
+                if (!btn) return;
+                btn.disabled = true;
+                if (btn === activeBtn) {
+                    btn.classList.remove('btn-flat-disabled');
+                } else {
                     btn.classList.add('btn-flat-disabled');
                 }
             });
@@ -3374,7 +3421,7 @@
                     setJobProcessingLock(false);
                     if (progressBox) progressBox.classList.add('hidden');
                     if (activeBtn) activeBtn.innerHTML = originalText;
-                    [proceedBtn, skipBtn, cancelBtn].forEach(btn => {
+                    modalBtns.forEach(btn => {
                         if (btn) {
                             btn.disabled = false;
                             btn.classList.remove('btn-flat-disabled');
@@ -3389,7 +3436,7 @@
                 setJobProcessingLock(false);
                 if (progressBox) progressBox.classList.add('hidden');
                 if (activeBtn) activeBtn.innerHTML = originalText;
-                [proceedBtn, skipBtn, cancelBtn].forEach(btn => {
+                modalBtns.forEach(btn => {
                     if (btn) {
                         btn.disabled = false;
                         btn.classList.remove('btn-flat-disabled');
@@ -3407,6 +3454,7 @@
             const proceedBtn = document.getElementById('duplicate-proceed-btn');
             const skipBtn = document.getElementById('duplicate-skip-btn');
             const cancelBtn = document.getElementById('duplicate-cancel-btn');
+            const printBtn = document.getElementById('duplicate-print-btn');
 
             ingestionPollTimer = setInterval(async () => {
                 try {
@@ -3432,7 +3480,7 @@
 
                         if (progressBox) progressBox.classList.add('hidden');
                         if (activeBtn) activeBtn.innerHTML = originalText;
-                        [proceedBtn, skipBtn, cancelBtn].forEach(btn => {
+                        [proceedBtn, skipBtn, cancelBtn, printBtn].forEach(btn => {
                             if (btn) {
                                 btn.disabled = false;
                                 btn.classList.remove('btn-flat-disabled');
@@ -3455,7 +3503,7 @@
                         ingestionPollTimer = null;
                         if (progressBox) progressBox.classList.add('hidden');
                         if (activeBtn) activeBtn.innerHTML = originalText;
-                        [proceedBtn, skipBtn, cancelBtn].forEach(btn => {
+                        [proceedBtn, skipBtn, cancelBtn, printBtn].forEach(btn => {
                             if (btn) {
                                 btn.disabled = false;
                                 btn.classList.remove('btn-flat-disabled');
@@ -3472,9 +3520,10 @@
             const cancelBtn = document.getElementById('duplicate-cancel-btn');
             const proceedBtn = document.getElementById('duplicate-proceed-btn');
             const skipBtn = document.getElementById('duplicate-skip-btn');
+            const printBtn = document.getElementById('duplicate-print-btn');
 
             if (cancelBtn) cancelBtn.innerHTML = `${spinnerHtml} Cancelling...`;
-            [proceedBtn, skipBtn].forEach(btn => {
+            [proceedBtn, skipBtn, printBtn].forEach(btn => {
                 if (btn) {
                     btn.disabled = true;
                     btn.classList.add('btn-flat-disabled');
@@ -3486,7 +3535,7 @@
                 activeIngestionRunId = null;
             }
 
-            [proceedBtn, skipBtn, cancelBtn].forEach(btn => {
+            [proceedBtn, skipBtn, cancelBtn, printBtn].forEach(btn => {
                 if (btn) {
                     btn.disabled = false;
                     btn.classList.remove('btn-flat-disabled');
@@ -3785,7 +3834,53 @@
             updateSystemMessage(`Exported ${filtered.length} audit records to CSV`, "success");
         }
 
-    
+            function renderConflictBreakdownTable(breakdown, targetJobCardId, totalCodes, conflictCount) {
+            const warningMsg = document.getElementById('duplicate-warning-msg');
+            const tbody = document.getElementById('duplicate-breakdown-rows');
+
+            const tCount = Number(totalCodes) || 0;
+            const cCount = Number(conflictCount) || 0;
+
+            if (warningMsg) {
+                warningMsg.innerHTML = `
+                    Batch for Job Card <strong class="text-white">${targetJobCardId}</strong> contains 
+                    <strong class="text-amber-400">${cCount.toLocaleString()}</strong> unique conflicting code(s) 
+                    out of <strong class="text-white">${tCount.toLocaleString()}</strong> total codes in file.
+                `;
+            }
+
+            if (!tbody) return;
+
+            if (!breakdown || breakdown.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="p-3 text-center text-slate-400 italic">No breakdown details recorded.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = breakdown.map(item => {
+                let statusBadge = "linear-badge-warn";
+                if (item.status === 'ACTIVE') statusBadge = "linear-badge-pass";
+                else if (item.status === 'COMPLETED') statusBadge = "bg-blue-500/20 text-blue-300 border border-blue-500/35";
+
+                return `
+                    <tr class="hover:bg-black/[0.02]">
+                        <td class="px-3 py-2 font-bold table-text-theme font-mono">${item.job_card_id}</td>
+                        <td class="px-3 py-2 text-center">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge}">${item.status}</span>
+                        </td>
+                        <td class="px-3 py-2 text-right font-bold text-amber-400">${(Number(item.conflict_count) || 0).toLocaleString()}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function printConflictReport() {
+            const tsElem = document.getElementById('print-conflict-timestamp');
+            if (tsElem) {
+                tsElem.innerText = `Report Generated On: ${new Date().toLocaleString()}`;
+            }
+            window.print();
+        }
+
     </script>
 </body>
 </html>
