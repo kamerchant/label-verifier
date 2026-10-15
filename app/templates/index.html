@@ -2682,6 +2682,12 @@
                     const purgedJobId = targetPurgeJobId;
                     closePurgeModal();
                     showCustomAlert(`Job Card '${purgedJobId}' successfully purged.`, "Purged");
+
+                    // Immediately clear and unlock the main workspace if this job was open
+                    if (activeJobId && activeJobId.toLowerCase() === purgedJobId.toLowerCase()) {
+                        clearLoadedJob();
+                    }
+
                     await loadMasterJobs(currentMasterTab);
                     updateSystemMessage(`Purged Job Card: ${purgedJobId}`, "success");
                 } else {
@@ -2791,6 +2797,14 @@
 
                     showCustomAlert(`Job Card '${jobCardId}' status updated to ${newStatus}.`, "Status Updated");
                     updateSystemMessage(`Job Card ${jobCardId} updated to ${newStatus}`, "success");
+
+                    // Immediately sync the main workspace if this job is currently open
+                    if (activeJobId && activeJobId.toLowerCase() === jobCardId.toLowerCase()) {
+                        const total = document.getElementById('kpi-total').innerText.replace(/,/g, '');
+                        const consumed = document.getElementById('kpi-consumed').innerText.replace(/,/g, '');
+                        await selectJob(jobCardId, encodeURIComponent(activeJobDesc), newStatus, consumed, total);
+                    }
+
                     await loadMasterJobs(currentMasterTab);
                 } else {
                     const err = await res.json().catch(() => ({}));
@@ -3835,7 +3849,7 @@
                     <tr class="hover:bg-black/[0.02]">
                         <td class="p-3 font-bold table-text-theme">
                             <div class="inline-flex items-center gap-1.5">
-                                <span class="truncate cursor-pointer hover:underline text-indigo-400" onclick="toggleModal('master-jobs-modal'); selectJob('${j.job_card_id}', '${encodeURIComponent(j.description || '')}', '${j.status}', ${j.consumed}, ${j.total});">${j.job_card_id}</span>
+                                <span class="truncate cursor-pointer hover:underline text-indigo-400" onclick="if (activeJobId && activeJobId.toLowerCase() !== '${j.job_card_id.toLowerCase()}') { showCustomAlert('Job Card \\'' + activeJobId + '\\' is currently open. Please close it first using [Close Job].', 'Job In Progress'); } else { toggleModal('master-jobs-modal'); selectJob('${j.job_card_id}', '${encodeURIComponent(j.description || '')}', '${j.status}', ${j.consumed}, ${j.total}); }">${j.job_card_id}</span>
                                 <button onclick="copyJobCardNumber('${j.job_card_id}', this)" class="linear-button-secondary p-1 rounded inline-flex items-center justify-center">
                                     <span class="text-[10px] leading-none text-slate-400">📋</span>
                                 </button>
