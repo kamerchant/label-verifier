@@ -1745,6 +1745,12 @@
         }
 
         function handleJobSearch() {
+            if (activeJobId) {
+                document.getElementById('job-search').value = "";
+                document.getElementById('job-list').classList.add('hidden');
+                showCustomAlert("Please close the active job first using [Close Job].", "Job In Progress");
+                return;
+            }
             clearTimeout(searchDebounceTimer);
             searchDebounceTimer = setTimeout(async () => {
                 const query = document.getElementById('job-search').value.trim();
@@ -1797,7 +1803,13 @@
             allScans = [];
 
             document.getElementById('job-list').classList.add('hidden');
-            document.getElementById('job-search').value = "";
+            const searchInput = document.getElementById('job-search');
+            if (searchInput) {
+                searchInput.value = "";
+                searchInput.disabled = true;
+                searchInput.placeholder = "Close active job to search another…";
+                searchInput.classList.add('opacity-50', 'cursor-not-allowed');
+            }
             document.getElementById('active-job-id-text').innerText = id;
             
             const closeBtn = document.getElementById('close-job-btn');
@@ -1888,7 +1900,14 @@
             activeJobStatus = null;
             allScans = [];
 
-            document.getElementById('job-search').value = "";
+            const searchInput = document.getElementById('job-search');
+            if (searchInput) {
+                searchInput.value = "";
+                searchInput.disabled = false;
+                searchInput.placeholder = "Search Job by ID or Description…";
+                searchInput.classList.remove('opacity-50', 'cursor-not-allowed');
+                setTimeout(() => searchInput.focus(), 50);
+            }
             document.getElementById('active-job-id-text').innerText = "None";
             
             const closeBtn = document.getElementById('close-job-btn');
@@ -1985,16 +2004,32 @@
             }
         }
 
+        let isScanVerifying = false;
+
         async function handleScan(e) {
             e.preventDefault();
+            if (isScanVerifying) return;
+
             const input = document.getElementById('barcode-input');
+            const verifyBtn = document.getElementById('verify-btn');
             const code = input.value.trim();
+
             if (!code) return;
             if (!activeJobId) {
                 showCustomAlert("Please select an active Job Card from the search bar first.");
                 input.value = "";
                 return;
             }
+
+            // Lock scanner input and button to prevent double-submits on latency
+            isScanVerifying = true;
+            input.disabled = true;
+            input.classList.add('opacity-40', 'cursor-not-allowed');
+
+            const originalBtnText = verifyBtn.innerHTML;
+            verifyBtn.disabled = true;
+            verifyBtn.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+            verifyBtn.innerHTML = `${spinnerHtml} Checking...`;
 
             try {
                 const body = new FormData();
@@ -2006,8 +2041,19 @@
                 renderResult(data.result, data.message, code, data.sequence_warning);
             } catch (ex) {
                 renderResult("ERROR", "Network error or server unreachable", code, false);
+            } finally {
+                input.value = "";
+                input.disabled = false;
+                input.classList.remove('opacity-40', 'cursor-not-allowed');
+
+                verifyBtn.disabled = false;
+                verifyBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                verifyBtn.innerHTML = originalBtnText;
+
+                isScanVerifying = false;
+                resetInput();
             }
-            input.value = "";
+
             await loadJobScanStream(activeJobId);
         }
 
