@@ -624,7 +624,7 @@
 
     <!-- Duplicate Warning Modal with In-Modal Progress Tracking -->
     <div id="duplicate-warning-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
-        <div id="duplicate-modal-card" class="linear-card p-5 sm:p-6 rounded-lg max-w-xl w-full border border-amber-500/40 shadow-2xl flex flex-col max-h-[90vh]">
+        <div id="duplicate-modal-card" class="bg-white text-black p-5 sm:p-6 rounded-lg max-w-xl w-full border border-slate-300 shadow-2xl flex flex-col max-h-[90vh]">
             
             <!-- Printable Brand Header (Only visible on print) -->
             <div class="print-brand-box">
@@ -636,52 +636,52 @@
             </div>
 
             <div class="text-center shrink-0 mb-3">
-                <h3 id="duplicate-modal-title" class="text-base sm:text-lg font-extrabold text-amber-400 mb-0.5">Batch Uniqueness & Conflict Analysis Report</h3>
-                <p class="text-xs modal-subtitle-theme">Collision audit against registered production job cards</p>
+                <h3 id="duplicate-modal-title" class="text-base sm:text-lg font-extrabold text-black mb-0.5">Batch Uniqueness & Conflict Analysis Report</h3>
+                <p class="text-xs text-slate-600">Collision audit against registered production job cards</p>
             </div>
             
-            <div class="linear-subcard p-3 rounded text-xs mb-3 text-left border border-white/[0.08] shrink-0">
-                <p id="duplicate-warning-msg" class="leading-relaxed table-text-theme font-medium text-xs sm:text-sm"></p>
+            <div class="bg-slate-100 p-3 rounded text-xs mb-3 text-left border border-slate-200 shrink-0">
+                <p id="duplicate-warning-msg" class="leading-relaxed text-black font-medium text-xs sm:text-sm"></p>
             </div>
 
             <!-- Scrollable Summary Table of Conflicting Job Cards -->
-            <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded mb-3 max-h-52">
+            <div class="print-table-container flex-1 overflow-y-auto border border-slate-300 rounded mb-3 max-h-52 bg-white">
                 <table class="w-full text-left text-xs whitespace-nowrap">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-xs font-bold table-header-theme sticky top-0 bg-[#161821] z-10">
-                            <th class="px-3 py-2">Conflicting Job Card</th>
-                            <th class="px-3 py-2 text-center">Status</th>
-                            <th class="px-3 py-2 text-right">Conflicting Codes</th>
+                        <tr class="border-b border-slate-300 text-xs font-bold sticky top-0 bg-slate-100 text-black z-10">
+                            <th class="px-3 py-2 text-black font-bold">Conflicting Job Card</th>
+                            <th class="px-3 py-2 text-center text-black font-bold">Status</th>
+                            <th class="px-3 py-2 text-right text-black font-bold">Conflicting Codes</th>
                         </tr>
                     </thead>
-                    <tbody id="duplicate-breakdown-rows" class="divide-y divide-white/[0.04] table-text-theme text-xs">
+                    <tbody id="duplicate-breakdown-rows" class="divide-y divide-slate-200 text-black text-xs">
                         <tr>
-                            <td colspan="3" class="p-3 text-center text-slate-400 italic">No breakdown available</td>
+                            <td colspan="3" class="p-3 text-center text-slate-500 italic">No breakdown available</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
             <!-- In-Modal Ingestion Progress Tracker -->
-            <div id="duplicate-progress-box" class="hidden linear-subcard p-3.5 rounded mb-3 border border-indigo-500/30 text-left shrink-0 no-print">
+            <div id="duplicate-progress-box" class="hidden bg-slate-50 p-3.5 rounded mb-3 border border-indigo-300 text-left shrink-0 no-print">
                 <div class="flex justify-between items-center text-xs mb-1.5">
-                    <span id="duplicate-status-label" class="table-text-theme font-medium">Authorizing batch ingestion...</span>
-                    <span id="duplicate-percentage" class="text-indigo-400 font-bold">0%</span>
+                    <span id="duplicate-status-label" class="text-black font-medium">Authorizing batch ingestion...</span>
+                    <span id="duplicate-percentage" class="text-indigo-600 font-bold">0%</span>
                 </div>
-                <div class="w-full bg-black/40 rounded-full h-2 overflow-hidden border border-white/[0.08]">
-                    <div id="duplicate-progress-bar" class="bg-indigo-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden border border-slate-300">
+                    <div id="duplicate-progress-bar" class="bg-indigo-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
                 </div>
             </div>
             
             <!-- Modal Actions (Hidden automatically when printing) -->
-            <div class="flex flex-col sm:flex-row justify-between items-center gap-2 pt-1 border-t border-white/[0.06] shrink-0 no-print">
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-2 pt-2 border-t border-slate-200 shrink-0 no-print">
                 <button type="button" onclick="printConflictReport()" id="duplicate-print-btn" 
-                        class="linear-button-secondary w-full sm:w-auto px-3.5 py-2 rounded text-xs font-semibold min-h-[38px] flex items-center justify-center gap-1.5">
+                        class="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 w-full sm:w-auto px-3.5 py-2 rounded text-xs font-semibold min-h-[38px] flex items-center justify-center gap-1.5">
                     <span>🖨 Print Report</span>
                 </button>
                 <div class="flex flex-col sm:flex-row w-full sm:w-auto justify-end gap-2">
                     <button type="button" onclick="cancelDuplicateUpload()" id="duplicate-cancel-btn" 
-                            class="linear-button-secondary px-3.5 py-2 rounded text-xs font-medium min-h-[38px]">
+                            class="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-3.5 py-2 rounded text-xs font-medium min-h-[38px]">
                         Cancel / Discard
                     </button>
                     <button type="button" onclick="confirmDuplicateUpload(true)" id="duplicate-skip-btn" 
@@ -696,7 +696,7 @@
             </div>
 
             <!-- Print Timestamp Footer -->
-            <div id="print-conflict-timestamp" class="print-timestamp-footer"></div>
+            <div id="print-conflict-timestamp" class="print-timestamp-footer text-black"></div>
         </div>
     </div>
 
@@ -763,7 +763,7 @@
                         <div class="linear-subcard" style="margin-bottom: 12px;">
                             <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Job Card:</strong> <span id="print-qc-job"></span></p>
                             <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Description:</strong> <span id="print-qc-desc"></span></p>
-                            <p style="font-size: 9.5pt; margin-2px;"><strong>Status:</strong> <span id="print-qc-status">Completed</span></p>
+                            <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Status:</strong> <span id="print-qc-status">Completed</span></p>
                         </div>
 
                         <p style="font-size: 9.5pt; margin-bottom: 10px;"><strong>Total Codes Verified:</strong> <span id="print-qc-count"></span></p>
@@ -3516,11 +3516,66 @@
             }, 1000);
         }
 
+        let openedConflictReportFromMaster = false;
+
+        async function openConflictReportFromMasterJobs(runId, jobCardId, conflictCount, totalCodes, status) {
+            activeIngestionRunId = runId;
+            openedConflictReportFromMaster = true;
+
+            try {
+                const res = await fetch(`/api/jobs/${runId}/upload-status`);
+                if (res.ok) {
+                    const data = await res.json();
+                    renderConflictBreakdownTable(
+                        data.conflict_breakdown, 
+                        data.job_card_id || jobCardId, 
+                        data.total_codes || totalCodes, 
+                        data.conflict_count || conflictCount
+                    );
+                } else {
+                    renderConflictBreakdownTable([], jobCardId, totalCodes, conflictCount);
+                }
+            } catch(e) {
+                renderConflictBreakdownTable([], jobCardId, totalCodes, conflictCount);
+            }
+
+            const dupProgress = document.getElementById('duplicate-progress-box');
+            if (dupProgress) dupProgress.classList.add('hidden');
+
+            const skipBtn = document.getElementById('duplicate-skip-btn');
+            const proceedBtn = document.getElementById('duplicate-proceed-btn');
+            const cancelBtn = document.getElementById('duplicate-cancel-btn');
+
+            if (status === 'CONFLICT_DETECTED') {
+                if (skipBtn) skipBtn.classList.remove('hidden');
+                if (proceedBtn) proceedBtn.classList.remove('hidden');
+                if (cancelBtn) cancelBtn.innerText = 'Cancel / Discard';
+            } else {
+                // Read-only report view for already ingested jobs
+                if (skipBtn) skipBtn.classList.add('hidden');
+                if (proceedBtn) proceedBtn.classList.add('hidden');
+                if (cancelBtn) cancelBtn.innerText = 'Close';
+            }
+
+            toggleModal('master-jobs-modal');
+            toggleModal('duplicate-warning-modal');
+        }
+
         async function cancelDuplicateUpload() {
             const cancelBtn = document.getElementById('duplicate-cancel-btn');
             const proceedBtn = document.getElementById('duplicate-proceed-btn');
             const skipBtn = document.getElementById('duplicate-skip-btn');
             const printBtn = document.getElementById('duplicate-print-btn');
+
+            // Safe close for active/completed jobs viewed from Job Control Center
+            if (cancelBtn && cancelBtn.innerText.trim() === 'Close') {
+                toggleModal('duplicate-warning-modal');
+                if (openedConflictReportFromMaster) {
+                    toggleModal('master-jobs-modal');
+                    openedConflictReportFromMaster = false;
+                }
+                return;
+            }
 
             if (cancelBtn) cancelBtn.innerHTML = `${spinnerHtml} Cancelling...`;
             [proceedBtn, skipBtn, printBtn].forEach(btn => {
@@ -3545,6 +3600,12 @@
 
             toggleModal('duplicate-warning-modal');
             resetUploadUI();
+
+            if (openedConflictReportFromMaster) {
+                toggleModal('master-jobs-modal');
+                openedConflictReportFromMaster = false;
+                loadMasterJobs(currentMasterTab, false);
+            }
         }
 
         function resetUploadUI() {
@@ -3568,17 +3629,7 @@
 
 
         function resolveJobFromAdmin(runId, conflictCount, totalCodes) {
-            activeIngestionRunId = runId;
-            const cCount = Number(conflictCount) || 0;
-            const tCount = Number(totalCodes) || 0;
-            document.getElementById('duplicate-warning-msg').innerText = 
-                `Found ${cCount.toLocaleString()} conflicting code(s) out of ${tCount.toLocaleString()} total codes in this batch that already exist in active or completed jobs.`;
-            
-            const dupProgress = document.getElementById('duplicate-progress-box');
-            if (dupProgress) dupProgress.classList.add('hidden');
-
-            toggleModal('master-jobs-modal');
-            toggleModal('duplicate-warning-modal');
+            openConflictReportFromMasterJobs(runId, '', conflictCount, totalCodes, 'CONFLICT_DETECTED');
         }
 
         function startMasterJobsAutoRefresh() {
@@ -3700,37 +3751,28 @@
                     statusCellHtml = `<span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">${statusDisplay}</span>`;
                 }
 
-                // Conflict badge
+                // Conflict action button (opens printable analysis report)
                 let conflictBadgeHtml = `<span class="text-slate-500 text-xs font-medium">0 (Clean)</span>`;
                 if (conflictCount > 0) {
+                    let badgeLabel = `${conflictCount.toLocaleString()} Detected`;
+                    let btnStyle = "bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/35";
+
                     if (j.conflict_resolution === 'OVERRIDDEN') {
-                        conflictBadgeHtml = `
-                            <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/35" 
-                                  title="${conflictCount.toLocaleString()} duplicate codes were overridden into this job">
-                                ⚠ ${conflictCount.toLocaleString()} Overridden
-                            </span>
-                        `;
+                        badgeLabel = `⚠ ${conflictCount.toLocaleString()} Overridden`;
+                        btnStyle = "bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/35";
                     } else if (j.conflict_resolution === 'SKIPPED') {
-                        conflictBadgeHtml = `
-                            <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/35" 
-                                  title="${conflictCount.toLocaleString()} duplicate codes were skipped during upload">
-                                ${conflictCount.toLocaleString()} Skipped
-                            </span>
-                        `;
-                    } else if (j.status === 'CONFLICT_DETECTED') {
-                        conflictBadgeHtml = `
-                            <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-red-500/20 text-red-300 border border-red-500/35 animate-pulse" 
-                                  title="Awaiting duplicate resolution">
-                                ${conflictCount.toLocaleString()} Detected
-                            </span>
-                        `;
-                    } else {
-                        conflictBadgeHtml = `
-                            <span class="px-2 py-0.5 rounded text-[11px] font-medium text-slate-400">
-                                ${conflictCount.toLocaleString()}
-                            </span>
-                        `;
+                        badgeLabel = `${conflictCount.toLocaleString()} Skipped`;
+                        btnStyle = "bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/35";
                     }
+
+                    conflictBadgeHtml = `
+                        <button type="button" 
+                                onclick="openConflictReportFromMasterJobs(${j.run_id}, '${j.job_card_id}', ${conflictCount}, ${j.total || 0}, '${j.status}')" 
+                                class="${btnStyle} px-2.5 py-1 rounded text-xs font-bold transition-all cursor-pointer shadow-sm flex items-center justify-center gap-1 mx-auto hover:scale-105 active:scale-95" 
+                                title="Click to view and print Batch Uniqueness & Conflict Analysis Report">
+                            🖨 ${badgeLabel}
+                        </button>
+                    `;
                 }
 
                 // Action Column
@@ -3843,31 +3885,31 @@
 
             if (warningMsg) {
                 warningMsg.innerHTML = `
-                    Batch for Job Card <strong class="text-white">${targetJobCardId}</strong> contains 
-                    <strong class="text-amber-400">${cCount.toLocaleString()}</strong> unique conflicting code(s) 
-                    out of <strong class="text-white">${tCount.toLocaleString()}</strong> total codes in file.
+                    Batch for Job Card <strong class="text-black font-extrabold">${targetJobCardId}</strong> contains 
+                    <strong class="text-black font-extrabold">${cCount.toLocaleString()}</strong> unique conflicting code(s) 
+                    out of <strong class="text-black font-extrabold">${tCount.toLocaleString()}</strong> total codes in file.
                 `;
             }
 
             if (!tbody) return;
 
             if (!breakdown || breakdown.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" class="p-3 text-center text-slate-400 italic">No breakdown details recorded.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="3" class="p-3 text-center text-slate-500 italic">No breakdown details recorded.</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = breakdown.map(item => {
-                let statusBadge = "linear-badge-warn";
-                if (item.status === 'ACTIVE') statusBadge = "linear-badge-pass";
-                else if (item.status === 'COMPLETED') statusBadge = "bg-blue-500/20 text-blue-300 border border-blue-500/35";
+                let statusBadge = "bg-amber-100 text-amber-900 border border-amber-300";
+                if (item.status === 'ACTIVE') statusBadge = "bg-emerald-100 text-emerald-900 border border-emerald-300";
+                else if (item.status === 'COMPLETED') statusBadge = "bg-blue-100 text-blue-900 border border-blue-300";
 
                 return `
-                    <tr class="hover:bg-black/[0.02]">
-                        <td class="px-3 py-2 font-bold table-text-theme font-mono">${item.job_card_id}</td>
+                    <tr class="hover:bg-slate-50 border-b border-slate-200">
+                        <td class="px-3 py-2 font-bold text-black font-mono">${item.job_card_id}</td>
                         <td class="px-3 py-2 text-center">
                             <span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge}">${item.status}</span>
                         </td>
-                        <td class="px-3 py-2 text-right font-bold text-amber-400">${(Number(item.conflict_count) || 0).toLocaleString()}</td>
+                        <td class="px-3 py-2 text-right font-extrabold text-black">${(Number(item.conflict_count) || 0).toLocaleString()}</td>
                     </tr>
                 `;
             }).join('');
