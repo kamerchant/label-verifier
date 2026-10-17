@@ -487,6 +487,7 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
 
 
 def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, conflicts: int, total_codes: int, username: str, override_reason: str, skip_conflicts: bool = False):
+    print(f"DEBUG: Override worker started for Run ID {run_id}, Job {job_card_id}, File: {clean_tsv_path}") # <--- Add this line
     conn = None
     indexes_dropped = False
     try:
