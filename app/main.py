@@ -225,11 +225,18 @@ def require_uploader(user: dict = Depends(get_current_user)):
 # ---------------------------------------------------------
 
 def drop_secondary_indexes(cur):
-    """No-op: Retain persistent indexes to eliminate full-table rebuilds and table locks."""
-    pass
+    """Drop secondary indexes during bulk loading to eliminate row-by-row index update overhead."""
+    cur.execute("DROP INDEX IF EXISTS idx_codes_code_value;")
+    cur.execute("DROP INDEX IF EXISTS idx_codes_run_val;")
+    cur.execute("DROP INDEX IF EXISTS idx_codes_run_id_asc;")
+    cur.execute("DROP INDEX IF EXISTS idx_codes_run_status_id;")
 
 def restore_secondary_indexes(cur):
-    """Fast statistics update without re-indexing historical records."""
+    """Rebuild secondary indexes in a single fast batch and update statistics."""
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_code_value ON codes (code_value);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_val ON codes (run_id, code_value);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_id_asc ON codes (run_id, id ASC);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_status_id ON codes (run_id, status, id);")
     cur.execute("ANALYZE codes;")
 
 def stream_file_to_codes_chunked(cur, conn, run_id: int, target_tsv_path: str, total_to_insert: int):
@@ -287,7 +294,6 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
             cur.execute("UPDATE job_cards SET ingestion_progress = 'Executing database-native cleaning & splitting...' WHERE run_id = %s", (run_id,))
             conn.commit()
 
-            # Natively split comma-separated CSV lines and clean whitespace/quotes
             cur.execute("""
                 CREATE UNLOGGED TABLE temp_incoming_codes AS
                 SELECT DISTINCT
@@ -342,7 +348,6 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 cur.execute("UPDATE job_cards SET ingestion_progress = 'Analyzing historical active jobs...' WHERE run_id = %s", (run_id,))
                 conn.commit()
 
-                # Refresh statistics so the PostgreSQL planner uses indexes efficiently
                 cur.execute("ANALYZE codes;")
 
                 cur.execute("""
@@ -351,7 +356,6 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                     CREATE INDEX idx_tmp_act_run ON temp_active_runs (run_id);
                 """)
 
-                # Step 1: Isolate conflicting codes into an indexed temp table instantly
                 cur.execute("""
                     CREATE TEMP TABLE temp_conflicting_codes ON COMMIT DROP AS
                     SELECT DISTINCT t.code_value
@@ -372,7 +376,6 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 conflicts_found = row[0] if row else 0
 
                 if conflicts_found > 0:
-                    # Step 2: Aggregate breakdown cleanly without massive multi-table joins
                     cur.execute("""
                         SELECT a.job_card_id, a.status, COUNT(c.code_value) as cnt
                         FROM temp_conflicting_codes tc
@@ -386,7 +389,6 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                         {"job_card_id": r[0], "status": r[1], "conflict_count": r[2]}
                         for r in cur.fetchall()
                     ]
-
 
                     clean_tsv_fd, clean_tsv_path = tempfile.mkstemp(suffix=".tsv")
                     with os.fdopen(clean_tsv_fd, "w", encoding="utf-8") as out_f:
@@ -415,11 +417,11 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
             conn.commit()
             indexes_dropped = True
 
-            cur.execute(f"""
+            cur.execute("""
                 INSERT INTO codes (run_id, job_card_id, code_value, status)
-                SELECT {run_id}, '{job_card_id}', code_value, 'PENDING'
+                SELECT %s, %s, code_value, 'PENDING'
                 FROM temp_incoming_codes;
-            """)
+            """, (run_id, job_card_id))
             actual_inserted = cur.rowcount
 
             cur.execute("DROP TABLE IF EXISTS temp_raw_import;")
@@ -552,9 +554,9 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
 
             cur.execute(f"""
                 INSERT INTO codes (run_id, job_card_id, code_value, status)
-                SELECT {run_id}, '{job_card_id}', code_value, 'PENDING'
+                SELECT %s, %s, code_value, 'PENDING'
                 FROM {target_table};
-            """)
+            """, (run_id, job_card_id))
             actual_inserted = cur.rowcount
 
             cur.execute("DROP TABLE IF EXISTS temp_override_all;")
@@ -623,6 +625,7 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 os.remove(clean_tsv_path)
         except OSError:
             pass
+
 
 
 # ---------------------------------------------------------
