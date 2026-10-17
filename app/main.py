@@ -478,41 +478,46 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
 
 def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, conflicts: int, total_codes: int, username: str, override_reason: str, skip_conflicts: bool = False):
     conn = None
-    target_tsv = clean_tsv_path
-    filtered_tsv_path = None
     indexes_dropped = False
     try:
         conn = get_connection()
         with conn.cursor() as cur:
+            # 1. Hyper-aggressive PostgreSQL tuning
             cur.execute("SET synchronous_commit = off;")
-            cur.execute("SET work_mem = '128MB';")
+            cur.execute("SET work_mem = '512MB';")
+            cur.execute("SET maintenance_work_mem = '512MB';")
             conn.commit()
 
             effective_total = total_codes
+            target_table = "temp_override_all"
 
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Loading staged batch into memory...' WHERE run_id = %s", (run_id,))
+            conn.commit()
+
+            # 2. Load the previously cleaned data into an UNLOGGED table
+            cur.execute("CREATE UNLOGGED TABLE temp_override_all (run_id INT, job_card_id TEXT, code_value TEXT, status TEXT);")
+            with open(clean_tsv_path, "r", encoding="utf-8") as tsv_in:
+                cur.copy_expert("COPY temp_override_all FROM STDIN WITH (FORMAT text)", tsv_in)
+
+            cur.execute("CREATE INDEX idx_temp_ovr_val ON temp_override_all (code_value);")
+            cur.execute("ANALYZE temp_override_all;")
+
+            # 3. Fast SQL filtering if skipping conflicts
             if skip_conflicts:
                 cur.execute("UPDATE job_cards SET ingestion_progress = 'Filtering out conflicting codes...' WHERE run_id = %s", (run_id,))
                 conn.commit()
 
-                cur.execute("CREATE TEMP TABLE temp_override_all (run_id INT, job_card_id TEXT, code_value TEXT, status TEXT) ON COMMIT DROP;")
-                with open(clean_tsv_path, "r", encoding="utf-8") as tsv_in:
-                    cur.copy_expert("COPY temp_override_all FROM STDIN WITH (FORMAT text)", tsv_in)
-
-                cur.execute("CREATE INDEX idx_temp_ovr_val ON temp_override_all (code_value);")
-                cur.execute("ANALYZE temp_override_all;")
-
-                # Split complex temporary table queries to ensure driver compatibility
-                cur.execute("CREATE TEMP TABLE active_run_ids ON COMMIT DROP AS SELECT run_id FROM job_cards WHERE status IN ('ACTIVE', 'INACTIVE', 'COMPLETED');")
-                cur.execute("CREATE INDEX idx_tmp_active_runs ON active_run_ids(run_id);")
+                cur.execute("CREATE TEMP TABLE temp_active_runs ON COMMIT DROP AS SELECT run_id FROM job_cards WHERE status IN ('ACTIVE', 'INACTIVE', 'COMPLETED');")
+                cur.execute("CREATE INDEX idx_tmp_active_runs ON temp_active_runs(run_id);")
 
                 cur.execute("""
-                    CREATE TEMP TABLE temp_override_filtered ON COMMIT DROP AS
+                    CREATE UNLOGGED TABLE temp_override_filtered AS
                     SELECT t.run_id, t.job_card_id, t.code_value, t.status
                     FROM temp_override_all t
                     WHERE NOT EXISTS (
                         SELECT 1 
                         FROM codes c
-                        JOIN active_run_ids a ON c.run_id = a.run_id
+                        JOIN temp_active_runs a ON c.run_id = a.run_id
                         WHERE c.code_value = t.code_value
                           AND c.status != 'DELETED'
                     );
@@ -523,27 +528,37 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
 
                 if effective_total == 0:
                     cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = 'All codes conflicted and were skipped. 0 codes remaining.' WHERE run_id = %s", (run_id,))
+                    cur.execute("DROP TABLE IF EXISTS temp_override_all;")
+                    cur.execute("DROP TABLE IF EXISTS temp_override_filtered;")
                     conn.commit()
                     return
 
-                filtered_fd, filtered_tsv_path = tempfile.mkstemp(suffix=".tsv")
-                with os.fdopen(filtered_fd, "w", encoding="utf-8") as filtered_out:
-                    cur.copy_expert("COPY temp_override_filtered TO STDOUT WITH (FORMAT text)", filtered_out)
-
-                target_tsv = filtered_tsv_path
+                target_table = "temp_override_filtered"
                 cur.execute("UPDATE job_cards SET total_codes = %s WHERE run_id = %s", (effective_total, run_id))
                 conn.commit()
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Preparing high-speed bulk ingestion...' WHERE run_id = %s", (run_id,))
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Executing high-speed COPY insertion...' WHERE run_id = %s", (run_id,))
             conn.commit()
+            
             drop_secondary_indexes(cur)
             conn.commit()
             indexes_dropped = True
 
-            actual_inserted = stream_file_to_codes_chunked(cur, conn, run_id, target_tsv, effective_total)
+            # 4. The Drop & Swap Trick: Buffer the filtered data from temp table and pipe directly into `codes`
+            copy_buffer = io.StringIO()
+            cur.copy_expert(f"COPY (SELECT {run_id}, '{job_card_id}', code_value, 'PENDING' FROM {target_table}) TO STDOUT WITH (FORMAT text)", copy_buffer)
+            copy_buffer.seek(0)
+            
+            cur.copy_expert("COPY codes (run_id, job_card_id, code_value, status) FROM STDIN WITH (FORMAT text)", copy_buffer)
+            actual_inserted = effective_total
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Finalizing database index statistics...' WHERE run_id = %s", (run_id,))
+            # Cleanup
+            cur.execute("DROP TABLE IF EXISTS temp_override_all;")
+            cur.execute("DROP TABLE IF EXISTS temp_override_filtered;")
+
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Rebuilding indexes...' WHERE run_id = %s", (run_id,))
             conn.commit()
+            
             restore_secondary_indexes(cur)
             conn.commit()
             indexes_dropped = False
@@ -555,9 +570,9 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 SET status = 'ACTIVE', 
                     total_codes = %s,
                     conflict_resolution = %s,
-                    ingestion_progress = %s 
+                    ingestion_progress = '100%' 
                 WHERE run_id = %s
-            """, (actual_inserted, resolution_type, '100%', run_id))
+            """, (actual_inserted, resolution_type, run_id))
 
             if skip_conflicts:
                 lifecycle_reason = f"Conflicts Skipped: {actual_inserted:,} codes kept ({conflicts:,} skipped). Justification: {override_reason}"
@@ -572,16 +587,14 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
 
             conn.commit()
 
-            for p in [clean_tsv_path, filtered_tsv_path]:
-                try:
-                    if p and os.path.exists(p):
-                        os.remove(p)
-                except OSError:
-                    pass
     except Exception as e:
         try:
             if conn:
                 conn.rollback()
+                with conn.cursor() as cur:
+                    cur.execute("DROP TABLE IF EXISTS temp_override_all;")
+                    cur.execute("DROP TABLE IF EXISTS temp_override_filtered;")
+                conn.commit()
         except Exception:
             pass
         fail_conn = None
@@ -601,6 +614,11 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
     finally:
         if conn:
             release_connection(conn)
+        try:
+            if clean_tsv_path and os.path.exists(clean_tsv_path):
+                os.remove(clean_tsv_path)
+        except OSError:
+            pass
 
 # ---------------------------------------------------------
 # Application Routes & Verification API
