@@ -501,11 +501,11 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 cur.execute("CREATE INDEX idx_temp_ovr_val ON temp_override_all (code_value);")
                 cur.execute("ANALYZE temp_override_all;")
 
-                cur.execute("""
-                    CREATE TEMP TABLE active_run_ids ON COMMIT DROP AS
-                    SELECT run_id FROM job_cards WHERE status IN ('ACTIVE', 'INACTIVE', 'COMPLETED');
-                    CREATE INDEX idx_tmp_active_runs ON active_run_ids(run_id);
+                # Split complex temporary table queries to ensure driver compatibility
+                cur.execute("CREATE TEMP TABLE active_run_ids ON COMMIT DROP AS SELECT run_id FROM job_cards WHERE status IN ('ACTIVE', 'INACTIVE', 'COMPLETED');")
+                cur.execute("CREATE INDEX idx_tmp_active_runs ON active_run_ids(run_id);")
 
+                cur.execute("""
                     CREATE TEMP TABLE temp_override_filtered ON COMMIT DROP AS
                     SELECT t.run_id, t.job_card_id, t.code_value, t.status
                     FROM temp_override_all t

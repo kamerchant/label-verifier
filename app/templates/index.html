@@ -3723,8 +3723,18 @@
                 showCustomAlert("A justification reason is required for compliance.", "Justification Required");
                 return;
             }
+
+            // Immediately lock the submission button to prevent double-fire API failures
+            const btn = document.getElementById('override-reason-submit-btn');
+            if (btn) btn.disabled = true;
+
             closeOverrideReasonModal();
             confirmDuplicateUpload(pendingOverrideSkipFlag, reason);
+
+            // Re-enable in the background once the modal is fully closed
+            if (btn) {
+                setTimeout(() => { btn.disabled = false; }, 500);
+            }
         }
 
         async function confirmDuplicateUpload(skipConflicts = false, justificationReason = "") {
