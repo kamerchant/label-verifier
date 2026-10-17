@@ -337,7 +337,7 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
             cur.execute("UPDATE job_cards SET total_codes = %s, ingestion_progress = 'Checking cross-job uniqueness...' WHERE run_id = %s", (total_codes, run_id))
             conn.commit()
 
-                        conflicts_found = 0
+            conflicts_found = 0
             if not is_override:
                 cur.execute("UPDATE job_cards SET ingestion_progress = 'Analyzing historical active jobs...' WHERE run_id = %s", (run_id,))
                 conn.commit()
