@@ -215,7 +215,8 @@ def init_db():
                 cur.execute(statement)
 
             cur.execute("SELECT COUNT(*) FROM users;")
-            user_count = cur.fetchone()[0]
+            row = cur.fetchone()
+            user_count = row[0] if row else 0
             if user_count == 0:
                 default_admin_hash = hash_password("Admin@12345")
                 cur.execute("""
