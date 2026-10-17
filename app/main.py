@@ -337,29 +337,46 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
             cur.execute("UPDATE job_cards SET total_codes = %s, ingestion_progress = 'Checking cross-job uniqueness...' WHERE run_id = %s", (total_codes, run_id))
             conn.commit()
 
-            conflicts_found = 0
+                        conflicts_found = 0
             if not is_override:
+                cur.execute("UPDATE job_cards SET ingestion_progress = 'Analyzing historical active jobs...' WHERE run_id = %s", (run_id,))
+                conn.commit()
+
+                # Refresh statistics so the PostgreSQL planner uses indexes efficiently
+                cur.execute("ANALYZE codes;")
+
                 cur.execute("""
                     CREATE TEMP TABLE temp_active_runs ON COMMIT DROP AS
                     SELECT run_id, job_card_id, status FROM job_cards WHERE status IN ('ACTIVE', 'INACTIVE', 'COMPLETED');
                     CREATE INDEX idx_tmp_act_run ON temp_active_runs (run_id);
                 """)
 
+                # Step 1: Isolate conflicting codes into an indexed temp table instantly
                 cur.execute("""
-                    SELECT COUNT(DISTINCT t.code_value)
+                    CREATE TEMP TABLE temp_conflicting_codes ON COMMIT DROP AS
+                    SELECT DISTINCT t.code_value
                     FROM temp_incoming_codes t
-                    JOIN codes c ON c.code_value = t.code_value
-                    JOIN temp_active_runs a ON a.run_id = c.run_id
-                    WHERE c.status != 'DELETED';
+                    WHERE EXISTS (
+                        SELECT 1 
+                        FROM codes c
+                        JOIN temp_active_runs a ON c.run_id = a.run_id
+                        WHERE c.code_value = t.code_value
+                          AND c.status != 'DELETED'
+                    );
+                    CREATE INDEX idx_tmp_conf_val ON temp_conflicting_codes (code_value);
+                    ANALYZE temp_conflicting_codes;
                 """)
+
+                cur.execute("SELECT COUNT(*) FROM temp_conflicting_codes;")
                 row = cur.fetchone()
                 conflicts_found = row[0] if row else 0
 
                 if conflicts_found > 0:
+                    # Step 2: Aggregate breakdown cleanly without massive multi-table joins
                     cur.execute("""
-                        SELECT a.job_card_id, a.status, COUNT(DISTINCT t.code_value) as cnt
-                        FROM temp_incoming_codes t
-                        JOIN codes c ON c.code_value = t.code_value
+                        SELECT a.job_card_id, a.status, COUNT(c.code_value) as cnt
+                        FROM temp_conflicting_codes tc
+                        JOIN codes c ON c.code_value = tc.code_value
                         JOIN temp_active_runs a ON a.run_id = c.run_id
                         WHERE c.status != 'DELETED'
                         GROUP BY a.job_card_id, a.status
@@ -369,6 +386,7 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                         {"job_card_id": r[0], "status": r[1], "conflict_count": r[2]}
                         for r in cur.fetchall()
                     ]
+
 
                     clean_tsv_fd, clean_tsv_path = tempfile.mkstemp(suffix=".tsv")
                     with os.fdopen(clean_tsv_fd, "w", encoding="utf-8") as out_f:
