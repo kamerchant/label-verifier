@@ -4,10 +4,11 @@ Database Connection Pool, Schema Migrations & Cryptography
 """
 
 import os
+import hashlib
 import logging
 from passlib.context import CryptContext
 import psycopg2
-from psycopg2 import pool, extras
+from psycopg2 import pool, extras, extensions
 
 logger = logging.getLogger("vdv.database")
 
@@ -23,10 +24,23 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verifies a plaintext password against a bcrypt hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verifies plaintext against bcrypt or legacy SHA-256 hex hashes without throwing exceptions."""
+    if not hashed_password or not plain_password:
+        return False
+    
+    # 1. Backward-compatible fallback for 64-character SHA-256 hex strings
+    if len(hashed_password) == 64 and all(c in "0123456789abcdefABCDEF" for c in hashed_password):
+        sha256_attempt = hashlib.sha256(plain_password.encode("utf-8")).hexdigest().lower()
+        if sha256_attempt == hashed_password.lower():
+            return True
 
-# Threaded connection pool (handles concurrent scans and batch ingestion)
+    # 2. Bcrypt verification
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception:
+        return False
+
+# Threaded connection pool
 connection_pool = None
 
 def init_connection_pool():
@@ -37,7 +51,6 @@ def init_connection_pool():
                 minconn=2,
                 maxconn=25,
                 dsn=DATABASE_URL,
-                # Force Pakistan Standard Time and keep connections alive through Render load balancers
                 options="-c timezone=Asia/Karachi",
                 connect_timeout=10,
                 keepalives=1,
@@ -60,15 +73,21 @@ def get_connection():
     return connection_pool.getconn()
 
 def release_connection(conn):
-    """Safely returns a connection to the pool, resetting any uncommitted state."""
+    """Guarantees connection is returned to the pool even if rollbacks fail."""
     global connection_pool
     if connection_pool and not connection_pool.closed and conn:
         try:
-            if not conn.closed and conn.get_transaction_status() != psycopg2.extensions.TRANSACTION_STATUS_IDLE:
-                conn.rollback()
-            connection_pool.putconn(conn)
+            if not conn.closed:
+                # 0 corresponds to TRANSACTION_STATUS_IDLE
+                if conn.get_transaction_status() != 0:
+                    conn.rollback()
         except Exception:
             pass
+        finally:
+            try:
+                connection_pool.putconn(conn)
+            except Exception:
+                pass
 
 def close_connection_pool():
     """Closes all active connections during application shutdown."""
@@ -83,12 +102,7 @@ def close_connection_pool():
 # =====================================================================
 
 def init_db():
-    """
-    Provisions all tables, constraints, and performance indexes
-    matching the exact schema expected by main.py.
-    """
     schema_sql = [
-        # 1. Users table
         """
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
@@ -103,8 +117,6 @@ def init_db():
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
         """,
-
-        # 2. Job Cards Master Table
         """
         CREATE TABLE IF NOT EXISTS job_cards (
             run_id SERIAL PRIMARY KEY,
@@ -126,8 +138,6 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_job_cards_jc_id ON job_cards (job_card_id);
         CREATE INDEX IF NOT EXISTS idx_job_cards_status ON job_cards (status);
         """,
-
-        # 3. Barcode Codes Table (High-volume)
         """
         CREATE TABLE IF NOT EXISTS codes (
             id BIGSERIAL PRIMARY KEY,
@@ -142,8 +152,6 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_codes_run_status_id ON codes (run_id, status, id);
         CREATE INDEX IF NOT EXISTS idx_codes_val_active ON codes (code_value) WHERE status != 'DELETED';
         """,
-
-        # 4. Shop Floor Inline Scan Logs
         """
         CREATE TABLE IF NOT EXISTS scan_logs (
             id BIGSERIAL PRIMARY KEY,
@@ -155,8 +163,6 @@ def init_db():
         );
         CREATE INDEX IF NOT EXISTS idx_scan_logs_jc_time ON scan_logs (job_card_id, scanned_at DESC);
         """,
-
-        # 5. Final QC Packaging Logs
         """
         CREATE TABLE IF NOT EXISTS packing_qc_logs (
             id SERIAL PRIMARY KEY,
@@ -167,8 +173,6 @@ def init_db():
         );
         CREATE INDEX IF NOT EXISTS idx_packing_qc_jc ON packing_qc_logs (job_card_id);
         """,
-
-        # 6. Job Lifecycle Audit Logs
         """
         CREATE TABLE IF NOT EXISTS job_lifecycle_logs (
             id SERIAL PRIMARY KEY,
@@ -180,8 +184,6 @@ def init_db():
         );
         CREATE INDEX IF NOT EXISTS idx_lifecycle_jc ON job_lifecycle_logs (job_card_id);
         """,
-
-        # 7. Unified System Activity Audit Logs
         """
         CREATE TABLE IF NOT EXISTS system_audit_logs (
             id BIGSERIAL PRIMARY KEY,
@@ -202,7 +204,6 @@ def init_db():
             for statement in schema_sql:
                 cur.execute(statement)
 
-            # Auto-seed initial administrator account if no users exist
             cur.execute("SELECT COUNT(*) FROM users;")
             user_count = cur.fetchone()[0]
             if user_count == 0:
@@ -213,19 +214,20 @@ def init_db():
                 """, (default_admin_hash,))
                 logger.info("Default administrator account 'admin' created.")
 
-            # Performance Optimization: Lower autovacuum scale factors to prevent tuple bloat
-            autovacuum_tuning = [
+            conn.commit()
+
+            # Autovacuum tuning
+            for tune_sql in [
                 "ALTER TABLE codes SET (autovacuum_vacuum_scale_factor = 0.05, autovacuum_analyze_scale_factor = 0.02);",
                 "ALTER TABLE scan_logs SET (autovacuum_vacuum_scale_factor = 0.05, autovacuum_analyze_scale_factor = 0.02);",
                 "ALTER TABLE job_cards SET (autovacuum_vacuum_scale_factor = 0.05, autovacuum_analyze_scale_factor = 0.02);"
-            ]
-            for tune_sql in autovacuum_tuning:
+            ]:
                 try:
                     cur.execute(tune_sql)
+                    conn.commit()
                 except Exception:
-                    pass  # Non-blocking if running under restricted database permissions
+                    conn.rollback()
 
-            conn.commit()
-            logger.info("Database schema initialized and performance tuning applied.")
+            logger.info("Database schema initialized and verified.")
     finally:
         release_connection(conn)
