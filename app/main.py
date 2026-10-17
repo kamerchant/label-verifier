@@ -225,18 +225,20 @@ def require_uploader(user: dict = Depends(get_current_user)):
 # ---------------------------------------------------------
 
 def drop_secondary_indexes(cur):
-    """Drop secondary indexes during bulk loading to eliminate row-by-row index update overhead."""
+    """Drop all secondary indexes during bulk loading to eliminate row-by-row index update overhead."""
     cur.execute("DROP INDEX IF EXISTS idx_codes_code_value;")
     cur.execute("DROP INDEX IF EXISTS idx_codes_run_val;")
     cur.execute("DROP INDEX IF EXISTS idx_codes_run_id_asc;")
     cur.execute("DROP INDEX IF EXISTS idx_codes_run_status_id;")
+    cur.execute("DROP INDEX IF EXISTS idx_codes_val_active;")
 
 def restore_secondary_indexes(cur):
-    """Rebuild secondary indexes in a single fast batch and update statistics."""
+    """Rebuild all secondary indexes in a single fast batch and update statistics."""
     cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_code_value ON codes (code_value);")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_val ON codes (run_id, code_value);")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_id_asc ON codes (run_id, id ASC);")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_status_id ON codes (run_id, status, id);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_val_active ON codes (code_value) WHERE status != 'DELETED';")
     cur.execute("ANALYZE codes;")
 
 def stream_file_to_codes_chunked(cur, conn, run_id: int, target_tsv_path: str, total_to_insert: int):
