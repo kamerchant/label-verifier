@@ -267,104 +267,73 @@ def stream_file_to_codes_chunked(cur, conn, run_id: int, target_tsv_path: str, t
 
 def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, is_override: bool, username: str):
     conn = None
-    clean_tsv_path = None
     indexes_dropped = False
     try:
         conn = get_connection()
         with conn.cursor() as cur:
             cur.execute("SET synchronous_commit = off;")
-            cur.execute("SET work_mem = '128MB';")
+            cur.execute("SET work_mem = '512MB';")
+            cur.execute("SET maintenance_work_mem = '512MB';")
             conn.commit()
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Filtering unique codes from file...' WHERE run_id = %s", (run_id,))
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Streaming raw file to database memory...' WHERE run_id = %s", (run_id,))
             conn.commit()
 
-            header_blacklist = {"code", "url", "qr", "qrcode", "serial", "barcode", "data", "id", "link"}
-            seen_in_batch = set()
-            internal_duplicates_count = 0
-            sample_internal_duplicates = []
-            total_codes = 0
+            cur.execute("CREATE UNLOGGED TABLE temp_raw_import (raw_line TEXT);")
+            
+            with open(temp_filepath, "r", encoding="utf-8", errors="ignore") as f:
+                cur.copy_expert("COPY temp_raw_import FROM STDIN WITH (FORMAT text)", f)
 
-            clean_tsv_fd, clean_tsv_path = tempfile.mkstemp(suffix=".tsv")
-            write_buffer = []
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Executing database-native cleaning...' WHERE run_id = %s", (run_id,))
+            conn.commit()
 
-            with os.fdopen(clean_tsv_fd, "w", encoding="utf-8") as out_f:
-                with open(temp_filepath, "r", encoding="utf-8", errors="ignore") as in_f:
-                    for line_idx, line in enumerate(in_f):
-                        line = line.strip()
-                        if not line:
-                            continue
-
-                        parts = line.split(',') if ',' in line else [line]
-                        for part in parts:
-                            clean = part.strip().strip('"').strip("'").replace('\r', '').replace('\n', '').replace('\t', '')
-                            if not clean:
-                                continue
-
-                            # Restrict blacklist comparison to early lines to prevent repeated string work
-                            if line_idx < 50 and clean.lower() in header_blacklist:
-                                continue
-
-                            if clean in seen_in_batch:
-                                internal_duplicates_count += 1
-                                if len(sample_internal_duplicates) < 5:
-                                    sample_internal_duplicates.append(clean)
-                            else:
-                                seen_in_batch.add(clean)
-                                write_buffer.append(f"{run_id}\t{job_card_id}\t{clean}\tPENDING\n")
-                                total_codes += 1
-
-                                if len(write_buffer) >= 25000:
-                                    out_f.writelines(write_buffer)
-                                    write_buffer.clear()
-
-                if write_buffer:
-                    out_f.writelines(write_buffer)
-                    write_buffer.clear()
-
-            seen_in_batch.clear()
-            del seen_in_batch
+            cur.execute("""
+                CREATE UNLOGGED TABLE temp_incoming_codes AS
+                SELECT DISTINCT
+                    TRIM(BOTH '\"' FROM TRIM(BOTH '''' FROM TRIM(REPLACE(REPLACE(REPLACE(raw_line, CHR(13), ''), CHR(10), ''), CHR(9), '')))) AS code_value
+                FROM temp_raw_import
+                WHERE raw_line IS NOT NULL 
+                  AND TRIM(raw_line) != ''
+                  AND LOWER(TRIM(raw_line)) NOT IN ('code', 'url', 'qr', 'qrcode', 'serial', 'barcode', 'data', 'id', 'link');
+            """)
+            
+            cur.execute("SELECT COUNT(*) FROM temp_raw_import;")
+            raw_count = cur.fetchone()[0]
+            
+            cur.execute("SELECT COUNT(*) FROM temp_incoming_codes;")
+            total_codes = cur.fetchone()[0]
+            
+            internal_duplicates_count = raw_count - total_codes
 
             if internal_duplicates_count > 0:
-                sample_str = ", ".join(sample_internal_duplicates)
-                error_msg = (
+                 cur.execute("SELECT raw_line FROM temp_raw_import GROUP BY raw_line HAVING COUNT(*) > 1 LIMIT 5;")
+                 samples = [r[0] for r in cur.fetchall()]
+                 sample_str = ", ".join(samples)
+                 error_msg = (
                     f"File Integrity Error: Found {internal_duplicates_count:,} duplicate code(s) "
                     f"within the CSV itself (Samples: {sample_str})."
                 )
-                cur.execute("""
-                    UPDATE job_cards 
-                    SET status = 'FAILED', 
-                        ingestion_progress = %s 
-                    WHERE run_id = %s
-                """, (error_msg, run_id))
-                conn.commit()
-                return
+                 cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = %s WHERE run_id = %s", (error_msg, run_id))
+                 cur.execute("DROP TABLE IF EXISTS temp_raw_import;")
+                 cur.execute("DROP TABLE IF EXISTS temp_incoming_codes;")
+                 conn.commit()
+                 return
 
             if total_codes == 0:
                 cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = 'No valid codes found in uploaded file' WHERE run_id = %s", (run_id,))
+                cur.execute("DROP TABLE IF EXISTS temp_raw_import;")
+                cur.execute("DROP TABLE IF EXISTS temp_incoming_codes;")
                 conn.commit()
                 return
 
-            cur.execute("""
-                UPDATE job_cards 
-                SET total_codes = %s, 
-                    staged_file_path = %s, 
-                    ingestion_progress = 'Checking duplicates across active jobs...' 
-                WHERE run_id = %s
-            """, (total_codes, clean_tsv_path, run_id))
+            cur.execute("CREATE INDEX idx_temp_inc_val ON temp_incoming_codes (code_value);")
+            cur.execute("ANALYZE temp_incoming_codes;")
+
+            cur.execute("UPDATE job_cards SET total_codes = %s, ingestion_progress = 'Checking cross-job uniqueness...' WHERE run_id = %s", (total_codes, run_id))
             conn.commit()
 
             conflicts_found = 0
             if not is_override:
-                # Stage incoming codes into an indexed temporary table
-                cur.execute("CREATE TEMP TABLE temp_incoming_codes (run_id INT, job_card_id TEXT, code_value TEXT, status TEXT) ON COMMIT DROP;")
-                with open(clean_tsv_path, "r", encoding="utf-8") as tsv_in:
-                    cur.copy_expert("COPY temp_incoming_codes FROM STDIN WITH (FORMAT text)", tsv_in)
-
-                cur.execute("CREATE INDEX idx_temp_inc_val ON temp_incoming_codes (code_value);")
-                cur.execute("ANALYZE temp_incoming_codes;")
-
-                # Filter target job IDs into a temp index table to eliminate full table scans
                 cur.execute("""
                     CREATE TEMP TABLE temp_active_runs ON COMMIT DROP AS
                     SELECT run_id, job_card_id, status FROM job_cards WHERE status IN ('ACTIVE', 'INACTIVE', 'COMPLETED');
@@ -396,28 +365,46 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                         for r in cur.fetchall()
                     ]
 
+                    clean_tsv_fd, clean_tsv_path = tempfile.mkstemp(suffix=".tsv")
+                    with os.fdopen(clean_tsv_fd, "w", encoding="utf-8") as out_f:
+                        cur.copy_expert(f"COPY (SELECT {run_id}, '{job_card_id}', code_value, 'PENDING' FROM temp_incoming_codes) TO STDOUT WITH (FORMAT text)", out_f)
+
                     cur.execute("""
                         UPDATE job_cards 
                         SET status = 'CONFLICT_DETECTED', 
                             conflict_count = %s, 
                             conflict_resolution = 'PENDING',
                             conflict_details = %s,
+                            staged_file_path = %s,
                             ingestion_progress = 'Duplicate conflicts detected. Awaiting authorization.' 
                         WHERE run_id = %s
-                    """, (conflicts_found, json.dumps(breakdown), run_id))
+                    """, (conflicts_found, json.dumps(breakdown), clean_tsv_path, run_id))
+                    
+                    cur.execute("DROP TABLE IF EXISTS temp_raw_import;")
+                    cur.execute("DROP TABLE IF EXISTS temp_incoming_codes;")
                     conn.commit()
                     return
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Preparing high-speed bulk ingestion...' WHERE run_id = %s", (run_id,))
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Executing high-speed database insertion...' WHERE run_id = %s", (run_id,))
             conn.commit()
+
             drop_secondary_indexes(cur)
             conn.commit()
             indexes_dropped = True
 
-            actual_inserted = stream_file_to_codes_chunked(cur, conn, run_id, clean_tsv_path, total_codes)
+            cur.execute(f"""
+                INSERT INTO codes (run_id, job_card_id, code_value, status)
+                SELECT {run_id}, '{job_card_id}', code_value, 'PENDING'
+                FROM temp_incoming_codes;
+            """)
+            actual_inserted = cur.rowcount
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Finalizing database index statistics...' WHERE run_id = %s", (run_id,))
+            cur.execute("DROP TABLE IF EXISTS temp_raw_import;")
+            cur.execute("DROP TABLE IF EXISTS temp_incoming_codes;")
+
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Rebuilding indexes...' WHERE run_id = %s", (run_id,))
             conn.commit()
+            
             restore_secondary_indexes(cur)
             conn.commit()
             indexes_dropped = False
@@ -427,9 +414,9 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 SET status = 'ACTIVE', 
                     total_codes = %s,
                     conflict_resolution = 'NONE',
-                    ingestion_progress = %s 
+                    ingestion_progress = '100%' 
                 WHERE run_id = %s
-            """, (actual_inserted, '100%', run_id))
+            """, (actual_inserted, run_id))
 
             lifecycle_reason = f"Full batch ingestion completed ({actual_inserted:,} codes" + (f", {conflicts_found:,} conflicts overridden)" if is_override else ")")
             cur.execute("""
@@ -440,16 +427,14 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
 
             conn.commit()
 
-            try:
-                if clean_tsv_path and os.path.exists(clean_tsv_path):
-                    os.remove(clean_tsv_path)
-            except OSError:
-                pass
-
     except Exception as e:
         try:
             if conn:
                 conn.rollback()
+                with conn.cursor() as cur:
+                     cur.execute("DROP TABLE IF EXISTS temp_raw_import;")
+                     cur.execute("DROP TABLE IF EXISTS temp_incoming_codes;")
+                conn.commit()
         except Exception:
             pass
         fail_conn = None
@@ -470,10 +455,11 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
         if conn:
             release_connection(conn)
         try:
-            if os.path.exists(temp_filepath):
+            if temp_filepath and os.path.exists(temp_filepath):
                 os.remove(temp_filepath)
         except OSError:
             pass
+
 
 
 def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, conflicts: int, total_codes: int, username: str, override_reason: str, skip_conflicts: bool = False):
@@ -482,7 +468,6 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
     try:
         conn = get_connection()
         with conn.cursor() as cur:
-            # 1. Hyper-aggressive PostgreSQL tuning
             cur.execute("SET synchronous_commit = off;")
             cur.execute("SET work_mem = '512MB';")
             cur.execute("SET maintenance_work_mem = '512MB';")
@@ -494,7 +479,6 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
             cur.execute("UPDATE job_cards SET ingestion_progress = 'Loading staged batch into memory...' WHERE run_id = %s", (run_id,))
             conn.commit()
 
-            # 2. Load the previously cleaned data into an UNLOGGED table
             cur.execute("CREATE UNLOGGED TABLE temp_override_all (run_id INT, job_card_id TEXT, code_value TEXT, status TEXT);")
             with open(clean_tsv_path, "r", encoding="utf-8") as tsv_in:
                 cur.copy_expert("COPY temp_override_all FROM STDIN WITH (FORMAT text)", tsv_in)
@@ -502,7 +486,6 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
             cur.execute("CREATE INDEX idx_temp_ovr_val ON temp_override_all (code_value);")
             cur.execute("ANALYZE temp_override_all;")
 
-            # 3. Fast SQL filtering if skipping conflicts
             if skip_conflicts:
                 cur.execute("UPDATE job_cards SET ingestion_progress = 'Filtering out conflicting codes...' WHERE run_id = %s", (run_id,))
                 conn.commit()
@@ -537,22 +520,20 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 cur.execute("UPDATE job_cards SET total_codes = %s WHERE run_id = %s", (effective_total, run_id))
                 conn.commit()
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Executing high-speed COPY insertion...' WHERE run_id = %s", (run_id,))
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Executing high-speed database insertion...' WHERE run_id = %s", (run_id,))
             conn.commit()
             
             drop_secondary_indexes(cur)
             conn.commit()
             indexes_dropped = True
 
-            # 4. The Drop & Swap Trick: Buffer the filtered data from temp table and pipe directly into `codes`
-            copy_buffer = io.StringIO()
-            cur.copy_expert(f"COPY (SELECT {run_id}, '{job_card_id}', code_value, 'PENDING' FROM {target_table}) TO STDOUT WITH (FORMAT text)", copy_buffer)
-            copy_buffer.seek(0)
-            
-            cur.copy_expert("COPY codes (run_id, job_card_id, code_value, status) FROM STDIN WITH (FORMAT text)", copy_buffer)
-            actual_inserted = effective_total
+            cur.execute(f"""
+                INSERT INTO codes (run_id, job_card_id, code_value, status)
+                SELECT {run_id}, '{job_card_id}', code_value, 'PENDING'
+                FROM {target_table};
+            """)
+            actual_inserted = cur.rowcount
 
-            # Cleanup
             cur.execute("DROP TABLE IF EXISTS temp_override_all;")
             cur.execute("DROP TABLE IF EXISTS temp_override_filtered;")
 
@@ -619,6 +600,7 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 os.remove(clean_tsv_path)
         except OSError:
             pass
+
 
 # ---------------------------------------------------------
 # Application Routes & Verification API
