@@ -286,26 +286,41 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
             total_codes = 0
 
             clean_tsv_fd, clean_tsv_path = tempfile.mkstemp(suffix=".tsv")
+            write_buffer = []
+
             with os.fdopen(clean_tsv_fd, "w", encoding="utf-8") as out_f:
                 with open(temp_filepath, "r", encoding="utf-8", errors="ignore") as in_f:
-                    for line in in_f:
+                    for line_idx, line in enumerate(in_f):
                         line = line.strip()
                         if not line:
                             continue
+
                         parts = line.split(',') if ',' in line else [line]
                         for part in parts:
                             clean = part.strip().strip('"').strip("'").replace('\r', '').replace('\n', '').replace('\t', '')
-                            if not clean or clean.lower() in header_blacklist:
+                            if not clean:
                                 continue
-                            
+
+                            # Restrict blacklist comparison to early lines to prevent repeated string work
+                            if line_idx < 50 and clean.lower() in header_blacklist:
+                                continue
+
                             if clean in seen_in_batch:
                                 internal_duplicates_count += 1
                                 if len(sample_internal_duplicates) < 5:
                                     sample_internal_duplicates.append(clean)
                             else:
                                 seen_in_batch.add(clean)
-                                out_f.write(f"{run_id}\t{job_card_id}\t{clean}\tPENDING\n")
+                                write_buffer.append(f"{run_id}\t{job_card_id}\t{clean}\tPENDING\n")
                                 total_codes += 1
+
+                                if len(write_buffer) >= 25000:
+                                    out_f.writelines(write_buffer)
+                                    write_buffer.clear()
+
+                if write_buffer:
+                    out_f.writelines(write_buffer)
+                    write_buffer.clear()
 
             seen_in_batch.clear()
             del seen_in_batch
@@ -341,6 +356,7 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
 
             conflicts_found = 0
             if not is_override:
+                # Stage incoming codes into an indexed temporary table
                 cur.execute("CREATE TEMP TABLE temp_incoming_codes (run_id INT, job_card_id TEXT, code_value TEXT, status TEXT) ON COMMIT DROP;")
                 with open(clean_tsv_path, "r", encoding="utf-8") as tsv_in:
                     cur.copy_expert("COPY temp_incoming_codes FROM STDIN WITH (FORMAT text)", tsv_in)
@@ -348,29 +364,31 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 cur.execute("CREATE INDEX idx_temp_inc_val ON temp_incoming_codes (code_value);")
                 cur.execute("ANALYZE temp_incoming_codes;")
 
+                # Filter target job IDs into a temp index table to eliminate full table scans
                 cur.execute("""
-                    SELECT COUNT(*)
-                    FROM temp_incoming_codes t
-                    WHERE EXISTS (
-                        SELECT 1
-                        FROM codes c
-                        JOIN job_cards j ON j.run_id = c.run_id
-                        WHERE c.code_value = t.code_value
-                          AND j.status IN ('ACTIVE', 'INACTIVE', 'COMPLETED')
-                          AND c.status != 'DELETED'
-                    );
+                    CREATE TEMP TABLE temp_active_runs ON COMMIT DROP AS
+                    SELECT run_id, job_card_id, status FROM job_cards WHERE status IN ('ACTIVE', 'INACTIVE', 'COMPLETED');
+                    CREATE INDEX idx_tmp_act_run ON temp_active_runs (run_id);
                 """)
-                conflicts_found = cur.fetchone()[0]
+
+                cur.execute("""
+                    SELECT COUNT(DISTINCT t.code_value)
+                    FROM temp_incoming_codes t
+                    JOIN codes c ON c.code_value = t.code_value
+                    JOIN temp_active_runs a ON a.run_id = c.run_id
+                    WHERE c.status != 'DELETED';
+                """)
+                row = cur.fetchone()
+                conflicts_found = row[0] if row else 0
 
                 if conflicts_found > 0:
                     cur.execute("""
-                        SELECT j.job_card_id, j.status, COUNT(DISTINCT t.code_value) as cnt
+                        SELECT a.job_card_id, a.status, COUNT(DISTINCT t.code_value) as cnt
                         FROM temp_incoming_codes t
                         JOIN codes c ON c.code_value = t.code_value
-                        JOIN job_cards j ON j.run_id = c.run_id
-                        WHERE j.status IN ('ACTIVE', 'INACTIVE', 'COMPLETED')
-                          AND c.status != 'DELETED'
-                        GROUP BY j.job_card_id, j.status
+                        JOIN temp_active_runs a ON a.run_id = c.run_id
+                        WHERE c.status != 'DELETED'
+                        GROUP BY a.job_card_id, a.status
                         ORDER BY cnt DESC;
                     """)
                     breakdown = [
@@ -456,6 +474,7 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 os.remove(temp_filepath)
         except OSError:
             pass
+
 
 def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, conflicts: int, total_codes: int, username: str, override_reason: str, skip_conflicts: bool = False):
     conn = None

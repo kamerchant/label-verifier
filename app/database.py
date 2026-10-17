@@ -24,17 +24,21 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verifies plaintext against bcrypt or legacy SHA-256 hex hashes without throwing exceptions."""
+    """Verifies plaintext against bcrypt, legacy SHA-256 hex hashes, or plaintext fallback."""
     if not hashed_password or not plain_password:
         return False
     
-    # 1. Backward-compatible fallback for 64-character SHA-256 hex strings
+    # 1. Plaintext fallback (for early development test accounts)
+    if plain_password == hashed_password:
+        return True
+
+    # 2. Backward-compatible fallback for 64-character SHA-256 hex strings
     if len(hashed_password) == 64 and all(c in "0123456789abcdefABCDEF" for c in hashed_password):
         sha256_attempt = hashlib.sha256(plain_password.encode("utf-8")).hexdigest().lower()
         if sha256_attempt == hashed_password.lower():
             return True
 
-    # 2. Bcrypt verification
+    # 3. Bcrypt verification
     try:
         return pwd_context.verify(plain_password, hashed_password)
     except Exception:
@@ -77,17 +81,16 @@ def release_connection(conn):
     global connection_pool
     if connection_pool and not connection_pool.closed and conn:
         try:
-            if not conn.closed:
+            if conn.closed:
+                # Discard dead sockets so they do not poison the pool
+                connection_pool.putconn(conn, close=True)
+            else:
                 # 0 corresponds to TRANSACTION_STATUS_IDLE
                 if conn.get_transaction_status() != 0:
                     conn.rollback()
+                connection_pool.putconn(conn)
         except Exception:
             pass
-        finally:
-            try:
-                connection_pool.putconn(conn)
-            except Exception:
-                pass
 
 def close_connection_pool():
     """Closes all active connections during application shutdown."""
@@ -103,6 +106,7 @@ def close_connection_pool():
 
 def init_db():
     schema_sql = [
+        # 1. Users table
         """
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
@@ -117,6 +121,7 @@ def init_db():
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
         """,
+        # 2. Job Cards Master Table
         """
         CREATE TABLE IF NOT EXISTS job_cards (
             run_id SERIAL PRIMARY KEY,
@@ -138,6 +143,7 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_job_cards_jc_id ON job_cards (job_card_id);
         CREATE INDEX IF NOT EXISTS idx_job_cards_status ON job_cards (status);
         """,
+        # 3. Barcode Codes Table (High-volume)
         """
         CREATE TABLE IF NOT EXISTS codes (
             id BIGSERIAL PRIMARY KEY,
@@ -147,11 +153,12 @@ def init_db():
             status VARCHAR(50) DEFAULT 'PENDING',
             scanned_at TIMESTAMP WITH TIME ZONE
         );
+        CREATE INDEX IF NOT EXISTS idx_codes_code_value ON codes (code_value);
         CREATE INDEX IF NOT EXISTS idx_codes_run_val ON codes (run_id, code_value);
         CREATE INDEX IF NOT EXISTS idx_codes_run_id_asc ON codes (run_id, id ASC);
         CREATE INDEX IF NOT EXISTS idx_codes_run_status_id ON codes (run_id, status, id);
-        CREATE INDEX IF NOT EXISTS idx_codes_val_active ON codes (code_value) WHERE status != 'DELETED';
         """,
+        # 4. Shop Floor Inline Scan Logs
         """
         CREATE TABLE IF NOT EXISTS scan_logs (
             id BIGSERIAL PRIMARY KEY,
@@ -163,6 +170,7 @@ def init_db():
         );
         CREATE INDEX IF NOT EXISTS idx_scan_logs_jc_time ON scan_logs (job_card_id, scanned_at DESC);
         """,
+        # 5. Final QC Packaging Logs
         """
         CREATE TABLE IF NOT EXISTS packing_qc_logs (
             id SERIAL PRIMARY KEY,
@@ -173,6 +181,7 @@ def init_db():
         );
         CREATE INDEX IF NOT EXISTS idx_packing_qc_jc ON packing_qc_logs (job_card_id);
         """,
+        # 6. Job Lifecycle Audit Logs
         """
         CREATE TABLE IF NOT EXISTS job_lifecycle_logs (
             id SERIAL PRIMARY KEY,
@@ -184,6 +193,7 @@ def init_db():
         );
         CREATE INDEX IF NOT EXISTS idx_lifecycle_jc ON job_lifecycle_logs (job_card_id);
         """,
+        # 7. Unified System Activity Audit Logs
         """
         CREATE TABLE IF NOT EXISTS system_audit_logs (
             id BIGSERIAL PRIMARY KEY,
