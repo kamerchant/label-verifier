@@ -1,292 +1,231 @@
+"""
+CCL Middle East - Pakistan | Variable Data Verification System (VDV)
+Database Connection Pool, Schema Migrations & Cryptography
+"""
+
 import os
 import logging
-import hashlib
-import secrets
-from typing import Optional
-from contextlib import contextmanager
-from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+from passlib.context import CryptContext
 import psycopg2
-from psycopg2 import pool
-from psycopg2.extras import RealDictCursor
+from psycopg2 import pool, extras
 
-logger = logging.getLogger("app.database")
+logger = logging.getLogger("vdv.database")
 
-# Global connection pool instance
-_connection_pool: Optional[pool.ThreadedConnectionPool] = None
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL environment variable is not configured.")
 
+# Password hashing context (bcrypt)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# ---------------------------------------------------------------------------
-# Password Security Helpers (Zero-dependency PBKDF2)
-# ---------------------------------------------------------------------------
 def hash_password(password: str) -> str:
-    """Generates a secure salted PBKDF2-SHA256 password hash."""
-    salt = secrets.token_hex(16)
-    key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt), 100000)
-    return f"{salt}${key.hex()}"
+    """Hashes a plaintext password using bcrypt."""
+    return pwd_context.hash(password)
 
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verifies a plaintext password against a bcrypt hash."""
+    return pwd_context.verify(plain_password, hashed_password)
 
-def verify_password(password: str, hashed_value: str) -> bool:
-    """Verifies a password against a stored salt$hash string."""
-    try:
-        salt, key_hex = hashed_value.split("$")
-        computed = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt), 100000)
-        return secrets.compare_digest(computed.hex(), key_hex)
-    except Exception:
-        return False
+# Threaded connection pool (handles concurrent scans and batch ingestion)
+connection_pool = None
 
-
-# ---------------------------------------------------------------------------
-# Connection String Sanitization (Railway & Render Safe)
-# ---------------------------------------------------------------------------
-def get_clean_database_url() -> str:
-    """
-    Cleans and standardizes the DATABASE_URL for compatibility with
-    both Railway and Render environments without libpq DSN parsing crashes.
-    """
-    raw_url = os.getenv("DATABASE_URL", "").strip()
-    if not raw_url:
-        raise ValueError("DATABASE_URL environment variable is missing or empty.")
-
-    # 1. Normalize legacy scheme (Render exports postgres:// by default)
-    if raw_url.startswith("postgres://"):
-        raw_url = raw_url.replace("postgres://", "postgresql://", 1)
-
-    # 2. Parse URL components
-    parsed = urlparse(raw_url)
-    query_params = parse_qs(parsed.query)
-
-    # 3. Handle SSL requirement cleanly:
-    # - Railway internal networking (*.railway.internal) does not use SSL
-    # - Render & Railway external public proxies require SSL
-    is_railway_internal = "railway.internal" in (parsed.netloc or "")
-
-    if is_railway_internal:
-        query_params.pop("sslmode", None)
-    else:
-        if "sslmode" not in query_params:
-            query_params["sslmode"] = ["require"]
-
-    # 4. Reconstruct clean URL
-    clean_url = urlunparse(
-        parsed._replace(query=urlencode(query_params, doseq=True))
-    )
-    return clean_url
-
-
-# ---------------------------------------------------------------------------
-# Connection Pool Management
-# ---------------------------------------------------------------------------
-def init_connection_pool(minconn: int = 1, maxconn: int = 20) -> pool.ThreadedConnectionPool:
-    """Initializes a thread-safe psycopg2 connection pool."""
-    global _connection_pool
-    if _connection_pool is None or _connection_pool.closed:
-        dsn = get_clean_database_url()
+def init_connection_pool():
+    global connection_pool
+    if connection_pool is None or connection_pool.closed:
         try:
-            _connection_pool = pool.ThreadedConnectionPool(
-                minconn=minconn,
-                maxconn=maxconn,
-                dsn=dsn
+            connection_pool = pool.ThreadedConnectionPool(
+                minconn=2,
+                maxconn=25,
+                dsn=DATABASE_URL,
+                # Force Pakistan Standard Time and keep connections alive through Render load balancers
+                options="-c timezone=Asia/Karachi",
+                connect_timeout=10,
+                keepalives=1,
+                keepalives_idle=30,
+                keepalives_interval=10,
+                keepalives_count=5
             )
-            logger.info("Database connection pool initialized successfully.")
+            logger.info("PostgreSQL Threaded Connection Pool initialized successfully.")
         except Exception as e:
-            logger.error(f"Failed to initialize database connection pool: {e}")
-            raise
-    return _connection_pool
+            logger.error(f"Failed to initialize connection pool: {e}")
+            raise e
 
+init_connection_pool()
 
 def get_connection():
-    """
-    Retrieves an active connection from the pool.
-    Initializes the pool if it has not been started yet.
-    """
-    global _connection_pool
-    if _connection_pool is None or _connection_pool.closed:
+    """Acquires a dedicated connection from the connection pool."""
+    global connection_pool
+    if connection_pool is None or connection_pool.closed:
         init_connection_pool()
-    return _connection_pool.getconn()
-
+    return connection_pool.getconn()
 
 def release_connection(conn):
-    """Returns an active connection back to the pool."""
-    global _connection_pool
-    if conn and _connection_pool and not _connection_pool.closed:
+    """Safely returns a connection to the pool, resetting any uncommitted state."""
+    global connection_pool
+    if connection_pool and not connection_pool.closed and conn:
         try:
-            _connection_pool.putconn(conn)
-        except Exception as e:
-            logger.warning(f"Error returning connection to pool: {e}")
-
+            if not conn.closed and conn.get_transaction_status() != psycopg2.extensions.TRANSACTION_STATUS_IDLE:
+                conn.rollback()
+            connection_pool.putconn(conn)
+        except Exception:
+            pass
 
 def close_connection_pool():
-    """Closes all connections in the pool on shutdown."""
-    global _connection_pool
-    if _connection_pool and not _connection_pool.closed:
-        _connection_pool.closeall()
-        logger.info("Database connection pool closed.")
+    """Closes all active connections during application shutdown."""
+    global connection_pool
+    if connection_pool and not connection_pool.closed:
+        connection_pool.closeall()
+        logger.info("Database connection pool closed cleanly.")
 
 
-@contextmanager
-def get_db_connection():
-    """Context manager for acquiring and safely returning a raw database connection."""
-    conn = get_connection()
-    try:
-        yield conn
-    finally:
-        release_connection(conn)
+# =====================================================================
+# SCHEMA INITIALIZATION & MIGRATIONS
+# =====================================================================
 
-
-@contextmanager
-def get_db_cursor(commit: bool = False, cursor_factory=RealDictCursor):
-    """
-    Context manager for database transactions with automatic rollback on error
-    and connection recycling. Defaults to returning dictionary-like rows.
-    """
-    conn = get_connection()
-    cursor = conn.cursor(cursor_factory=cursor_factory)
-    try:
-        yield cursor
-        if commit:
-            conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        cursor.close()
-        release_connection(conn)
-
-
-# ---------------------------------------------------------------------------
-# Schema Initialization & Migrations (Synchronized with main.py)
-# ---------------------------------------------------------------------------
 def init_db():
     """
-    Initializes required database schema tables, applied migrations, and
-    builds the high-speed indexes needed for real-time verification and bulk ingestion.
+    Provisions all tables, constraints, and performance indexes
+    matching the exact schema expected by main.py.
     """
-    schema_sql = """
-    -- 1. Users Table
-    CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(100) UNIQUE NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
-        role VARCHAR(50) NOT NULL DEFAULT 'QC officer',
-        can_upload BOOLEAN NOT NULL DEFAULT FALSE,
-        employee_name VARCHAR(255),
-        employee_id VARCHAR(100),
-        is_active BOOLEAN NOT NULL DEFAULT TRUE,
-        must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    );
+    schema_sql = [
+        # 1. Users table
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(100) UNIQUE NOT NULL,
+            password_hash VARCHAR(255) NOT NULL,
+            role VARCHAR(50) DEFAULT 'QC officer',
+            must_change_password BOOLEAN DEFAULT TRUE,
+            can_upload BOOLEAN DEFAULT FALSE,
+            is_active BOOLEAN DEFAULT TRUE,
+            employee_name VARCHAR(150),
+            employee_id VARCHAR(50),
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        """,
 
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS employee_name VARCHAR(255);
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS employee_id VARCHAR(100);
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT FALSE;
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS can_upload BOOLEAN DEFAULT FALSE;
+        # 2. Job Cards Master Table
+        """
+        CREATE TABLE IF NOT EXISTS job_cards (
+            run_id SERIAL PRIMARY KEY,
+            job_card_id VARCHAR(100) NOT NULL,
+            description TEXT,
+            status VARCHAR(100) DEFAULT 'INGESTING',
+            total_codes INT DEFAULT 0,
+            consumed_codes INT DEFAULT 0,
+            conflict_count INT DEFAULT 0,
+            conflict_resolution VARCHAR(50) DEFAULT 'NONE',
+            conflict_details TEXT,
+            staged_file_path TEXT,
+            ingestion_progress TEXT,
+            deleted_by VARCHAR(100),
+            deleted_at TIMESTAMP WITH TIME ZONE,
+            deletion_reason TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_job_cards_jc_id ON job_cards (job_card_id);
+        CREATE INDEX IF NOT EXISTS idx_job_cards_status ON job_cards (status);
+        """,
 
-    -- 2. Job Cards Table (run_id is the primary identifier used across the application)
-    CREATE TABLE IF NOT EXISTS job_cards (
-        run_id SERIAL PRIMARY KEY,
-        job_card_id VARCHAR(100) NOT NULL,
-        description TEXT,
-        status VARCHAR(100) NOT NULL DEFAULT 'ACTIVE',
-        total_codes INTEGER DEFAULT 0,
-        consumed_codes INTEGER DEFAULT 0,
-        conflict_count INTEGER DEFAULT 0,
-        conflict_resolution VARCHAR(50) DEFAULT 'NONE',
-        ingestion_progress TEXT,
-        staged_file_path TEXT,
-        deleted_by VARCHAR(100),
-        deleted_at TIMESTAMP WITH TIME ZONE,
-        deletion_reason TEXT,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    );
+        # 3. Barcode Codes Table (High-volume)
+        """
+        CREATE TABLE IF NOT EXISTS codes (
+            id BIGSERIAL PRIMARY KEY,
+            run_id INT NOT NULL REFERENCES job_cards(run_id) ON DELETE CASCADE,
+            job_card_id VARCHAR(100) NOT NULL,
+            code_value VARCHAR(150) NOT NULL,
+            status VARCHAR(50) DEFAULT 'PENDING',
+            scanned_at TIMESTAMP WITH TIME ZONE
+        );
+        CREATE INDEX IF NOT EXISTS idx_codes_run_val ON codes (run_id, code_value);
+        CREATE INDEX IF NOT EXISTS idx_codes_run_id_asc ON codes (run_id, id ASC);
+        CREATE INDEX IF NOT EXISTS idx_codes_run_status_id ON codes (run_id, status, id);
+        CREATE INDEX IF NOT EXISTS idx_codes_val_active ON codes (code_value) WHERE status != 'DELETED';
+        """,
 
-    ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS staged_file_path TEXT;
-    ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS deleted_by VARCHAR(100);
-    ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;
-    ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS deletion_reason TEXT;
-    ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS conflict_resolution VARCHAR(50) DEFAULT 'NONE';
+        # 4. Shop Floor Inline Scan Logs
+        """
+        CREATE TABLE IF NOT EXISTS scan_logs (
+            id BIGSERIAL PRIMARY KEY,
+            job_card_id VARCHAR(100) NOT NULL,
+            code_scanned VARCHAR(150) NOT NULL,
+            result VARCHAR(100) NOT NULL,
+            scanned_by VARCHAR(100),
+            scanned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_scan_logs_jc_time ON scan_logs (job_card_id, scanned_at DESC);
+        """,
 
-    CREATE INDEX IF NOT EXISTS idx_job_cards_jc_id ON job_cards(job_card_id);
-    CREATE INDEX IF NOT EXISTS idx_job_cards_status ON job_cards(status);
+        # 5. Final QC Packaging Logs
+        """
+        CREATE TABLE IF NOT EXISTS packing_qc_logs (
+            id SERIAL PRIMARY KEY,
+            job_card_id VARCHAR(100) NOT NULL,
+            code_scanned VARCHAR(150) NOT NULL,
+            tested_by VARCHAR(100) NOT NULL,
+            tested_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_packing_qc_jc ON packing_qc_logs (job_card_id);
+        """,
 
-    -- 3. Serialized Codes Table (High-speed barcode pool)
-    CREATE TABLE IF NOT EXISTS codes (
-        id SERIAL PRIMARY KEY,
-        run_id INTEGER NOT NULL REFERENCES job_cards(run_id) ON DELETE CASCADE,
-        job_card_id VARCHAR(100) NOT NULL,
-        code_value VARCHAR(255) NOT NULL,
-        status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
-        scanned_at TIMESTAMP WITH TIME ZONE
-    );
+        # 6. Job Lifecycle Audit Logs
+        """
+        CREATE TABLE IF NOT EXISTS job_lifecycle_logs (
+            id SERIAL PRIMARY KEY,
+            job_card_id VARCHAR(100) NOT NULL,
+            action VARCHAR(100) NOT NULL,
+            performed_by VARCHAR(100),
+            reason TEXT,
+            timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_lifecycle_jc ON job_lifecycle_logs (job_card_id);
+        """,
 
-    -- Core Verification & Conflict Indexes
-    CREATE INDEX IF NOT EXISTS idx_codes_code_value ON codes(code_value);
-    CREATE INDEX IF NOT EXISTS idx_codes_run_val ON codes(run_id, code_value);
-    CREATE INDEX IF NOT EXISTS idx_codes_run_status ON codes(run_id, status, id);
-    CREATE INDEX IF NOT EXISTS idx_codes_run_id ON codes(run_id, id);
+        # 7. Unified System Activity Audit Logs
+        """
+        CREATE TABLE IF NOT EXISTS system_audit_logs (
+            id BIGSERIAL PRIMARY KEY,
+            category VARCHAR(50) NOT NULL,
+            job_card_id VARCHAR(100),
+            action VARCHAR(100) NOT NULL,
+            performed_by VARCHAR(100),
+            details TEXT,
+            timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_sys_audit_time ON system_audit_logs (timestamp DESC);
+        """
+    ]
 
-    -- 4. Verification Scan Logs Table
-    CREATE TABLE IF NOT EXISTS scan_logs (
-        id SERIAL PRIMARY KEY,
-        job_card_id VARCHAR(100) NOT NULL,
-        code_scanned VARCHAR(255) NOT NULL,
-        result VARCHAR(50) NOT NULL,
-        scanned_by VARCHAR(100) NOT NULL,
-        scanned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    );
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            for statement in schema_sql:
+                cur.execute(statement)
 
-    CREATE INDEX IF NOT EXISTS idx_scan_logs_jc ON scan_logs(job_card_id);
-    CREATE INDEX IF NOT EXISTS idx_scan_logs_code ON scan_logs(code_scanned);
-    CREATE INDEX IF NOT EXISTS idx_scan_logs_jc_id ON scan_logs(job_card_id, id DESC);
+            # Auto-seed initial administrator account if no users exist
+            cur.execute("SELECT COUNT(*) FROM users;")
+            user_count = cur.fetchone()[0]
+            if user_count == 0:
+                default_admin_hash = hash_password("Admin@12345")
+                cur.execute("""
+                    INSERT INTO users (username, password_hash, role, can_upload, employee_name, employee_id, must_change_password)
+                    VALUES ('admin', %s, 'admin', TRUE, 'System Administrator', 'CCL-ADM-01', TRUE);
+                """, (default_admin_hash,))
+                logger.info("Default administrator account 'admin' created.")
 
-    -- 5. Final Packing QC Logs Table
-    CREATE TABLE IF NOT EXISTS packing_qc_logs (
-        id SERIAL PRIMARY KEY,
-        job_card_id VARCHAR(100) NOT NULL,
-        code_scanned VARCHAR(255) NOT NULL,
-        tested_by VARCHAR(100) NOT NULL,
-        tested_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    );
+            # Performance Optimization: Lower autovacuum scale factors to prevent tuple bloat
+            autovacuum_tuning = [
+                "ALTER TABLE codes SET (autovacuum_vacuum_scale_factor = 0.05, autovacuum_analyze_scale_factor = 0.02);",
+                "ALTER TABLE scan_logs SET (autovacuum_vacuum_scale_factor = 0.05, autovacuum_analyze_scale_factor = 0.02);",
+                "ALTER TABLE job_cards SET (autovacuum_vacuum_scale_factor = 0.05, autovacuum_analyze_scale_factor = 0.02);"
+            ]
+            for tune_sql in autovacuum_tuning:
+                try:
+                    cur.execute(tune_sql)
+                except Exception:
+                    pass  # Non-blocking if running under restricted database permissions
 
-    CREATE INDEX IF NOT EXISTS idx_packing_qc_jc ON packing_qc_logs(job_card_id);
-
-    -- 6. System Audit Logs Table
-    CREATE TABLE IF NOT EXISTS system_audit_logs (
-        id SERIAL PRIMARY KEY,
-        category VARCHAR(50) NOT NULL,
-        job_card_id VARCHAR(100) DEFAULT '-',
-        action VARCHAR(100) NOT NULL,
-        performed_by VARCHAR(100) NOT NULL,
-        details TEXT,
-        timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    );
-
-    -- 7. Job Lifecycle Audit Logs Table
-    CREATE TABLE IF NOT EXISTS job_lifecycle_logs (
-        id SERIAL PRIMARY KEY,
-        job_card_id VARCHAR(100) NOT NULL,
-        action VARCHAR(100) NOT NULL,
-        performed_by VARCHAR(100),
-        reason TEXT,
-        timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_system_audit_ts ON system_audit_logs(timestamp DESC);
-    CREATE INDEX IF NOT EXISTS idx_lifecycle_jc ON job_lifecycle_logs(job_card_id);
-    """
-    with get_db_cursor(commit=True) as cursor:
-        cursor.execute(schema_sql)
-
-        # Seed default admin if database is brand new
-        cursor.execute("SELECT COUNT(*) AS cnt FROM users;")
-        row = cursor.fetchone()
-        user_count = row["cnt"] if isinstance(row, dict) else row[0]
-        if user_count == 0:
-            default_admin_hash = hash_password("Admin@1234")
-            cursor.execute("""
-                INSERT INTO users (username, password_hash, role, can_upload, is_active, must_change_password)
-                VALUES ('admin', %s, 'admin', TRUE, TRUE, TRUE);
-            """, (default_admin_hash,))
-            logger.info("Brand new database initialized: default admin seeded (Username: admin, Password: Admin@1234).")
-
-        logger.info("Database schema initialized and verified.")
+            conn.commit()
+            logger.info("Database schema initialized and performance tuning applied.")
+    finally:
+        release_connection(conn)

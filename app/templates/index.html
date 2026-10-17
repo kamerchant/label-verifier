@@ -244,7 +244,7 @@
             body > header, body > main, body > footer, #login-modal, #pw-modal, #upload-modal,
             #master-jobs-modal, #user-modal, #custom-alert-modal,
             #custom-confirm-modal, #admin-reset-pw-modal, #user-admin-pw-modal, #bulk-status-modal,
-            #purge-admin-pw-modal, .no-print {
+            #purge-admin-pw-modal, #timezone-modal, #override-reason-modal, .no-print {
                 display: none !important;
                 visibility: hidden !important;
             }
@@ -539,6 +539,10 @@
                 Theme: <span id="theme-name-text" class="table-text-theme font-semibold">Obsidian</span>
             </button>
             <span class="text-slate-600 shrink-0">&middot;</span>
+            <button onclick="openTimezoneModal()" class="text-slate-300 hover:text-indigo-400 underline cursor-pointer bg-transparent border-none p-0 text-xs transition-colors shrink-0" title="Change Time Zone">
+                Time Zone: <span id="tz-name-text" class="table-text-theme font-semibold">UTC+05:00 (Karachi, Islamabad)</span>
+            </button>
+            <span class="text-slate-600 shrink-0">&middot;</span>
             <div id="footer-sys-msg-box" class="flex items-center gap-1.5 text-xs truncate transition-all">
                 <span id="footer-sys-dot" class="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0"></span>
                 <span id="footer-sys-msg" class="truncate text-slate-400 max-w-[200px] sm:max-w-xs md:max-w-md">System Ready</span>
@@ -685,11 +689,11 @@
                             class="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-3.5 py-2 rounded text-xs font-medium min-h-[38px]">
                         Cancel / Discard
                     </button>
-                    <button type="button" onclick="confirmDuplicateUpload(true)" id="duplicate-skip-btn" 
+                    <button type="button" onclick="promptOverrideJustification(true)" id="duplicate-skip-btn" 
                             class="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded text-xs font-bold transition-all min-h-[38px] shadow-md flex items-center justify-center">
                         Skip Conflicting Codes
                     </button>
-                    <button type="button" onclick="confirmDuplicateUpload(false)" id="duplicate-proceed-btn" 
+                    <button type="button" onclick="promptOverrideJustification(false)" id="duplicate-proceed-btn" 
                             class="bg-amber-600 hover:bg-amber-500 text-white px-3.5 py-2 rounded text-xs font-bold transition-all min-h-[38px] shadow-md flex items-center justify-center">
                         Proceed with All (Override)
                     </button>
@@ -1148,6 +1152,67 @@
             </form>
         </div>
     </div>
+    <!-- Override Reason Authorization Modal -->
+    <div id="override-reason-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[98]">
+        <div class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full border border-amber-500/30 shadow-2xl">
+            <h3 class="text-base sm:text-lg font-extrabold text-amber-400 mb-1">Supervisor Override Justification</h3>
+            <p id="override-reason-subtitle" class="text-xs modal-subtitle-theme mb-3">ISO 9001 Compliance: Enter a mandatory reason for proceeding with duplicate or skipped codes.</p>
+            <form onsubmit="submitOverrideWithReason(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Justification / Rerun Order Ref *</label>
+                    <input type="text" id="override-reason-input" required placeholder="e.g. Approved rerun order #1042 / Damaged roll replacement" class="linear-input w-full p-2.5 text-xs sm:text-sm rounded">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeOverrideReasonModal()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
+                    <button type="submit" id="override-reason-submit-btn" class="linear-button-primary px-4 py-1.5 rounded text-xs font-bold">Authorize &amp; Proceed</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Time Zone Setting Modal -->
+    <div id="timezone-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
+        <div class="linear-card p-5 sm:p-6 rounded-lg max-w-lg w-full shadow-2xl">
+            <h3 class="text-base sm:text-lg font-extrabold modal-title-theme mb-1">Operational Time Zone Setting</h3>
+            <p class="text-xs modal-subtitle-theme mb-4">Select the reference time zone for inspection streams, report headers, and printable certificates.</p>
+            <form onsubmit="handleTimezoneSave(event)" class="space-y-3.5">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Time Zone (Offset &amp; Reference Location) *</label>
+                    <select id="tz-select-input" class="linear-input w-full p-2.5 text-xs sm:text-sm rounded cursor-pointer max-h-48">
+                        <option value="Etc/GMT+12" data-label="UTC−12:00 (Eniwetok)">UTC−12:00 — International Date Line West (Eniwetok)</option>
+                        <option value="Pacific/Midway" data-label="UTC−11:00 (Samoa, Midway)">UTC−11:00 — Samoa, Midway</option>
+                        <option value="Pacific/Honolulu" data-label="UTC−10:00 (Hawaii)">UTC−10:00 — Hawaii</option>
+                        <option value="America/Anchorage" data-label="UTC−09:00 (Alaska)">UTC−09:00 — Alaska</option>
+                        <option value="America/Los_Angeles" data-label="UTC−08:00 (Pacific Time)">UTC−08:00 — Pacific Time (Los Angeles, Vancouver)</option>
+                        <option value="America/Denver" data-label="UTC−07:00 (Mountain Time)">UTC−07:00 — Mountain Time (Denver, Phoenix)</option>
+                        <option value="America/Chicago" data-label="UTC−06:00 (Central Time)">UTC−06:00 — Central Time (Chicago, Mexico City)</option>
+                        <option value="America/New_York" data-label="UTC−05:00 (Eastern Time)">UTC−05:00 — Eastern Time (New York, Toronto)</option>
+                        <option value="America/Halifax" data-label="UTC−04:00 (Atlantic Time)">UTC−04:00 — Atlantic Time (Halifax, Puerto Rico)</option>
+                        <option value="America/Argentina/Buenos_Aires" data-label="UTC−03:00 (Buenos Aires, São Paulo)">UTC−03:00 — Buenos Aires, Brazil (São Paulo)</option>
+                        <option value="America/Noronha" data-label="UTC−02:00 (Mid-Atlantic)">UTC−02:00 — Mid-Atlantic</option>
+                        <option value="Atlantic/Cape_Verde" data-label="UTC−01:00 (Cape Verde, Azores)">UTC−01:00 — Cape Verde, Azores</option>
+                        <option value="Europe/London" data-label="UTC±00:00 (London, Dublin)">UTC±00:00 — Greenwich Mean Time (London, Dublin)</option>
+                        <option value="Europe/Berlin" data-label="UTC+01:00 (Berlin, Paris)">UTC+01:00 — Central European Time (Berlin, Rome, Paris)</option>
+                        <option value="Africa/Cairo" data-label="UTC+02:00 (Cairo, South Africa)">UTC+02:00 — Eastern European Time (Cairo, Jerusalem, South Africa)</option>
+                        <option value="Asia/Kuwait" data-label="UTC+03:00 (Moscow, Kuwait)">UTC+03:00 — Moscow, Kuwait, East Africa</option>
+                        <option value="Asia/Dubai" data-label="UTC+04:00 (Dubai, Muscat)">UTC+04:00 — Arabian Standard Time (Abu Dhabi, Dubai, Muscat)</option>
+                        <option value="Asia/Karachi" data-label="UTC+05:00 (Karachi, Islamabad)">UTC+05:00 — Pakistan Standard Time (Karachi, Islamabad)</option>
+                        <option value="Asia/Dhaka" data-label="UTC+06:00 (Dhaka, Almaty)">UTC+06:00 — Central Asia / Almaty (Dhaka, Almaty)</option>
+                        <option value="Asia/Bangkok" data-label="UTC+07:00 (Bangkok, Jakarta)">UTC+07:00 — Southeast Asia (Bangkok, Jakarta)</option>
+                        <option value="Asia/Singapore" data-label="UTC+08:00 (Singapore, Beijing)">UTC+08:00 — China Standard Time (Beijing, Hong Kong, Singapore)</option>
+                        <option value="Asia/Tokyo" data-label="UTC+09:00 (Tokyo, Seoul)">UTC+09:00 — Japan Standard Time (Tokyo, Seoul)</option>
+                        <option value="Australia/Sydney" data-label="UTC+10:00 (Sydney, Melbourne)">UTC+10:00 — Australian Eastern Time (Sydney, Melbourne, Guam)</option>
+                        <option value="Pacific/Guadalcanal" data-label="UTC+11:00 (Solomon Islands)">UTC+11:00 — Central Pacific / Solomon Islands</option>
+                        <option value="Pacific/Auckland" data-label="UTC+12:00 (New Zealand, Fiji)">UTC+12:00 — New Zealand Standard Time (Auckland, Fiji)</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeTimezoneModal()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
+                    <button type="submit" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold">Save Time Zone</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Login Modal -->
     <div id="login-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
@@ -1431,6 +1496,82 @@
         }
 
         initTheme();
+
+        // -------------------------------------------------------------
+        // Time Zone Engine (24 Offsets with LocalStorage Persistence)
+        // -------------------------------------------------------------
+        let currentAppTimezone = localStorage.getItem('vdv_timezone') || 'Asia/Karachi';
+
+        function updateTimezoneFooterText() {
+            const label = document.getElementById('tz-name-text');
+            const select = document.getElementById('tz-select-input');
+            if (!label) return;
+
+            let displayText = 'UTC+05:00 (Karachi, Islamabad)';
+            if (select) {
+                const opt = select.querySelector(`option[value="${currentAppTimezone}"]`);
+                if (opt) displayText = opt.getAttribute('data-label') || opt.text;
+            }
+            label.innerText = displayText;
+        }
+
+        function initTimezone() {
+            try {
+                currentAppTimezone = localStorage.getItem('vdv_timezone') || 'Asia/Karachi';
+                const select = document.getElementById('tz-select-input');
+                if (select) select.value = currentAppTimezone;
+                updateTimezoneFooterText();
+            } catch (e) {}
+        }
+
+        function openTimezoneModal() {
+            const select = document.getElementById('tz-select-input');
+            if (select) select.value = currentAppTimezone;
+            const modal = document.getElementById('timezone-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeTimezoneModal() {
+            const modal = document.getElementById('timezone-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+            }
+        }
+
+        function handleTimezoneSave(e) {
+            e.preventDefault();
+            const select = document.getElementById('tz-select-input');
+            if (select) {
+                currentAppTimezone = select.value;
+                localStorage.setItem('vdv_timezone', currentAppTimezone);
+                updateTimezoneFooterText();
+                updateSystemMessage(`Time zone set to ${currentAppTimezone}`, 'success');
+            }
+            closeTimezoneModal();
+        }
+
+        function formatAppTimestamp(dateObj = new Date()) {
+            try {
+                return dateObj.toLocaleString('en-GB', {
+                    timeZone: currentAppTimezone,
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true
+                });
+            } catch (e) {
+                return dateObj.toLocaleString();
+            }
+        }
+
+        initTimezone();
 
         function showCustomAlert(message, title = "Please Verify") {
             document.getElementById('custom-alert-title').innerText = title;
@@ -2480,7 +2621,7 @@
                     currentPackingQCLogs.unshift({
                         code: data.code,
                         tested_by: currentUser ? currentUser.username : "Operator",
-                        tested_at: new Date().toLocaleString()
+                        tested_at: formatAppTimestamp()
                     });
                     renderPackingQCChart();
 
@@ -2525,13 +2666,32 @@
             `).join('');
         }
 
-        function printPackingQC() {
+        async function generateCertificateFingerprint(rawString) {
+            try {
+                const msgUint8 = new TextEncoder().encode(rawString);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                return `DIGITAL-QC-STAMP: ${hashHex.substring(0, 8).toUpperCase()}-${hashHex.substring(8, 16).toUpperCase()}-${hashHex.substring(16, 24).toUpperCase()}`;
+            } catch (e) {
+                return '';
+            }
+        }
+
+        async function printPackingQC() {
             if (currentPackingQCLogs.length === 0) return;
             document.getElementById('print-qc-job').innerText = currentPackingQCJob;
             document.getElementById('print-qc-desc').innerText = currentPackingQCDesc || "Serialized Production Batch";
             document.getElementById('print-qc-status').innerText = "Completed";
             document.getElementById('print-qc-count').innerText = currentPackingQCLogs.length.toLocaleString();
-            document.getElementById('print-qc-footer-timestamp').innerText = `Report Generated On: ${new Date().toLocaleString()}`;
+
+            const rawHashPayload = `${currentPackingQCJob}|${currentPackingQCLogs.length}|${currentPackingQCDesc}|CCL-PK`;
+            const stamp = await generateCertificateFingerprint(rawHashPayload);
+
+            document.getElementById('print-qc-footer-timestamp').innerHTML = `
+                Report Generated On: ${formatAppTimestamp()}<br>
+                <span style="font-family: monospace; font-size: 7.5pt; color: #64748b; margin-top: 3px; display: block;">${stamp}</span>
+            `;
 
             const printTableBody = document.getElementById('print-qc-table-rows');
             printTableBody.innerHTML = currentPackingQCLogs.map(l => `
@@ -2562,7 +2722,7 @@
             document.getElementById('report-status-text').innerText = data.status;
             
             const rptTs = document.getElementById('print-report-timestamp');
-            if (rptTs) rptTs.innerText = `Report Generated On: ${new Date().toLocaleString()}`;
+            if (rptTs) rptTs.innerText = `Report Generated On: ${formatAppTimestamp()}`;
 
             document.getElementById('download-csv-btn').onclick = () => {
                 window.location.href = `/api/reports/${encodeURIComponent(activeJobId)}/csv`;
@@ -2608,7 +2768,7 @@
             document.getElementById('lifecycle-desc-text').innerText = data.description || '-';
             
             const lifeTs = document.getElementById('print-lifecycle-timestamp');
-            if (lifeTs) lifeTs.innerText = `Report Generated On: ${new Date().toLocaleString()}`;
+            if (lifeTs) lifeTs.innerText = `Report Generated On: ${formatAppTimestamp()}`;
 
             const tbody = document.getElementById('lifecycle-log-rows');
             if (data.logs.length === 0) {
@@ -2657,7 +2817,7 @@
                 toggleModal('global-audit-modal');
 
                 const tsElem = document.getElementById('print-global-audit-timestamp');
-                if (tsElem) tsElem.innerText = `Report Generated On: ${new Date().toLocaleString()}`;
+                if (tsElem) tsElem.innerText = `Report Generated On: ${formatAppTimestamp()}`;
             } catch (e) {
                 showCustomAlert("Failed to load global audit trail.");
             }
@@ -3528,7 +3688,46 @@
             }, 1000);
         }
 
-        async function confirmDuplicateUpload(skipConflicts = false) {
+        let pendingOverrideSkipFlag = false;
+
+        function promptOverrideJustification(skipConflicts) {
+            pendingOverrideSkipFlag = skipConflicts;
+            const subtitle = document.getElementById('override-reason-subtitle');
+            if (subtitle) {
+                subtitle.innerText = skipConflicts 
+                    ? "ISO Traceability: Enter reason for skipping all conflicting codes from this batch."
+                    : "ISO Traceability: Enter reason for overriding existing codes and re-registering them.";
+            }
+            const input = document.getElementById('override-reason-input');
+            if (input) input.value = '';
+            const modal = document.getElementById('override-reason-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.style.display = 'flex';
+                setTimeout(() => input.focus(), 80);
+            }
+        }
+
+        function closeOverrideReasonModal() {
+            const modal = document.getElementById('override-reason-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+            }
+        }
+
+        function submitOverrideWithReason(e) {
+            e.preventDefault();
+            const reason = document.getElementById('override-reason-input').value.trim();
+            if (!reason) {
+                showCustomAlert("A justification reason is required for compliance.", "Justification Required");
+                return;
+            }
+            closeOverrideReasonModal();
+            confirmDuplicateUpload(pendingOverrideSkipFlag, reason);
+        }
+
+        async function confirmDuplicateUpload(skipConflicts = false, justificationReason = "") {
             if (!activeIngestionRunId) return;
 
             const proceedBtn = document.getElementById('duplicate-proceed-btn');
@@ -3567,6 +3766,7 @@
             try {
                 const formData = new FormData();
                 formData.append('skip_conflicts', skipConflicts ? 'true' : 'false');
+                formData.append('override_reason', justificationReason);
                 const res = await fetch(`/api/jobs/${activeIngestionRunId}/proceed-override`, { method: 'POST', body: formData });
                 
                 if (!res.ok) {
@@ -3734,7 +3934,7 @@
 
         function printViewerConflictReport() {
             const tsElem = document.getElementById('print-viewer-conflict-timestamp');
-            if (tsElem) tsElem.innerText = `Report Generated On: ${new Date().toLocaleString()}`;
+            if (tsElem) tsElem.innerText = `Report Generated On: ${formatAppTimestamp()}`;
             window.print();
         }
 
@@ -4023,6 +4223,27 @@
             }
             checkSession();
         });
+
+        // Soft Focus Lock: Automatically refocus scanner input if clicking empty canvas space
+        document.addEventListener('click', (e) => {
+            const barcodeInput = document.getElementById('barcode-input');
+            if (activeJobId && activeJobStatus === 'ACTIVE' && barcodeInput && !barcodeInput.disabled) {
+                if (!e.target.closest('button, select, input, a, [role="button"], .linear-card')) {
+                    barcodeInput.focus();
+                }
+            }
+        });
+
+        // Real-Time Network Disconnect Monitor
+        window.addEventListener('offline', () => {
+            updateSystemMessage("LINE WARNING: Network connection lost. Barcode verification paused.", "error");
+            playTone('FAIL');
+        });
+
+        window.addEventListener('online', () => {
+            updateSystemMessage("Network connection restored. System Ready.", "success");
+            playTone('PASS');
+        });
             function downloadAuditTrailCSV() {
             const searchVal = (document.getElementById('audit-job-search')?.value || '').toLowerCase().trim();
 
@@ -4120,7 +4341,7 @@
         function printConflictReport() {
             const tsElem = document.getElementById('print-conflict-timestamp');
             if (tsElem) {
-                tsElem.innerText = `Report Generated On: ${new Date().toLocaleString()}`;
+                tsElem.innerText = `Report Generated On: ${formatAppTimestamp()}`;
             }
             window.print();
         }

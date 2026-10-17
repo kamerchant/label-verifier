@@ -3,6 +3,7 @@ import os
 import re
 import csv
 import json
+import time
 import tempfile
 import threading
 from typing import Optional
@@ -11,6 +12,11 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Res
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+
+# Enforce Pakistan Standard Time (PKT / UTC+5) for Python datetime & logging
+os.environ["TZ"] = "Asia/Karachi"
+if hasattr(time, "tzset"):
+    time.tzset()
 
 from app.database import (
     init_db,
@@ -31,6 +37,7 @@ async def lifespan(app: FastAPI):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            cur.execute("SET TIME ZONE 'Asia/Karachi';")
             cur.execute("ALTER TABLE job_cards ALTER COLUMN ingestion_progress TYPE TEXT;")
             cur.execute("ALTER TABLE job_cards ALTER COLUMN status TYPE VARCHAR(100);")
             cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS conflict_resolution VARCHAR(50) DEFAULT 'NONE';")
@@ -88,6 +95,31 @@ app = FastAPI(
 
 SECRET_KEY = os.environ.get("SESSION_SECRET", "ccl-variable-data-secret-floor-key-2026")
 signer = URLSafeTimedSerializer(SECRET_KEY)
+
+# ---------------------------------------------------------------------------
+# Rate-Limiting & Brute-Force Defense (5 failed attempts per 5 minutes)
+# ---------------------------------------------------------------------------
+FAILED_ATTEMPTS = {}
+
+def check_rate_limit(request: Request, max_attempts: int = 5, window_seconds: int = 300):
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    attempts = [t for t in FAILED_ATTEMPTS.get(client_ip, []) if now - t < window_seconds]
+    FAILED_ATTEMPTS[client_ip] = attempts
+    if len(attempts) >= max_attempts:
+        minutes_remaining = int((attempts[0] + window_seconds - now) / 60) + 1
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many failed login attempts from this terminal. Please wait {minutes_remaining} minute(s)."
+        )
+
+def record_failed_attempt(request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+    FAILED_ATTEMPTS.setdefault(client_ip, []).append(time.time())
+
+def clear_failed_attempts(request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+    FAILED_ATTEMPTS.pop(client_ip, None)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 HTML_PATH = os.path.join(BASE_DIR, "templates", "index.html")
@@ -266,7 +298,6 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                             if not clean or clean.lower() in header_blacklist:
                                 continue
                             
-                            # Check for duplicates WITHIN the file itself
                             if clean in seen_in_batch:
                                 internal_duplicates_count += 1
                                 if len(sample_internal_duplicates) < 5:
@@ -279,7 +310,6 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
             seen_in_batch.clear()
             del seen_in_batch
 
-            # If the CSV has internal repetitions, halt before touching the database
             if internal_duplicates_count > 0:
                 sample_str = ", ".join(sample_internal_duplicates)
                 error_msg = (
@@ -318,7 +348,6 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 cur.execute("CREATE INDEX idx_temp_inc_val ON temp_incoming_codes (code_value);")
                 cur.execute("ANALYZE temp_incoming_codes;")
 
-                # Exact 1-to-1 conflict check (caps conflicts at total incoming codes)
                 cur.execute("""
                     SELECT COUNT(*)
                     FROM temp_incoming_codes t
@@ -334,7 +363,6 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 conflicts_found = cur.fetchone()[0]
 
                 if conflicts_found > 0:
-                    # Breakdown conflicts by Job Card and Status
                     cur.execute("""
                         SELECT j.job_card_id, j.status, COUNT(DISTINCT t.code_value) as cnt
                         FROM temp_incoming_codes t
@@ -429,7 +457,7 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
         except OSError:
             pass
 
-def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, conflicts: int, total_codes: int, username: str, skip_conflicts: bool = False):
+def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, conflicts: int, total_codes: int, username: str, override_reason: str, skip_conflicts: bool = False):
     conn = None
     target_tsv = clean_tsv_path
     filtered_tsv_path = None
@@ -455,17 +483,19 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 cur.execute("ANALYZE temp_override_all;")
 
                 cur.execute("""
+                    CREATE TEMP TABLE active_run_ids ON COMMIT DROP AS
+                    SELECT run_id FROM job_cards WHERE status IN ('ACTIVE', 'INACTIVE', 'COMPLETED');
+                    CREATE INDEX idx_tmp_active_runs ON active_run_ids(run_id);
+
                     CREATE TEMP TABLE temp_override_filtered ON COMMIT DROP AS
                     SELECT t.run_id, t.job_card_id, t.code_value, t.status
                     FROM temp_override_all t
                     WHERE NOT EXISTS (
                         SELECT 1 
                         FROM codes c
+                        JOIN active_run_ids a ON c.run_id = a.run_id
                         WHERE c.code_value = t.code_value
                           AND c.status != 'DELETED'
-                          AND c.run_id IN (
-                              SELECT run_id FROM job_cards WHERE status IN ('ACTIVE', 'INACTIVE', 'COMPLETED')
-                          )
                     );
                 """)
 
@@ -511,9 +541,9 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
             """, (actual_inserted, resolution_type, '100%', run_id))
 
             if skip_conflicts:
-                lifecycle_reason = f"Batch ingested with conflicts skipped: {actual_inserted:,} clean codes kept ({conflicts:,} conflicts skipped)"
+                lifecycle_reason = f"Conflicts Skipped: {actual_inserted:,} codes kept ({conflicts:,} skipped). Justification: {override_reason}"
             else:
-                lifecycle_reason = f"Duplicate conflict overridden: {conflicts:,} duplicates accepted ({actual_inserted:,} total codes)"
+                lifecycle_reason = f"Duplicate Overridden: {conflicts:,} duplicates accepted ({actual_inserted:,} total codes). Justification: {override_reason}"
 
             cur.execute("""
                 INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) 
@@ -530,6 +560,11 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 except OSError:
                     pass
     except Exception as e:
+        try:
+            if conn:
+                conn.rollback()
+        except Exception:
+            pass
         fail_conn = None
         try:
             fail_conn = get_connection()
@@ -557,7 +592,8 @@ async def index():
     return FileResponse(HTML_PATH, media_type="text/html")
 
 @app.post("/api/auth/login")
-def login(response: Response, username: str = Form(...), password: str = Form(...)):
+def login(request: Request, response: Response, username: str = Form(...), password: str = Form(...)):
+    check_rate_limit(request, max_attempts=5, window_seconds=300)
     clean_username = username.strip()
     conn = get_connection()
     try:
@@ -565,6 +601,7 @@ def login(response: Response, username: str = Form(...), password: str = Form(..
             cur.execute("SELECT password_hash, role, must_change_password, can_upload, is_active, username FROM users WHERE LOWER(username) = LOWER(%s)", (clean_username,))
             user = cur.fetchone()
             if not user or not verify_password(password, user[0]):
+                record_failed_attempt(request)
                 log_system_event(cur, "USER_MGMT", "-", "LOGIN_FAILED", clean_username, f"Failed login attempt for username '{clean_username}'")
                 conn.commit()
                 raise HTTPException(status_code=400, detail="Invalid username or password")
@@ -572,6 +609,7 @@ def login(response: Response, username: str = Form(...), password: str = Form(..
             if not user[4]:
                 raise HTTPException(status_code=403, detail="This account has been suspended.")
 
+            clear_failed_attempts(request)
             original_username = user[5]
             log_system_event(cur, "USER_MGMT", "-", "LOGIN_SUCCESS", original_username, f"User '{original_username}' signed in successfully")
             conn.commit()
@@ -1216,8 +1254,13 @@ def get_upload_status(run_id: int, user: dict = Depends(get_current_user)):
 def proceed_override_job(
     run_id: int, 
     skip_conflicts: str = Form("false"),
+    override_reason: str = Form(...),
     user: dict = Depends(require_uploader)
 ):
+    clean_reason = override_reason.strip()
+    if not clean_reason:
+        raise HTTPException(status_code=400, detail="A mandatory justification reason must be provided to authorize duplicate overrides.")
+
     should_skip = str(skip_conflicts).strip().lower() in ("true", "1", "yes")
 
     conn = get_connection()
@@ -1245,7 +1288,7 @@ def proceed_override_job(
 
             override_thread = threading.Thread(
                 target=process_override_worker,
-                args=(run_id, job_card_id, clean_tsv_path, conflicts, total_codes, user["username"], should_skip),
+                args=(run_id, job_card_id, clean_tsv_path, conflicts, total_codes, user["username"], clean_reason, should_skip),
                 daemon=True
             )
             override_thread.start()
@@ -1749,6 +1792,7 @@ def export_report_csv(job_card_id: str, user: dict = Depends(get_current_user)):
             rows = cur.fetchall()
 
             output = io.StringIO()
+            output.write('\ufeff')  # UTF-8 BOM for Microsoft Excel auto-detection
             writer = csv.writer(output)
             writer.writerow(["Job Card ID", "Scanned Code", "Row #", "Result", "Tested By", "Timestamp"])
             for r in rows:
