@@ -284,26 +284,31 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
             with open(temp_filepath, "r", encoding="utf-8", errors="ignore") as f:
                 cur.copy_expert("COPY temp_raw_import FROM STDIN WITH (FORMAT text)", f)
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Executing database-native cleaning...' WHERE run_id = %s", (run_id,))
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Executing database-native cleaning & splitting...' WHERE run_id = %s", (run_id,))
             conn.commit()
 
+            # Natively split comma-separated CSV lines and clean whitespace/quotes
             cur.execute("""
                 CREATE UNLOGGED TABLE temp_incoming_codes AS
                 SELECT DISTINCT
-                    TRIM(BOTH '\"' FROM TRIM(BOTH '''' FROM TRIM(REPLACE(REPLACE(REPLACE(raw_line, CHR(13), ''), CHR(10), ''), CHR(9), '')))) AS code_value
-                FROM temp_raw_import
+                    TRIM(BOTH '\"' FROM TRIM(BOTH '''' FROM TRIM(REPLACE(REPLACE(REPLACE(val, CHR(13), ''), CHR(10), ''), CHR(9), '')))) AS code_value
+                FROM temp_raw_import,
+                LATERAL unnest(string_to_array(raw_line, ',')) AS val
                 WHERE raw_line IS NOT NULL 
                   AND TRIM(raw_line) != ''
-                  AND LOWER(TRIM(raw_line)) NOT IN ('code', 'url', 'qr', 'qrcode', 'serial', 'barcode', 'data', 'id', 'link');
+                  AND TRIM(val) != ''
+                  AND LOWER(TRIM(val)) NOT IN ('code', 'url', 'qr', 'qrcode', 'serial', 'barcode', 'data', 'id', 'link');
             """)
             
             cur.execute("SELECT COUNT(*) FROM temp_raw_import;")
-            raw_count = cur.fetchone()[0]
+            row_raw = cur.fetchone()
+            raw_count = row_raw[0] if row_raw else 0
             
             cur.execute("SELECT COUNT(*) FROM temp_incoming_codes;")
-            total_codes = cur.fetchone()[0]
+            row_tot = cur.fetchone()
+            total_codes = row_tot[0] if row_tot else 0
             
-            internal_duplicates_count = raw_count - total_codes
+            internal_duplicates_count = max(0, raw_count - total_codes)
 
             if internal_duplicates_count > 0:
                  cur.execute("SELECT raw_line FROM temp_raw_import GROUP BY raw_line HAVING COUNT(*) > 1 LIMIT 5;")
@@ -461,7 +466,6 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
             pass
 
 
-
 def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, conflicts: int, total_codes: int, username: str, override_reason: str, skip_conflicts: bool = False):
     conn = None
     indexes_dropped = False
@@ -507,7 +511,8 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 """)
 
                 cur.execute("SELECT COUNT(*) FROM temp_override_filtered;")
-                effective_total = cur.fetchone()[0]
+                row_eff = cur.fetchone()
+                effective_total = row_eff[0] if row_eff else 0
 
                 if effective_total == 0:
                     cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = 'All codes conflicted and were skipped. 0 codes remaining.' WHERE run_id = %s", (run_id,))
