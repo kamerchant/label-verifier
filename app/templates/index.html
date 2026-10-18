@@ -423,9 +423,14 @@
                     </button>
                 </div>
 
-                <div class="relative w-full sm:w-72">
-                    <input type="text" id="job-search" oninput="handleJobSearch()" onkeydown="handleJobSearchKeyDown(event)" placeholder="Search Job (Press / or Ctrl+K)…" 
-                           class="linear-input w-full px-3.5 py-2.5 text-sm sm:text-base rounded placeholder-slate-400 shadow-inner min-h-[44px]" autocomplete="off">
+                <div class="relative w-full sm:w-72 flex items-center">
+                    <input type="text" id="job-search" oninput="handleJobSearch()" onkeydown="handleJobSearchKeyDown(event)" placeholder="Search Job by ID or Description…" 
+                           class="linear-input w-full pl-3.5 pr-20 py-2.5 text-sm sm:text-base rounded placeholder-slate-400 shadow-inner min-h-[44px]" autocomplete="off">
+                    <div id="search-shortcut-badge" class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-1 select-none">
+                        <kbd class="bg-[#1e2029] border border-white/10 text-slate-400 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold shadow-sm">/</kbd>
+                        <span class="text-[10px] text-slate-500">or</span>
+                        <kbd class="bg-[#1e2029] border border-white/10 text-slate-400 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold shadow-sm">Ctrl+K</kbd>
+                    </div>
                     <div id="job-list" role="listbox" class="absolute left-0 right-0 top-full mt-1 linear-card rounded shadow-2xl max-h-60 overflow-y-auto z-30 hidden"></div>
                 </div>
             </div>
@@ -2288,15 +2293,23 @@
         let currentAutocompleteJobs = [];
 
         function handleJobSearch() {
+            const searchInput = document.getElementById('job-search');
+            const badge = document.getElementById('search-shortcut-badge');
+            
+            // Hide shortcut pill when operator types; restore when field is cleared
+            if (badge && searchInput) {
+                badge.style.display = searchInput.value.length > 0 ? 'none' : 'flex';
+            }
+
             if (activeJobId) {
-                document.getElementById('job-search').value = "";
+                if (searchInput) searchInput.value = "";
                 document.getElementById('job-list').classList.add('hidden');
                 showCustomAlert("Please close the active job first using [Close Job].", "Job In Progress");
                 return;
             }
             clearTimeout(searchDebounceTimer);
             searchDebounceTimer = setTimeout(async () => {
-                const query = document.getElementById('job-search').value.trim();
+                const query = searchInput ? searchInput.value.trim() : "";
                 const list = document.getElementById('job-list');
                 activeAutocompleteIndex = -1;
 
@@ -2394,6 +2407,10 @@
 
             document.getElementById('job-list').classList.add('hidden');
             const searchInput = document.getElementById('job-search');
+            const shortcutBadge = document.getElementById('search-shortcut-badge');
+            if (shortcutBadge) {
+                shortcutBadge.classList.add('hidden');
+            }
             if (searchInput) {
                 searchInput.value = "";
                 searchInput.disabled = true;
@@ -2491,6 +2508,11 @@
             allScans = [];
 
             const searchInput = document.getElementById('job-search');
+            const shortcutBadge = document.getElementById('search-shortcut-badge');
+            if (shortcutBadge) {
+                shortcutBadge.classList.remove('hidden');
+                shortcutBadge.style.display = 'flex';
+            }
             if (searchInput) {
                 searchInput.value = "";
                 searchInput.disabled = false;
