@@ -560,10 +560,11 @@
             </div>
         </div>
         <div class="flex items-center gap-3 shrink-0 ml-auto">
-            <div class="text-slate-400 text-[11px] hidden lg:block">
-                Press <kbd class="bg-[#1e2029] text-white px-1.5 py-0.5 rounded">Enter</kbd> to submit
-            </div>
-            <span class="text-slate-600 hidden lg:inline">&middot;</span>
+            <button type="button" onclick="toggleModal('shortcuts-modal')" title="Keyboard Shortcuts (F1 or ?)" class="text-slate-400 hover:text-indigo-300 text-xs transition-colors hidden sm:flex items-center gap-1">
+                <span>Shortcuts</span>
+                <kbd class="bg-[#1e2029] border border-white/10 px-1 py-0.2 rounded text-[10px] font-mono font-bold">?</kbd>
+            </button>
+            <span class="text-slate-600 hidden sm:inline">&middot;</span>
             <span id="network-status-text" class="font-extrabold text-[11px] uppercase tracking-wider text-[#2ed573]">Online</span>
         </div>
     </footer>
@@ -4703,6 +4704,7 @@
                     window.openMasterJobsModal();
                 });
             }
+            initKeyboardScrollableTables();
             checkSession();
         });
 
