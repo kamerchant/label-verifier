@@ -441,9 +441,9 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 SET status = 'ACTIVE', 
                     total_codes = %s,
                     conflict_resolution = 'NONE',
-                    ingestion_progress = '100%' 
+                    ingestion_progress = %s 
                 WHERE run_id = %s
-            """, (actual_inserted, run_id))
+            """, (actual_inserted, '100%', run_id))
 
             lifecycle_reason = f"Full batch ingestion completed ({actual_inserted:,} codes" + (f", {conflicts_found:,} conflicts overridden)" if is_override else ")")
             cur.execute("""
@@ -557,9 +557,9 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
 
             cur.execute(f"""
                 INSERT INTO codes (run_id, job_card_id, code_value, status)
-                SELECT %s, %s, code_value, 'PENDING'
+                SELECT run_id, job_card_id, code_value, status
                 FROM {target_table};
-            """, (run_id, job_card_id))
+            """)
             actual_inserted = cur.rowcount
 
             cur.execute("DROP TABLE IF EXISTS temp_override_all;")
@@ -579,9 +579,9 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 SET status = 'ACTIVE', 
                     total_codes = %s,
                     conflict_resolution = %s,
-                    ingestion_progress = '100%' 
+                    ingestion_progress = %s 
                 WHERE run_id = %s
-            """, (actual_inserted, resolution_type, run_id))
+            """, (actual_inserted, resolution_type, '100%', run_id))
 
             if skip_conflicts:
                 lifecycle_reason = f"Conflicts Skipped: {actual_inserted:,} codes kept ({conflicts:,} skipped). Justification: {override_reason}"
