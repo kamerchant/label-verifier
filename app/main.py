@@ -404,7 +404,8 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                     conn.commit()
                     return
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Ingesting: 75% (Direct database insertion)...' WHERE run_id = %s", (run_id,))
+            # Pass progress string as a %s parameter to avoid tuple index parsing errors
+            cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", ("Ingesting: 75% (Direct database insertion)...", run_id))
             conn.commit()
 
             cur.execute("""
@@ -417,7 +418,8 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
             cur.execute("DROP TABLE IF EXISTS temp_raw_import;")
             cur.execute("DROP TABLE IF EXISTS temp_incoming_codes;")
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Ingesting: 95% (Updating table statistics)...' WHERE run_id = %s", (run_id,))
+            # Pass progress string as a %s parameter
+            cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", ("Ingesting: 95% (Updating table statistics)...", run_id))
             conn.commit()
             
             restore_secondary_indexes(cur)
@@ -488,7 +490,8 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
             effective_total = total_codes
             target_table = "temp_override_all"
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Ingesting: 25% (Loading staged batch into memory)...' WHERE run_id = %s", (run_id,))
+            # Pass progress string as a %s parameter to avoid tuple index parsing errors
+            cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", ("Ingesting: 25% (Loading staged batch into memory)...", run_id))
             conn.commit()
 
             cur.execute("CREATE UNLOGGED TABLE temp_override_all (run_id INT, job_card_id TEXT, code_value TEXT, status TEXT);")
@@ -496,7 +499,7 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 cur.copy_expert("COPY temp_override_all FROM STDIN WITH (FORMAT text)", tsv_in)
 
             if skip_conflicts:
-                cur.execute("UPDATE job_cards SET ingestion_progress = 'Ingesting: 50% (Filtering out conflicting codes)...' WHERE run_id = %s", (run_id,))
+                cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", ("Ingesting: 50% (Filtering out conflicting codes)...", run_id))
                 conn.commit()
 
                 cur.execute("CREATE INDEX idx_temp_ovr_val ON temp_override_all (code_value);")
@@ -533,7 +536,7 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 cur.execute("UPDATE job_cards SET total_codes = %s WHERE run_id = %s", (effective_total, run_id))
                 conn.commit()
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Ingesting: 75% (Direct database insertion)...' WHERE run_id = %s", (run_id,))
+            cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", ("Ingesting: 75% (Direct database insertion)...", run_id))
             conn.commit()
 
             cur.execute(f"""
@@ -546,7 +549,7 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
             cur.execute("DROP TABLE IF EXISTS temp_override_all;")
             cur.execute("DROP TABLE IF EXISTS temp_override_filtered;")
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Ingesting: 95% (Updating table statistics)...' WHERE run_id = %s", (run_id,))
+            cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", ("Ingesting: 95% (Updating table statistics)...", run_id))
             conn.commit()
             
             restore_secondary_indexes(cur)
@@ -557,8 +560,8 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
             cur.execute("""
                 UPDATE job_cards 
                 SET status = 'ACTIVE', 
-                    total_codes = %s,
-                    conflict_resolution = %s,
+                    total_codes = %s, 
+                    conflict_resolution = %s, 
                     ingestion_progress = %s 
                 WHERE run_id = %s
             """, (actual_inserted, resolution_type, '100%', run_id))
@@ -605,8 +608,6 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 os.remove(clean_tsv_path)
         except OSError:
             pass
-
-
 
 
 # ---------------------------------------------------------
