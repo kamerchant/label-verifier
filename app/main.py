@@ -1296,7 +1296,8 @@ def get_upload_status(run_id: int, user: dict = Depends(get_current_user)):
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT job_card_id, status, total_codes, conflict_count, ingestion_progress, conflict_details 
+                SELECT job_card_id, description, status, total_codes, conflict_count, 
+                       ingestion_progress, conflict_details, conflict_resolution, override_by, override_reason 
                 FROM job_cards 
                 WHERE run_id = %s
             """, (run_id,))
@@ -1305,19 +1306,23 @@ def get_upload_status(run_id: int, user: dict = Depends(get_current_user)):
                 raise HTTPException(status_code=404, detail="Job not found")
 
             breakdown = []
-            if row[5]:
+            if row[6]:
                 try:
-                    breakdown = json.loads(row[5])
+                    breakdown = json.loads(row[6])
                 except Exception:
                     breakdown = []
 
             return {
                 "job_card_id": row[0],
-                "status": row[1],
-                "total_codes": row[2] or 0,
-                "conflict_count": row[3] or 0,
-                "progress_message": row[4] or "",
-                "conflict_breakdown": breakdown
+                "description": row[1] or "",
+                "status": row[2],
+                "total_codes": row[3] or 0,
+                "conflict_count": row[4] or 0,
+                "progress_message": row[5] or "",
+                "conflict_breakdown": breakdown,
+                "conflict_resolution": row[7] or "NONE",
+                "override_by": row[8] or "-",
+                "override_reason": row[9] or "-"
             }
     finally:
         release_connection(conn)

@@ -725,6 +725,25 @@
             
             <div class="bg-slate-100 p-3 rounded text-xs mb-3 text-left border border-slate-200 shrink-0">
                 <p id="viewer-conflict-msg" class="leading-relaxed text-black font-medium text-xs sm:text-sm"></p>
+                <p id="viewer-job-desc" class="text-slate-700 font-semibold mt-1 text-xs"></p>
+            </div>
+
+            <!-- Conflict Resolution & Override Audit Card -->
+            <div id="viewer-audit-card" class="bg-amber-50 p-3 rounded text-xs mb-3 text-left border border-amber-200 shrink-0 hidden">
+                <div class="flex justify-between items-center pb-1.5 mb-1.5 border-b border-amber-200">
+                    <span class="font-bold text-amber-900 uppercase tracking-wide">⚠ Conflict Resolution Audit</span>
+                    <span id="viewer-resolution-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900">OVERRIDDEN</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div>
+                        <span class="text-slate-600 block text-[11px]">Authorized By:</span>
+                        <strong id="viewer-auth-by" class="text-black font-bold">-</strong>
+                    </div>
+                    <div>
+                        <span class="text-slate-600 block text-[11px]">Justification Reason:</span>
+                        <strong id="viewer-justification" class="text-black font-bold">-</strong>
+                    </div>
+                </div>
             </div>
 
             <!-- Scrollable Summary Table of Conflicting Job Cards -->
@@ -733,13 +752,14 @@
                     <thead>
                         <tr class="border-b border-slate-300 text-xs font-bold sticky top-0 bg-slate-100 text-black z-10">
                             <th class="px-3 py-2 text-black font-bold">Conflicting Job Card</th>
+                            <th class="px-3 py-2 text-black font-bold">Product Description</th>
                             <th class="px-3 py-2 text-center text-black font-bold">Status</th>
                             <th class="px-3 py-2 text-right text-black font-bold">Conflicting Codes</th>
                         </tr>
                     </thead>
                     <tbody id="viewer-breakdown-rows" class="divide-y divide-slate-200 text-black text-xs">
                         <tr>
-                            <td colspan="3" class="p-3 text-center text-slate-500 italic">No breakdown available</td>
+                            <td colspan="4" class="p-3 text-center text-slate-500 italic">No breakdown available</td>
                         </tr>
                     </tbody>
                 </table>
@@ -3964,8 +3984,12 @@
         async function openConflictReportFromMasterJobs(runId, jobCardId, conflictCount, totalCodes, status) {
             let breakdown = [];
             let jc = jobCardId;
+            let jcDesc = "";
             let tCodes = totalCodes;
             let cCount = conflictCount;
+            let confResolution = "NONE";
+            let authBy = "-";
+            let authReason = "-";
 
             try {
                 const res = await fetch(`/api/jobs/${runId}/upload-status`);
@@ -3973,12 +3997,18 @@
                     const data = await res.json();
                     breakdown = data.conflict_breakdown || [];
                     jc = data.job_card_id || jobCardId;
+                    jcDesc = data.description || "";
                     tCodes = data.total_codes || totalCodes;
                     cCount = data.conflict_count || conflictCount;
+                    confResolution = data.conflict_resolution || "NONE";
+                    authBy = data.override_by || "-";
+                    authReason = data.override_reason || "-";
                 }
             } catch(e) {}
 
             const msgEl = document.getElementById('viewer-conflict-msg');
+            const descEl = document.getElementById('viewer-job-desc');
+            const auditCard = document.getElementById('viewer-audit-card');
             const tbody = document.getElementById('viewer-breakdown-rows');
 
             if (msgEl) {
@@ -3989,9 +4019,30 @@
                 `;
             }
 
+            if (descEl) {
+                descEl.innerText = jcDesc ? `Product Description: ${jcDesc}` : 'Product Description: No Description';
+            }
+
+            if (auditCard) {
+                if (confResolution && confResolution !== 'NONE' && confResolution !== 'PENDING') {
+                    auditCard.classList.remove('hidden');
+                    const badge = document.getElementById('viewer-resolution-badge');
+                    if (badge) {
+                        badge.innerText = confResolution;
+                        badge.className = confResolution === 'SKIPPED'
+                            ? "px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-900 border border-indigo-300"
+                            : "px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300";
+                    }
+                    document.getElementById('viewer-auth-by').innerText = authBy;
+                    document.getElementById('viewer-justification').innerText = authReason;
+                } else {
+                    auditCard.classList.add('hidden');
+                }
+            }
+
             if (tbody) {
                 if (!breakdown || breakdown.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="3" class="p-3 text-center text-slate-500 italic">No breakdown details recorded.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-500 italic">No breakdown details recorded.</td></tr>`;
                 } else {
                     tbody.innerHTML = breakdown.map(item => {
                         let statusBadge = "bg-amber-100 text-amber-900 border border-amber-300";
@@ -4001,6 +4052,7 @@
                         return `
                             <tr class="hover:bg-slate-50 border-b border-slate-200">
                                 <td class="px-3 py-2 font-bold text-black font-mono">${item.job_card_id}</td>
+                                <td class="px-3 py-2 text-slate-700 font-medium">${item.description || 'No Description'}</td>
                                 <td class="px-3 py-2 text-center">
                                     <span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge}">${item.status}</span>
                                 </td>
