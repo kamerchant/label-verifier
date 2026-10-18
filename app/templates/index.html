@@ -523,18 +523,16 @@
 
     </main>
 
-    <!-- Footer Information Bar with Audit Trail Link -->
+        <!-- Footer Information Bar with Audit Trail Link -->
     <footer class="border-t px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between text-xs text-slate-300 shrink-0 bg-[#0d0e11] z-40 gap-2">
         <div class="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
-            <!-- Consolidated Live Session Chip -->
-            <div id="session-status-chip" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400 font-medium text-[11px] shrink-0 transition-colors">
-                <span id="session-status-dot" class="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0"></span>
-                <span id="user-display" class="truncate max-w-[170px] sm:max-w-none">Connecting...</span>
+            <div class="flex items-center gap-2 shrink-0">
+                <button onclick="openGlobalAuditTrailModal()" class="text-indigo-400 hover:text-indigo-300 underline font-semibold cursor-pointer bg-transparent border-none p-0 text-xs transition-colors flex items-center gap-1">
+                    Audit Trail
+                </button>
+                <span class="text-slate-600">&middot;</span>
+                <span id="user-display" class="truncate max-w-[150px] sm:max-w-none table-text-theme font-medium">Checking session...</span>
             </div>
-            <span class="text-slate-600 shrink-0">&middot;</span>
-            <button onclick="openGlobalAuditTrailModal()" class="text-indigo-400 hover:text-indigo-300 underline font-semibold cursor-pointer bg-transparent border-none p-0 text-xs transition-colors flex items-center gap-1">
-                Audit Trail
-            </button>
             <span class="text-slate-600 shrink-0">&middot;</span>
             <button onclick="toggleTheme()" class="text-slate-300 hover:text-indigo-400 underline cursor-pointer bg-transparent border-none p-0 text-xs transition-colors shrink-0" title="Switch Theme">
                 Theme: <span id="theme-name-text" class="table-text-theme font-semibold">Obsidian</span>
@@ -549,10 +547,15 @@
                 <span id="footer-sys-msg" class="truncate text-slate-400 max-w-[200px] sm:max-w-xs md:max-w-md">System Ready</span>
             </div>
         </div>
-        <div class="text-slate-400 text-[11px] hidden lg:block shrink-0">
-            Press <kbd class="bg-[#1e2029] text-white px-1.5 py-0.5 rounded">Enter</kbd> to submit
+        <div class="flex items-center gap-3 shrink-0 ml-auto">
+            <div class="text-slate-400 text-[11px] hidden lg:block">
+                Press <kbd class="bg-[#1e2029] text-white px-1.5 py-0.5 rounded">Enter</kbd> to submit
+            </div>
+            <span class="text-slate-600 hidden lg:inline">&middot;</span>
+            <span id="network-status-text" class="font-extrabold text-[11px] uppercase tracking-wider text-[#2ed573]">Online</span>
         </div>
     </footer>
+
 
     <!-- Global Audit Trail Modal -->
     <div id="global-audit-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
@@ -4429,16 +4432,40 @@
             }
         });
 
+        function setConnectionStatus(isOnline) {
+            const el = document.getElementById('network-status-text');
+            if (!el) return;
+            if (isOnline) {
+                el.innerText = 'Online';
+                el.className = 'font-extrabold text-[11px] uppercase tracking-wider text-[#2ed573]';
+            } else {
+                el.innerText = 'Offline';
+                el.className = 'font-extrabold text-[11px] uppercase tracking-wider text-[#ff4757] animate-pulse';
+            }
+        }
+
         // Real-Time Network Disconnect Monitor
         window.addEventListener('offline', () => {
+            setConnectionStatus(false);
             updateSystemMessage("LINE WARNING: Network connection lost. Barcode verification paused.", "error");
             playTone('FAIL');
         });
 
         window.addEventListener('online', () => {
+            setConnectionStatus(true);
             updateSystemMessage("Network connection restored. System Ready.", "success");
             playTone('PASS');
         });
+
+        // 30-second background heartbeat probe
+        setInterval(async () => {
+            try {
+                const res = await fetch('/healthz', { cache: 'no-store' });
+                setConnectionStatus(res.ok);
+            } catch (e) {
+                setConnectionStatus(false);
+            }
+        }, 30000);
             function downloadAuditTrailCSV() {
             const searchVal = (document.getElementById('audit-job-search')?.value || '').toLowerCase().trim();
 
