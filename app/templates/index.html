@@ -650,13 +650,13 @@
             </div>
 
             <!-- Scrollable Summary Table of Conflicting Job Cards -->
-            <div class="print-table-container flex-1 overflow-y-auto border border-slate-300 rounded mb-3 max-h-52 bg-white">
+            <div class="print-table-container flex-1 overflow-y-auto border border-slate-300 rounded mb-1 max-h-52 bg-white">
                 <table class="w-full text-left text-xs whitespace-nowrap">
                     <thead>
                         <tr class="border-b border-slate-300 text-xs font-bold sticky top-0 bg-slate-100 text-black z-10">
                             <th class="px-3 py-2 text-black font-bold">Conflicting Job Card</th>
                             <th class="px-3 py-2 text-center text-black font-bold">Status</th>
-                            <th class="px-3 py-2 text-right text-black font-bold">Conflicting Codes</th>
+                            <th class="px-3 py-2 text-right text-black font-bold">Collisions in Job</th>
                         </tr>
                     </thead>
                     <tbody id="duplicate-breakdown-rows" class="divide-y divide-slate-200 text-black text-xs">
@@ -664,8 +664,10 @@
                             <td colspan="3" class="p-3 text-center text-slate-500 italic">No breakdown available</td>
                         </tr>
                     </tbody>
+                    <tfoot id="duplicate-breakdown-foot" class="border-t-2 border-slate-300 bg-slate-50 font-bold text-black text-xs"></tfoot>
                 </table>
             </div>
+            <p class="text-[10px] text-slate-500 mb-3 italic">* If an incoming code exists in more than one historical job, each match is recorded per job. The unique code count above reflects distinct codes in this file.</p>
 
             <!-- In-Modal Ingestion Progress Tracker -->
             <div id="duplicate-progress-box" class="hidden bg-slate-50 p-3.5 rounded mb-3 border border-indigo-300 text-left shrink-0 no-print">
@@ -747,14 +749,14 @@
             </div>
 
             <!-- Scrollable Summary Table of Conflicting Job Cards -->
-            <div class="print-table-container flex-1 overflow-y-auto border border-slate-300 rounded mb-3 max-h-52 bg-white">
+            <div class="print-table-container flex-1 overflow-y-auto border border-slate-300 rounded mb-1 max-h-52 bg-white">
                 <table class="w-full text-left text-xs whitespace-nowrap">
                     <thead>
                         <tr class="border-b border-slate-300 text-xs font-bold sticky top-0 bg-slate-100 text-black z-10">
                             <th class="px-3 py-2 text-black font-bold">Conflicting Job Card</th>
                             <th class="px-3 py-2 text-black font-bold">Product Description</th>
                             <th class="px-3 py-2 text-center text-black font-bold">Status</th>
-                            <th class="px-3 py-2 text-right text-black font-bold">Conflicting Codes</th>
+                            <th class="px-3 py-2 text-right text-black font-bold">Collisions in Job</th>
                         </tr>
                     </thead>
                     <tbody id="viewer-breakdown-rows" class="divide-y divide-slate-200 text-black text-xs">
@@ -762,8 +764,10 @@
                             <td colspan="4" class="p-3 text-center text-slate-500 italic">No breakdown available</td>
                         </tr>
                     </tbody>
+                    <tfoot id="viewer-breakdown-foot" class="border-t-2 border-slate-300 bg-slate-50 font-bold text-black text-xs"></tfoot>
                 </table>
             </div>
+            <p class="text-[10px] text-slate-500 mb-3 italic">* If an incoming code exists in more than one historical job, each match is recorded per job. The unique code count above reflects distinct codes in this file.</p>
 
             <!-- Modal Actions: Only Print and Close -->
             <div class="flex justify-between items-center gap-2 pt-2 border-t border-slate-200 shrink-0 no-print">
@@ -4057,8 +4061,14 @@
             if (tbody) {
                 if (!breakdown || breakdown.length === 0) {
                     tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-500 italic">No breakdown details recorded.</td></tr>`;
+                    const tfoot = document.getElementById('viewer-breakdown-foot');
+                    if (tfoot) tfoot.innerHTML = '';
                 } else {
+                    let totalInstances = 0;
                     tbody.innerHTML = breakdown.map(item => {
+                        const count = Number(item.conflict_count) || 0;
+                        totalInstances += count;
+
                         let statusBadge = "bg-amber-100 text-amber-900 border border-amber-300";
                         if (item.status === 'ACTIVE') statusBadge = "bg-emerald-100 text-emerald-900 border border-emerald-300";
                         else if (item.status === 'COMPLETED') statusBadge = "bg-blue-100 text-blue-900 border border-blue-300";
@@ -4070,10 +4080,21 @@
                                 <td class="px-3 py-2 text-center">
                                     <span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge}">${item.status}</span>
                                 </td>
-                                <td class="px-3 py-2 text-right font-extrabold text-black">${(Number(item.conflict_count) || 0).toLocaleString()}</td>
+                                <td class="px-3 py-2 text-right font-extrabold text-black">${count.toLocaleString()}</td>
                             </tr>
                         `;
                     }).join('');
+
+                    const tfoot = document.getElementById('viewer-breakdown-foot');
+                    if (tfoot) {
+                        tfoot.innerHTML = `
+                            <tr>
+                                <td colspan="2" class="px-3 py-1.5">Total Collisions Across Jobs:</td>
+                                <td></td>
+                                <td class="px-3 py-1.5 text-right font-extrabold text-red-600">${totalInstances.toLocaleString()}</td>
+                            </tr>
+                        `;
+                    }
                 }
             }
 
@@ -4475,7 +4496,11 @@
                 return;
             }
 
+            let totalInstances = 0;
             tbody.innerHTML = breakdown.map(item => {
+                const count = Number(item.conflict_count) || 0;
+                totalInstances += count;
+
                 let statusBadge = "bg-amber-100 text-amber-900 border border-amber-300";
                 if (item.status === 'ACTIVE') statusBadge = "bg-emerald-100 text-emerald-900 border border-emerald-300";
                 else if (item.status === 'COMPLETED') statusBadge = "bg-blue-100 text-blue-900 border border-blue-300";
@@ -4486,10 +4511,21 @@
                         <td class="px-3 py-2 text-center">
                             <span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge}">${item.status}</span>
                         </td>
-                        <td class="px-3 py-2 text-right font-extrabold text-black">${(Number(item.conflict_count) || 0).toLocaleString()}</td>
+                        <td class="px-3 py-2 text-right font-extrabold text-black">${count.toLocaleString()}</td>
                     </tr>
                 `;
             }).join('');
+
+            const tfoot = document.getElementById('duplicate-breakdown-foot');
+            if (tfoot) {
+                tfoot.innerHTML = `
+                    <tr>
+                        <td class="px-3 py-1.5">Total Collisions Across Jobs:</td>
+                        <td></td>
+                        <td class="px-3 py-1.5 text-right font-extrabold text-red-600">${totalInstances.toLocaleString()}</td>
+                    </tr>
+                `;
+            }
         }
 
         function printConflictReport() {

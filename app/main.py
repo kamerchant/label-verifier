@@ -948,14 +948,10 @@ def get_global_audit_trail(user: dict = Depends(require_manager_or_admin)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            # Query system_audit_logs directly; all categories (USER_MGMT, JOB_LIFECYCLE, SCAN_VERIFICATION, FINAL_QC) are already recorded here
             cur.execute("""
-                SELECT category, job_card_id, action, performed_by, details, timestamp FROM system_audit_logs
-                UNION ALL
-                SELECT 'JOB_LIFECYCLE', job_card_id, action, COALESCE(performed_by, 'System'), COALESCE(reason, '-'), timestamp FROM job_lifecycle_logs
-                UNION ALL
-                SELECT 'SCAN_VERIFICATION', job_card_id, 'SCAN_' || result, COALESCE(scanned_by, 'Operator'), 'Scanned code: ' || code_scanned || ' [' || result || ']', scanned_at FROM scan_logs
-                UNION ALL
-                SELECT 'FINAL_QC', job_card_id, 'FINAL_QC_PACK', COALESCE(tested_by, 'Operator'), 'Tested code for packing: ' || code_scanned, tested_at FROM packing_qc_logs
+                SELECT category, job_card_id, action, performed_by, details, timestamp 
+                FROM system_audit_logs
                 ORDER BY timestamp DESC 
                 LIMIT 5000
             """)
