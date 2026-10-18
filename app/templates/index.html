@@ -997,24 +997,28 @@
                 </div>
             </div>
             
-            <form onsubmit="stageNewUser(event)" class="linear-subcard p-3 sm:p-4 rounded mb-3 space-y-2.5 shrink-0">
+            <form onsubmit="stageNewUser(event)" class="linear-subcard p-3 sm:p-4 rounded mb-3 space-y-2.5 shrink-0" autocomplete="off">
+                <!-- Dummy hidden fields to trap browser password autofill managers -->
+                <input type="text" style="display:none" autocomplete="username">
+                <input type="password" style="display:none" autocomplete="current-password">
+
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                    <input type="text" id="new-user-name" placeholder="Username *" required 
-                           class="linear-input w-full p-2.5 text-xs sm:text-sm rounded font-sans">
-                    <input type="password" id="new-user-pass" placeholder="Password *" title="Minimum 8 characters, at least 1 uppercase, 1 lowercase, and 1 number." required 
-                           class="linear-input w-full p-2.5 text-xs sm:text-sm rounded font-sans">
+                    <input type="text" id="new-user-name" placeholder="Username *" required autocomplete="off"
+                           class="linear-input w-full p-2.5 text-xs sm:text-sm rounded" style="font-family: 'Inter', sans-serif !important;">
+                    <input type="password" id="new-user-pass" placeholder="Password *" title="Minimum 8 characters, at least 1 uppercase, 1 lowercase, and 1 number." required autocomplete="new-password"
+                           class="linear-input w-full p-2.5 text-xs sm:text-sm rounded" style="font-family: 'Inter', sans-serif !important;">
                     <select id="new-user-role" onchange="handleNewUserRoleChange()" 
-                            class="linear-input w-full p-2.5 text-xs sm:text-sm rounded cursor-pointer font-sans">
+                            class="linear-input w-full p-2.5 text-xs sm:text-sm rounded cursor-pointer" style="font-family: 'Inter', sans-serif !important;">
                         <option value="QC officer">QC officer</option>
                         <option value="QC manager">QC manager</option>
                         <option value="admin">Administrator</option>
                     </select>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <input type="text" id="new-employee-name" placeholder="Employee Name (Optional)" 
-                           class="linear-input w-full p-2.5 text-xs sm:text-sm rounded font-sans">
-                    <input type="text" id="new-employee-id" placeholder="Employee ID (Optional)" 
-                           class="linear-input w-full p-2.5 text-xs sm:text-sm rounded font-sans">
+                    <input type="text" id="new-employee-name" placeholder="Employee Name (Optional)" autocomplete="off"
+                           class="linear-input w-full p-2.5 text-xs sm:text-sm rounded" style="font-family: 'Inter', sans-serif !important;">
+                    <input type="text" id="new-employee-id" placeholder="Employee ID (Optional)" autocomplete="off"
+                           class="linear-input w-full p-2.5 text-xs sm:text-sm rounded" style="font-family: 'Inter', sans-serif !important;">
                 </div>
                 <div class="flex justify-between items-center pt-2 border-t border-white/[0.06]">
                     <label class="flex items-center gap-2 text-xs sm:text-sm cursor-pointer table-text-theme font-medium">
@@ -3540,6 +3544,17 @@
 
         async function openUserModal() {
             toggleModal('user-modal');
+            
+            // Explicitly clear staging inputs to prevent browser manager ghost autofill
+            const uName = document.getElementById('new-user-name');
+            const uPass = document.getElementById('new-user-pass');
+            const eName = document.getElementById('new-employee-name');
+            const eId = document.getElementById('new-employee-id');
+            if (uName) uName.value = '';
+            if (uPass) uPass.value = '';
+            if (eName) eName.value = '';
+            if (eId) eId.value = '';
+
             const res = await fetch('/api/users');
             if (!res.ok) return;
             const users = await res.json();
