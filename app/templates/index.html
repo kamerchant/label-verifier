@@ -1150,7 +1150,7 @@
     </div>
 
     <!-- Custom Alert Modal -->
-    <div id="custom-alert-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
+    <div id="custom-alert-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[130]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/35 shadow-2xl text-center">
             <h3 id="custom-alert-title" class="text-base sm:text-lg font-extrabold modal-title-theme mb-1">Please Verify</h3>
             <p id="custom-alert-msg" class="text-xs modal-subtitle-theme mb-5 leading-relaxed"></p>
@@ -1159,7 +1159,7 @@
     </div>
 
     <!-- Custom Confirm Modal -->
-    <div id="custom-confirm-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
+    <div id="custom-confirm-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[120]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-amber-500/35 shadow-2xl text-center">
             <h3 id="custom-confirm-title" class="text-base sm:text-lg font-extrabold text-amber-400 mb-1">Confirmation Required</h3>
             <p id="custom-confirm-msg" class="text-xs modal-subtitle-theme mb-5 leading-relaxed"></p>
@@ -1639,7 +1639,13 @@
             const modal = document.getElementById('custom-alert-modal');
             modal.classList.add('hidden');
             modal.style.display = 'none';
-            resetInput();
+            // Only refocus scanner if no parent modal is currently open
+            const openModals = Array.from(document.querySelectorAll('div[id$="-modal"]')).filter(m => 
+                m.id !== 'custom-alert-modal' && !m.classList.contains('hidden') && m.style.display !== 'none'
+            );
+            if (openModals.length === 0) {
+                resetInput();
+            }
         }
 
         function showCustomConfirm(message, onConfirmAction = null, title = "Confirmation Required") {
@@ -3017,9 +3023,13 @@
                     await loadMasterJobs(currentMasterTab);
                     updateSystemMessage(`Purged Job Card: ${purgedJobId}`, "success");
                 } else {
-
                     const err = await res.json().catch(() => ({}));
-                    showCustomAlert(err.detail || "Purge failed. Invalid password or job has verified scans.");
+                    showCustomAlert(err.detail || "Purge failed. Invalid password or job has verified scans.", "Authentication Failed");
+                    const passInput = document.getElementById('purge-admin-password-input');
+                    if (passInput) {
+                        passInput.value = '';
+                        setTimeout(() => passInput.focus(), 100);
+                    }
                 }
             } catch (ex) {
                 showCustomAlert("Network error while connecting to server.");
@@ -3136,13 +3146,12 @@
                     await loadMasterJobs(currentMasterTab);
                 } else {
                     const err = await res.json().catch(() => ({}));
-                    showCustomAlert(err.detail || "Failed to update job status. Password may be incorrect.");
-                    if (selectEl) selectEl.value = previousStatus;
-                    toggleModal('bulk-status-modal');
+                    showCustomAlert(err.detail || "Failed to update job status. Password may be incorrect.", "Authentication Failed");
                     const passInput = document.getElementById('bulk-status-admin-pass');
-                    if (passInput) passInput.value = '';
-                    pendingStatusChange = null;
-                    lastMasterJobInteractionTime = 0;
+                    if (passInput) {
+                        passInput.value = '';
+                        setTimeout(() => passInput.focus(), 100);
+                    }
                 }
             } catch (ex) {
                 showCustomAlert("Network error while connecting to server.");
@@ -3374,7 +3383,12 @@
 
                 const verifyRes = await fetch('/api/auth/login', { method: 'POST', body: verifyBody });
                 if (!verifyRes.ok) {
-                    showCustomAlert("Invalid administrator password. Changes were not saved.");
+                    showCustomAlert("Invalid administrator password. Changes were not saved.", "Authentication Failed");
+                    const passInput = document.getElementById('user-admin-confirm-pass');
+                    if (passInput) {
+                        passInput.value = '';
+                        setTimeout(() => passInput.focus(), 100);
+                    }
                     return;
                 }
 
