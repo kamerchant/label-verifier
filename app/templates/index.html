@@ -1246,47 +1246,47 @@
 
     <!-- Keyboard Shortcuts Help Modal -->
     <div id="shortcuts-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[100]">
-        <div class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full border border-indigo-500/30 shadow-2xl">
-            <div class="flex justify-between items-center mb-3 pb-2 border-b border-white/[0.08]">
-                <h3 class="text-base sm:text-lg font-extrabold modal-title-theme">Keyboard Shortcuts</h3>
-                <button type="button" onclick="toggleModal('shortcuts-modal')" class="linear-button-secondary text-xs px-2.5 py-1 rounded">Esc</button>
+        <div class="bg-white text-black p-5 sm:p-6 rounded-lg max-w-md w-full border border-slate-300 shadow-2xl">
+            <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-200">
+                <h3 class="text-base sm:text-lg font-extrabold text-black">Keyboard Shortcuts</h3>
+                <button type="button" onclick="toggleModal('shortcuts-modal')" class="bg-slate-100 hover:bg-slate-200 text-black border border-slate-300 text-xs px-2.5 py-1 rounded font-bold transition-colors">Esc</button>
             </div>
             <div class="space-y-2 text-xs">
-                <div class="flex justify-between items-center py-1.5 border-b border-white/[0.04]">
-                    <span class="text-slate-300">Scanner / Verify Input</span>
-                    <kbd class="bg-[#1e2029] border border-white/10 text-indigo-300 px-2 py-0.5 rounded font-mono font-bold">F2</kbd>
+                <div class="flex justify-between items-center py-2 border-b border-slate-200">
+                    <span class="text-black font-semibold text-xs sm:text-sm">Scanner / Verify Input</span>
+                    <kbd class="bg-slate-100 border border-slate-300 text-black px-2.5 py-1 rounded font-mono font-extrabold text-xs shadow-sm">F2</kbd>
                 </div>
-                <div class="flex justify-between items-center py-1.5 border-b border-white/[0.04]">
-                    <span class="text-slate-300">Search Job Cards</span>
-                    <div class="flex items-center gap-1">
-                        <kbd class="bg-[#1e2029] border border-white/10 text-indigo-300 px-2 py-0.5 rounded font-mono font-bold">/</kbd>
-                        <span class="text-slate-500">or</span>
-                        <kbd class="bg-[#1e2029] border border-white/10 text-indigo-300 px-2 py-0.5 rounded font-mono font-bold">Ctrl + K</kbd>
+                <div class="flex justify-between items-center py-2 border-b border-slate-200">
+                    <span class="text-black font-semibold text-xs sm:text-sm">Search Job Cards</span>
+                    <div class="flex items-center gap-1.5">
+                        <kbd class="bg-slate-100 border border-slate-300 text-black px-2 py-1 rounded font-mono font-extrabold text-xs shadow-sm">/</kbd>
+                        <span class="text-black font-medium">or</span>
+                        <kbd class="bg-slate-100 border border-slate-300 text-black px-2 py-1 rounded font-mono font-extrabold text-xs shadow-sm">Ctrl + K</kbd>
                     </div>
                 </div>
-                <div class="flex justify-between items-center py-1.5 border-b border-white/[0.04]">
-                    <span class="text-slate-300">Close Active Job Card</span>
-                    <div class="flex items-center gap-1">
-                        <kbd class="bg-[#1e2029] border border-white/10 text-indigo-300 px-2 py-0.5 rounded font-mono font-bold">F4</kbd>
-                        <span class="text-slate-500">or</span>
-                        <kbd class="bg-[#1e2029] border border-white/10 text-indigo-300 px-2 py-0.5 rounded font-mono font-bold">Shift + Esc</kbd>
+                <div class="flex justify-between items-center py-2 border-b border-slate-200">
+                    <span class="text-black font-semibold text-xs sm:text-sm">Close Active Job Card</span>
+                    <div class="flex items-center gap-1.5">
+                        <kbd class="bg-slate-100 border border-slate-300 text-black px-2 py-1 rounded font-mono font-extrabold text-xs shadow-sm">F4</kbd>
+                        <span class="text-black font-medium">or</span>
+                        <kbd class="bg-slate-100 border border-slate-300 text-black px-2 py-1 rounded font-mono font-extrabold text-xs shadow-sm">Shift + Esc</kbd>
                     </div>
                 </div>
-                <div class="flex justify-between items-center py-1.5 border-b border-white/[0.04]">
-                    <span class="text-slate-300">Stream Filter (All / Pass / Errors)</span>
-                    <kbd class="bg-[#1e2029] border border-white/10 text-indigo-300 px-2 py-0.5 rounded font-mono font-bold">Alt + 1 / 2 / 3</kbd>
+                <div class="flex justify-between items-center py-2 border-b border-slate-200">
+                    <span class="text-black font-semibold text-xs sm:text-sm">Stream Filter (All / Pass / Errors)</span>
+                    <kbd class="bg-slate-100 border border-slate-300 text-black px-2.5 py-1 rounded font-mono font-extrabold text-xs shadow-sm">Alt + 1 / 2 / 3</kbd>
                 </div>
-                <div class="flex justify-between items-center py-1.5 border-b border-white/[0.04]">
-                    <span class="text-slate-300">Dismiss Modal / Alert</span>
-                    <kbd class="bg-[#1e2029] border border-white/10 text-indigo-300 px-2 py-0.5 rounded font-mono font-bold">Esc</kbd>
+                <div class="flex justify-between items-center py-2 border-b border-slate-200">
+                    <span class="text-black font-semibold text-xs sm:text-sm">Dismiss Modal / Alert</span>
+                    <kbd class="bg-slate-100 border border-slate-300 text-black px-2.5 py-1 rounded font-mono font-extrabold text-xs shadow-sm">Esc</kbd>
                 </div>
-                <div class="flex justify-between items-center py-1.5">
-                    <span class="text-slate-300">Open This Help Guide</span>
-                    <kbd class="bg-[#1e2029] border border-white/10 text-indigo-300 px-2 py-0.5 rounded font-mono font-bold">F1 or ?</kbd>
+                <div class="flex justify-between items-center py-2">
+                    <span class="text-black font-semibold text-xs sm:text-sm">Open This Help Guide</span>
+                    <kbd class="bg-slate-100 border border-slate-300 text-black px-2.5 py-1 rounded font-mono font-extrabold text-xs shadow-sm">F1 or ?</kbd>
                 </div>
             </div>
-            <div class="mt-4 pt-3 border-t border-white/[0.08] flex justify-end">
-                <button type="button" onclick="toggleModal('shortcuts-modal')" class="linear-button-primary px-4 py-1.5 rounded text-xs font-semibold">Got it</button>
+            <div class="mt-4 pt-3 border-t border-slate-200 flex justify-end">
+                <button type="button" onclick="toggleModal('shortcuts-modal')" class="bg-slate-100 hover:bg-slate-200 text-black border border-slate-300 px-4 py-1.5 rounded text-xs font-extrabold transition-colors">Got it</button>
             </div>
         </div>
     </div>
