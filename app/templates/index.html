@@ -424,12 +424,10 @@
                 </div>
 
                 <div class="relative w-full sm:w-72 flex items-center">
-                    <input type="text" id="job-search" oninput="handleJobSearch()" onkeydown="handleJobSearchKeyDown(event)" placeholder="Search Job by ID or Description…" 
-                           class="linear-input w-full pl-3.5 pr-20 py-2.5 text-sm sm:text-base rounded placeholder-slate-400 shadow-inner min-h-[44px]" autocomplete="off">
-                    <div id="search-shortcut-badge" class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-1 select-none">
-                        <kbd class="bg-[#1e2029] border border-white/10 text-slate-400 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold shadow-sm">/</kbd>
-                        <span class="text-[10px] text-slate-500">or</span>
-                        <kbd class="bg-[#1e2029] border border-white/10 text-slate-400 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold shadow-sm">Ctrl+K</kbd>
+                    <input type="text" id="job-search" oninput="handleJobSearch()" onkeydown="handleJobSearchKeyDown(event)" placeholder="Search Job" 
+                           class="linear-input w-full pl-3.5 pr-10 py-2.5 text-sm sm:text-base rounded placeholder-slate-400 shadow-inner min-h-[44px]" autocomplete="off">
+                    <div id="search-shortcut-badge" title="Press / or Ctrl+K to search" class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none flex items-center select-none">
+                        <kbd class="bg-black/30 border border-white/10 text-slate-400 px-2 py-0.5 rounded text-[11px] font-mono font-bold shadow-sm">/</kbd>
                     </div>
                     <div id="job-list" role="listbox" class="absolute left-0 right-0 top-full mt-1 linear-card rounded shadow-2xl max-h-60 overflow-y-auto z-30 hidden"></div>
                 </div>
@@ -2516,7 +2514,7 @@
             if (searchInput) {
                 searchInput.value = "";
                 searchInput.disabled = false;
-                searchInput.placeholder = "Search Job by ID or Description…";
+                searchInput.placeholder = "Search Job";
                 searchInput.classList.remove('opacity-50', 'cursor-not-allowed');
                 setTimeout(() => searchInput.focus(), 50);
             }
