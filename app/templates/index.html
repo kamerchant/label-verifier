@@ -2669,6 +2669,18 @@
                 const res = await fetch('/api/verify', { method: 'POST', body });
                 const data = await res.json();
                 renderResult(data.result, data.message, code, data.sequence_warning);
+
+                // Instantly push to local scan stream array (eliminates redundant server fetch)
+                allScans.unshift({
+                    code: code,
+                    result: data.result,
+                    time: formatAppTimestamp(new Date()),
+                    user: currentUser ? currentUser.username : 'Operator',
+                    row_num: data.row_num ?? '-'
+                });
+                if (allScans.length > 50) allScans.pop();
+                renderStreamTable();
+
             } catch (ex) {
                 renderResult("ERROR", "Network error or server unreachable", code, false);
             } finally {
@@ -2683,8 +2695,6 @@
                 isScanVerifying = false;
                 resetInput();
             }
-
-            await loadJobScanStream(activeJobId);
         }
 
         function renderResult(result, msg, code, sequenceWarning = false) {
