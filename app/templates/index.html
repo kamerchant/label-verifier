@@ -526,14 +526,15 @@
     <!-- Footer Information Bar with Audit Trail Link -->
     <footer class="border-t px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between text-xs text-slate-300 shrink-0 bg-[#0d0e11] z-40 gap-2">
         <div class="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
-            <div class="flex items-center gap-2 shrink-0">
-                <span class="w-2 h-2 rounded-full bg-[#2ed573]"></span>
-                <button onclick="openGlobalAuditTrailModal()" class="text-indigo-400 hover:text-indigo-300 underline font-semibold cursor-pointer bg-transparent border-none p-0 text-xs transition-colors flex items-center gap-1">
-                    Audit Trail
-                </button>
-                <span class="text-slate-600">&middot;</span>
-                <span id="user-display" class="truncate max-w-[150px] sm:max-w-none table-text-theme font-medium">Checking session...</span>
+            <!-- Consolidated Live Session Chip -->
+            <div id="session-status-chip" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400 font-medium text-[11px] shrink-0 transition-colors">
+                <span id="session-status-dot" class="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0"></span>
+                <span id="user-display" class="truncate max-w-[170px] sm:max-w-none">Connecting...</span>
             </div>
+            <span class="text-slate-600 shrink-0">&middot;</span>
+            <button onclick="openGlobalAuditTrailModal()" class="text-indigo-400 hover:text-indigo-300 underline font-semibold cursor-pointer bg-transparent border-none p-0 text-xs transition-colors flex items-center gap-1">
+                Audit Trail
+            </button>
             <span class="text-slate-600 shrink-0">&middot;</span>
             <button onclick="toggleTheme()" class="text-slate-300 hover:text-indigo-400 underline cursor-pointer bg-transparent border-none p-0 text-xs transition-colors shrink-0" title="Switch Theme">
                 Theme: <span id="theme-name-text" class="table-text-theme font-semibold">Obsidian</span>
@@ -1809,6 +1810,10 @@
         }
 
         async function checkSession() {
+            const chip = document.getElementById('session-status-chip');
+            const dot = document.getElementById('session-status-dot');
+            const display = document.getElementById('user-display');
+
             try {
                 const res = await fetch('/api/auth/me');
                 const data = await res.json();
@@ -1818,7 +1823,13 @@
                     loginModal.classList.add('hidden');
                     loginModal.style.display = 'none';
                     const roleLabel = String(data.role || "").toLowerCase() === "admin" ? "Administrator" : data.role;
-                    document.getElementById('user-display').innerText = `${data.username} (${roleLabel})`;
+                    
+                    // Render Active Online Session State
+                    if (chip && dot && display) {
+                        chip.className = "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold text-[11px] shrink-0 transition-colors";
+                        dot.className = "w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 animate-pulse";
+                        display.innerText = `${data.username} (${roleLabel})`;
+                    }
                     
                     const roleLower = String(data.role || "").toLowerCase().trim();
                     const isManagerOrAdmin = roleLower === 'admin' || roleLower === 'qc manager';
@@ -1860,12 +1871,21 @@
                         forcePasswordChange();
                     }
                 } else {
+                    if (chip && dot && display) {
+                        chip.className = "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 font-medium text-[11px] shrink-0 transition-colors";
+                        dot.className = "w-1.5 h-1.5 rounded-full bg-red-400 shrink-0";
+                        display.innerText = "Logged Out";
+                    }
                     const loginModal = document.getElementById('login-modal');
                     loginModal.classList.remove('hidden');
                     loginModal.style.display = 'flex';
                 }
             } catch(e) {
-                console.error("Session check failed", e);
+                if (chip && dot && display) {
+                    chip.className = "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 font-medium text-[11px] shrink-0 transition-colors";
+                    dot.className = "w-1.5 h-1.5 rounded-full bg-red-400 shrink-0 animate-pulse";
+                    display.innerText = "Connection Lost";
+                }
             }
         }
 
