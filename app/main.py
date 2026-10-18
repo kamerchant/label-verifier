@@ -488,18 +488,21 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
             conn.commit()
 
             effective_total = total_codes
-            target_table = "temp_override_all"
+            source_table = "temp_override_all"
 
-            # Pass progress string as a %s parameter to avoid tuple index parsing errors
-            cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", ("Ingesting: 25% (Loading staged batch into memory)...", run_id))
+            # 1. Stream staged batch into memory
+            cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", 
+                        ("Ingesting: 15% (Streaming staged file to database memory)...", run_id))
             conn.commit()
 
             cur.execute("CREATE UNLOGGED TABLE temp_override_all (run_id INT, job_card_id TEXT, code_value TEXT, status TEXT);")
             with open(clean_tsv_path, "r", encoding="utf-8") as tsv_in:
                 cur.copy_expert("COPY temp_override_all FROM STDIN WITH (FORMAT text)", tsv_in)
 
+            # 2. Filter conflicts if user chose to skip
             if skip_conflicts:
-                cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", ("Ingesting: 50% (Filtering out conflicting codes)...", run_id))
+                cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", 
+                            ("Ingesting: 35% (Filtering out conflicting codes)...", run_id))
                 conn.commit()
 
                 cur.execute("CREATE INDEX idx_temp_ovr_val ON temp_override_all (code_value);")
@@ -526,37 +529,71 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 effective_total = row_eff[0] if row_eff else 0
 
                 if effective_total == 0:
-                    cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = 'All codes conflicted and were skipped. 0 codes remaining.' WHERE run_id = %s", (run_id,))
+                    cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = %s WHERE run_id = %s", 
+                                ("All codes conflicted and were skipped. 0 codes remaining.", run_id))
                     cur.execute("DROP TABLE IF EXISTS temp_override_all;")
                     cur.execute("DROP TABLE IF EXISTS temp_override_filtered;")
                     conn.commit()
                     return
 
-                target_table = "temp_override_filtered"
+                source_table = "temp_override_filtered"
                 cur.execute("UPDATE job_cards SET total_codes = %s WHERE run_id = %s", (effective_total, run_id))
                 conn.commit()
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", ("Ingesting: 75% (Direct database insertion)...", run_id))
+            # 3. Create indexed sequence slice table (eliminates random B-Tree seeks)
+            cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", 
+                        ("Ingesting: 50% (Clustering and indexing batch for high-speed insertion)...", run_id))
             conn.commit()
 
             cur.execute(f"""
-                INSERT INTO codes (run_id, job_card_id, code_value, status)
-                SELECT run_id, job_card_id, code_value, status
-                FROM {target_table};
+                CREATE UNLOGGED TABLE temp_override_chunked AS
+                SELECT run_id, job_card_id, code_value, status,
+                       row_number() OVER (ORDER BY code_value) AS rnum
+                FROM {source_table};
             """)
-            actual_inserted = cur.rowcount
+            cur.execute("CREATE INDEX idx_tmp_chunk_rnum ON temp_override_chunked (rnum);")
+            cur.execute("ANALYZE temp_override_chunked;")
+            conn.commit()
 
+            # 4. Chunked database insertion (100,000 rows per slice with dynamic progress)
+            CHUNK_SIZE = 100_000
+            actual_inserted = 0
+            total_chunks = (effective_total + CHUNK_SIZE - 1) // CHUNK_SIZE
+
+            for chunk_idx, start_rnum in enumerate(range(1, effective_total + 1, CHUNK_SIZE)):
+                end_rnum = start_rnum + CHUNK_SIZE
+                
+                # Progress smoothly scales from 55% up to 95%
+                pct = 55 + int(((chunk_idx + 1) / total_chunks) * 40)
+                status_msg = f"Ingesting: {pct}% ({actual_inserted:,} / {effective_total:,} codes inserted)..."
+                
+                cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", (status_msg, run_id))
+                conn.commit()
+
+                cur.execute("""
+                    INSERT INTO codes (run_id, job_card_id, code_value, status)
+                    SELECT run_id, job_card_id, code_value, status
+                    FROM temp_override_chunked
+                    WHERE rnum >= %s AND rnum < %s;
+                """, (start_rnum, end_rnum))
+                actual_inserted += cur.rowcount
+                conn.commit()
+
+            # 5. Clean up temporary tables
             cur.execute("DROP TABLE IF EXISTS temp_override_all;")
             cur.execute("DROP TABLE IF EXISTS temp_override_filtered;")
+            cur.execute("DROP TABLE IF EXISTS temp_override_chunked;")
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", ("Ingesting: 95% (Updating table statistics)...", run_id))
+            # 6. Final statistics update
+            cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", 
+                        ("Ingesting: 98% (Updating table statistics)...", run_id))
             conn.commit()
             
             restore_secondary_indexes(cur)
             conn.commit()
 
+            # 7. Finalize state
             resolution_type = 'SKIPPED' if skip_conflicts else 'OVERRIDDEN'
-
             cur.execute("""
                 UPDATE job_cards 
                 SET status = 'ACTIVE', 
@@ -586,6 +623,7 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 with conn.cursor() as cur:
                     cur.execute("DROP TABLE IF EXISTS temp_override_all;")
                     cur.execute("DROP TABLE IF EXISTS temp_override_filtered;")
+                    cur.execute("DROP TABLE IF EXISTS temp_override_chunked;")
                 conn.commit()
         except Exception:
             pass
@@ -593,7 +631,8 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
         try:
             fail_conn = get_connection()
             with fail_conn.cursor() as cur:
-                cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = %s WHERE run_id = %s", (f"Override Error: {str(e)}", run_id))
+                cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = %s WHERE run_id = %s", 
+                            (f"Override Error: {str(e)}", run_id))
                 fail_conn.commit()
         except Exception:
             pass
@@ -608,6 +647,7 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 os.remove(clean_tsv_path)
         except OSError:
             pass
+
 
 
 # ---------------------------------------------------------
