@@ -401,7 +401,7 @@
                 <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
                     <h1 id="active-title-card" class="text-lg sm:text-2xl font-extrabold tracking-tight truncate flex items-center gap-2 table-text-theme">
                         <span>Job Card: <span id="active-job-id-text">None</span></span>
-                        <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-red-400 hover:text-red-300 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2" title="Close Job Card">[Close Job]</button>
+                        <button id="close-job-btn" onclick="clearLoadedJob()" class="text-xs text-red-400 hover:text-red-300 underline cursor-pointer bg-transparent border-none p-0 font-normal transition-colors hidden ml-2" title="Close Job Card (F4 or Shift+Esc)">[Close Job (F4)]</button>
                     </h1>
                 </div>
                 <p id="header-job-desc" class="text-xs text-slate-400 mt-0.5 truncate">Search active production jobs using the search field.</p>
@@ -1243,6 +1243,53 @@
         </div>
     </div>
 
+    <!-- Keyboard Shortcuts Help Modal -->
+    <div id="shortcuts-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[100]">
+        <div class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full border border-indigo-500/30 shadow-2xl">
+            <div class="flex justify-between items-center mb-3 pb-2 border-b border-white/[0.08]">
+                <h3 class="text-base sm:text-lg font-extrabold modal-title-theme">Keyboard Shortcuts</h3>
+                <button type="button" onclick="toggleModal('shortcuts-modal')" class="linear-button-secondary text-xs px-2.5 py-1 rounded">Esc</button>
+            </div>
+            <div class="space-y-2 text-xs">
+                <div class="flex justify-between items-center py-1.5 border-b border-white/[0.04]">
+                    <span class="text-slate-300">Scanner / Verify Input</span>
+                    <kbd class="bg-[#1e2029] border border-white/10 text-indigo-300 px-2 py-0.5 rounded font-mono font-bold">F2</kbd>
+                </div>
+                <div class="flex justify-between items-center py-1.5 border-b border-white/[0.04]">
+                    <span class="text-slate-300">Search Job Cards</span>
+                    <div class="flex items-center gap-1">
+                        <kbd class="bg-[#1e2029] border border-white/10 text-indigo-300 px-2 py-0.5 rounded font-mono font-bold">/</kbd>
+                        <span class="text-slate-500">or</span>
+                        <kbd class="bg-[#1e2029] border border-white/10 text-indigo-300 px-2 py-0.5 rounded font-mono font-bold">Ctrl + K</kbd>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center py-1.5 border-b border-white/[0.04]">
+                    <span class="text-slate-300">Close Active Job Card</span>
+                    <div class="flex items-center gap-1">
+                        <kbd class="bg-[#1e2029] border border-white/10 text-indigo-300 px-2 py-0.5 rounded font-mono font-bold">F4</kbd>
+                        <span class="text-slate-500">or</span>
+                        <kbd class="bg-[#1e2029] border border-white/10 text-indigo-300 px-2 py-0.5 rounded font-mono font-bold">Shift + Esc</kbd>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center py-1.5 border-b border-white/[0.04]">
+                    <span class="text-slate-300">Stream Filter (All / Pass / Errors)</span>
+                    <kbd class="bg-[#1e2029] border border-white/10 text-indigo-300 px-2 py-0.5 rounded font-mono font-bold">Alt + 1 / 2 / 3</kbd>
+                </div>
+                <div class="flex justify-between items-center py-1.5 border-b border-white/[0.04]">
+                    <span class="text-slate-300">Dismiss Modal / Alert</span>
+                    <kbd class="bg-[#1e2029] border border-white/10 text-indigo-300 px-2 py-0.5 rounded font-mono font-bold">Esc</kbd>
+                </div>
+                <div class="flex justify-between items-center py-1.5">
+                    <span class="text-slate-300">Open This Help Guide</span>
+                    <kbd class="bg-[#1e2029] border border-white/10 text-indigo-300 px-2 py-0.5 rounded font-mono font-bold">F1 or ?</kbd>
+                </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-white/[0.08] flex justify-end">
+                <button type="button" onclick="toggleModal('shortcuts-modal')" class="linear-button-primary px-4 py-1.5 rounded text-xs font-semibold">Got it</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Time Zone Setting Modal -->
     <div id="timezone-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-lg w-full shadow-2xl">
@@ -1419,7 +1466,7 @@
             }
         }
 
-        // --- GLOBAL KEYBOARD ACCELERATORS & FOCUS TRAP ---
+        // --- GLOBAL KEYBOARD ACCELERATORS, SCANNER SNIFFER & FOCUS TRAP ---
         window.addEventListener('keydown', (e) => {
             const activeModal = getTopVisibleModal();
 
@@ -1432,7 +1479,7 @@
                 }
             }
 
-            // 2. TAB FOCUS TRAP: Prevent focus from leaking out of active modal
+            // 2. TAB FOCUS TRAP: Strictly constrain focus inside the active modal
             if (e.key === 'Tab' && activeModal) {
                 const focusable = Array.from(activeModal.querySelectorAll(
                     'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -1441,6 +1488,13 @@
                 if (focusable.length > 0) {
                     const firstEl = focusable[0];
                     const lastEl = focusable[focusable.length - 1];
+
+                    // If focus is currently outside the modal, immediately snap inside
+                    if (!activeModal.contains(document.activeElement)) {
+                        e.preventDefault();
+                        (e.shiftKey ? lastEl : firstEl).focus();
+                        return;
+                    }
 
                     if (e.shiftKey && document.activeElement === firstEl) {
                         e.preventDefault();
@@ -1453,21 +1507,58 @@
                 return;
             }
 
-            // 3. F2: Instant return focus to Barcode Input
+            // 3. F1 or "?": Display Keyboard Shortcuts Cheat Sheet
+            const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+            if (e.key === 'F1' || (e.key === '?' && !isTyping)) {
+                e.preventDefault();
+                toggleModal('shortcuts-modal');
+                return;
+            }
+
+            // Do not execute main canvas hotkeys if any modal is open
+            if (activeModal) return;
+
+            // 4. F2: Instant return focus to Barcode Input
             if (e.key === 'F2') {
                 e.preventDefault();
                 resetInput();
                 return;
             }
 
-            // 4. "/" or Ctrl+K: Focus Job Search bar (when not typing in an input)
-            const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+            // 5. F4 or Shift+Escape: Close active job card and return focus to search
+            if ((e.key === 'F4' && !e.altKey) || (e.shiftKey && e.key === 'Escape')) {
+                if (activeJobId) {
+                    e.preventDefault();
+                    clearLoadedJob();
+                    return;
+                }
+            }
+
+            // 6. "/" or Ctrl+K: Focus Job Search bar (when not typing in an input)
             if ((e.key === '/' && !isTyping) || ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K'))) {
                 e.preventDefault();
                 const searchInput = document.getElementById('job-search');
                 if (searchInput && !searchInput.disabled) {
                     searchInput.focus();
                     searchInput.select();
+                }
+                return;
+            }
+
+            // 7. Alt + 1 / 2 / 3: Quick filter verification stream
+            if (e.altKey) {
+                if (e.key === '1') { e.preventDefault(); filterStream('ALL'); return; }
+                if (e.key === '2') { e.preventDefault(); filterStream('PASS'); return; }
+                if (e.key === '3') { e.preventDefault(); filterStream('ERROR'); return; }
+            }
+
+            // 8. SCANNER AUTO-SNIFFER: If a barcode reader fires while focus was lost on canvas, catch and forward it
+            const barcodeInput = document.getElementById('barcode-input');
+            if (activeJobId && activeJobStatus === 'ACTIVE' && barcodeInput && !barcodeInput.disabled && !isTyping) {
+                if (!e.ctrlKey && !e.altKey && !e.metaKey && e.key.length === 1 && e.key !== ' ') {
+                    barcodeInput.focus();
+                    barcodeInput.value += e.key;
+                    e.preventDefault();
                 }
             }
         });
@@ -1490,6 +1581,8 @@
                 closeCustomAlert();
             } else if (modal.id === 'custom-confirm-modal') {
                 resolveCustomConfirm(false);
+            } else if (modal.id === 'shortcuts-modal') {
+                toggleModal('shortcuts-modal');
             } else if (modal.id === 'purge-admin-pw-modal') {
                 closePurgeModal();
             } else if (modal.id === 'user-admin-pw-modal') {
@@ -1762,20 +1855,37 @@
 
         initTimezone();
 
+               let alertOpenedAt = 0;
+
         function showCustomAlert(message, title = "Please Verify") {
+            alertOpenedAt = Date.now();
             document.getElementById('custom-alert-title').innerText = title;
             document.getElementById('custom-alert-msg').innerText = message;
             const modal = document.getElementById('custom-alert-modal');
             modal.classList.remove('hidden');
             modal.style.display = 'flex';
             updateSystemMessage(message, 'warn');
+
+            // Absorb any buffered trailing Enter keystrokes from fast barcode readers (400ms trap)
+            const okBtn = modal.querySelector('button');
+            if (okBtn) {
+                okBtn.disabled = true;
+                okBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                setTimeout(() => {
+                    okBtn.disabled = false;
+                    okBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    okBtn.focus();
+                }, 400);
+            }
         }
 
         function closeCustomAlert() {
+            // Block premature closing if triggered inside the 400ms scanner bounce window
+            if (Date.now() - alertOpenedAt < 400) return;
+
             const modal = document.getElementById('custom-alert-modal');
             modal.classList.add('hidden');
             modal.style.display = 'none';
-            // Only refocus scanner if no parent modal is currently open
             const openModals = Array.from(document.querySelectorAll('div[id$="-modal"]')).filter(m => 
                 m.id !== 'custom-alert-modal' && !m.classList.contains('hidden') && m.style.display !== 'none'
             );
@@ -1783,6 +1893,7 @@
                 resetInput();
             }
         }
+
 
         function showCustomConfirm(message, onConfirmAction = null, title = "Confirmation Required") {
             const titleElem = document.getElementById('custom-confirm-title');
@@ -1800,6 +1911,9 @@
             const modal = document.getElementById('custom-confirm-modal');
             modal.classList.remove('hidden');
             modal.style.display = 'flex';
+            setTimeout(() => {
+                if (okBtn) okBtn.focus();
+            }, 50);
 
             if (typeof onConfirmAction === 'function') {
                 confirmActionFn = onConfirmAction;
@@ -4559,8 +4673,8 @@
                     <tr class="hover:bg-black/[0.02]">
                         <td class="p-3 font-bold table-text-theme">
                             <div class="inline-flex items-center gap-1.5">
-                                <span class="truncate cursor-pointer hover:underline text-indigo-400" onclick="if (activeJobId && activeJobId.toLowerCase() !== '${j.job_card_id.toLowerCase()}') { showCustomAlert('Job Card \\'' + activeJobId + '\\' is currently open. Please close it first using [Close Job].', 'Job In Progress'); } else { toggleModal('master-jobs-modal'); selectJob('${j.job_card_id}', '${encodeURIComponent(j.description || '')}', '${j.status}', ${j.consumed}, ${j.total}); }">${j.job_card_id}</span>
-                                <button onclick="copyJobCardNumber('${j.job_card_id}', this)" class="linear-button-secondary p-1 rounded inline-flex items-center justify-center">
+                                <button type="button" class="truncate text-left cursor-pointer hover:underline text-indigo-400 bg-transparent border-none p-0 font-bold" onclick="if (activeJobId && activeJobId.toLowerCase() !== '${j.job_card_id.toLowerCase()}') { showCustomAlert('Job Card \\'' + activeJobId + '\\' is currently open. Please close it first using [Close Job].', 'Job In Progress'); } else { toggleModal('master-jobs-modal'); selectJob('${j.job_card_id}', '${encodeURIComponent(j.description || '')}', '${j.status}', ${j.consumed}, ${j.total}); }">${j.job_card_id}</button>
+                                <button type="button" onclick="copyJobCardNumber('${j.job_card_id}', this)" class="linear-button-secondary p-1 rounded inline-flex items-center justify-center">
                                     <span class="text-[10px] leading-none text-slate-400">📋</span>
                                 </button>
                             </div>
