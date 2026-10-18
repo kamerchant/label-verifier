@@ -38,10 +38,22 @@
             font-size: 1rem !important;
             transition: all 0.15s ease;
         }
-        .linear-input:focus {
-            border-color: #5e6ad2;
-            box-shadow: 0 0 0 2px rgba(94, 106, 210, 0.25);
+        .linear-input:focus, .linear-input:focus-visible {
+            border-color: #5e6ad2 !important;
+            box-shadow: 0 0 0 2px rgba(94, 106, 210, 0.45) !important;
             outline: none;
+        }
+
+        /* High-contrast keyboard focus indicators for floor visibility */
+        button:focus-visible, select:focus-visible, [tabindex="0"]:focus-visible {
+            outline: 2px solid #5e6ad2 !important;
+            outline-offset: 2px !important;
+        }
+
+        /* Active keyboard-selected autocomplete item */
+        .autocomplete-selected {
+            background-color: rgba(94, 106, 210, 0.25) !important;
+            border-left: 3px solid #5e6ad2 !important;
         }
 
         /* Compact status dropdown style matching table row typography */
@@ -412,9 +424,9 @@
                 </div>
 
                 <div class="relative w-full sm:w-72">
-                    <input type="text" id="job-search" oninput="handleJobSearch()" placeholder="Search Job by ID or Description…" 
-                           class="linear-input w-full px-3.5 py-2.5 text-sm sm:text-base rounded placeholder-slate-400 shadow-inner min-h-[44px]">
-                    <div id="job-list" class="absolute left-0 right-0 top-full mt-1 linear-card rounded shadow-2xl max-h-60 overflow-y-auto z-30 hidden"></div>
+                    <input type="text" id="job-search" oninput="handleJobSearch()" onkeydown="handleJobSearchKeyDown(event)" placeholder="Search Job (Press / or Ctrl+K)…" 
+                           class="linear-input w-full px-3.5 py-2.5 text-sm sm:text-base rounded placeholder-slate-400 shadow-inner min-h-[44px]" autocomplete="off">
+                    <div id="job-list" role="listbox" class="absolute left-0 right-0 top-full mt-1 linear-card rounded shadow-2xl max-h-60 overflow-y-auto z-30 hidden"></div>
                 </div>
             </div>
         </div>
@@ -1367,13 +1379,22 @@
 
     <!-- Client Script Layer -->
     <script>
+        let lastFocusedElementBeforeModal = null;
+
         function toggleModal(id) {
             const el = document.getElementById(id);
             if (!el) return;
             const isHidden = el.classList.contains('hidden') || el.style.display === 'none';
             if (isHidden) {
+                lastFocusedElementBeforeModal = document.activeElement;
                 el.classList.remove('hidden');
                 el.style.display = 'flex';
+
+                // Autofocus first focusable element inside modal
+                setTimeout(() => {
+                    const focusable = el.querySelectorAll('input:not([disabled]), button:not([disabled]), select:not([disabled]), textarea:not([disabled])');
+                    if (focusable.length > 0) focusable[0].focus();
+                }, 50);
             } else {
                 el.classList.add('hidden');
                 el.style.display = 'none';
@@ -1389,7 +1410,114 @@
                 if (id === 'upload-modal') {
                     clearJobCardAvailabilityError();
                 }
+                // Return focus to previous context or barcode scanner
+                if (lastFocusedElementBeforeModal && document.body.contains(lastFocusedElementBeforeModal)) {
+                    lastFocusedElementBeforeModal.focus();
+                } else {
+                    resetInput();
+                }
             }
+        }
+
+        // --- GLOBAL KEYBOARD ACCELERATORS & FOCUS TRAP ---
+        window.addEventListener('keydown', (e) => {
+            const activeModal = getTopVisibleModal();
+
+            // 1. ESCAPE: Close the topmost modal
+            if (e.key === 'Escape') {
+                if (activeModal) {
+                    e.preventDefault();
+                    dismissTopModal(activeModal);
+                    return;
+                }
+            }
+
+            // 2. TAB FOCUS TRAP: Prevent focus from leaking out of active modal
+            if (e.key === 'Tab' && activeModal) {
+                const focusable = Array.from(activeModal.querySelectorAll(
+                    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+                )).filter(el => el.offsetParent !== null);
+
+                if (focusable.length > 0) {
+                    const firstEl = focusable[0];
+                    const lastEl = focusable[focusable.length - 1];
+
+                    if (e.shiftKey && document.activeElement === firstEl) {
+                        e.preventDefault();
+                        lastEl.focus();
+                    } else if (!e.shiftKey && document.activeElement === lastEl) {
+                        e.preventDefault();
+                        firstEl.focus();
+                    }
+                }
+                return;
+            }
+
+            // 3. F2: Instant return focus to Barcode Input
+            if (e.key === 'F2') {
+                e.preventDefault();
+                resetInput();
+                return;
+            }
+
+            // 4. "/" or Ctrl+K: Focus Job Search bar (when not typing in an input)
+            const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+            if ((e.key === '/' && !isTyping) || ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K'))) {
+                e.preventDefault();
+                const searchInput = document.getElementById('job-search');
+                if (searchInput && !searchInput.disabled) {
+                    searchInput.focus();
+                    searchInput.select();
+                }
+            }
+        });
+
+        function getTopVisibleModal() {
+            const visible = Array.from(document.querySelectorAll('div[id$="-modal"]')).filter(m => 
+                !m.classList.contains('hidden') && m.style.display !== 'none'
+            );
+            if (visible.length === 0) return null;
+            // Sort by z-index descending to get the foreground modal
+            return visible.sort((a, b) => {
+                const zA = parseInt(window.getComputedStyle(a).zIndex) || 0;
+                const zB = parseInt(window.getComputedStyle(b).zIndex) || 0;
+                return zB - zA;
+            })[0];
+        }
+
+        function dismissTopModal(modal) {
+            if (modal.id === 'custom-alert-modal') {
+                closeCustomAlert();
+            } else if (modal.id === 'custom-confirm-modal') {
+                resolveCustomConfirm(false);
+            } else if (modal.id === 'purge-admin-pw-modal') {
+                closePurgeModal();
+            } else if (modal.id === 'user-admin-pw-modal') {
+                closeUserAdminPwModal();
+            } else if (modal.id === 'bulk-status-modal') {
+                cancelJobStatusChange();
+            } else if (modal.id === 'override-reason-modal') {
+                closeOverrideReasonModal();
+            } else if (modal.id === 'timezone-modal') {
+                closeTimezoneModal();
+            } else if (modal.id === 'pw-modal') {
+                closePasswordModal();
+            } else if (modal.id === 'conflict-viewer-modal') {
+                closeConflictViewerModal();
+            } else if (modal.id === 'user-modal') {
+                closeUserModal();
+            } else {
+                toggleModal(modal.id);
+            }
+        }
+
+        // Enable keyboard scrolling on data table viewports
+        function initKeyboardScrollableTables() {
+            document.querySelectorAll('.overflow-y-auto, .overflow-x-auto').forEach(container => {
+                if (!container.hasAttribute('tabindex')) {
+                    container.setAttribute('tabindex', '0');
+                }
+            });
         }
 
         async function refreshActiveJobState() {
@@ -1813,8 +1941,6 @@
         }
 
         async function checkSession() {
-            const chip = document.getElementById('session-status-chip');
-            const dot = document.getElementById('session-status-dot');
             const display = document.getElementById('user-display');
 
             try {
@@ -1827,10 +1953,7 @@
                     loginModal.style.display = 'none';
                     const roleLabel = String(data.role || "").toLowerCase() === "admin" ? "Administrator" : data.role;
                     
-                    // Render Active Online Session State
-                    if (chip && dot && display) {
-                        chip.className = "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold text-[11px] shrink-0 transition-colors";
-                        dot.className = "w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 animate-pulse";
+                    if (display) {
                         display.innerText = `${data.username} (${roleLabel})`;
                     }
                     
@@ -1874,21 +1997,14 @@
                         forcePasswordChange();
                     }
                 } else {
-                    if (chip && dot && display) {
-                        chip.className = "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 font-medium text-[11px] shrink-0 transition-colors";
-                        dot.className = "w-1.5 h-1.5 rounded-full bg-red-400 shrink-0";
-                        display.innerText = "Logged Out";
-                    }
+                    if (display) display.innerText = "Not Signed In";
                     const loginModal = document.getElementById('login-modal');
                     loginModal.classList.remove('hidden');
                     loginModal.style.display = 'flex';
                 }
             } catch(e) {
-                if (chip && dot && display) {
-                    chip.className = "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 font-medium text-[11px] shrink-0 transition-colors";
-                    dot.className = "w-1.5 h-1.5 rounded-full bg-red-400 shrink-0 animate-pulse";
-                    display.innerText = "Connection Lost";
-                }
+                if (display) display.innerText = "Connection Error";
+                console.error("Session check failed", e);
             }
         }
 
@@ -1977,6 +2093,10 @@
             try {
                 const res = await fetch('/api/auth/login', { method: 'POST', body });
                 if (res.ok) {
+                    const loginData = await res.json();
+                    const roleLabel = String(loginData.role || "").toLowerCase() === "admin" ? "Administrator" : loginData.role;
+                    const display = document.getElementById('user-display');
+                    if (display) display.innerText = `${loginData.username} (${roleLabel})`;
                     await checkSession();
                     updateSystemMessage("User session authenticated", "success");
                 } else {
@@ -2049,6 +2169,9 @@
             location.reload();
         }
 
+        let activeAutocompleteIndex = -1;
+        let currentAutocompleteJobs = [];
+
         function handleJobSearch() {
             if (activeJobId) {
                 document.getElementById('job-search').value = "";
@@ -2060,24 +2183,27 @@
             searchDebounceTimer = setTimeout(async () => {
                 const query = document.getElementById('job-search').value.trim();
                 const list = document.getElementById('job-list');
+                activeAutocompleteIndex = -1;
 
                 if (!query) {
                     list.classList.add('hidden');
+                    currentAutocompleteJobs = [];
                     return;
                 }
 
                 const res = await fetch(`/api/jobs?query=${encodeURIComponent(query)}`);
                 if (res.status === 401) return checkSession();
-                const jobs = await res.json();
+                currentAutocompleteJobs = await res.json();
 
-                if (jobs.length === 0) {
+                if (currentAutocompleteJobs.length === 0) {
                     list.innerHTML = `<div class="p-3 text-xs text-slate-500 italic text-center">No jobs match '${query}'</div>`;
                     list.classList.remove('hidden');
                     return;
                 }
 
-                list.innerHTML = jobs.map(j => `
-                    <div onclick="selectJob('${j.id}', '${encodeURIComponent(j.description)}', '${j.status}', ${j.consumed}, ${j.total})" 
+                list.innerHTML = currentAutocompleteJobs.map((j, idx) => `
+                    <div id="autocomplete-item-${idx}" 
+                         onclick="selectJob('${j.id}', '${encodeURIComponent(j.description)}', '${j.status}', ${j.consumed}, ${j.total})" 
                          class="p-2.5 hover:bg-black/[0.02] border-b cursor-pointer flex justify-between items-center transition-colors">
                         <div class="min-w-0 pr-2">
                             <span class="font-bold text-xs block truncate">${j.id}</span>
@@ -2090,7 +2216,51 @@
                     </div>
                 `).join('');
                 list.classList.remove('hidden');
-            }, 300);
+            }, 250);
+        }
+
+        function handleJobSearchKeyDown(e) {
+            const list = document.getElementById('job-list');
+            const isListVisible = !list.classList.contains('hidden') && currentAutocompleteJobs.length > 0;
+
+            if (e.key === 'ArrowDown') {
+                if (!isListVisible) return;
+                e.preventDefault();
+                activeAutocompleteIndex = (activeAutocompleteIndex + 1) % currentAutocompleteJobs.length;
+                updateAutocompleteHighlight();
+            } else if (e.key === 'ArrowUp') {
+                if (!isListVisible) return;
+                e.preventDefault();
+                activeAutocompleteIndex = (activeAutocompleteIndex - 1 + currentAutocompleteJobs.length) % currentAutocompleteJobs.length;
+                updateAutocompleteHighlight();
+            } else if (e.key === 'Enter') {
+                if (!isListVisible) return;
+                e.preventDefault();
+                // If operator pressed enter without arrows, default to top matching item
+                const targetIdx = activeAutocompleteIndex >= 0 ? activeAutocompleteIndex : 0;
+                const chosen = currentAutocompleteJobs[targetIdx];
+                if (chosen) {
+                    selectJob(chosen.id, encodeURIComponent(chosen.description), chosen.status, chosen.consumed, chosen.total);
+                    list.classList.add('hidden');
+                }
+            } else if (e.key === 'Escape') {
+                list.classList.add('hidden');
+                activeAutocompleteIndex = -1;
+            }
+        }
+
+        function updateAutocompleteHighlight() {
+            currentAutocompleteJobs.forEach((_, idx) => {
+                const el = document.getElementById(`autocomplete-item-${idx}`);
+                if (el) {
+                    if (idx === activeAutocompleteIndex) {
+                        el.classList.add('autocomplete-selected');
+                        el.scrollIntoView({ block: 'nearest' });
+                    } else {
+                        el.classList.remove('autocomplete-selected');
+                    }
+                }
+            });
         }
 
         document.addEventListener('click', (e) => {
