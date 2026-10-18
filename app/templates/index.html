@@ -1000,11 +1000,11 @@
             <form onsubmit="stageNewUser(event)" class="linear-subcard p-3 sm:p-4 rounded mb-3 space-y-2.5 shrink-0">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                     <input type="text" id="new-user-name" placeholder="Username *" required 
-                           class="linear-input w-full p-2.5 text-xs sm:text-sm rounded">
+                           class="linear-input w-full p-2.5 text-xs sm:text-sm rounded font-sans">
                     <input type="password" id="new-user-pass" placeholder="Password *" title="Minimum 8 characters, at least 1 uppercase, 1 lowercase, and 1 number." required 
-                           class="linear-input w-full p-2.5 text-xs sm:text-sm rounded">
+                           class="linear-input w-full p-2.5 text-xs sm:text-sm rounded font-sans">
                     <select id="new-user-role" onchange="handleNewUserRoleChange()" 
-                            class="linear-input w-full p-2.5 text-xs sm:text-sm rounded cursor-pointer">
+                            class="linear-input w-full p-2.5 text-xs sm:text-sm rounded cursor-pointer font-sans">
                         <option value="QC officer">QC officer</option>
                         <option value="QC manager">QC manager</option>
                         <option value="admin">Administrator</option>
@@ -1012,9 +1012,9 @@
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <input type="text" id="new-employee-name" placeholder="Employee Name (Optional)" 
-                           class="linear-input w-full p-2.5 text-xs sm:text-sm rounded">
+                           class="linear-input w-full p-2.5 text-xs sm:text-sm rounded font-sans">
                     <input type="text" id="new-employee-id" placeholder="Employee ID (Optional)" 
-                           class="linear-input w-full p-2.5 text-xs sm:text-sm rounded">
+                           class="linear-input w-full p-2.5 text-xs sm:text-sm rounded font-sans">
                 </div>
                 <div class="flex justify-between items-center pt-2 border-t border-white/[0.06]">
                     <label class="flex items-center gap-2 text-xs sm:text-sm cursor-pointer table-text-theme font-medium">
@@ -3699,7 +3699,7 @@
                         <td class="px-3.5 py-2.5 text-xs sm:text-sm text-slate-400 font-mono">${u.employee_id || '-'}</td>
                         <td class="px-3.5 py-2.5 text-center">
                             <select onchange="stageUserRole('${u.username}', this.value)" 
-                                    class="linear-input rounded cursor-pointer text-xs sm:text-sm px-2.5 py-1">
+                                    class="linear-input rounded cursor-pointer text-xs sm:text-sm px-2.5 py-1 font-sans">
                                 <option value="QC officer" ${u.role === 'QC officer' ? 'selected' : ''}>QC officer</option>
                                 <option value="QC manager" ${u.role === 'QC manager' ? 'selected' : ''}>QC manager</option>
                                 <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Administrator</option>
