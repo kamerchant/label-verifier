@@ -42,6 +42,8 @@ async def lifespan(app: FastAPI):
             cur.execute("ALTER TABLE job_cards ALTER COLUMN status TYPE VARCHAR(100);")
             cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS conflict_resolution VARCHAR(50) DEFAULT 'NONE';")
             cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS conflict_details TEXT;")
+            cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS override_by VARCHAR(100);")
+            cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS override_reason TEXT;")
             
             # Auto-ensure high-speed verification indexes on startup
             cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_val ON codes (run_id, code_value);")
@@ -346,7 +348,8 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
 
                 cur.execute("""
                     CREATE TEMP TABLE temp_active_runs ON COMMIT DROP AS
-                    SELECT run_id, job_card_id, status FROM job_cards WHERE status IN ('ACTIVE', 'INACTIVE', 'COMPLETED');
+                    SELECT run_id, job_card_id, COALESCE(description, 'No Description') AS description, status 
+                    FROM job_cards WHERE status IN ('ACTIVE', 'INACTIVE', 'COMPLETED');
                     CREATE INDEX idx_tmp_act_run ON temp_active_runs (run_id);
                 """)
 
@@ -371,16 +374,16 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
 
                 if conflicts_found > 0:
                     cur.execute("""
-                        SELECT a.job_card_id, a.status, COUNT(c.code_value) as cnt
+                        SELECT a.job_card_id, a.description, a.status, COUNT(c.code_value) as cnt
                         FROM temp_conflicting_codes tc
                         JOIN codes c ON c.code_value = tc.code_value
                         JOIN temp_active_runs a ON a.run_id = c.run_id
                         WHERE c.status != 'DELETED'
-                        GROUP BY a.job_card_id, a.status
+                        GROUP BY a.job_card_id, a.description, a.status
                         ORDER BY cnt DESC;
                     """)
                     breakdown = [
-                        {"job_card_id": r[0], "status": r[1], "conflict_count": r[2]}
+                        {"job_card_id": r[0], "description": r[1], "status": r[2], "conflict_count": r[3]}
                         for r in cur.fetchall()
                     ]
 
@@ -599,9 +602,11 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 SET status = 'ACTIVE', 
                     total_codes = %s, 
                     conflict_resolution = %s, 
+                    override_by = %s,
+                    override_reason = %s,
                     ingestion_progress = %s 
                 WHERE run_id = %s
-            """, (actual_inserted, resolution_type, '100%', run_id))
+            """, (actual_inserted, resolution_type, username, override_reason, '100%', run_id))
 
             if skip_conflicts:
                 lifecycle_reason = f"Conflicts Skipped: {actual_inserted:,} codes kept ({conflicts:,} skipped). Justification: {override_reason}"
@@ -1729,7 +1734,8 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT run_id, job_card_id, description, status, created_at, total_codes, consumed_codes 
+                SELECT run_id, job_card_id, description, status, created_at, total_codes, consumed_codes,
+                       conflict_count, conflict_resolution, override_by, override_reason, conflict_details
                 FROM job_cards 
                 WHERE job_card_id = %s AND status != 'DELETED' 
                 ORDER BY created_at DESC 
@@ -1739,7 +1745,8 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
             if not job:
                 raise HTTPException(status_code=404, detail="Active Job Card not found")
 
-            run_id, jc_id, jc_desc, jc_status, jc_created, total_pool, consumed_pool = job
+            (run_id, jc_id, jc_desc, jc_status, jc_created, total_pool, consumed_pool,
+             conf_cnt, conf_res, over_by, over_reason, conf_details) = job
 
             if not total_pool or total_pool == 0:
                 cur.execute("SELECT COUNT(*) FROM codes WHERE run_id = %s", (run_id,))
@@ -1806,6 +1813,13 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
 
             pending_count = max(0, (total_pool or 0) - (consumed_pool or 0))
 
+            conf_breakdown = []
+            if conf_details:
+                try:
+                    conf_breakdown = json.loads(conf_details)
+                except Exception:
+                    conf_breakdown = []
+
             return {
                 "job_card_id": jc_id,
                 "description": jc_desc or "",
@@ -1816,7 +1830,14 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
                 "blocked_codes": pending_count if jc_status == 'COMPLETED' else 0,
                 "pending_codes": pending_count if jc_status != 'COMPLETED' else 0,
                 "results_breakdown": results_breakdown,
-                "recent_logs": logs
+                "recent_logs": logs,
+                "conflict_audit": {
+                    "resolution": conf_res or "NONE",
+                    "conflict_count": conf_cnt or 0,
+                    "authorized_by": over_by or "-",
+                    "justification": over_reason or "-",
+                    "colliding_batches": conf_breakdown
+                }
             }
     finally:
         release_connection(conn)
@@ -1827,12 +1848,18 @@ def export_report_csv(job_card_id: str, user: dict = Depends(get_current_user)):
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT run_id FROM job_cards 
+                SELECT run_id, description, status, conflict_resolution, conflict_count, 
+                       override_by, override_reason, conflict_details 
+                FROM job_cards 
                 WHERE job_card_id = %s AND status != 'DELETED' 
                 ORDER BY created_at DESC LIMIT 1
             """, (job_card_id,))
             jc_row = cur.fetchone()
-            run_id = jc_row[0] if jc_row else None
+            if not jc_row:
+                raise HTTPException(status_code=404, detail="Job Card not found")
+
+            (run_id, jc_desc, jc_status, conf_res, conf_cnt, 
+             over_by, over_reason, conf_details) = jc_row
 
             min_id = None
             if run_id:
@@ -1859,8 +1886,40 @@ def export_report_csv(job_card_id: str, user: dict = Depends(get_current_user)):
             rows = cur.fetchall()
 
             output = io.StringIO()
-            output.write('\ufeff')  # UTF-8 BOM for Microsoft Excel auto-detection
+            output.write('\ufeff')  # UTF-8 BOM for Microsoft Excel
             writer = csv.writer(output)
+
+            # Metadata & Audit Trail Header
+            writer.writerow(["JOB VERIFICATION REPORT & AUDIT TRAIL"])
+            writer.writerow(["Job Card ID:", job_card_id])
+            writer.writerow(["Description:", jc_desc or "No Description"])
+            writer.writerow(["Status:", jc_status])
+
+            if conf_res and conf_res in ('OVERRIDDEN', 'SKIPPED'):
+                writer.writerow([])
+                writer.writerow(["--- CONFLICT RESOLUTION AUDIT ---"])
+                writer.writerow(["Resolution Type:", conf_res])
+                writer.writerow(["Conflicting Codes Found:", conf_cnt or 0])
+                writer.writerow(["Authorized By:", over_by or "System"])
+                writer.writerow(["Justification Reason:", over_reason or "N/A"])
+                
+                if conf_details:
+                    try:
+                        breakdown = json.loads(conf_details)
+                        writer.writerow(["Colliding Batches:"])
+                        for b in breakdown:
+                            writer.writerow([
+                                "",
+                                f"Job: {b.get('job_card_id')}",
+                                f"Description: {b.get('description', 'N/A')}",
+                                f"Status: {b.get('status')}",
+                                f"Conflicts: {b.get('conflict_count')}"
+                            ])
+                    except Exception:
+                        pass
+            
+            writer.writerow([])
+            writer.writerow(["--- SCAN LOGS ---"])
             writer.writerow(["Job Card ID", "Scanned Code", "Row #", "Result", "Tested By", "Timestamp"])
             for r in rows:
                 row_val = r[1] if r[1] is not None else "-"
@@ -1874,6 +1933,7 @@ def export_report_csv(job_card_id: str, user: dict = Depends(get_current_user)):
             )
     finally:
         release_connection(conn)
+
 
 
 if __name__ == "__main__":

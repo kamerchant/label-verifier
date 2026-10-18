@@ -1033,6 +1033,39 @@
 
             <div id="report-stats" class="grid grid-cols-2 gap-3 mb-3 text-center"></div>
 
+            <!-- Conflict Resolution & Override Audit Card -->
+            <div id="report-conflict-card" class="linear-subcard p-3 rounded mb-3 border border-amber-500/30 text-left hidden">
+                <div class="flex items-center justify-between pb-2 mb-2 border-b border-white/[0.08]">
+                    <div class="flex items-center gap-2">
+                        <span class="text-amber-400 font-bold text-xs uppercase tracking-wide">⚠ Conflict Resolution Audit</span>
+                    </div>
+                    <span id="report-resolution-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">OVERRIDDEN</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs mb-2">
+                    <div>
+                        <span class="text-slate-400 block text-[11px]">Authorized By:</span>
+                        <strong id="report-auth-by" class="table-text-theme font-bold">-</strong>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block text-[11px]">Justification Reason:</span>
+                        <strong id="report-justification" class="table-text-theme font-bold">-</strong>
+                    </div>
+                </div>
+                <div class="overflow-x-auto border border-white/[0.08] rounded bg-black/20">
+                    <table class="w-full text-left text-xs whitespace-nowrap">
+                        <thead>
+                            <tr class="border-b border-white/[0.08] text-[11px] font-bold table-header-theme">
+                                <th class="px-2.5 py-1.5">Conflicting Job Card</th>
+                                <th class="px-2.5 py-1.5">Product Description</th>
+                                <th class="px-2.5 py-1.5 text-center">Status</th>
+                                <th class="px-2.5 py-1.5 text-right">Colliding Codes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="report-colliding-batches-body" class="divide-y divide-white/[0.04] table-text-theme"></tbody>
+                    </table>
+                </div>
+            </div>
+
             <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded">
                 <table class="w-full text-left whitespace-nowrap">
                     <thead>
@@ -2736,6 +2769,41 @@
                 <div><span class="block text-xs uppercase font-semibold text-[#2ed573]">VERIFIED</span><span class="font-black text-lg table-text-theme">${consumedVal.toLocaleString()}</span></div>
             `;
 
+            // Populate Conflict Resolution Audit
+            const auditCard = document.getElementById('report-conflict-card');
+            const audit = data.conflict_audit;
+
+            if (audit && audit.resolution && audit.resolution !== 'NONE') {
+                auditCard.classList.remove('hidden');
+
+                const badge = document.getElementById('report-resolution-badge');
+                badge.innerText = audit.resolution;
+                badge.className = audit.resolution === 'SKIPPED'
+                    ? "px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                    : "px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30";
+
+                document.getElementById('report-auth-by').innerText = audit.authorized_by || '-';
+                document.getElementById('report-justification').innerText = audit.justification || '-';
+
+                const collidingTbody = document.getElementById('report-colliding-batches-body');
+                const batches = audit.colliding_batches || [];
+
+                if (batches.length === 0) {
+                    collidingTbody.innerHTML = `<tr><td colspan="4" class="p-2 text-center text-slate-400 italic">No colliding batch breakdown recorded</td></tr>`;
+                } else {
+                    collidingTbody.innerHTML = batches.map(b => `
+                        <tr class="hover:bg-white/[0.02]">
+                            <td class="px-2.5 py-1.5 font-bold font-mono table-text-theme">${b.job_card_id}</td>
+                            <td class="px-2.5 py-1.5 text-slate-300">${b.description || 'No Description'}</td>
+                            <td class="px-2.5 py-1.5 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold linear-badge-pass">${b.status}</span></td>
+                            <td class="px-2.5 py-1.5 text-right font-bold text-red-400">${(Number(b.conflict_count) || 0).toLocaleString()}</td>
+                        </tr>
+                    `).join('');
+                }
+            } else {
+                auditCard.classList.add('hidden');
+            }
+
             const tbody = document.getElementById('report-log-rows');
             if (data.recent_logs.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-slate-400 italic">No inspection logs recorded yet</td></tr>`;
@@ -3619,16 +3687,26 @@
                     if (!res.ok) return;
                     const data = await res.json();
 
-                    if (statusLabel && data.progress_message) {
+                                        if (statusLabel && data.progress_message) {
                         statusLabel.innerText = data.progress_message;
 
-                        // Parse the database ingestion percentage (e.g., "Ingesting: 10% (25,000 / 250,000 codes)...")
-                        const match = data.progress_message.match(/(\d+)%/);
-                        if (match && progressBar && percentageLabel) {
-                            progressBar.style.width = match[1] + '%';
-                            percentageLabel.innerText = match[1] + '%';
+                        // Dynamically map backend status messages to smooth progress bar milestones
+                        let simulatedPct = 10;
+                        const msg = data.progress_message.toLowerCase();
+                        if (msg.includes('streaming')) simulatedPct = 20;
+                        else if (msg.includes('cleaning') || msg.includes('splitting')) simulatedPct = 40;
+                        else if (msg.includes('analyzing') || msg.includes('uniqueness')) simulatedPct = 60;
+                        else if (msg.includes('dropping')) simulatedPct = 70;
+                        else if (msg.includes('insertion') || msg.includes('bulk')) simulatedPct = 85;
+                        else if (msg.includes('rebuilding')) simulatedPct = 95;
+                        else if (msg.includes('100%')) simulatedPct = 100;
+
+                        if (progressBar && percentageLabel) {
+                            progressBar.style.width = simulatedPct + '%';
+                            percentageLabel.innerText = simulatedPct + '%';
                         }
                     }
+
 
                     if (data.status === 'CONFLICT_DETECTED') {
                         clearInterval(ingestionPollTimer);
