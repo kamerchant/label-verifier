@@ -225,20 +225,12 @@ def require_uploader(user: dict = Depends(get_current_user)):
 # ---------------------------------------------------------
 
 def drop_secondary_indexes(cur):
-    """Drop all secondary indexes during bulk loading to eliminate row-by-row index update overhead."""
+    """No-op: Retaining persistent indexes avoids full-table rebuilds across historical jobs."""
+    # Permanently remove the redundant full index (idx_codes_val_active already handles lookups)
     cur.execute("DROP INDEX IF EXISTS idx_codes_code_value;")
-    cur.execute("DROP INDEX IF EXISTS idx_codes_run_val;")
-    cur.execute("DROP INDEX IF EXISTS idx_codes_run_id_asc;")
-    cur.execute("DROP INDEX IF EXISTS idx_codes_run_status_id;")
-    cur.execute("DROP INDEX IF EXISTS idx_codes_val_active;")
 
 def restore_secondary_indexes(cur):
-    """Rebuild all secondary indexes in a single fast batch and update statistics."""
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_code_value ON codes (code_value);")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_val ON codes (run_id, code_value);")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_id_asc ON codes (run_id, id ASC);")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_status_id ON codes (run_id, status, id);")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_val_active ON codes (code_value) WHERE status != 'DELETED';")
+    """Refresh database statistics without rebuilding historical records."""
     cur.execute("ANALYZE codes;")
 
 def stream_file_to_codes_chunked(cur, conn, run_id: int, target_tsv_path: str, total_to_insert: int):
@@ -281,8 +273,8 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
         conn = get_connection()
         with conn.cursor() as cur:
             cur.execute("SET synchronous_commit = off;")
-            cur.execute("SET work_mem = '512MB';")
-            cur.execute("SET maintenance_work_mem = '512MB';")
+            cur.execute("SET work_mem = '128MB';")
+            cur.execute("SET maintenance_work_mem = '128MB';")
             conn.commit()
 
             cur.execute("UPDATE job_cards SET ingestion_progress = 'Streaming raw file to database memory...' WHERE run_id = %s", (run_id,))
@@ -412,12 +404,8 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                     conn.commit()
                     return
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Executing high-speed database insertion...' WHERE run_id = %s", (run_id,))
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Ingesting: 75% (Direct database insertion)...' WHERE run_id = %s", (run_id,))
             conn.commit()
-
-            drop_secondary_indexes(cur)
-            conn.commit()
-            indexes_dropped = True
 
             cur.execute("""
                 INSERT INTO codes (run_id, job_card_id, code_value, status)
@@ -429,12 +417,11 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
             cur.execute("DROP TABLE IF EXISTS temp_raw_import;")
             cur.execute("DROP TABLE IF EXISTS temp_incoming_codes;")
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Rebuilding indexes...' WHERE run_id = %s", (run_id,))
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Ingesting: 95% (Updating table statistics)...' WHERE run_id = %s", (run_id,))
             conn.commit()
             
             restore_secondary_indexes(cur)
             conn.commit()
-            indexes_dropped = False
 
             cur.execute("""
                 UPDATE job_cards 
@@ -489,33 +476,31 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
 
 
 def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, conflicts: int, total_codes: int, username: str, override_reason: str, skip_conflicts: bool = False):
-    print(f"DEBUG: Override worker started for Run ID {run_id}, Job {job_card_id}, File: {clean_tsv_path}") # <--- Add this line
     conn = None
-    indexes_dropped = False
     try:
         conn = get_connection()
         with conn.cursor() as cur:
             cur.execute("SET synchronous_commit = off;")
-            cur.execute("SET work_mem = '512MB';")
-            cur.execute("SET maintenance_work_mem = '512MB';")
+            cur.execute("SET work_mem = '128MB';")
+            cur.execute("SET maintenance_work_mem = '128MB';")
             conn.commit()
 
             effective_total = total_codes
             target_table = "temp_override_all"
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Loading staged batch into memory...' WHERE run_id = %s", (run_id,))
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Ingesting: 25% (Loading staged batch into memory)...' WHERE run_id = %s", (run_id,))
             conn.commit()
 
             cur.execute("CREATE UNLOGGED TABLE temp_override_all (run_id INT, job_card_id TEXT, code_value TEXT, status TEXT);")
             with open(clean_tsv_path, "r", encoding="utf-8") as tsv_in:
                 cur.copy_expert("COPY temp_override_all FROM STDIN WITH (FORMAT text)", tsv_in)
 
-            cur.execute("CREATE INDEX idx_temp_ovr_val ON temp_override_all (code_value);")
-            cur.execute("ANALYZE temp_override_all;")
-
             if skip_conflicts:
-                cur.execute("UPDATE job_cards SET ingestion_progress = 'Filtering out conflicting codes...' WHERE run_id = %s", (run_id,))
+                cur.execute("UPDATE job_cards SET ingestion_progress = 'Ingesting: 50% (Filtering out conflicting codes)...' WHERE run_id = %s", (run_id,))
                 conn.commit()
+
+                cur.execute("CREATE INDEX idx_temp_ovr_val ON temp_override_all (code_value);")
+                cur.execute("ANALYZE temp_override_all;")
 
                 cur.execute("CREATE TEMP TABLE temp_active_runs ON COMMIT DROP AS SELECT run_id FROM job_cards WHERE status IN ('ACTIVE', 'INACTIVE', 'COMPLETED');")
                 cur.execute("CREATE INDEX idx_tmp_active_runs ON temp_active_runs(run_id);")
@@ -548,12 +533,8 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 cur.execute("UPDATE job_cards SET total_codes = %s WHERE run_id = %s", (effective_total, run_id))
                 conn.commit()
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Executing high-speed database insertion...' WHERE run_id = %s", (run_id,))
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Ingesting: 75% (Direct database insertion)...' WHERE run_id = %s", (run_id,))
             conn.commit()
-            
-            drop_secondary_indexes(cur)
-            conn.commit()
-            indexes_dropped = True
 
             cur.execute(f"""
                 INSERT INTO codes (run_id, job_card_id, code_value, status)
@@ -565,12 +546,11 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
             cur.execute("DROP TABLE IF EXISTS temp_override_all;")
             cur.execute("DROP TABLE IF EXISTS temp_override_filtered;")
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Rebuilding indexes...' WHERE run_id = %s", (run_id,))
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Ingesting: 95% (Updating table statistics)...' WHERE run_id = %s", (run_id,))
             conn.commit()
             
             restore_secondary_indexes(cur)
             conn.commit()
-            indexes_dropped = False
 
             resolution_type = 'SKIPPED' if skip_conflicts else 'OVERRIDDEN'
 
@@ -610,9 +590,6 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
         try:
             fail_conn = get_connection()
             with fail_conn.cursor() as cur:
-                if indexes_dropped:
-                    restore_secondary_indexes(cur)
-                    fail_conn.commit()
                 cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = %s WHERE run_id = %s", (f"Override Error: {str(e)}", run_id))
                 fail_conn.commit()
         except Exception:
@@ -628,6 +605,7 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 os.remove(clean_tsv_path)
         except OSError:
             pass
+
 
 
 
