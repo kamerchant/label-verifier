@@ -237,7 +237,6 @@ def require_uploader(user: dict = Depends(get_current_user)):
 
 def drop_secondary_indexes(cur):
     """No-op: Retaining persistent indexes avoids full-table rebuilds across historical jobs."""
-    # Permanently remove the redundant full index (idx_codes_val_active already handles lookups)
     cur.execute("DROP INDEX IF EXISTS idx_codes_code_value;")
 
 def restore_secondary_indexes(cur):
@@ -305,10 +304,10 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
             cur.execute("UPDATE job_cards SET ingestion_progress = 'Executing database-native cleaning & splitting...' WHERE run_id = %s", (run_id,))
             conn.commit()
 
-            # 1. Extract all non-header tokens first (without DISTINCT) to accurately check internal duplicates
+            # 1. Extract all non-header tokens with an explicit original sequence number
             cur.execute(f"""
                 CREATE UNLOGGED TABLE {tokens_table} AS
-                SELECT cleaned_val AS code_value
+                SELECT row_number() OVER () AS original_seq, cleaned_val AS code_value
                 FROM (
                     SELECT TRIM(BOTH '\"' FROM TRIM(BOTH '''' FROM TRIM(REPLACE(REPLACE(REPLACE(val, CHR(13), ''), CHR(10), ''), CHR(9), '')))) AS cleaned_val
                     FROM {raw_table},
@@ -321,10 +320,12 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
 
             cur.execute(f"DROP TABLE IF EXISTS {raw_table};")
 
-            # 2. Deduplicate into incoming_table
+            # 2. Deduplicate into incoming_table preserving first appearance order
             cur.execute(f"""
                 CREATE UNLOGGED TABLE {incoming_table} AS
-                SELECT DISTINCT code_value FROM {tokens_table};
+                SELECT code_value, MIN(original_seq) AS original_seq
+                FROM {tokens_table}
+                GROUP BY code_value;
             """)
 
             cur.execute(f"SELECT COUNT(*) FROM {tokens_table};")
@@ -415,8 +416,9 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                     clean_tsv_fd, clean_tsv_path = tempfile.mkstemp(suffix=".tsv")
                     cur.execute(f"""
                         CREATE UNLOGGED TABLE {export_table} AS
-                        SELECT %s::int AS run_id, %s::text AS job_card_id, code_value, 'PENDING'::text AS status
-                        FROM {incoming_table};
+                        SELECT %s::int AS run_id, %s::text AS job_card_id, code_value, 'PENDING'::text AS status, original_seq
+                        FROM {incoming_table}
+                        ORDER BY original_seq;
                     """, (run_id, job_card_id))
 
                     with os.fdopen(clean_tsv_fd, "w", encoding="utf-8") as out_f:
@@ -440,10 +442,12 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
             cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", ("Ingesting: 75% (Direct database insertion)...", run_id))
             conn.commit()
 
+            # Insert strictly ordered by original_seq to preserve original file layout
             cur.execute(f"""
                 INSERT INTO codes (run_id, job_card_id, code_value, status)
                 SELECT %s, %s, code_value, 'PENDING'
-                FROM {incoming_table};
+                FROM {incoming_table}
+                ORDER BY original_seq;
             """, (run_id, job_card_id))
             actual_inserted = cur.rowcount
 
@@ -523,13 +527,13 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
             effective_total = total_codes
             source_table = ovr_all_table
 
-            # 1. Stream staged batch into memory
+            # 1. Stream staged batch into memory (including original_seq)
             cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", 
                         ("Ingesting: 15% (Streaming staged file to database memory)...", run_id))
             conn.commit()
 
             cur.execute(f"DROP TABLE IF EXISTS {ovr_all_table}, {ovr_filt_table}, {ovr_chunk_table};")
-            cur.execute(f"CREATE UNLOGGED TABLE {ovr_all_table} (run_id INT, job_card_id TEXT, code_value TEXT, status TEXT);")
+            cur.execute(f"CREATE UNLOGGED TABLE {ovr_all_table} (run_id INT, job_card_id TEXT, code_value TEXT, status TEXT, original_seq BIGINT);")
             with open(clean_tsv_path, "r", encoding="utf-8") as tsv_in:
                 cur.copy_expert(f"COPY {ovr_all_table} FROM STDIN WITH (FORMAT text)", tsv_in)
 
@@ -547,7 +551,7 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
 
                 cur.execute(f"""
                     CREATE UNLOGGED TABLE {ovr_filt_table} AS
-                    SELECT t.run_id, t.job_card_id, t.code_value, t.status
+                    SELECT t.run_id, t.job_card_id, t.code_value, t.status, t.original_seq
                     FROM {ovr_all_table} t
                     WHERE NOT EXISTS (
                         SELECT 1 
@@ -573,7 +577,7 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 cur.execute("UPDATE job_cards SET total_codes = %s WHERE run_id = %s", (effective_total, run_id))
                 conn.commit()
 
-            # 3. Create indexed sequence slice table (eliminates random B-Tree seeks)
+            # 3. Create indexed sequence slice table ordered strictly by original_seq (preserving exact file order)
             cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", 
                         ("Ingesting: 50% (Clustering and indexing batch for high-speed insertion)...", run_id))
             conn.commit()
@@ -581,7 +585,7 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
             cur.execute(f"""
                 CREATE UNLOGGED TABLE {ovr_chunk_table} AS
                 SELECT run_id, job_card_id, code_value, status,
-                       row_number() OVER (ORDER BY code_value) AS rnum
+                       row_number() OVER (ORDER BY original_seq) AS rnum
                 FROM {source_table};
             """)
             cur.execute(f"CREATE INDEX idx_tmp_chunk_rnum_{run_id} ON {ovr_chunk_table} (rnum);")
@@ -677,8 +681,6 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 os.remove(clean_tsv_path)
         except OSError:
             pass
-
-
 
 # ---------------------------------------------------------
 # Application Routes & Verification API
@@ -795,7 +797,6 @@ def change_password(
 
             stored_hash, must_change = row[0], row[1]
 
-            # Require current password ONLY for voluntary changes (not first-time setup)
             if not must_change:
                 if not old_password:
                     raise HTTPException(status_code=400, detail="Current password is required.")
@@ -973,7 +974,6 @@ def get_global_audit_trail(user: dict = Depends(require_manager_or_admin)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # Query system_audit_logs directly; all categories (USER_MGMT, JOB_LIFECYCLE, SCAN_VERIFICATION, FINAL_QC) are already recorded here
             cur.execute("""
                 SELECT category, job_card_id, action, performed_by, details, timestamp 
                 FROM system_audit_logs
@@ -1547,7 +1547,6 @@ def verify_code(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # 1. Fast active job status check
             cur.execute("""
                 SELECT run_id, status 
                 FROM job_cards 
@@ -1576,7 +1575,6 @@ def verify_code(
                 log_system_event(cur, "SCAN_VERIFICATION", job_card_id, f"SCAN_{res}", operator, f"Scanned code: {scanned} [{res}]")
                 conn.commit()
 
-            # 2. O(1) index-backed MIN(id) lookup (replaces table scan)
             cur.execute("""
                 SELECT id FROM codes 
                 WHERE run_id = %s 
@@ -1585,7 +1583,6 @@ def verify_code(
             min_row = cur.fetchone()
             min_id = min_row[0] if min_row else 0
 
-            # 3. Direct indexed lookup with row-level lock for concurrent safety
             cur.execute("""
                 SELECT id, code_value, status 
                 FROM codes 
@@ -1599,7 +1596,6 @@ def verify_code(
                 code_id, exact_code, current_status = code_row
                 row_num = (code_id - min_id + 1) if min_id > 0 else code_id
 
-                # 4. O(1) index-backed MAX consumed lookup
                 cur.execute("""
                     SELECT id FROM codes 
                     WHERE run_id = %s AND status = 'CONSUMED' 
@@ -1662,7 +1658,6 @@ def verify_code(
                         "row_num": row_num
                     })
 
-            # 5. Targeted cross-job collision check (uses partial index, capped with LIMIT 10)
             cur.execute("""
                 SELECT j.job_card_id, j.status 
                 FROM codes c
@@ -1804,7 +1799,6 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
             min_row = cur.fetchone()
             min_id = min_row[0] if min_row else None
 
-            # High-speed CTE scan to prevent full table scans on large jobs
             if min_id is not None:
                 cur.execute("""
                     WITH recent AS (
@@ -1913,10 +1907,9 @@ def export_report_csv(job_card_id: str, user: dict = Depends(get_current_user)):
             rows = cur.fetchall()
 
             output = io.StringIO()
-            output.write('\ufeff')  # UTF-8 BOM for Microsoft Excel
+            output.write('\ufeff')
             writer = csv.writer(output)
 
-            # Metadata & Audit Trail Header
             writer.writerow(["JOB VERIFICATION REPORT & AUDIT TRAIL"])
             writer.writerow(["Job Card ID:", job_card_id])
             writer.writerow(["Description:", jc_desc or "No Description"])
@@ -1961,10 +1954,7 @@ def export_report_csv(job_card_id: str, user: dict = Depends(get_current_user)):
     finally:
         release_connection(conn)
 
-
-
 if __name__ == "__main__":
     import uvicorn
-    # Dynamically bind to the platform's assigned PORT and accept external traffic via 0.0.0.0
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=False)
