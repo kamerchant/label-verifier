@@ -320,12 +320,13 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
 
             cur.execute(f"DROP TABLE IF EXISTS {raw_table};")
 
-            # 2. Deduplicate into incoming_table preserving first appearance order
+            # 2. Deduplicate strictly preserving first appearance file sequence
             cur.execute(f"""
                 CREATE UNLOGGED TABLE {incoming_table} AS
                 SELECT code_value, MIN(original_seq) AS original_seq
                 FROM {tokens_table}
-                GROUP BY code_value;
+                GROUP BY code_value
+                ORDER BY MIN(original_seq);
             """)
 
             cur.execute(f"SELECT COUNT(*) FROM {tokens_table};")
@@ -442,7 +443,6 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
             cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", ("Ingesting: 75% (Direct database insertion)...", run_id))
             conn.commit()
 
-            # Insert strictly ordered by original_seq to preserve original file layout
             cur.execute(f"""
                 INSERT INTO codes (run_id, job_card_id, code_value, status)
                 SELECT %s, %s, code_value, 'PENDING'
@@ -527,7 +527,6 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
             effective_total = total_codes
             source_table = ovr_all_table
 
-            # 1. Stream staged batch into memory (including original_seq)
             cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", 
                         ("Ingesting: 15% (Streaming staged file to database memory)...", run_id))
             conn.commit()
@@ -537,7 +536,6 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
             with open(clean_tsv_path, "r", encoding="utf-8") as tsv_in:
                 cur.copy_expert(f"COPY {ovr_all_table} FROM STDIN WITH (FORMAT text)", tsv_in)
 
-            # 2. Filter conflicts if user chose to skip
             if skip_conflicts:
                 cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", 
                             ("Ingesting: 35% (Filtering out conflicting codes)...", run_id))
@@ -577,7 +575,6 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 cur.execute("UPDATE job_cards SET total_codes = %s WHERE run_id = %s", (effective_total, run_id))
                 conn.commit()
 
-            # 3. Create indexed sequence slice table ordered strictly by original_seq (preserving exact file order)
             cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", 
                         ("Ingesting: 50% (Clustering and indexing batch for high-speed insertion)...", run_id))
             conn.commit()
@@ -592,7 +589,6 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
             cur.execute(f"ANALYZE {ovr_chunk_table};")
             conn.commit()
 
-            # 4. Chunked database insertion (100,000 rows per slice with dynamic progress)
             CHUNK_SIZE = 100_000
             actual_inserted = 0
             total_chunks = (effective_total + CHUNK_SIZE - 1) // CHUNK_SIZE
@@ -615,10 +611,8 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 actual_inserted += cur.rowcount
                 conn.commit()
 
-            # 5. Clean up temporary tables
             cur.execute(f"DROP TABLE IF EXISTS {ovr_all_table}, {ovr_filt_table}, {ovr_chunk_table};")
 
-            # 6. Final statistics update
             cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", 
                         ("Ingesting: 98% (Updating table statistics)...", run_id))
             conn.commit()
@@ -626,7 +620,6 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
             restore_secondary_indexes(cur)
             conn.commit()
 
-            # 7. Finalize state
             resolution_type = 'SKIPPED' if skip_conflicts else 'OVERRIDDEN'
             cur.execute("""
                 UPDATE job_cards 
