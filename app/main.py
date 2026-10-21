@@ -521,8 +521,7 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 os.remove(temp_filepath)
         except OSError:
             pass
-
-
+def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, conflicts: int, total_codes: int, username: str, override_reason: str, skip_conflicts: bool = False):
     conn = None
     ovr_all_table = f"temp_override_all_{run_id}"
     ovr_filt_table = f"temp_override_filtered_{run_id}"
