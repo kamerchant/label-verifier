@@ -677,8 +677,7 @@
                     <table class="w-full text-left whitespace-nowrap">
                         <thead>
                             <tr class="border-b border-white/[0.08] text-[11px] font-bold text-slate-300 uppercase tracking-wider table-header-theme sticky top-0 z-10">
-                                <th class="px-2.5 py-1.5 text-center" style="text-align: center !important;">Code / QR Value</th>
-                                <th class="px-2.5 py-1.5 w-24 text-center" style="text-align: center !important;">Row #</th>
+                                <th class="px-2.5 py-1.5 text-left" style="text-align: left !important;">Code / QR Value</th>
                                 <th class="px-2.5 py-1.5 text-center" style="text-align: center !important;">Evaluation</th>
                                 <th class="px-2.5 py-1.5 text-center" style="text-align: center !important;">Recorded At</th>
                                 <th class="px-2.5 py-1.5 text-center" style="text-align: center !important;">Inspector</th>
@@ -778,7 +777,7 @@
                 <table class="w-full text-left whitespace-nowrap">
                     <thead>
                         <tr class="border-b border-white/[0.08] text-xs font-bold text-slate-300 uppercase tracking-wider table-header-theme sticky top-0 z-10 text-center">
-                            <th class="px-4 py-3 text-center">Code / QR Value</th>
+                            <td class="px-2.5 py-1.5 font-mono text-left text-[11px]" style="text-align: left !important;">${formatCodeDisplay(s.code)}</td>
                             <th class="px-4 py-3 w-28 text-center">Row #</th>
                             <th class="px-4 py-3 text-center">Evaluation</th>
                             <th class="px-4 py-3 text-center">Recorded At</th>
@@ -2965,7 +2964,7 @@
                     let rowDisplay = (s.row_num && s.row_num !== '-') ? `Row ${s.row_num}` : '-';
                     return `
                         <tr class="hover:bg-black/[0.02] border-b border-white/[0.04] transition-colors text-center">
-                            <td class="px-2.5 py-1.5 font-mono text-center text-[11px]" style="text-align: center !important;">${formatCodeDisplay(s.code)}</td>
+                            <td class="px-2.5 py-1.5 font-mono text-left text-[11px]" style="text-align: left !important;">${formatCodeDisplay(s.code)}</td>
                             <td class="px-2.5 py-1.5 text-slate-400 font-mono text-[11px] font-semibold text-center" style="text-align: center !important;">${rowDisplay}</td>
                             <td class="px-2.5 py-1.5 text-center text-[11px]" style="text-align: center !important;"><span class="${badge} px-2 py-0.2 rounded text-[10px] font-bold">${s.result}</span></td>
                             <td class="px-2.5 py-1.5 text-slate-400 text-[10px] font-mono text-center" style="text-align: center !important;">${s.time}</td>
@@ -4776,8 +4775,24 @@
         function filterMasterJobs(filterType) {
             loadMasterJobs(filterType);
         }
-
-               function renderMasterJobsTable() {
+        function openJobFromMaster(jobCardId, descEncoded, status, consumed, total) {
+            if (activeJobId && activeJobId.toLowerCase() !== jobCardId.toLowerCase()) {
+                showCustomConfirm(
+                    `Job Card '${activeJobId}' is currently active. Do you want to close it and open Job Card '${jobCardId}'?`,
+                    async () => {
+                        toggleModal('master-jobs-modal');
+                        clearLoadedJob();
+                        await selectJob(jobCardId, descEncoded, status, consumed, total);
+                    },
+                    "Switch Active Job Card"
+                );
+            } else {
+                toggleModal('master-jobs-modal');
+                selectJob(jobCardId, descEncoded, status, consumed, total);
+            }
+        }
+        
+        function renderMasterJobsTable() {
             const query = (document.getElementById('master-job-search').value || "").toLowerCase().trim();
             let filtered = rawMasterJobs.filter(j => 
                 j.job_card_id.toLowerCase().includes(query) ||
@@ -4944,20 +4959,21 @@
                 return `
                     <tr class="hover:bg-black/[0.02] border-b border-white/[0.04] transition-colors">
                         <!-- Column 1: Job ID on top, Description underneath -->
-                        <td class="px-4 py-2.5">
-                            <div class="max-w-[240px]">
-                                <div class="inline-flex items-center gap-1.5">
-                                    <button type="button" class="font-mono text-indigo-400 hover:text-indigo-300 hover:underline font-bold text-xs bg-transparent border-none p-0 cursor-pointer text-left"
-                                            onclick="if (activeJobId && activeJobId.toLowerCase() !== '${j.job_card_id.toLowerCase()}') { showCustomAlert('Job Card \\'' + activeJobId + '\\' is currently open. Please close it first using [Close Job].', 'Job In Progress'); } else { toggleModal('master-jobs-modal'); selectJob('${j.job_card_id}', '${encodeURIComponent(j.description || '')}', '${j.status}', ${j.consumed}, ${j.total}); }">
-                                        ${j.job_card_id}
-                                    </button>
-                                    <button type="button" onclick="copyJobCardNumber('${j.job_card_id}', this)" class="text-slate-500 hover:text-slate-300 text-[10px] p-0.5 border-none bg-transparent cursor-pointer" title="Copy Job ID">
-                                        📋
-                                    </button>
-                                </div>
-                                <span class="block truncate text-[11px] text-slate-400 mt-0.5 font-medium" title="${j.description || ''}">${j.description || 'No description'}</span>
+                    <td class="px-4 py-2.5">
+                        <div class="max-w-[240px]">
+                            <div class="inline-flex items-center gap-1.5">
+                                <button type="button" class="font-mono text-indigo-400 hover:text-indigo-300 hover:underline font-bold text-xs bg-transparent border-none p-0 cursor-pointer text-left"
+                                        onclick="openJobFromMaster('${j.job_card_id}', '${encodeURIComponent(j.description || '')}', '${j.status}', ${j.consumed}, ${j.total})">
+                                    ${j.job_card_id}
+                                </button>
+                                <button type="button" onclick="copyJobCardNumber('${j.job_card_id}', this)" class="text-slate-500 hover:text-slate-300 text-[10px] p-0.5 border-none bg-transparent cursor-pointer" title="Copy Job ID">
+                                    📋
+                                </button>
                             </div>
-                        </td>
+                            <span class="block truncate text-[11px] text-slate-400 mt-0.5 font-medium" title="${j.description || ''}">${j.description || 'No description'}</span>
+                        </div>
+                    </td>
+
 
                         <!-- Column 2: Created Date alone -->
                         <td class="px-4 py-2.5 whitespace-nowrap">
