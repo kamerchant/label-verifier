@@ -613,24 +613,28 @@
             </div>
         </div>
 
-        <!-- Sleek Unified KPI Banner -->
-        <div class="linear-card p-3 rounded flex flex-col gap-2 shrink-0">
-            <div class="grid grid-cols-3 divide-x divide-white/[0.08] text-center">
-                <div class="px-2">
-                    <span class="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">Total Pool</span>
-                    <span id="kpi-total" class="text-xl sm:text-2xl font-extrabold table-text-theme font-mono mt-0.5 block">0</span>
-                </div>
-                <div class="px-2">
-                    <span class="text-[10px] text-[#2ed573] uppercase tracking-wider block font-semibold">Verified</span>
-                    <span id="kpi-consumed" class="text-xl sm:text-2xl font-extrabold text-[#2ed573] font-mono mt-0.5 block">0</span>
-                </div>
-                <div class="px-2">
-                    <span class="text-[10px] text-amber-500 uppercase tracking-wider block font-semibold">Remaining</span>
-                    <span id="kpi-pending" class="text-xl sm:text-2xl font-extrabold text-amber-500 font-mono mt-0.5 block">0</span>
-                </div>
+        <!-- Metric Figures (KPI Counters) -->
+        <div class="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2 shrink-0">
+            <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center">
+                <span class="text-[11px] text-slate-400 block font-medium">Total Pool</span>
+                <span id="kpi-total" class="text-2xl sm:text-4xl font-extrabold mt-1 mb-1 block table-text-theme font-mono">0</span>
+                <span class="text-[10px] text-slate-500 block truncate">Assigned code pool</span>
             </div>
-            <div class="job-progress-track mt-1">
-                <div id="kpi-progress-bar" class="job-progress-fill bg-[#2ed573]" style="width: 0%"></div>
+            
+            <span class="text-xl sm:text-3xl font-extrabold text-slate-400 text-center px-1">-</span>
+
+            <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center">
+                <span class="text-[11px] text-[#2ed573] block font-medium">Verified</span>
+                <span id="kpi-consumed" class="text-2xl sm:text-4xl font-extrabold mt-1 mb-1 block text-[#2ed573] font-mono">0</span>
+                <span class="text-[10px] text-slate-500 block truncate">Verified codes</span>
+            </div>
+
+            <span class="text-xl sm:text-3xl font-extrabold text-slate-400 text-center px-1">=</span>
+
+            <div class="linear-card p-2.5 sm:p-3 rounded text-center flex flex-col items-center justify-center">
+                <span class="text-[11px] text-amber-400 block font-medium">Remaining Codes</span>
+                <span id="kpi-pending" class="text-2xl sm:text-4xl font-extrabold mt-1 mb-1 block text-amber-500 font-mono">0</span>
+                <span class="text-[10px] text-slate-500 block truncate">Remaining in pool</span>
             </div>
         </div>
 
@@ -684,12 +688,12 @@
             <div class="flex-1 overflow-y-auto">
                 <table class="w-full text-left whitespace-nowrap">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-[11px] font-semibold text-slate-400 uppercase tracking-wider table-header-theme sticky top-0 z-10">
-                            <th class="px-4 py-2.5">Code / QR Value</th>
-                            <th class="px-4 py-2.5 w-24">Row #</th>
-                            <th class="px-4 py-2.5 text-center">Evaluation</th>
-                            <th class="px-4 py-2.5">Recorded At</th>
-                            <th class="px-4 py-2.5 text-right">Inspector</th>
+                        <tr class="border-b border-white/[0.08] text-xs font-bold text-slate-300 uppercase tracking-wider table-header-theme sticky top-0 z-10 text-center">
+                            <th class="px-4 py-3 text-center">Code / QR Value</th>
+                            <th class="px-4 py-3 w-28 text-center">Row #</th>
+                            <th class="px-4 py-3 text-center">Evaluation</th>
+                            <th class="px-4 py-3 text-center">Recorded At</th>
+                            <th class="px-4 py-3 text-center">Inspector</th>
                         </tr>
                     </thead>
                     <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] text-xs">
@@ -2980,12 +2984,12 @@
                     let badge = (s.result === 'PASS' || s.result === 'Pass (Potential Restart)') ? "linear-badge-pass" : "linear-badge-fail";
                     let rowDisplay = (s.row_num && s.row_num !== '-') ? `Row ${s.row_num}` : '-';
                     return `
-                        <tr class="hover:bg-white/[0.02] border-b border-white/[0.04] transition-colors">
-                            <td class="px-4 py-2 font-mono">${formatCodeDisplay(s.code)}</td>
-                            <td class="px-4 py-2 text-slate-400 font-mono text-[11px] font-semibold">${rowDisplay}</td>
-                            <td class="px-4 py-2 text-center"><span class="${badge} px-2 py-0.5 rounded text-[10px] font-bold">${s.result}</span></td>
-                            <td class="px-4 py-2 text-slate-400 text-xs font-mono">${s.time}</td>
-                            <td class="px-4 py-2 text-xs text-right font-medium text-slate-300">${s.user}</td>
+                        <tr class="hover:bg-white/[0.02] border-b border-white/[0.04] transition-colors text-center">
+                            <td class="px-4 py-2.5 font-mono text-center">${formatCodeDisplay(s.code)}</td>
+                            <td class="px-4 py-2.5 text-slate-400 font-mono text-xs font-semibold text-center">${rowDisplay}</td>
+                            <td class="px-4 py-2.5 text-center"><span class="${badge} px-2.5 py-0.5 rounded text-xs font-bold">${s.result}</span></td>
+                            <td class="px-4 py-2.5 text-slate-400 text-xs font-mono text-center">${s.time}</td>
+                            <td class="px-4 py-2.5 text-xs text-center font-medium text-slate-300">${s.user}</td>
                         </tr>
                     `;
                 }).join('');
