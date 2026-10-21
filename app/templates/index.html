@@ -795,14 +795,15 @@
             <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded">
                 <table class="w-full text-left whitespace-nowrap">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-xs font-semibold table-header-theme sticky top-0 z-10">
-                            <th class="px-3.5 py-2">Timestamp</th>
-                            <th class="px-3.5 py-2">User / Inspector</th>
-                            <th class="px-3.5 py-2">Job Card</th>
-                            <th class="px-3.5 py-2">Activity Type</th>
-                            <th class="px-3.5 py-2">Activity Details</th>
+                        <tr class="border-b border-white/[0.08] text-xs font-bold text-slate-300 uppercase tracking-wider table-header-theme sticky top-0 z-10 text-center">
+                            <th class="px-4 py-3 text-center">Code / QR Value</th>
+                            <th class="px-4 py-3 w-28 text-center">Row #</th>
+                            <th class="px-4 py-3 text-center">Evaluation</th>
+                            <th class="px-4 py-3 text-center">Recorded At</th>
+                            <th class="px-4 py-3 text-center">Inspector</th>
                         </tr>
                     </thead>
+
                     <tbody id="global-audit-rows" class="divide-y divide-white/[0.04] table-text-theme text-xs"></tbody>
                 </table>
             </div>
@@ -2996,18 +2997,16 @@
                     let badge = (s.result === 'PASS' || s.result === 'Pass (Potential Restart)') ? "linear-badge-pass" : "linear-badge-fail";
                     let rowDisplay = (s.row_num && s.row_num !== '-') ? `Row ${s.row_num}` : '-';
                     return `
-                        <tr class="hover:bg-black/[0.02] border-b border-white/[0.04] transition-colors text-left">
-                            <td class="px-4 py-2.5 font-mono text-left">${formatCodeDisplay(s.code)}</td>
-                            <td class="px-4 py-2.5 text-slate-400 font-mono text-xs font-semibold text-left">${rowDisplay}</td>
-                            <td class="px-4 py-2.5 text-left"><span class="${badge} px-2.5 py-0.5 rounded text-xs font-bold">${s.result}</span></td>
-                            <td class="px-4 py-2.5 text-slate-400 text-xs font-mono text-left">${s.time}</td>
-                            <td class="px-4 py-2.5 text-xs text-left font-medium text-slate-300">${s.user}</td>
+                        <tr class="hover:bg-black/[0.02] border-b border-white/[0.04] transition-colors text-center">
+                            <td class="px-4 py-2.5 font-mono text-center">${formatCodeDisplay(s.code)}</td>
+                            <td class="px-4 py-2.5 text-slate-400 font-mono text-xs font-semibold text-center">${rowDisplay}</td>
+                            <td class="px-4 py-2.5 text-center"><span class="${badge} px-2.5 py-0.5 rounded text-xs font-bold">${s.result}</span></td>
+                            <td class="px-4 py-2.5 text-slate-400 text-xs font-mono text-center">${s.time}</td>
+                            <td class="px-4 py-2.5 text-xs text-center font-medium text-slate-300">${s.user}</td>
                         </tr>
                     `;
                 }).join('');
             }
-
-
 
             // 2. Render Mobile Touch Cards
             if (mobileContainer) {
