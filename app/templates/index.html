@@ -1109,10 +1109,10 @@
                     <thead>
                         <tr class="border-b border-white/[0.08] text-[11px] font-semibold text-slate-400 uppercase tracking-wider table-header-theme sticky top-0 z-10">
                             <th class="px-4 py-3 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('job_card_id')">
-                                Job Card <span id="sort-indicator-job_card_id" class="text-[10px] text-slate-400"></span>
+                                Job ID &amp; Description <span id="sort-indicator-job_card_id" class="text-[10px] text-slate-400"></span>
                             </th>
-                            <th class="px-4 py-3 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('description')">
-                                Description & Date <span id="sort-indicator-description" class="text-[10px] text-slate-400"></span>
+                            <th class="px-4 py-3 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('created_at')">
+                                Created Date <span id="sort-indicator-created_at" class="text-[10px] text-slate-400"></span>
                             </th>
                             <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('status')">
                                 Status <span id="sort-indicator-status" class="text-[10px] text-slate-400"></span>
@@ -4791,13 +4791,22 @@
                 });
             } else {
                 filtered.sort((a, b) => {
+                    // Natural numerical sorting for Job ID
+                    if (currentSortCol === 'job_card_id') {
+                        const cmp = (a.job_card_id || '').toString().localeCompare((b.job_card_id || '').toString(), undefined, { numeric: true, sensitivity: 'base' });
+                        return currentSortAsc ? cmp : -cmp;
+                    }
+
+                    if (currentSortCol === 'status') {
+                        const valA = statusUrgencyRank[a.status] || 99;
+                        const valB = statusUrgencyRank[b.status] || 99;
+                        return currentSortAsc ? valA - valB : valB - valA;
+                    }
+
                     let valA = a[currentSortCol];
                     let valB = b[currentSortCol];
 
-                    if (currentSortCol === 'status') {
-                        valA = statusUrgencyRank[a.status] || 99;
-                        valB = statusUrgencyRank[b.status] || 99;
-                    } else if (typeof valA === 'number' || typeof valB === 'number') {
+                    if (typeof valA === 'number' || typeof valB === 'number') {
                         valA = Number(valA) || 0;
                         valB = Number(valB) || 0;
                     } else {
@@ -4930,32 +4939,46 @@
 
                 return `
                     <tr class="hover:bg-black/[0.02] border-b border-white/[0.04] transition-colors">
-                        <td class="px-4 py-2.5 font-bold table-text-theme">
-                            <div class="inline-flex items-center gap-1.5">
-                                <button type="button" class="font-mono text-indigo-400 hover:text-indigo-300 hover:underline font-bold text-xs bg-transparent border-none p-0 cursor-pointer text-left"
-                                        onclick="if (activeJobId && activeJobId.toLowerCase() !== '${j.job_card_id.toLowerCase()}') { showCustomAlert('Job Card \\'' + activeJobId + '\\' is currently open. Please close it first using [Close Job].', 'Job In Progress'); } else { toggleModal('master-jobs-modal'); selectJob('${j.job_card_id}', '${encodeURIComponent(j.description || '')}', '${j.status}', ${j.consumed}, ${j.total}); }">
-                                    ${j.job_card_id}
-                                </button>
-                                <button type="button" onclick="copyJobCardNumber('${j.job_card_id}', this)" class="text-slate-500 hover:text-slate-300 text-[10px] p-0.5 border-none bg-transparent cursor-pointer">
-                                    📋
-                                </button>
-                            </div>
-                        </td>
+                        <!-- Column 1: Job ID on top, Description underneath -->
                         <td class="px-4 py-2.5">
-                            <div class="max-w-[220px]">
-                                <span class="block truncate text-xs font-medium table-text-theme">${j.description || 'No description'}</span>
-                                <span class="block text-[10px] text-slate-400 mt-0.5 font-mono">${j.created_at || ''}</span>
+                            <div class="max-w-[240px]">
+                                <div class="inline-flex items-center gap-1.5">
+                                    <button type="button" class="font-mono text-indigo-400 hover:text-indigo-300 hover:underline font-bold text-xs bg-transparent border-none p-0 cursor-pointer text-left"
+                                            onclick="if (activeJobId && activeJobId.toLowerCase() !== '${j.job_card_id.toLowerCase()}') { showCustomAlert('Job Card \\'' + activeJobId + '\\' is currently open. Please close it first using [Close Job].', 'Job In Progress'); } else { toggleModal('master-jobs-modal'); selectJob('${j.job_card_id}', '${encodeURIComponent(j.description || '')}', '${j.status}', ${j.consumed}, ${j.total}); }">
+                                        ${j.job_card_id}
+                                    </button>
+                                    <button type="button" onclick="copyJobCardNumber('${j.job_card_id}', this)" class="text-slate-500 hover:text-slate-300 text-[10px] p-0.5 border-none bg-transparent cursor-pointer" title="Copy Job ID">
+                                        📋
+                                    </button>
+                                </div>
+                                <span class="block truncate text-[11px] text-slate-400 mt-0.5 font-medium" title="${j.description || ''}">${j.description || 'No description'}</span>
                             </div>
                         </td>
+
+                        <!-- Column 2: Created Date alone -->
+                        <td class="px-4 py-2.5 whitespace-nowrap">
+                            <span class="text-xs text-slate-400 font-mono">${j.created_at || '-'}</span>
+                        </td>
+
+                        <!-- Column 3: Status -->
                         <td class="px-4 py-2.5 text-center">${statusCellHtml}</td>
+
+                        <!-- Column 4: Progress -->
                         <td class="px-4 py-2.5">${progressCellHtml}</td>
+
+                        <!-- Column 5: Conflicts -->
                         <td class="px-4 py-2.5 text-center">${conflictBadgeHtml}</td>
+
+                        <!-- Column 6: Final QC -->
                         <td class="px-4 py-2.5 text-center">${finalQcHtml}</td>
+
+                        <!-- Column 7: Action -->
                         <td class="px-4 py-2.5 text-right">${actionHtml}</td>
                     </tr>
                 `;
             }).join('');
         }
+
 
         window.addEventListener('DOMContentLoaded', () => {
             const allJobsBtn = document.getElementById('btn-all-jobs');
