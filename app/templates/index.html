@@ -561,13 +561,13 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto py-0.5 sm:py-0">
-            <button onclick="openPackingQCModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap min-h-[34px] flex items-center shadow-md transition-colors">Final QC</button>
-            <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-2.5 py-1.5 rounded text-xs font-semibold whitespace-nowrap min-h-[34px] flex items-center">Create Job</button>
-            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-2.5 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center">Job Control Center</button>
-            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-2.5 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center">User Management</button>
-            <button onclick="openChangePasswordModal()" class="linear-button-secondary px-2.5 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center">Change Password</button>
-            <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-2.5 py-1.5 rounded text-xs font-medium transition-colors whitespace-nowrap min-h-[34px] flex items-center">Logout</button>
+        <div class="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto py-1 px-1 shrink-0" style="-webkit-overflow-scrolling: touch;">
+            <button onclick="openPackingQCModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap min-h-[34px] flex items-center shadow-md transition-colors shrink-0">Final QC</button>
+            <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-3 py-1.5 rounded text-xs font-semibold whitespace-nowrap min-h-[34px] flex items-center shrink-0">Create Job</button>
+            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center shrink-0">Job Control Center</button>
+            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center shrink-0">User Management</button>
+            <button onclick="openChangePasswordModal()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center shrink-0">Change Password</button>
+            <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-3 py-1.5 rounded text-xs font-medium transition-colors whitespace-nowrap min-h-[34px] flex items-center shrink-0">Logout</button>
         </div>
     </header>
 
@@ -667,41 +667,36 @@
             </form>
         </div>
 
-        <!-- Verification Stream Table -->
+                <!-- Verification Stream Table -->
         <div class="linear-card rounded overflow-hidden flex-1 flex flex-col min-h-[220px]">
-            <div class="px-3 py-3 border-b border-white/[0.08] flex items-center justify-center text-xs shrink-0 bg-[#12141a]">
-                <span class="text-base sm:text-lg font-black uppercase tracking-wider text-white text-center block w-full">Verification Stream</span>
+            <div class="px-3 py-3 border-b border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-2 text-xs shrink-0 bg-[#12141a]">
+                <span class="text-base sm:text-lg font-black uppercase tracking-wider text-white text-center sm:text-left block w-full sm:w-auto">Verification Stream</span>
+                <div class="flex items-center justify-center gap-1.5 w-full sm:w-auto overflow-x-auto no-scrollbar">
+                    <button onclick="filterStream('ALL')" id="stream-filter-all" class="px-2.5 py-1.5 rounded bg-slate-800 text-white font-bold text-xs whitespace-nowrap">
+                        All <span id="stream-count-all" class="opacity-75 font-normal ml-0.5">0</span>
+                    </button>
+                    <button onclick="filterStream('PASS')" id="stream-filter-pass" class="px-2.5 py-1.5 rounded text-slate-400 hover:text-white font-medium text-xs whitespace-nowrap">
+                        Pass <span id="stream-count-pass" class="text-emerald-400 font-bold ml-0.5">0</span>
+                    </button>
+                    <button onclick="filterStream('ERROR')" id="stream-filter-error" class="px-2.5 py-1.5 rounded text-slate-400 hover:text-white font-medium text-xs whitespace-nowrap">
+                        Errors <span id="stream-count-error" class="text-red-400 font-bold ml-0.5">0</span>
+                    </button>
+                </div>
             </div>
 
             <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
-                <div class="w-full md:w-52 bg-black/20 border-b md:border-b-0 md:border-r border-white/[0.08] p-2.5 flex md:flex-col gap-2 shrink-0 text-sm">
-                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1 mb-0.5 hidden md:block">Filter Stream</span>
-                    <button onclick="filterStream('ALL')" id="stream-filter-all" class="flex-1 md:flex-initial text-left px-3 py-2 rounded bg-white/20 text-black font-bold transition-colors hover:bg-white/25 flex justify-between items-center text-sm">
-                        <span class="text-black font-bold">All Scans</span>
-                        <span id="stream-count-all" class="text-xs bg-slate-800 px-2 py-0.5 rounded text-white font-bold">0</span>
-                    </button>
-                    <button onclick="filterStream('PASS')" id="stream-filter-pass" class="flex-1 md:flex-initial text-left px-3 py-2 rounded text-black font-bold hover:bg-white/10 transition-colors flex justify-between items-center text-sm">
-                        <span class="text-black font-bold">Pass Only</span>
-                        <span id="stream-count-pass" class="text-xs bg-emerald-400 text-black font-black px-2 py-0.5 rounded">0</span>
-                    </button>
-                    <button onclick="filterStream('ERROR')" id="stream-filter-error" class="flex-1 md:flex-initial text-left px-3 py-2 rounded text-black font-bold hover:bg-white/10 transition-colors flex justify-between items-center text-sm">
-                        <span class="text-black font-bold">Errors Only</span>
-                        <span id="stream-count-error" class="text-xs bg-red-400 text-black font-black px-2 py-0.5 rounded">0</span>
-                    </button>
-                </div>
-
-                                <!-- Desktop Table View (Hidden on Mobile) -->
+                <!-- Desktop Table View (Hidden on Mobile) -->
                 <div class="hidden md:block flex-1 overflow-x-auto overflow-y-auto">
-                    <table class="w-full text-center whitespace-nowrap">
+                    <table class="w-full text-left whitespace-nowrap">
                         <thead>
-                            <tr class="border-b border-white/[0.08] text-xs font-bold text-slate-300 uppercase tracking-wider table-header-theme sticky top-0 z-10 text-center">
-                                <th class="px-4 py-3 text-center" style="text-align: center !important;">Code / QR Value</th>
-                                <th class="px-4 py-3 w-28 text-center" style="text-align: center !important;">Row #</th>
-                                <th class="px-4 py-3 text-center" style="text-align: center !important;">Evaluation</th>
-                                <th class="px-4 py-3 text-center" style="text-align: center !important;">Recorded At</th>
-                                <th class="px-4 py-3 text-center" style="text-align: center !important;">Inspector</th>
-                            </tr>
-                        </thead>
+                        <tr class="border-b border-white/[0.08] text-xs font-bold text-slate-300 uppercase tracking-wider table-header-theme sticky top-0 z-10">
+                            <th class="px-4 py-3 text-center" style="text-align: center !important;">Code / QR Value</th>
+                            <th class="px-4 py-3 w-28 text-center" style="text-align: center !important;">Row #</th>
+                            <th class="px-4 py-3 text-center" style="text-align: center !important;">Evaluation</th>
+                            <th class="px-4 py-3 text-center" style="text-align: center !important;">Recorded At</th>
+                            <th class="px-4 py-3 text-center" style="text-align: center !important;">Inspector</th>
+                        </tr>
+                    </thead>
                         <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] table-text-theme">
                             <tr>
                                 <td colspan="5" class="px-3 py-8 text-center text-slate-400 italic text-xs">No Job Card selected</td>
@@ -711,15 +706,14 @@
                 </div>
 
                 <!-- Mobile Card Feed (Visible Only on Mobile Screens) -->
-                <div id="recent-scans-mobile" class="md:hidden flex-1 overflow-y-auto p-2.5 space-y-2">
+                <div id="recent-scans-mobile" class="md:hidden max-h-60 overflow-y-auto p-2.5 space-y-2 bg-black/20 w-full">
                     <div class="p-6 text-center text-slate-400 italic text-xs">No Job Card selected</div>
                 </div>
             </div>
         </div>
-
     </main>
 
-        <!-- Footer Information Bar with Audit Trail Link -->
+    <!-- Footer Information Bar with Audit Trail Link -->
     <footer class="border-t px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between text-xs text-slate-300 shrink-0 bg-[#0d0e11] z-40 gap-2">
         <div class="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
             <div class="flex items-center gap-2 shrink-0">
