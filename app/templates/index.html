@@ -667,9 +667,9 @@
         </div>
 
         <!-- Verification Stream Table -->
-        <div class="linear-card rounded overflow-hidden flex-1 flex flex-col min-h-[180px]">
-            <div class="px-2 py-1.5 border-b border-white/[0.08] flex items-center justify-center text-xs shrink-0 bg-[#12141a]">
-                <span class="text-[11px] sm:text-xs font-black uppercase tracking-wider text-white text-center block w-full">Verification Stream</span>
+        <div class="linear-card rounded overflow-hidden flex-1 flex flex-col">
+            <div class="px-2 py-1.5 border-b border-white/[0.08] flex items-center justify-center text-[10px] shrink-0 bg-[#12141a]">
+                <span class="text-[10px] sm:text-xs font-black uppercase tracking-wider text-white text-center block w-full">Verification Stream</span>
             </div>
 
             <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
@@ -677,24 +677,24 @@
                 <div class="hidden md:block flex-1 overflow-x-auto overflow-y-auto">
                     <table class="w-full text-left whitespace-nowrap">
                         <thead>
-                            <tr class="border-b border-white/[0.08] text-xs font-bold text-slate-300 uppercase tracking-wider table-header-theme sticky top-0 z-10">
-                                <th class="px-3 py-2 text-center" style="text-align: center !important;">Code / QR Value</th>
-                                <th class="px-3 py-2 w-28 text-center" style="text-align: center !important;">Row #</th>
-                                <th class="px-3 py-2 text-center" style="text-align: center !important;">Evaluation</th>
-                                <th class="px-3 py-2 text-center" style="text-align: center !important;">Recorded At</th>
-                                <th class="px-3 py-2 text-center" style="text-align: center !important;">Inspector</th>
+                            <tr class="border-b border-white/[0.08] text-[11px] font-bold text-slate-300 uppercase tracking-wider table-header-theme sticky top-0 z-10">
+                                <th class="px-2.5 py-1.5 text-center" style="text-align: center !important;">Code / QR Value</th>
+                                <th class="px-2.5 py-1.5 w-24 text-center" style="text-align: center !important;">Row #</th>
+                                <th class="px-2.5 py-1.5 text-center" style="text-align: center !important;">Evaluation</th>
+                                <th class="px-2.5 py-1.5 text-center" style="text-align: center !important;">Recorded At</th>
+                                <th class="px-2.5 py-1.5 text-center" style="text-align: center !important;">Inspector</th>
                             </tr>
                         </thead>
-                        <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] table-text-theme text-xs">
+                        <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] table-text-theme text-[11px]">
                             <tr>
-                                <td colspan="5" class="px-3 py-6 text-center text-slate-400 italic">No Job Card selected</td>
+                                <td colspan="5" class="px-2 py-4 text-center text-slate-400 italic">No Job Card selected</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
 
-                <!-- Mobile Card Feed (Visible Only on Mobile Screens - Maximized Height) -->
-                <div id="recent-scans-mobile" class="md:hidden max-h-72 overflow-y-auto p-2 space-y-1.5 bg-black/20 w-full">
+                <!-- Mobile Card Feed (Visible Only on Mobile Screens - Compact & Maximized Viewport) -->
+                <div id="recent-scans-mobile" class="md:hidden max-h-96 overflow-y-auto p-1.5 space-y-1 bg-black/20 w-full text-xs">
                     <div class="p-4 text-center text-slate-400 italic text-xs">No Job Card selected</div>
                 </div>
             </div>
@@ -2941,42 +2941,42 @@
             renderStreamTable();
         }
 
-                function renderStreamTable() {
+        function renderStreamTable() {
             const tbody = document.getElementById('recent-scans-rows');
             const mobileContainer = document.getElementById('recent-scans-mobile');
 
             if (!activeJobId) {
-                if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-6 text-center text-slate-400 italic text-xs">No Job Card selected</td></tr>`;
-                if (mobileContainer) mobileContainer.innerHTML = `<div class="p-4 text-center text-slate-400 italic text-xs">No Job Card selected</div>`;
+                if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="px-2 py-4 text-center text-slate-400 italic text-[11px]">No Job Card selected</td></tr>`;
+                if (mobileContainer) mobileContainer.innerHTML = `<div class="p-3 text-center text-slate-400 italic text-[11px]">No Job Card selected</div>`;
                 return;
             }
 
             const visibleScans = allScans.slice(0, 50);
 
             if (visibleScans.length === 0) {
-                if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-6 text-center text-slate-400 italic text-xs">No scan events recorded yet</td></tr>`;
-                if (mobileContainer) mobileContainer.innerHTML = `<div class="p-4 text-center text-slate-400 italic text-xs">No scan events recorded yet</div>`;
+                if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="px-2 py-4 text-center text-slate-400 italic text-[11px]">No scan events recorded yet</td></tr>`;
+                if (mobileContainer) mobileContainer.innerHTML = `<div class="p-3 text-center text-slate-400 italic text-[11px]">No scan events recorded yet</div>`;
                 return;
             }
 
-            // 1. Render Desktop Table Rows (Centered)
+            // 1. Render Desktop Table Rows (Centered & Compact)
             if (tbody) {
                 tbody.innerHTML = visibleScans.map((s) => {
                     let badge = (s.result === 'PASS' || s.result === 'Pass (Potential Restart)') ? "linear-badge-pass" : "linear-badge-fail";
                     let rowDisplay = (s.row_num && s.row_num !== '-') ? `Row ${s.row_num}` : '-';
                     return `
                         <tr class="hover:bg-black/[0.02] border-b border-white/[0.04] transition-colors text-center">
-                            <td class="px-3 py-2 font-mono text-center text-xs" style="text-align: center !important;">${formatCodeDisplay(s.code)}</td>
-                            <td class="px-3 py-2 text-slate-400 font-mono text-[11px] font-semibold text-center" style="text-align: center !important;">${rowDisplay}</td>
-                            <td class="px-3 py-2 text-center text-xs" style="text-align: center !important;"><span class="${badge} px-2 py-0.5 rounded text-[10px] font-bold">${s.result}</span></td>
-                            <td class="px-3 py-2 text-slate-400 text-[11px] font-mono text-center" style="text-align: center !important;">${s.time}</td>
-                            <td class="px-3 py-2 text-[11px] text-center font-medium text-slate-300" style="text-align: center !important;">${s.user}</td>
+                            <td class="px-2.5 py-1.5 font-mono text-center text-[11px]" style="text-align: center !important;">${formatCodeDisplay(s.code)}</td>
+                            <td class="px-2.5 py-1.5 text-slate-400 font-mono text-[11px] font-semibold text-center" style="text-align: center !important;">${rowDisplay}</td>
+                            <td class="px-2.5 py-1.5 text-center text-[11px]" style="text-align: center !important;"><span class="${badge} px-2 py-0.2 rounded text-[10px] font-bold">${s.result}</span></td>
+                            <td class="px-2.5 py-1.5 text-slate-400 text-[10px] font-mono text-center" style="text-align: center !important;">${s.time}</td>
+                            <td class="px-2.5 py-1.5 text-[10px] text-center font-medium text-slate-300" style="text-align: center !important;">${s.user}</td>
                         </tr>
                     `;
                 }).join('');
             }
 
-            // 2. Render Compact Mobile Touch Cards (Maximized view space)
+            // 2. Render Ultra-Compact Mobile Touch Cards (Maximized view space)
             if (mobileContainer) {
                 mobileContainer.innerHTML = visibleScans.map((s) => {
                     const isPass = (s.result === 'PASS' || s.result === 'Pass (Potential Restart)');
@@ -2985,17 +2985,17 @@
                     const rowDisplay = (s.row_num && s.row_num !== '-') ? `Row ${s.row_num}` : '';
 
                     return `
-                        <div class="linear-subcard px-2.5 py-1.5 rounded border-l-4 ${borderAccent} flex flex-col gap-0.5 shadow-sm text-xs">
-                            <div class="flex items-center justify-between gap-2">
-                                <span class="font-bold text-xs tracking-tight table-text-theme break-all font-mono">${s.code}</span>
-                                <span class="${badge} px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase shrink-0">${s.result}</span>
+                        <div class="linear-subcard px-2 py-1 rounded border-l-2 ${borderAccent} flex flex-col gap-0 shadow-sm text-[11px]">
+                            <div class="flex items-center justify-between gap-1">
+                                <span class="font-bold text-[11px] tracking-tight table-text-theme break-all font-mono">${s.code}</span>
+                                <span class="${badge} px-1.5 py-0.1 rounded text-[8px] font-extrabold uppercase shrink-0">${s.result}</span>
                             </div>
-                            <div class="flex items-center justify-between text-[10px] text-slate-400 pt-0.5 border-t border-white/[0.04]">
+                            <div class="flex items-center justify-between text-[9px] text-slate-400 pt-0.5 border-t border-white/[0.04]">
                                 <div class="flex items-center gap-1 truncate">
                                     <span class="font-medium text-slate-300">${s.user}</span>
                                     ${rowDisplay ? `<span class="text-slate-600">&middot;</span><span class="text-indigo-300 font-semibold">${rowDisplay}</span>` : ''}
                                 </div>
-                                <span class="text-[9px] text-slate-400 shrink-0 font-medium">${s.time}</span>
+                                <span class="text-[8px] text-slate-400 shrink-0 font-medium">${s.time}</span>
                             </div>
                         </div>
                     `;
