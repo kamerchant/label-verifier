@@ -254,6 +254,61 @@
             border: 1px solid rgba(255, 255, 255, 0.05) !important;
             transform: none !important;
         }
+                /* Sleek Ingestion / Override / Failed Status Pill */
+        .status-pill-progress {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 14px;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1.3;
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            animation: pulse-subtle 2s infinite ease-in-out;
+        }
+
+        .status-pill-progress.ingesting {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+            border-color: rgba(59, 130, 246, 0.25);
+        }
+
+        .status-pill-progress.overriding {
+            background: rgba(245, 158, 11, 0.1);
+            color: #f59e0b;
+            border-color: rgba(245, 158, 11, 0.25);
+        }
+
+        .status-pill-progress.failed {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ff4757;
+            border-color: rgba(255, 71, 87, 0.35);
+            animation: none;
+        }
+
+        /* Subtle loading spinner inside the badge */
+        .status-spinner {
+            width: 11px;
+            height: 11px;
+            border: 2px solid currentColor;
+            border-right-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
 
         @media print {
             @page {
@@ -4674,7 +4729,7 @@
                 const consumedNum = Number(j.consumed) || 0;
                 const conflictCount = Number(j.conflict_count) || 0;
 
-                // Status dropdown (compact styled) or static badge
+                // Status dropdown (compact styled) or unified sleek ingestion pill
                 let statusCellHtml = '';
                 if (['ACTIVE', 'INACTIVE', 'COMPLETED'].includes(j.status)) {
                     let selectBorderColor = 'border-emerald-500/50 text-emerald-400';
@@ -4693,12 +4748,34 @@
                         </select>
                     `;
                 } else {
-                    let badgeClass = "linear-badge-fail";
-                    let statusDisplay = j.status;
-                    if (j.ingestion_progress && (j.status === 'INGESTING' || j.status === 'OVERRIDING' || j.status === 'FAILED')) {
-                        statusDisplay += `<span class="block text-[9px] text-slate-400 font-normal truncate max-w-[140px]">${j.ingestion_progress}</span>`;
+                    let cssClass = 'ingesting';
+                    if (j.status === 'OVERRIDING') cssClass = 'overriding';
+                    else if (j.status === 'FAILED') cssClass = 'failed';
+
+                    const progressText = j.ingestion_progress || 'Processing...';
+
+                    if (j.status === 'INGESTING' || j.status === 'OVERRIDING') {
+                        statusCellHtml = `
+                            <div class="status-pill-progress ${cssClass}" title="${progressText}">
+                                <div class="status-spinner"></div>
+                                <span class="max-w-[200px] truncate"><strong>${j.status}:</strong> ${progressText}</span>
+                            </div>
+                        `;
+                    } else if (j.status === 'CONFLICT_DETECTED') {
+                        statusCellHtml = `
+                            <div class="status-pill-progress" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.25);">
+                                <span>⚠️ <strong>Conflict (${j.conflict_count || 0})</strong></span>
+                            </div>
+                        `;
+                    } else if (j.status === 'FAILED') {
+                        statusCellHtml = `
+                            <div class="status-pill-progress failed" title="${progressText}">
+                                <span class="max-w-[210px] truncate">⚠️ <strong>FAILED:</strong> ${progressText}</span>
+                            </div>
+                        `;
+                    } else {
+                        statusCellHtml = `<span class="px-2 py-0.5 rounded text-[10px] font-bold linear-badge-fail">${j.status}</span>`;
                     }
-                    statusCellHtml = `<span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">${statusDisplay}</span>`;
                 }
 
                 // Conflict action button (opens printable analysis report)

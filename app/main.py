@@ -288,45 +288,56 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
         conn = get_connection()
         with conn.cursor() as cur:
             cur.execute("SET synchronous_commit = off;")
-            cur.execute("SET work_mem = '128MB';")
-            cur.execute("SET maintenance_work_mem = '128MB';")
+            cur.execute("SET work_mem = '256MB';")
+            cur.execute("SET maintenance_work_mem = '256MB';")
             conn.commit()
 
             cur.execute("UPDATE job_cards SET ingestion_progress = 'Streaming raw file to database memory...' WHERE run_id = %s", (run_id,))
             conn.commit()
 
             cur.execute(f"DROP TABLE IF EXISTS {raw_table}, {tokens_table}, {incoming_table}, {export_table};")
-            cur.execute(f"CREATE UNLOGGED TABLE {raw_table} (raw_line TEXT);")
+            
+            # 1. Capture exact physical line numbers sequentially during COPY
+            cur.execute(f"""
+                CREATE UNLOGGED TABLE {raw_table} (
+                    line_num BIGINT GENERATED ALWAYS AS IDENTITY,
+                    raw_line TEXT
+                );
+            """)
             
             with open(temp_filepath, "r", encoding="utf-8", errors="ignore") as f:
-                cur.copy_expert(f"COPY {raw_table} FROM STDIN WITH (FORMAT text)", f)
+                cur.copy_expert(f"COPY {raw_table} (raw_line) FROM STDIN WITH (FORMAT text)", f)
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = 'Executing database-native cleaning & splitting...' WHERE run_id = %s", (run_id,))
+            cur.execute("UPDATE job_cards SET ingestion_progress = 'Extracting and ordering file tokens...' WHERE run_id = %s", (run_id,))
             conn.commit()
 
-            # 1. Extract all non-header tokens with an explicit original sequence number
+            # 2. Unnest pairing line_num and col_num so row sequence cannot be scrambled
             cur.execute(f"""
                 CREATE UNLOGGED TABLE {tokens_table} AS
-                SELECT row_number() OVER () AS original_seq, cleaned_val AS code_value
+                SELECT 
+                    row_number() OVER (ORDER BY t.line_num ASC, t.col_num ASC) AS original_seq,
+                    t.cleaned_val AS code_value
                 FROM (
-                    SELECT TRIM(BOTH '\"' FROM TRIM(BOTH '''' FROM TRIM(REPLACE(REPLACE(REPLACE(val, CHR(13), ''), CHR(10), ''), CHR(9), '')))) AS cleaned_val
-                    FROM {raw_table},
-                    LATERAL unnest(string_to_array(raw_line, ',')) AS val
-                    WHERE raw_line IS NOT NULL AND TRIM(raw_line) != ''
-                ) sub
-                WHERE cleaned_val != ''
-                  AND LOWER(cleaned_val) NOT IN ('code', 'url', 'qr', 'qrcode', 'serial', 'barcode', 'data', 'id', 'link');
+                    SELECT 
+                        r.line_num,
+                        u.col_num,
+                        TRIM(BOTH '\"' FROM TRIM(BOTH '''' FROM TRIM(REPLACE(REPLACE(REPLACE(u.val, CHR(13), ''), CHR(10), ''), CHR(9), '')))) AS cleaned_val
+                    FROM {raw_table} r,
+                    LATERAL unnest(string_to_array(r.raw_line, ',')) WITH ORDINALITY AS u(val, col_num)
+                    WHERE r.raw_line IS NOT NULL AND TRIM(r.raw_line) != ''
+                ) t
+                WHERE t.cleaned_val != ''
+                  AND LOWER(t.cleaned_val) NOT IN ('code', 'url', 'qr', 'qrcode', 'serial', 'barcode', 'data', 'id', 'link', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j');
             """)
 
             cur.execute(f"DROP TABLE IF EXISTS {raw_table};")
 
-            # 2. Deduplicate strictly preserving first appearance file sequence
+            # 3. Deduplicate preserving first appearance file sequence
             cur.execute(f"""
                 CREATE UNLOGGED TABLE {incoming_table} AS
                 SELECT code_value, MIN(original_seq) AS original_seq
                 FROM {tokens_table}
-                GROUP BY code_value
-                ORDER BY MIN(original_seq);
+                GROUP BY code_value;
             """)
 
             cur.execute(f"SELECT COUNT(*) FROM {tokens_table};")
@@ -361,6 +372,7 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 return
 
             cur.execute(f"CREATE INDEX idx_temp_inc_val_{run_id} ON {incoming_table} (code_value);")
+            cur.execute(f"CREATE INDEX idx_temp_inc_seq_{run_id} ON {incoming_table} (original_seq);")
             cur.execute(f"ANALYZE {incoming_table};")
 
             cur.execute("UPDATE job_cards SET total_codes = %s, ingestion_progress = 'Checking cross-job uniqueness...' WHERE run_id = %s", (total_codes, run_id))
@@ -440,14 +452,15 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                     conn.commit()
                     return
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", ("Ingesting: 75% (Direct database insertion)...", run_id))
+            cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", ("Ingesting: 75% (Direct database insertion in strict file order)...", run_id))
             conn.commit()
 
+            # Insert strictly ordered by original_seq to guarantee 1:1 file sequence match
             cur.execute(f"""
                 INSERT INTO codes (run_id, job_card_id, code_value, status)
                 SELECT %s, %s, code_value, 'PENDING'
                 FROM {incoming_table}
-                ORDER BY original_seq;
+                ORDER BY original_seq ASC;
             """, (run_id, job_card_id))
             actual_inserted = cur.rowcount
 
@@ -510,7 +523,6 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
             pass
 
 
-def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, conflicts: int, total_codes: int, username: str, override_reason: str, skip_conflicts: bool = False):
     conn = None
     ovr_all_table = f"temp_override_all_{run_id}"
     ovr_filt_table = f"temp_override_filtered_{run_id}"
@@ -520,8 +532,8 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
         conn = get_connection()
         with conn.cursor() as cur:
             cur.execute("SET synchronous_commit = off;")
-            cur.execute("SET work_mem = '128MB';")
-            cur.execute("SET maintenance_work_mem = '128MB';")
+            cur.execute("SET work_mem = '256MB';")
+            cur.execute("SET maintenance_work_mem = '256MB';")
             conn.commit()
 
             effective_total = total_codes
@@ -582,7 +594,7 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
             cur.execute(f"""
                 CREATE UNLOGGED TABLE {ovr_chunk_table} AS
                 SELECT run_id, job_card_id, code_value, status,
-                       row_number() OVER (ORDER BY original_seq) AS rnum
+                       row_number() OVER (ORDER BY original_seq ASC) AS rnum
                 FROM {source_table};
             """)
             cur.execute(f"CREATE INDEX idx_tmp_chunk_rnum_{run_id} ON {ovr_chunk_table} (rnum);")
@@ -606,7 +618,8 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                     INSERT INTO codes (run_id, job_card_id, code_value, status)
                     SELECT run_id, job_card_id, code_value, status
                     FROM {ovr_chunk_table}
-                    WHERE rnum >= %s AND rnum < %s;
+                    WHERE rnum >= %s AND rnum < %s
+                    ORDER BY rnum ASC;
                 """, (start_rnum, end_rnum))
                 actual_inserted += cur.rowcount
                 conn.commit()
@@ -674,6 +687,9 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 os.remove(clean_tsv_path)
         except OSError:
             pass
+
+
+
 
 # ---------------------------------------------------------
 # Application Routes & Verification API
