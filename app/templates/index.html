@@ -11,6 +11,79 @@
             font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
             letter-spacing: -0.01em;
         }
+        /* Clean progress bar */
+        .job-progress-track {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        html.theme-parchment .job-progress-track {
+            background: #e2ded4;
+        }
+        .job-progress-fill {
+            height: 100%;
+            border-radius: 9999px;
+            transition: width 0.3s ease;
+        }
+
+        /* Subtle, refined status dropdown */
+        .job-status-pill {
+            appearance: none;
+            -webkit-appearance: none;
+            font-size: 11px !important;
+            font-weight: 700;
+            padding: 3px 22px 3px 8px !important;
+            border-radius: 12px;
+            cursor: pointer;
+            background-repeat: no-repeat;
+            background-position: right 6px center;
+            background-size: 10px 10px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            border: 1px solid transparent;
+            transition: all 0.15s ease;
+        }
+        .job-status-pill.status-active {
+            background-color: rgba(46, 213, 115, 0.12);
+            color: #2ed573;
+            border-color: rgba(46, 213, 115, 0.25);
+        }
+        .job-status-pill.status-inactive {
+            background-color: rgba(245, 158, 11, 0.12);
+            color: #f59e0b;
+            border-color: rgba(245, 158, 11, 0.25);
+        }
+        .job-status-pill.status-completed {
+            background-color: rgba(148, 163, 184, 0.12);
+            color: #94a3b8;
+            border-color: rgba(148, 163, 184, 0.25);
+        }
+
+        /* Subtle Action Buttons */
+        .btn-ghost-danger {
+            background: transparent;
+            color: #94a3b8;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 6px;
+            transition: all 0.15s ease;
+        }
+        .btn-ghost-danger:hover {
+            background: rgba(239, 68, 68, 0.12);
+            color: #ef4444;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+        html.theme-parchment .btn-ghost-danger {
+            border-color: #dcd7ca;
+            color: #64748b;
+        }
+        html.theme-parchment .btn-ghost-danger:hover {
+            background: #fee2e2;
+            color: #dc2626;
+            border-color: #fca5a5;
+        }
 
         html { font-size: 16px; }
         @media (min-width: 768px) { html { font-size: 18px; } }
@@ -74,6 +147,29 @@
             border: 1px solid #b8b09d;
             color: #1a211e;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+                /* High-contrast Parchment Theme overrides for Job Control Center */
+        html.theme-parchment .job-status-pill.status-active {
+            background-color: #ecfdf5;
+            color: #047857;
+            border-color: #a7f3d0;
+        }
+        html.theme-parchment .job-status-pill.status-inactive {
+            background-color: #fffbeb;
+            color: #b45309;
+            border-color: #fde68a;
+        }
+        html.theme-parchment .job-status-pill.status-completed {
+            background-color: #f1f5f9;
+            color: #475569;
+            border-color: #cbd5e1;
+        }
+        html.theme-parchment .job-status-pill option {
+            background-color: #ffffff;
+            color: #1e293b;
+        }
+        html.theme-parchment .job-progress-track {
+            background: #e2ded4;
         }
 
         /* Compact status dropdown style matching table row typography */
@@ -1011,29 +1107,26 @@
             <div class="flex-1 overflow-y-auto border border-white/[0.08] rounded">
                 <table class="w-full text-left whitespace-nowrap">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0 z-10">
-                            <th class="px-3.5 py-2.5 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('job_card_id')">
+                        <tr class="border-b border-white/[0.08] text-[11px] font-semibold text-slate-400 uppercase tracking-wider table-header-theme sticky top-0 z-10">
+                            <th class="px-4 py-3 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('job_card_id')">
                                 Job Card <span id="sort-indicator-job_card_id" class="text-[10px] text-slate-400"></span>
                             </th>
-                            <th class="px-3.5 py-2.5 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('description')">
-                                Description <span id="sort-indicator-description" class="text-[10px] text-slate-400"></span>
+                            <th class="px-4 py-3 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('description')">
+                                Description & Date <span id="sort-indicator-description" class="text-[10px] text-slate-400"></span>
                             </th>
-                            <th class="px-3.5 py-2.5 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('created_at')">
-                                Timestamps <span id="sort-indicator-created_at" class="text-[10px] text-slate-400"></span>
-                            </th>
-                            <th class="px-3.5 py-2.5 text-center cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('status')">
+                            <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('status')">
                                 Status <span id="sort-indicator-status" class="text-[10px] text-slate-400"></span>
                             </th>
-                            <th class="px-3.5 py-2.5 text-right cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('consumed')">
-                                Codes Verified <span id="sort-indicator-consumed" class="text-[10px] text-slate-400"></span>
+                            <th class="px-4 py-3 text-left w-52 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('consumed')">
+                                Progress <span id="sort-indicator-consumed" class="text-[10px] text-slate-400"></span>
                             </th>
-                            <th class="px-3.5 py-2.5 text-center cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('conflict_count')">
-                                Conflicts Detected <span id="sort-indicator-conflict_count" class="text-[10px] text-slate-400"></span>
+                            <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('conflict_count')">
+                                Conflicts <span id="sort-indicator-conflict_count" class="text-[10px] text-slate-400"></span>
                             </th>
-                            <th class="px-3.5 py-2.5 text-center cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('packing_qc_count')">
+                            <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('packing_qc_count')">
                                 Final QC <span id="sort-indicator-packing_qc_count" class="text-[10px] text-slate-400"></span>
                             </th>
-                            <th class="px-3.5 py-2.5 text-center">Action</th>
+                            <th class="px-4 py-3 text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody id="master-jobs-rows" class="divide-y divide-white/[0.04] table-text-theme text-xs"></tbody>
@@ -4680,7 +4773,7 @@
             loadMasterJobs(filterType);
         }
 
-        function renderMasterJobsTable() {
+               function renderMasterJobsTable() {
             const query = (document.getElementById('master-job-search').value || "").toLowerCase().trim();
             let filtered = rawMasterJobs.filter(j => 
                 j.job_card_id.toLowerCase().includes(query) ||
@@ -4720,7 +4813,7 @@
 
             const tbody = document.getElementById('master-jobs-rows');
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400 italic text-xs">No job cards found matching '${query}'</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400 italic text-xs">No job cards found matching '${query}'</td></tr>`;
                 return;
             }
 
@@ -4728,23 +4821,25 @@
                 const totalNum = Number(j.total) || 0;
                 const consumedNum = Number(j.consumed) || 0;
                 const conflictCount = Number(j.conflict_count) || 0;
+                const packingQcCount = Number(j.packing_qc_count) || 0;
+                const progressPct = totalNum > 0 ? ((consumedNum / totalNum) * 100).toFixed(1) : '0.0';
 
-                // Status dropdown (compact styled) or unified sleek ingestion pill
+                // 1. Sleek Status Pill Dropdown
                 let statusCellHtml = '';
                 if (['ACTIVE', 'INACTIVE', 'COMPLETED'].includes(j.status)) {
-                    let selectBorderColor = 'border-emerald-500/50 text-emerald-400';
-                    if (j.status === 'INACTIVE') selectBorderColor = 'border-amber-500/50 text-amber-400';
-                    else if (j.status === 'COMPLETED') selectBorderColor = 'border-blue-500/50 text-blue-400';
+                    let statusClass = 'status-active';
+                    if (j.status === 'INACTIVE') statusClass = 'status-inactive';
+                    else if (j.status === 'COMPLETED') statusClass = 'status-completed';
 
                     statusCellHtml = `
                         <select id="status-select-${j.job_card_id}"
                                 onfocus="recordJobInteraction()"
                                 onmousedown="recordJobInteraction()"
                                 onchange="recordJobInteraction(); handleJobStatusDropdownChange(this, '${j.job_card_id}', '${j.status}')"
-                                class="job-status-select ${selectBorderColor}">
-                            <option value="ACTIVE" class="bg-[#12141a] text-emerald-400" ${j.status === 'ACTIVE' ? 'selected' : ''}>ACTIVE</option>
-                            <option value="INACTIVE" class="bg-[#12141a] text-amber-400" ${j.status === 'INACTIVE' ? 'selected' : ''}>INACTIVE</option>
-                            <option value="COMPLETED" class="bg-[#12141a] text-blue-400" ${j.status === 'COMPLETED' ? 'selected' : ''}>COMPLETED</option>
+                                class="job-status-pill ${statusClass}">
+                            <option value="ACTIVE" class="bg-[#12141a] text-emerald-400" ${j.status === 'ACTIVE' ? 'selected' : ''}>Active</option>
+                            <option value="INACTIVE" class="bg-[#12141a] text-amber-400" ${j.status === 'INACTIVE' ? 'selected' : ''}>Inactive</option>
+                            <option value="COMPLETED" class="bg-[#12141a] text-slate-400" ${j.status === 'COMPLETED' ? 'selected' : ''}>Completed</option>
                         </select>
                     `;
                 } else {
@@ -4758,7 +4853,7 @@
                         statusCellHtml = `
                             <div class="status-pill-progress ${cssClass}" title="${progressText}">
                                 <div class="status-spinner"></div>
-                                <span class="max-w-[200px] truncate"><strong>${j.status}:</strong> ${progressText}</span>
+                                <span class="max-w-[160px] truncate"><strong>${j.status}:</strong> ${progressText}</span>
                             </div>
                         `;
                     } else if (j.status === 'CONFLICT_DETECTED') {
@@ -4770,7 +4865,7 @@
                     } else if (j.status === 'FAILED') {
                         statusCellHtml = `
                             <div class="status-pill-progress failed" title="${progressText}">
-                                <span class="max-w-[210px] truncate">⚠️ <strong>FAILED:</strong> ${progressText}</span>
+                                <span class="max-w-[180px] truncate">⚠️ <strong>FAILED:</strong> ${progressText}</span>
                             </div>
                         `;
                     } else {
@@ -4778,61 +4873,85 @@
                     }
                 }
 
-                // Conflict action button (opens printable analysis report)
-                let conflictBadgeHtml = `<span class="text-slate-500 text-xs font-medium">0 (Clean)</span>`;
+                // 2. Progress Bar Cell
+                const barColor = j.status === 'COMPLETED' ? 'bg-[#2ed573]' : (consumedNum > 0 ? 'bg-indigo-500' : 'bg-slate-500/30');
+                const progressCellHtml = `
+                    <div class="flex flex-col justify-center min-w-[140px]">
+                        <div class="flex justify-between items-baseline text-xs font-mono">
+                            <span class="font-bold table-text-theme">${consumedNum.toLocaleString()} <span class="text-slate-500 font-normal">/ ${totalNum.toLocaleString()}</span></span>
+                            <span class="text-[11px] text-slate-400 font-semibold">${progressPct}%</span>
+                        </div>
+                        <div class="job-progress-track">
+                            <div class="job-progress-fill ${barColor}" style="width: ${Math.min(100, progressPct)}%"></div>
+                        </div>
+                    </div>
+                `;
+
+                // 3. Muted Conflict Indicator
+                let conflictBadgeHtml = `<span class="text-slate-500 text-xs">Clean</span>`;
                 if (conflictCount > 0) {
-                    let badgeLabel = `${conflictCount.toLocaleString()} Detected`;
-                    let btnStyle = "bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/35";
+                    let btnStyle = "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700";
+                    let label = `${conflictCount.toLocaleString()} Skipped`;
 
                     if (j.conflict_resolution === 'OVERRIDDEN') {
-                        badgeLabel = `⚠ ${conflictCount.toLocaleString()} Overridden`;
-                        btnStyle = "bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/35";
-                    } else if (j.conflict_resolution === 'SKIPPED') {
-                        badgeLabel = `${conflictCount.toLocaleString()} Skipped`;
-                        btnStyle = "bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/35";
+                        btnStyle = "bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30";
+                        label = `⚠️ ${conflictCount.toLocaleString()} Overridden`;
                     }
 
                     conflictBadgeHtml = `
                         <button type="button" 
                                 onclick="openConflictReportFromMasterJobs(${j.run_id}, '${j.job_card_id}', ${conflictCount}, ${j.total || 0}, '${j.status}')" 
-                                class="${btnStyle} px-2.5 py-1 rounded text-xs font-bold transition-all cursor-pointer shadow-sm flex items-center justify-center gap-1 mx-auto hover:scale-105 active:scale-95" 
-                                title="Click to view and print Batch Uniqueness & Conflict Analysis Report">
-                            🖨 ${badgeLabel}
+                                class="${btnStyle} px-2 py-0.5 rounded text-[11px] font-semibold transition-colors cursor-pointer inline-flex items-center gap-1 shadow-sm">
+                            ${label}
                         </button>
                     `;
                 }
 
-                // Action Column
-                let actionHtml = `<span class="text-slate-400 italic text-[11px]">Locked (${consumedNum.toLocaleString()} verified)</span>`;
+                // 4. Final QC Count (Neutral gray for 0, green only when verified)
+                let finalQcHtml = `<span class="text-slate-500 text-xs font-mono">0</span>`;
+                if (packingQcCount > 0) {
+                    finalQcHtml = `
+                        <button onclick="openPackingQCReportFromAdmin('${j.job_card_id}')" 
+                                class="bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-[11px] font-bold transition-colors">
+                            ✓ ${packingQcCount} Checked
+                        </button>
+                    `;
+                }
+
+                // 5. Ghost Purge Button
+                let actionHtml = `<span class="text-slate-500 italic text-[11px]">Locked</span>`;
                 if (j.status === 'DELETED') {
-                    actionHtml = `<span class="text-slate-500 italic text-[11px]">Deleted</span>`;
+                    actionHtml = `<span class="text-slate-500 text-[11px]">Deleted</span>`;
                 } else if (j.status === 'CONFLICT_DETECTED') {
-                    actionHtml = `<button onclick="resolveJobFromAdmin(${j.run_id}, ${j.conflict_count || 0}, ${j.total || 0})" class="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded text-[11px] font-bold">Resolve Conflict</button>`;
+                    actionHtml = `<button onclick="resolveJobFromAdmin(${j.run_id}, ${j.conflict_count || 0}, ${j.total || 0})" class="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded text-[11px] font-bold">Resolve</button>`;
                 } else if (consumedNum === 0 || j.status === 'FAILED') {
-                    actionHtml = `<button onclick="purgeJobFromAdmin(${j.run_id}, '${j.job_card_id}')" class="bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 px-2.5 py-1 rounded text-[11px] font-bold">Purge Job</button>`;
+                    actionHtml = `<button onclick="purgeJobFromAdmin(${j.run_id}, '${j.job_card_id}')" class="btn-ghost-danger">Purge</button>`;
                 }
 
                 return `
-                    <tr class="hover:bg-black/[0.02]">
-                        <td class="p-3 font-bold table-text-theme">
+                    <tr class="hover:bg-black/[0.02] border-b border-white/[0.04] transition-colors">
+                        <td class="px-4 py-2.5 font-bold table-text-theme">
                             <div class="inline-flex items-center gap-1.5">
-                                <button type="button" class="truncate text-left cursor-pointer hover:underline text-indigo-400 bg-transparent border-none p-0 font-bold" onclick="if (activeJobId && activeJobId.toLowerCase() !== '${j.job_card_id.toLowerCase()}') { showCustomAlert('Job Card \\'' + activeJobId + '\\' is currently open. Please close it first using [Close Job].', 'Job In Progress'); } else { toggleModal('master-jobs-modal'); selectJob('${j.job_card_id}', '${encodeURIComponent(j.description || '')}', '${j.status}', ${j.consumed}, ${j.total}); }">${j.job_card_id}</button>
-                                <button type="button" onclick="copyJobCardNumber('${j.job_card_id}', this)" class="linear-button-secondary p-1 rounded inline-flex items-center justify-center">
-                                    <span class="text-[10px] leading-none text-slate-400">📋</span>
+                                <button type="button" class="font-mono text-indigo-400 hover:text-indigo-300 hover:underline font-bold text-xs bg-transparent border-none p-0 cursor-pointer text-left"
+                                        onclick="if (activeJobId && activeJobId.toLowerCase() !== '${j.job_card_id.toLowerCase()}') { showCustomAlert('Job Card \\'' + activeJobId + '\\' is currently open. Please close it first using [Close Job].', 'Job In Progress'); } else { toggleModal('master-jobs-modal'); selectJob('${j.job_card_id}', '${encodeURIComponent(j.description || '')}', '${j.status}', ${j.consumed}, ${j.total}); }">
+                                    ${j.job_card_id}
+                                </button>
+                                <button type="button" onclick="copyJobCardNumber('${j.job_card_id}', this)" class="text-slate-500 hover:text-slate-300 text-[10px] p-0.5 border-none bg-transparent cursor-pointer">
+                                    📋
                                 </button>
                             </div>
                         </td>
-                        <td class="p-3 max-w-[200px] text-xs table-text-theme opacity-90 truncate">${j.description || '-'}</td>
-                        <td class="p-3 text-[10px] text-slate-300">${j.created_at}</td>
-                        <td class="p-3 text-center">${statusCellHtml}</td>
-                        <td class="p-3 text-right text-xs table-text-theme font-semibold">${consumedNum.toLocaleString()} / ${totalNum.toLocaleString()}</td>
-                        <td class="p-3 text-center">${conflictBadgeHtml}</td>
-                        <td class="p-3 text-center">
-                            <button onclick="openPackingQCReportFromAdmin('${j.job_card_id}')" class="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded text-xs font-bold">
-                                Verified: ${j.packing_qc_count || 0}
-                            </button>
+                        <td class="px-4 py-2.5">
+                            <div class="max-w-[220px]">
+                                <span class="block truncate text-xs font-medium table-text-theme">${j.description || 'No description'}</span>
+                                <span class="block text-[10px] text-slate-400 mt-0.5 font-mono">${j.created_at || ''}</span>
+                            </div>
                         </td>
-                        <td class="p-3 text-center">${actionHtml}</td>
+                        <td class="px-4 py-2.5 text-center">${statusCellHtml}</td>
+                        <td class="px-4 py-2.5">${progressCellHtml}</td>
+                        <td class="px-4 py-2.5 text-center">${conflictBadgeHtml}</td>
+                        <td class="px-4 py-2.5 text-center">${finalQcHtml}</td>
+                        <td class="px-4 py-2.5 text-right">${actionHtml}</td>
                     </tr>
                 `;
             }).join('');

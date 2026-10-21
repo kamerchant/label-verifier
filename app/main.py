@@ -316,6 +316,7 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 CREATE UNLOGGED TABLE {tokens_table} AS
                 SELECT 
                     row_number() OVER (ORDER BY t.line_num ASC, t.col_num ASC) AS original_seq,
+                    t.line_num,
                     t.cleaned_val AS code_value
                 FROM (
                     SELECT 
@@ -327,15 +328,15 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                     WHERE r.raw_line IS NOT NULL AND TRIM(r.raw_line) != ''
                 ) t
                 WHERE t.cleaned_val != ''
-                  AND LOWER(t.cleaned_val) NOT IN ('code', 'url', 'qr', 'qrcode', 'serial', 'barcode', 'data', 'id', 'link', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j');
+                  AND LOWER(t.cleaned_val) NOT IN ('code', 'url', 'qr', 'qrcode', 'serial', 'barcode', 'data', 'id', 'link');
             """)
 
             cur.execute(f"DROP TABLE IF EXISTS {raw_table};")
 
-            # 3. Deduplicate preserving first appearance file sequence
+            # 3. Deduplicate preserving first appearance file sequence and track line_num
             cur.execute(f"""
                 CREATE UNLOGGED TABLE {incoming_table} AS
-                SELECT code_value, MIN(original_seq) AS original_seq
+                SELECT code_value, MIN(original_seq) AS original_seq, MIN(line_num) AS line_num
                 FROM {tokens_table}
                 GROUP BY code_value;
             """)
@@ -394,7 +395,7 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
 
                 cur.execute(f"""
                     CREATE TEMP TABLE temp_conflicting_codes ON COMMIT DROP AS
-                    SELECT DISTINCT t.code_value
+                    SELECT DISTINCT t.code_value, t.line_num
                     FROM {incoming_table} t
                     WHERE EXISTS (
                         SELECT 1 
@@ -407,9 +408,28 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                     ANALYZE temp_conflicting_codes;
                 """)
 
-                cur.execute("SELECT COUNT(*) FROM temp_conflicting_codes;")
-                row = cur.fetchone()
-                conflicts_found = row[0] if row else 0
+                # Check if conflicts belong to line 1 (header row) vs later data lines
+                cur.execute("""
+                    SELECT 
+                        COUNT(*) FILTER (WHERE line_num = 1) AS r1_conflicts,
+                        COUNT(*) FILTER (WHERE line_num > 1) AS body_conflicts
+                    FROM temp_conflicting_codes;
+                """)
+                c_row = cur.fetchone()
+                r1_conflicts = c_row[0] if c_row else 0
+                body_conflicts = c_row[1] if c_row else 0
+
+                # If the first row caused conflicts, discard row 1 automatically
+                if r1_conflicts > 0:
+                    cur.execute(f"DELETE FROM {incoming_table} WHERE line_num = 1;")
+                    cur.execute("DELETE FROM temp_conflicting_codes WHERE line_num = 1;")
+                    cur.execute(f"SELECT COUNT(*) FROM {incoming_table};")
+                    total_codes = cur.fetchone()[0]
+                    cur.execute("UPDATE job_cards SET total_codes = %s WHERE run_id = %s", (total_codes, run_id))
+                    conn.commit()
+
+                # Only remaining data-line conflicts are flagged
+                conflicts_found = body_conflicts
 
                 if conflicts_found > 0:
                     cur.execute("""
