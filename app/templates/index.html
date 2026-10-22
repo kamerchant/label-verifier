@@ -560,13 +560,13 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto py-1 px-1 shrink-0" style="-webkit-overflow-scrolling: touch;">
-            <button onclick="openPackingQCModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap min-h-[34px] flex items-center shadow-md transition-colors shrink-0">Final QC</button>
-            <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-3 py-1.5 rounded text-xs font-semibold whitespace-nowrap min-h-[34px] flex items-center shrink-0">Create Job</button>
-            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center shrink-0">Job Control Center</button>
-            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-3 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center shrink-0">User Management</button>
-            <button onclick="openChangePasswordModal()" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium whitespace-nowrap min-h-[34px] flex items-center shrink-0">Change Password</button>
-            <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-3 py-1.5 rounded text-xs font-medium transition-colors whitespace-nowrap min-h-[34px] flex items-center shrink-0">Logout</button>
+        <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto py-0.5 sm:py-1 px-1 shrink-0" style="-webkit-overflow-scrolling: touch;">
+            <button onclick="openPackingQCModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-bold whitespace-nowrap min-h-[28px] sm:min-h-[34px] flex items-center shadow-md transition-colors shrink-0">Final QC</button>
+            <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-2.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-semibold whitespace-nowrap min-h-[28px] sm:min-h-[34px] flex items-center shrink-0">Create Job</button>
+            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-2.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-medium whitespace-nowrap min-h-[28px] sm:min-h-[34px] flex items-center shrink-0">Job Control Center</button>
+            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-2.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-medium whitespace-nowrap min-h-[28px] sm:min-h-[34px] flex items-center shrink-0">User Management</button>
+            <button onclick="openChangePasswordModal()" class="linear-button-secondary px-2.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-medium whitespace-nowrap min-h-[28px] sm:min-h-[34px] flex items-center shrink-0">Change Password</button>
+            <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-medium transition-colors whitespace-nowrap min-h-[28px] sm:min-h-[34px] flex items-center shrink-0">Logout</button>
         </div>
     </header>
 
@@ -589,15 +589,15 @@
             <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto shrink-0">
                 <div class="flex items-center gap-1.5 shrink-0 overflow-x-auto no-scrollbar py-0.5">
                     <button id="report-btn" onclick="openReportModal()" disabled 
-                            class="linear-button-secondary text-xs px-2.5 py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[38px] font-medium shadow-sm whitespace-nowrap">
+                            class="linear-button-secondary text-[11px] sm:text-xs px-2 sm:px-2.5 py-1 sm:py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[28px] sm:min-h-[38px] font-medium shadow-sm whitespace-nowrap">
                         QC Report
                     </button>
                     <button id="lifecycle-btn" onclick="openLifecycleModal()" disabled 
-                            class="linear-button-secondary text-xs px-2.5 py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[38px] font-medium shadow-sm whitespace-nowrap">
+                            class="linear-button-secondary text-[11px] sm:text-xs px-2 sm:px-2.5 py-1 sm:py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[28px] sm:min-h-[38px] font-medium shadow-sm whitespace-nowrap">
                         Lifecycle Audit
                     </button>
                     <button id="job-toggle-btn" onclick="handleJobStatusToggle()" disabled 
-                            class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-xs px-2.5 py-2 rounded opacity-30 pointer-events-none transition-all min-h-[38px] font-semibold shadow-sm whitespace-nowrap">
+                            class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-[11px] sm:text-xs px-2 sm:px-2.5 py-1 sm:py-2 rounded opacity-30 pointer-events-none transition-all min-h-[28px] sm:min-h-[38px] font-semibold shadow-sm whitespace-nowrap">
                         Job Completed
                     </button>
                 </div>
@@ -614,38 +614,38 @@
         </div>
 
                 <!-- Metric Figures (KPI Counters) -->
-        <div class="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2 shrink-0">
-            <div class="linear-card p-2 sm:p-2.5 rounded text-center flex flex-col items-center justify-center">
-                <span class="text-[10px] text-slate-400 block font-medium">Total Pool</span>
-                <span id="kpi-total" class="text-xl sm:text-3xl font-extrabold mt-0.5 mb-0.5 block table-text-theme font-mono">0</span>
-                <span class="text-[9px] text-slate-500 block truncate">Assigned pool</span>
+        <div class="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-1 sm:gap-2 shrink-0">
+            <div class="linear-card p-1 sm:p-2.5 rounded text-center flex flex-col items-center justify-center">
+                <span class="text-[9px] sm:text-[10px] text-slate-400 block font-medium">Total Pool</span>
+                <span id="kpi-total" class="text-base sm:text-3xl font-extrabold my-0 sm:my-0.5 block table-text-theme font-mono">0</span>
+                <span class="text-[8px] sm:text-[9px] text-slate-500 hidden sm:block truncate">Assigned pool</span>
             </div>
             
-            <span class="text-lg sm:text-2xl font-extrabold text-slate-400 text-center px-0.5">-</span>
+            <span class="text-sm sm:text-2xl font-extrabold text-slate-400 text-center px-0.5">-</span>
 
-            <div class="linear-card p-2 sm:p-2.5 rounded text-center flex flex-col items-center justify-center">
-                <span class="text-[10px] text-[#2ed573] block font-medium">Verified</span>
-                <span id="kpi-consumed" class="text-xl sm:text-3xl font-extrabold mt-0.5 mb-0.5 block text-[#2ed573] font-mono">0</span>
-                <span class="text-[9px] text-slate-500 block truncate">Verified codes</span>
+            <div class="linear-card p-1 sm:p-2.5 rounded text-center flex flex-col items-center justify-center">
+                <span class="text-[9px] sm:text-[10px] text-[#2ed573] block font-medium">Verified</span>
+                <span id="kpi-consumed" class="text-base sm:text-3xl font-extrabold my-0 sm:my-0.5 block text-[#2ed573] font-mono">0</span>
+                <span class="text-[8px] sm:text-[9px] text-slate-500 hidden sm:block truncate">Verified codes</span>
             </div>
 
-            <span class="text-lg sm:text-2xl font-extrabold text-slate-400 text-center px-0.5">=</span>
+            <span class="text-sm sm:text-2xl font-extrabold text-slate-400 text-center px-0.5">=</span>
 
-            <div class="linear-card p-2 sm:p-2.5 rounded text-center flex flex-col items-center justify-center">
-                <span class="text-[10px] text-amber-400 block font-medium">Remaining</span>
-                <span id="kpi-pending" class="text-xl sm:text-3xl font-extrabold mt-0.5 mb-0.5 block text-amber-500 font-mono">0</span>
-                <span class="text-[9px] text-slate-500 block truncate">Remaining pool</span>
+            <div class="linear-card p-1 sm:p-2.5 rounded text-center flex flex-col items-center justify-center">
+                <span class="text-[9px] sm:text-[10px] text-amber-400 block font-medium">Remaining</span>
+                <span id="kpi-pending" class="text-base sm:text-3xl font-extrabold my-0 sm:my-0.5 block text-amber-500 font-mono">0</span>
+                <span class="text-[8px] sm:text-[9px] text-slate-500 hidden sm:block truncate">Remaining pool</span>
             </div>
         </div>
 
         <!-- Scanning Terminal Canvas -->
-        <div class="linear-card p-2.5 sm:p-3 rounded flex flex-col gap-2 shrink-0">
-            <div id="status-card" class="px-3 py-2 rounded flex flex-col md:flex-row items-center justify-center text-center gap-1 status-state-black">
+        <div class="linear-card p-1.5 sm:p-3 rounded flex flex-col gap-1.5 sm:gap-2 shrink-0">
+            <div id="status-card" class="px-2 py-1.5 sm:px-3 sm:py-2 rounded flex flex-col md:flex-row items-center justify-center text-center gap-1 status-state-black">
                 <div class="flex items-center justify-center gap-2 min-w-0">
                     <span id="status-dot" class="w-2 h-2 rounded-full bg-[#5e6ad2] shrink-0 hidden"></span>
                     <div class="min-w-0">
-                        <span id="status-heading" class="text-xs sm:text-sm font-black uppercase tracking-wider leading-snug block">To Verify Code, Select the Job ID and Enter Code Below</span>
-                        <span id="status-detail" class="text-[10px] sm:text-xs block"></span>
+                        <span id="status-heading" class="text-[11px] sm:text-sm font-black uppercase tracking-wider leading-snug block">To Verify Code, Select the Job ID and Enter Code Below</span>
+                        <span id="status-detail" class="text-[9px] sm:text-xs block"></span>
                     </div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
@@ -657,9 +657,9 @@
             <form id="scan-form" onsubmit="handleScan(event)" class="flex gap-2">
                 <div class="relative flex-1">
                     <input type="text" id="barcode-input" placeholder="Select a job to enable scanning..." disabled autocomplete="off"
-                           class="linear-input w-full px-3 py-1.5 text-xs sm:text-sm rounded min-h-[38px] opacity-40 cursor-not-allowed">
+                           class="linear-input w-full px-3 py-1 sm:py-1.5 text-xs sm:text-sm rounded min-h-[32px] sm:min-h-[38px] opacity-40 cursor-not-allowed">
                 </div>
-                <button type="submit" id="verify-btn" disabled class="linear-button-primary px-4 py-1.5 rounded text-xs font-semibold min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none">
+                <button type="submit" id="verify-btn" disabled class="linear-button-primary px-3 sm:px-4 py-1 sm:py-1.5 rounded text-xs font-semibold min-h-[32px] sm:min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none">
                     Verify
                 </button>
             </form>
@@ -692,8 +692,8 @@
                 </div>
 
                 <!-- Mobile Card Feed (Visible Only on Mobile Screens - Compact & Maximized Viewport) -->
-                <div id="recent-scans-mobile" class="md:hidden max-h-96 overflow-y-auto p-1.5 space-y-1 bg-black/20 w-full text-xs">
-                    <div class="p-4 text-center text-slate-400 italic text-xs">No Job Card selected</div>
+                <div id="recent-scans-mobile" class="md:hidden flex-1 overflow-y-auto p-1 space-y-1 bg-black/20 w-full text-xs">
+                    <div class="p-3 text-center text-slate-400 italic text-xs">No Job Card selected</div>
                 </div>
             </div>
         </div>
