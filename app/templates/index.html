@@ -569,10 +569,7 @@
 
                 <div id="job-search-container" class="relative w-full sm:w-72 flex items-center">
                     <input type="text" id="job-search" oninput="handleJobSearch()" onkeydown="handleJobSearchKeyDown(event)" placeholder="Search Job" 
-                           class="linear-input w-full pl-3.5 pr-10 py-2 sm:py-2.5 text-xs sm:text-base rounded placeholder-slate-400 shadow-inner min-h-[36px] sm:min-h-[44px]" autocomplete="off">
-                    <div id="search-shortcut-badge" title="Press / or Ctrl+K to search" class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none flex items-center select-none">
-                        <kbd class="font-mono">/</kbd>
-                    </div>
+                           class="linear-input w-full px-3.5 py-2 sm:py-2.5 text-xs sm:text-base rounded placeholder-slate-400 shadow-inner min-h-[36px] sm:min-h-[44px]" autocomplete="off">
                     <div id="job-list" role="listbox" class="absolute left-0 right-0 top-full mt-1 linear-card rounded shadow-2xl max-h-60 overflow-y-auto z-30 hidden"></div>
                 </div>
             </div>
@@ -678,7 +675,12 @@
                 <span id="footer-sys-msg" class="truncate text-slate-400 max-w-[130px] sm:max-w-md">System Ready</span>
             </div>
         </div>
-        <div class="flex items-center gap-1.5 shrink-0 ml-auto">
+        <div class="flex items-center gap-2 sm:gap-2.5 shrink-0 ml-auto">
+            <button type="button" onclick="toggleModal('shortcuts-modal')" title="Keyboard Shortcuts (F1 or ?)" class="text-slate-400 hover:text-indigo-300 text-[11px] transition-colors hidden sm:flex items-center gap-1 bg-transparent border-none p-0 cursor-pointer">
+                <span>Shortcuts</span>
+                <kbd class="bg-[#1e2029] border border-white/10 px-1 py-0.2 rounded text-[10px] font-mono font-bold">?</kbd>
+            </button>
+            <span class="text-slate-600 hidden sm:inline">&middot;</span>
             <span id="network-status-text" class="font-extrabold text-[10px] sm:text-[11px] uppercase tracking-wider text-[#2ed573]">Online</span>
         </div>
     </footer>
