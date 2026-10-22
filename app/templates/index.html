@@ -678,11 +678,12 @@
                 <div class="hidden md:block flex-1 overflow-x-auto overflow-y-auto">
                     <table class="w-full text-left whitespace-nowrap">
                         <thead>
-                            <tr class="border-b border-white/[0.08] text-[11px] font-bold text-slate-300 uppercase tracking-wider table-header-theme sticky top-0 z-10">
-                                <th class="px-2.5 py-1.5 text-left" style="text-align: left !important;">Code / QR Value</th>
-                                <th class="px-2.5 py-1.5 text-center" style="text-align: center !important;">Evaluation</th>
-                                <th class="px-2.5 py-1.5 text-center" style="text-align: center !important;">Recorded At</th>
-                                <th class="px-2.5 py-1.5 text-center" style="text-align: center !important;">Inspector</th>
+                            <tr class="border-b border-white/[0.08] text-xs font-bold text-slate-300 uppercase tracking-wider table-header-theme sticky top-0 z-10">
+                                <th class="px-3.5 py-2.5 text-left" style="text-align: left !important;">Code / QR Value</th>
+                                <th class="px-3 py-2.5 w-24 text-center" style="text-align: center !important;">Row #</th>
+                                <th class="px-3 py-2.5 text-center" style="text-align: center !important;">Evaluation</th>
+                                <th class="px-3 py-2.5 text-center" style="text-align: center !important;">Recorded At</th>
+                                <th class="px-3 py-2.5 text-center" style="text-align: center !important;">Inspector</th>
                             </tr>
                         </thead>
                         <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] table-text-theme text-[11px]">
@@ -1056,60 +1057,67 @@
     </div>
 
     <!-- Job Control Center Modal -->
-    <div id="master-jobs-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
-        <div class="linear-card p-4 sm:p-6 rounded-lg max-w-6xl w-full shadow-2xl flex flex-col max-h-[92vh]">
-            <div class="flex justify-between items-center mb-3 border-b border-white/[0.08] pb-3">
+    <div id="master-jobs-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-1.5 sm:p-4 z-50">
+        <div class="linear-card p-3 sm:p-6 rounded-lg max-w-6xl w-full shadow-2xl flex flex-col h-[96vh] sm:max-h-[92vh]">
+            <div class="flex justify-between items-center mb-2 sm:mb-3 border-b border-white/[0.08] pb-2 sm:pb-3 shrink-0">
                 <div>
-                    <h3 class="text-lg sm:text-xl font-extrabold modal-title-theme">Job Control Center</h3>
-                    <p class="text-xs modal-subtitle-theme mt-0.5">Select a status from any job row to change state directly</p>
+                    <h3 class="text-base sm:text-xl font-extrabold modal-title-theme">Job Control Center</h3>
+                    <p class="text-[10px] sm:text-xs modal-subtitle-theme mt-0.5 hidden sm:block">Select a status from any job row to change state directly</p>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="toggleModal('master-jobs-modal')" class="linear-button-secondary px-3.5 py-1.5 text-xs rounded font-medium">Close</button>
-                </div>
+                <button onclick="toggleModal('master-jobs-modal')" class="linear-button-secondary px-3 py-1 sm:px-3.5 sm:py-1.5 text-xs rounded font-medium">Close</button>
             </div>
 
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-2.5 mb-3">
-                <div class="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 md:pb-0">
-                    <button onclick="filterMasterJobs('ALL')" id="filter-tab-all" class="linear-button-primary px-3 py-1.5 rounded text-xs font-medium">All Jobs</button>
-                    <button onclick="filterMasterJobs('ACTIVE')" id="filter-tab-active" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Active Only</button>
-                    <button onclick="filterMasterJobs('INACTIVE')" id="filter-tab-inactive" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Inactive Only</button>
-                    <button onclick="filterMasterJobs('COMPLETED')" id="filter-tab-completed" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Completed Only</button>
-                    <button onclick="filterMasterJobs('STUCK')" id="filter-tab-stuck" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Pending</button>
-                    <button onclick="filterMasterJobs('DELETED')" id="filter-tab-deleted" class="linear-button-secondary px-3 py-1.5 rounded text-xs font-medium">Deleted Only</button>
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-1.5 sm:gap-2.5 mb-2 sm:mb-3 shrink-0">
+                <div class="flex gap-1 overflow-x-auto no-scrollbar pb-0.5 md:pb-0 shrink-0">
+                    <button onclick="filterMasterJobs('ALL')" id="filter-tab-all" class="linear-button-primary px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded text-[11px] sm:text-xs font-semibold whitespace-nowrap">All Jobs</button>
+                    <button onclick="filterMasterJobs('ACTIVE')" id="filter-tab-active" class="linear-button-secondary px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded text-[11px] sm:text-xs font-medium whitespace-nowrap">Active Only</button>
+                    <button onclick="filterMasterJobs('INACTIVE')" id="filter-tab-inactive" class="linear-button-secondary px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded text-[11px] sm:text-xs font-medium whitespace-nowrap">Inactive Only</button>
+                    <button onclick="filterMasterJobs('COMPLETED')" id="filter-tab-completed" class="linear-button-secondary px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded text-[11px] sm:text-xs font-medium whitespace-nowrap">Completed Only</button>
+                    <button onclick="filterMasterJobs('STUCK')" id="filter-tab-stuck" class="linear-button-secondary px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded text-[11px] sm:text-xs font-medium whitespace-nowrap">Pending</button>
+                    <button onclick="filterMasterJobs('DELETED')" id="filter-tab-deleted" class="linear-button-secondary px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded text-[11px] sm:text-xs font-medium whitespace-nowrap">Deleted Only</button>
                 </div>
                 <div class="relative w-full md:w-72">
                     <input type="text" id="master-job-search" onfocus="recordJobInteraction()" oninput="recordJobInteraction(); renderMasterJobsTable()" placeholder="Search in all jobs..." 
-                           class="linear-input w-full px-3 py-1.5 text-xs rounded placeholder-slate-500">
+                           class="linear-input w-full px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs rounded placeholder-slate-500 min-h-[32px] sm:min-h-0">
                 </div>
             </div>
 
-            <div class="flex-1 overflow-y-auto border border-white/[0.08] rounded">
-                <table class="w-full text-left whitespace-nowrap">
-                    <thead>
-                        <tr class="border-b border-white/[0.08] text-[11px] font-semibold text-slate-400 uppercase tracking-wider table-header-theme sticky top-0 z-10">
-                            <th class="px-4 py-3 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('job_card_id')">
-                                Job ID &amp; Description <span id="sort-indicator-job_card_id" class="text-[10px] text-slate-400"></span>
-                            </th>
-                            <th class="px-4 py-3 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('created_at')">
-                                Created Date <span id="sort-indicator-created_at" class="text-[10px] text-slate-400"></span>
-                            </th>
-                            <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('status')">
-                                Status <span id="sort-indicator-status" class="text-[10px] text-slate-400"></span>
-                            </th>
-                            <th class="px-4 py-3 text-left w-52 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('consumed')">
-                                Progress <span id="sort-indicator-consumed" class="text-[10px] text-slate-400"></span>
-                            </th>
-                            <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('conflict_count')">
-                                Conflicts <span id="sort-indicator-conflict_count" class="text-[10px] text-slate-400"></span>
-                            </th>
-                            <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('packing_qc_count')">
-                                Final QC <span id="sort-indicator-packing_qc_count" class="text-[10px] text-slate-400"></span>
-                            </th>
-                            <th class="px-4 py-3 text-right">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="master-jobs-rows" class="divide-y divide-white/[0.04] table-text-theme text-xs"></tbody>
-                </table>
+            <!-- Table for Desktop, Card Feed for Mobile -->
+            <div class="flex-1 overflow-y-auto border border-white/[0.08] rounded flex flex-col">
+                <!-- Desktop Table View (Hidden on Mobile) -->
+                <div class="hidden md:block flex-1 overflow-x-auto">
+                    <table class="w-full text-left whitespace-nowrap">
+                        <thead>
+                            <tr class="border-b border-white/[0.08] text-[11px] font-semibold text-slate-400 uppercase tracking-wider table-header-theme sticky top-0 z-10">
+                                <th class="px-4 py-3 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('job_card_id')">
+                                    Job ID &amp; Description <span id="sort-indicator-job_card_id" class="text-[10px] text-slate-400"></span>
+                                </th>
+                                <th class="px-4 py-3 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('created_at')">
+                                    Created Date <span id="sort-indicator-created_at" class="text-[10px] text-slate-400"></span>
+                                </th>
+                                <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('status')">
+                                    Status <span id="sort-indicator-status" class="text-[10px] text-slate-400"></span>
+                                </th>
+                                <th class="px-4 py-3 text-left w-52 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('consumed')">
+                                    Progress <span id="sort-indicator-consumed" class="text-[10px] text-slate-400"></span>
+                                </th>
+                                <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('conflict_count')">
+                                    Conflicts <span id="sort-indicator-conflict_count" class="text-[10px] text-slate-400"></span>
+                                </th>
+                                <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('packing_qc_count')">
+                                    Final QC <span id="sort-indicator-packing_qc_count" class="text-[10px] text-slate-400"></span>
+                                </th>
+                                <th class="px-4 py-3 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="master-jobs-rows" class="divide-y divide-white/[0.04] table-text-theme text-xs"></tbody>
+                    </table>
+                </div>
+
+                <!-- Mobile Touch Card List (Visible Only on Mobile) -->
+                <div id="master-jobs-mobile" class="md:hidden flex-1 overflow-y-auto p-1.5 space-y-1.5">
+                    <div class="p-4 text-center text-slate-400 italic text-xs">Loading jobs...</div>
+                </div>
             </div>
         </div>
     </div>
@@ -2950,18 +2958,18 @@
                 return;
             }
 
-            // 1. Render Desktop Table Rows (Centered & Compact)
+            // 1. Render Desktop Table Rows (Legible Font & Clear Alignment)
             if (tbody) {
                 tbody.innerHTML = visibleScans.map((s) => {
                     let badge = (s.result === 'PASS' || s.result === 'Pass (Potential Restart)') ? "linear-badge-pass" : "linear-badge-fail";
                     let rowDisplay = (s.row_num && s.row_num !== '-') ? `Row ${s.row_num}` : '-';
                     return `
                         <tr class="hover:bg-black/[0.02] border-b border-white/[0.04] transition-colors text-center">
-                            <td class="px-2.5 py-1.5 font-mono text-left text-[11px]" style="text-align: left !important;">${formatCodeDisplay(s.code)}</td>
-                            <td class="px-2.5 py-1.5 text-slate-400 font-mono text-[11px] font-semibold text-center" style="text-align: center !important;">${rowDisplay}</td>
-                            <td class="px-2.5 py-1.5 text-center text-[11px]" style="text-align: center !important;"><span class="${badge} px-2 py-0.2 rounded text-[10px] font-bold">${s.result}</span></td>
-                            <td class="px-2.5 py-1.5 text-slate-400 text-[10px] font-mono text-center" style="text-align: center !important;">${s.time}</td>
-                            <td class="px-2.5 py-1.5 text-[10px] text-center font-medium text-slate-300" style="text-align: center !important;">${s.user}</td>
+                            <td class="px-3.5 py-2.5 font-mono text-left text-xs sm:text-sm" style="text-align: left !important;">${formatCodeDisplay(s.code)}</td>
+                            <td class="px-3 py-2.5 text-slate-400 font-mono text-xs font-semibold text-center" style="text-align: center !important;">${rowDisplay}</td>
+                            <td class="px-3 py-2.5 text-center" style="text-align: center !important;"><span class="${badge} px-2.5 py-0.5 rounded text-xs font-bold">${s.result}</span></td>
+                            <td class="px-3 py-2.5 text-slate-400 text-xs font-mono text-center" style="text-align: center !important;">${s.time}</td>
+                            <td class="px-3 py-2.5 text-xs text-center font-semibold text-slate-300" style="text-align: center !important;">${s.user}</td>
                         </tr>
                     `;
                 }).join('');
@@ -4833,12 +4841,87 @@
             }
 
             const tbody = document.getElementById('master-jobs-rows');
+            const mobileContainer = document.getElementById('master-jobs-mobile');
+
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400 italic text-xs">No job cards found matching '${query}'</td></tr>`;
+                if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400 italic text-xs">No job cards found matching '${query}'</td></tr>`;
+                if (mobileContainer) mobileContainer.innerHTML = `<div class="p-6 text-center text-slate-400 italic text-xs">No job cards found matching '${query}'</div>`;
                 return;
             }
 
-            tbody.innerHTML = filtered.map(j => {
+            // Render Mobile Touch Cards
+            if (mobileContainer) {
+                mobileContainer.innerHTML = filtered.map(j => {
+                    const totalNum = Number(j.total) || 0;
+                    const consumedNum = Number(j.consumed) || 0;
+                    const conflictCount = Number(j.conflict_count) || 0;
+                    const packingQcCount = Number(j.packing_qc_count) || 0;
+                    const progressPct = totalNum > 0 ? ((consumedNum / totalNum) * 100).toFixed(1) : '0.0';
+
+                    let statusClass = 'status-active';
+                    if (j.status === 'INACTIVE') statusClass = 'status-inactive';
+                    else if (j.status === 'COMPLETED') statusClass = 'status-completed';
+
+                    let statusDropdown = ['ACTIVE', 'INACTIVE', 'COMPLETED'].includes(j.status)
+                        ? `<select onfocus="recordJobInteraction()" onchange="recordJobInteraction(); handleJobStatusDropdownChange(this, '${j.job_card_id}', '${j.status}')" class="job-status-pill ${statusClass} text-[10px] py-0.5 px-2">
+                               <option value="ACTIVE" class="bg-[#12141a] text-emerald-400" ${j.status === 'ACTIVE' ? 'selected' : ''}>Active</option>
+                               <option value="INACTIVE" class="bg-[#12141a] text-amber-400" ${j.status === 'INACTIVE' ? 'selected' : ''}>Inactive</option>
+                               <option value="COMPLETED" class="bg-[#12141a] text-slate-400" ${j.status === 'COMPLETED' ? 'selected' : ''}>Completed</option>
+                           </select>`
+                        : `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold linear-badge-fail">${j.status}</span>`;
+
+                    let conflictHtml = conflictCount > 0
+                        ? `<button type="button" onclick="openConflictReportFromMasterJobs(${j.run_id}, '${j.job_card_id}', ${conflictCount}, ${j.total || 0}, '${j.status}')" class="bg-amber-500/15 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold">⚠️ ${conflictCount} Conflict</button>`
+                        : '';
+
+                    let finalQcHtml = packingQcCount > 0
+                        ? `<button onclick="openPackingQCReportFromAdmin('${j.job_card_id}')" class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold">✓ ${packingQcCount} QC</button>`
+                        : '';
+
+                    let actionBtn = (consumedNum === 0 || j.status === 'FAILED')
+                        ? `<button onclick="purgeJobFromAdmin(${j.run_id}, '${j.job_card_id}')" class="btn-ghost-danger py-0.5 px-1.5 text-[10px]">Purge</button>`
+                        : '';
+
+                    return `
+                        <div class="linear-subcard p-2 rounded flex flex-col gap-1 shadow-sm border border-white/[0.06]">
+                            <div class="flex items-center justify-between gap-1">
+                                <div class="inline-flex items-center gap-1.5 min-w-0">
+                                    <button type="button" class="font-mono text-indigo-400 hover:text-indigo-300 font-bold text-xs bg-transparent border-none p-0 cursor-pointer text-left truncate"
+                                            onclick="openJobFromMaster('${j.job_card_id}', '${encodeURIComponent(j.description || '')}', '${j.status}', ${j.consumed}, ${j.total})">
+                                        ${j.job_card_id}
+                                    </button>
+                                    <button type="button" onclick="copyJobCardNumber('${j.job_card_id}', this)" class="text-slate-500 text-[10px] p-0.5 border-none bg-transparent" title="Copy">📋</button>
+                                </div>
+                                <div class="shrink-0">${statusDropdown}</div>
+                            </div>
+
+                            <div class="text-[11px] text-slate-400 truncate font-medium">
+                                ${j.description || '<span class="italic text-slate-500">No description</span>'}
+                            </div>
+
+                            <div class="flex items-center justify-between gap-2 pt-0.5">
+                                <span class="text-[10px] font-mono text-slate-300 font-bold">${consumedNum.toLocaleString()} <span class="text-slate-500 font-normal">/ ${totalNum.toLocaleString()}</span></span>
+                                <span class="text-[10px] text-slate-400 font-mono">${progressPct}%</span>
+                            </div>
+                            <div class="job-progress-track mt-0">
+                                <div class="job-progress-fill ${consumedNum > 0 ? 'bg-indigo-500' : 'bg-slate-500/30'}" style="width: ${Math.min(100, progressPct)}%"></div>
+                            </div>
+
+                            <div class="flex items-center justify-between pt-1 text-[10px] text-slate-500 border-t border-white/[0.04]">
+                                <span>${j.created_at ? j.created_at.split(' ')[0] : '-'}</span>
+                                <div class="flex items-center gap-1">
+                                    ${conflictHtml}
+                                    ${finalQcHtml}
+                                    ${actionBtn}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Render Desktop Table Rows
+            if (tbody) tbody.innerHTML = filtered.map(j => {
                 const totalNum = Number(j.total) || 0;
                 const consumedNum = Number(j.consumed) || 0;
                 const conflictCount = Number(j.conflict_count) || 0;
