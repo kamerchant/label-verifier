@@ -572,7 +572,7 @@
 
     <!-- Main Workspace -->
    
-    <main class="max-w-6xl w-full mx-auto px-3 sm:px-6 py-3 sm:py-4 flex-1 overflow-y-auto flex flex-col gap-3 sm:gap-4">
+    <main class="max-w-6xl w-full mx-auto px-2 sm:px-6 py-1.5 sm:py-4 flex-1 overflow-hidden flex flex-col gap-1.5 sm:gap-4">
 
         <!-- Job Context Ribbon, Search Bar, & Action Buttons -->
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
@@ -613,60 +613,62 @@
             </div>
         </div>
 
-                <!-- Metric Figures (KPI Counters) -->
+        <!-- Metric Figures (KPI Counters) -->
         <div class="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-1 sm:gap-2 shrink-0">
-            <div class="linear-card p-1 sm:p-2.5 rounded text-center flex flex-col items-center justify-center">
-                <span class="text-[9px] sm:text-[10px] text-slate-400 block font-medium">Total Pool</span>
-                <span id="kpi-total" class="text-base sm:text-3xl font-extrabold my-0 sm:my-0.5 block table-text-theme font-mono">0</span>
-                <span class="text-[8px] sm:text-[9px] text-slate-500 hidden sm:block truncate">Assigned pool</span>
+            <div class="linear-card px-2 py-1 sm:p-2.5 rounded text-center flex flex-row sm:flex-col items-center justify-center gap-1.5 sm:gap-0">
+                <span class="text-[9px] sm:text-[10px] text-slate-400 font-medium">Total:</span>
+                <span id="kpi-total" class="text-xs sm:text-3xl font-extrabold block table-text-theme font-mono">0</span>
+                <span class="text-[9px] text-slate-500 hidden sm:block truncate">Assigned pool</span>
             </div>
             
-            <span class="text-sm sm:text-2xl font-extrabold text-slate-400 text-center px-0.5">-</span>
+            <span class="text-xs sm:text-2xl font-bold text-slate-400 text-center">-</span>
 
-            <div class="linear-card p-1 sm:p-2.5 rounded text-center flex flex-col items-center justify-center">
-                <span class="text-[9px] sm:text-[10px] text-[#2ed573] block font-medium">Verified</span>
-                <span id="kpi-consumed" class="text-base sm:text-3xl font-extrabold my-0 sm:my-0.5 block text-[#2ed573] font-mono">0</span>
-                <span class="text-[8px] sm:text-[9px] text-slate-500 hidden sm:block truncate">Verified codes</span>
+            <div class="linear-card px-2 py-1 sm:p-2.5 rounded text-center flex flex-row sm:flex-col items-center justify-center gap-1.5 sm:gap-0">
+                <span class="text-[9px] sm:text-[10px] text-[#2ed573] font-medium">Verified:</span>
+                <span id="kpi-consumed" class="text-xs sm:text-3xl font-extrabold block text-[#2ed573] font-mono">0</span>
+                <span class="text-[9px] text-slate-500 hidden sm:block truncate">Verified codes</span>
             </div>
 
-            <span class="text-sm sm:text-2xl font-extrabold text-slate-400 text-center px-0.5">=</span>
+            <span class="text-xs sm:text-2xl font-bold text-slate-400 text-center">=</span>
 
-            <div class="linear-card p-1 sm:p-2.5 rounded text-center flex flex-col items-center justify-center">
-                <span class="text-[9px] sm:text-[10px] text-amber-400 block font-medium">Remaining</span>
-                <span id="kpi-pending" class="text-base sm:text-3xl font-extrabold my-0 sm:my-0.5 block text-amber-500 font-mono">0</span>
-                <span class="text-[8px] sm:text-[9px] text-slate-500 hidden sm:block truncate">Remaining pool</span>
+            <div class="linear-card px-2 py-1 sm:p-2.5 rounded text-center flex flex-row sm:flex-col items-center justify-center gap-1.5 sm:gap-0">
+                <span class="text-[9px] sm:text-[10px] text-amber-400 font-medium">Rem:</span>
+                <span id="kpi-pending" class="text-xs sm:text-3xl font-extrabold block text-amber-500 font-mono">0</span>
+                <span class="text-[9px] text-slate-500 hidden sm:block truncate">Remaining pool</span>
             </div>
         </div>
 
+
         <!-- Scanning Terminal Canvas -->
-        <div class="linear-card p-1.5 sm:p-3 rounded flex flex-col gap-1.5 sm:gap-2 shrink-0">
-            <div id="status-card" class="px-2 py-1.5 sm:px-3 sm:py-2 rounded flex flex-col md:flex-row items-center justify-center text-center gap-1 status-state-black">
-                <div class="flex items-center justify-center gap-2 min-w-0">
-                    <span id="status-dot" class="w-2 h-2 rounded-full bg-[#5e6ad2] shrink-0 hidden"></span>
+        <div class="linear-card p-1 sm:p-3 rounded flex flex-col gap-1 sm:gap-2 shrink-0">
+            <div id="status-card" class="px-1.5 py-1 sm:py-2 rounded flex items-center justify-center text-center gap-1 status-state-black">
+                <div class="flex items-center justify-center gap-1.5 min-w-0">
+                    <span id="status-dot" class="w-1.5 h-1.5 rounded-full bg-[#5e6ad2] shrink-0 hidden"></span>
                     <div class="min-w-0">
-                        <span id="status-heading" class="text-[11px] sm:text-sm font-black uppercase tracking-wider leading-snug block">To Verify Code, Select the Job ID and Enter Code Below</span>
-                        <span id="status-detail" class="text-[9px] sm:text-xs block"></span>
+                        <span id="status-heading" class="text-[9.5px] sm:text-sm font-bold uppercase tracking-tight block truncate">Select Job ID and scan or enter code below</span>
+                        <span id="status-detail" class="text-[9px] sm:text-xs block empty:hidden"></span>
                     </div>
                 </div>
-                <div class="flex items-center gap-2 shrink-0">
-                    <span id="status-last-code" class="text-xs max-w-[150px] truncate hidden"></span>
-                    <span id="status-badge" class="px-2 py-0.5 rounded text-[10px] font-bold hidden"></span>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <span id="status-last-code" class="text-[10px] max-w-[120px] truncate hidden"></span>
+                    <span id="status-badge" class="px-1.5 py-0.2 rounded text-[9px] font-bold hidden"></span>
                 </div>
             </div>
 
-            <form id="scan-form" onsubmit="handleScan(event)" class="flex gap-2">
+            <form id="scan-form" onsubmit="handleScan(event)" class="flex gap-1.5">
                 <div class="relative flex-1">
                     <input type="text" id="barcode-input" placeholder="Select a job to enable scanning..." disabled autocomplete="off"
-                           class="linear-input w-full px-3 py-1 sm:py-1.5 text-xs sm:text-sm rounded min-h-[32px] sm:min-h-[38px] opacity-40 cursor-not-allowed">
+                           class="linear-input w-full px-2.5 py-1 text-xs sm:text-sm rounded min-h-[30px] sm:min-h-[38px] opacity-40 cursor-not-allowed">
                 </div>
-                <button type="submit" id="verify-btn" disabled class="linear-button-primary px-3 sm:px-4 py-1 sm:py-1.5 rounded text-xs font-semibold min-h-[32px] sm:min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none">
+                <button type="submit" id="verify-btn" disabled class="linear-button-primary px-3 py-1 rounded text-xs font-semibold min-h-[30px] sm:min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none">
                     Verify
                 </button>
             </form>
         </div>
 
+
         <!-- Verification Stream Table -->
-        <div class="linear-card rounded overflow-hidden flex-1 flex flex-col">
+        <div class="linear-card rounded overflow-hidden flex-1 min-h-[140px] flex flex-col">
             <div class="px-2 py-1.5 border-b border-white/[0.08] flex items-center justify-center text-[10px] shrink-0 bg-[#12141a]">
                 <span class="text-[10px] sm:text-xs font-black uppercase tracking-wider text-white text-center block w-full">Verification Stream</span>
             </div>
@@ -701,36 +703,21 @@
     </main>
 
     <!-- Footer Information Bar with Audit Trail Link -->
-    <footer class="border-t px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between text-xs text-slate-300 shrink-0 bg-[#0d0e11] z-40 gap-2">
-        <div class="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
-            <div class="flex items-center gap-2 shrink-0">
-                <button onclick="openGlobalAuditTrailModal()" class="text-indigo-400 hover:text-indigo-300 underline font-semibold cursor-pointer bg-transparent border-none p-0 text-xs transition-colors flex items-center gap-1">
-                    Audit Trail
-                </button>
-                <span class="text-slate-600">&middot;</span>
-                <span id="user-display" class="truncate max-w-[150px] sm:max-w-none table-text-theme font-medium">Checking session...</span>
-            </div>
+    <footer class="border-t px-2 sm:px-6 py-1 sm:py-2 flex items-center justify-between text-[11px] text-slate-300 shrink-0 bg-[#0d0e11] z-40 gap-1.5">
+        <div class="flex items-center gap-1.5 sm:gap-3 min-w-0 truncate">
+            <button onclick="openGlobalAuditTrailModal()" class="text-indigo-400 hover:text-indigo-300 underline font-semibold cursor-pointer bg-transparent border-none p-0 text-[11px] shrink-0">Audit</button>
             <span class="text-slate-600 shrink-0">&middot;</span>
-            <button onclick="toggleTheme()" class="text-slate-300 hover:text-indigo-400 underline cursor-pointer bg-transparent border-none p-0 text-xs transition-colors shrink-0" title="Switch Theme">
-                Theme: <span id="theme-name-text" class="table-text-theme font-semibold">Obsidian</span>
-            </button>
-            <span class="text-slate-600 shrink-0">&middot;</span>
-            <button onclick="openTimezoneModal()" class="text-slate-300 hover:text-indigo-400 underline cursor-pointer bg-transparent border-none p-0 text-xs transition-colors shrink-0" title="Change Time Zone">
-                Time Zone: <span id="tz-name-text" class="table-text-theme font-semibold">UTC+05:00 (Karachi, Islamabad)</span>
-            </button>
-            <span class="text-slate-600 shrink-0">&middot;</span>
-            <div id="footer-sys-msg-box" class="flex items-center gap-1.5 text-xs truncate transition-all">
+            <span id="user-display" class="truncate max-w-[90px] sm:max-w-none table-text-theme font-medium">Operator</span>
+            <span class="text-slate-600 shrink-0 hidden sm:inline">&middot;</span>
+            <button onclick="toggleTheme()" class="text-slate-300 hover:text-indigo-400 underline cursor-pointer bg-transparent border-none p-0 text-[11px] shrink-0 hidden sm:inline">Theme: <span id="theme-name-text" class="font-semibold">Obsidian</span></button>
+            <span class="text-slate-600 shrink-0 hidden sm:inline">&middot;</span>
+            <div id="footer-sys-msg-box" class="flex items-center gap-1 text-[11px] truncate">
                 <span id="footer-sys-dot" class="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0"></span>
-                <span id="footer-sys-msg" class="truncate text-slate-400 max-w-[200px] sm:max-w-xs md:max-w-md">System Ready</span>
+                <span id="footer-sys-msg" class="truncate text-slate-400 max-w-[130px] sm:max-w-md">System Ready</span>
             </div>
         </div>
-        <div class="flex items-center gap-3 shrink-0 ml-auto">
-            <button type="button" onclick="toggleModal('shortcuts-modal')" title="Keyboard Shortcuts (F1 or ?)" class="text-slate-400 hover:text-indigo-300 text-xs transition-colors hidden sm:flex items-center gap-1">
-                <span>Shortcuts</span>
-                <kbd class="bg-[#1e2029] border border-white/10 px-1 py-0.2 rounded text-[10px] font-mono font-bold">?</kbd>
-            </button>
-            <span class="text-slate-600 hidden sm:inline">&middot;</span>
-            <span id="network-status-text" class="font-extrabold text-[11px] uppercase tracking-wider text-[#2ed573]">Online</span>
+        <div class="flex items-center gap-1.5 shrink-0 ml-auto">
+            <span id="network-status-text" class="font-extrabold text-[10px] sm:text-[11px] uppercase tracking-wider text-[#2ed573]">Online</span>
         </div>
     </footer>
 
