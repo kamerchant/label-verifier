@@ -548,24 +548,44 @@
 <body class="h-screen h-[100dvh] overflow-hidden flex flex-col justify-between selection:bg-[#5e6ad2] selection:text-white">
 
     <!-- Top Command Navigation Bar -->
-    <header class="border-b border-white/[0.08] bg-[#0d0e11]/95 backdrop-blur-md px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between text-sm shrink-0 z-40 gap-2">
-        <div class="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
-            <div class="bg-white px-2 py-1 rounded shadow-sm flex items-center justify-center shrink-0">
-                <img src="/static/logo.jpg" alt="CCL Logo" class="h-5 sm:h-7 w-auto max-w-[80px] sm:max-w-[110px] object-contain block" onerror="this.onerror=null; this.src='/logo.jpg';">
+    <header class="border-b border-white/[0.08] bg-[#0d0e11]/95 backdrop-blur-md px-2.5 sm:px-6 py-1.5 sm:py-2.5 flex flex-col sm:flex-row sm:items-center justify-between text-sm shrink-0 z-40 gap-1.5 sm:gap-2">
+        <div class="flex items-center justify-between w-full sm:w-auto shrink-0 gap-2">
+            <div class="flex items-center gap-2 sm:gap-3.5 min-w-0">
+                <div class="bg-white px-1.5 sm:px-2 py-0.5 sm:py-1 rounded shadow-sm flex items-center justify-center shrink-0">
+                    <img src="/static/logo.jpg" alt="CCL Logo" class="h-4 sm:h-7 w-auto max-w-[70px] sm:max-w-[110px] object-contain block" onerror="this.onerror=null; this.src='/logo.jpg';">
+                </div>
+                <div class="flex flex-col min-w-0 truncate">
+                    <span class="font-bold text-white text-[11px] sm:text-sm tracking-tight leading-tight truncate">Variable Data Verification System</span>
+                    <span class="text-[9px] sm:text-xs text-indigo-300 font-medium tracking-wide uppercase opacity-90 truncate">CCL Middle East – Pakistan</span>
+                </div>
             </div>
-            <div class="flex flex-col">
-                <span class="font-bold text-white text-xs sm:text-sm tracking-tight leading-tight">Variable Data Verification System</span>
-                <span class="text-[10px] sm:text-xs text-indigo-300 font-medium tracking-wide uppercase opacity-90">CCL Middle East – Pakistan</span>
-            </div>
+            <!-- Logout Button: Top-Right on Mobile -->
+            <button onclick="logout()" class="sm:hidden bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-2 py-1 rounded text-[10px] font-semibold whitespace-nowrap min-h-[26px] flex items-center shrink-0">
+                Logout
+            </button>
         </div>
 
-        <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto py-0.5 sm:py-1 px-1 shrink-0" style="-webkit-overflow-scrolling: touch;">
-            <button onclick="openPackingQCModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-bold whitespace-nowrap min-h-[28px] sm:min-h-[34px] flex items-center shadow-md transition-colors shrink-0">Final QC</button>
-            <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-2.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-semibold whitespace-nowrap min-h-[28px] sm:min-h-[34px] flex items-center shrink-0">Create Job</button>
-            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-2.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-medium whitespace-nowrap min-h-[28px] sm:min-h-[34px] flex items-center shrink-0">Job Control Center</button>
-            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-2.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-medium whitespace-nowrap min-h-[28px] sm:min-h-[34px] flex items-center shrink-0">User Management</button>
-            <button onclick="openChangePasswordModal()" class="linear-button-secondary px-2.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-medium whitespace-nowrap min-h-[28px] sm:min-h-[34px] flex items-center shrink-0">Change Password</button>
-            <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-medium transition-colors whitespace-nowrap min-h-[28px] sm:min-h-[34px] flex items-center shrink-0">Logout</button>
+        <!-- 4-Button Action Strip (1 Line on Mobile with 2-Line Text Centering) -->
+        <div class="grid grid-cols-4 sm:flex sm:items-center gap-1 sm:gap-2 w-full sm:w-auto shrink-0">
+            <button onclick="openPackingQCModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-1 sm:px-3 py-1 sm:py-1.5 rounded text-[10px] sm:text-xs font-bold shadow-md transition-colors flex flex-col sm:flex-row items-center justify-center text-center leading-[1.1] sm:leading-tight min-h-[32px] sm:min-h-[34px] sm:whitespace-nowrap">
+                <span>Final</span><span>QC</span>
+            </button>
+            <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-2.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-semibold whitespace-nowrap min-h-[28px] sm:min-h-[34px] sm:inline-flex items-center shrink-0">
+                Create Job
+            </button>
+            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-1 sm:px-3 py-1 sm:py-1.5 rounded text-[10px] sm:text-xs font-medium sm:font-semibold flex flex-col sm:flex-row items-center justify-center text-center leading-[1.1] sm:leading-tight min-h-[32px] sm:min-h-[34px] sm:whitespace-nowrap">
+                <span>Control</span><span>Center</span>
+            </button>
+            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-1 sm:px-3 py-1 sm:py-1.5 rounded text-[10px] sm:text-xs font-medium sm:font-semibold flex flex-col sm:flex-row items-center justify-center text-center leading-[1.1] sm:leading-tight min-h-[32px] sm:min-h-[34px] sm:whitespace-nowrap">
+                <span>User</span><span>Mgmt</span>
+            </button>
+            <button onclick="openChangePasswordModal()" class="linear-button-secondary px-1 sm:px-3 py-1 sm:py-1.5 rounded text-[10px] sm:text-xs font-medium sm:font-semibold flex flex-col sm:flex-row items-center justify-center text-center leading-[1.1] sm:leading-tight min-h-[32px] sm:min-h-[34px] sm:whitespace-nowrap">
+                <span>Change</span><span>Pass</span>
+            </button>
+            <!-- Desktop Logout Button -->
+            <button onclick="logout()" class="hidden sm:inline-flex bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-medium transition-colors whitespace-nowrap min-h-[28px] sm:min-h-[34px] items-center shrink-0">
+                Logout
+            </button>
         </div>
     </header>
 
@@ -2322,7 +2342,7 @@
                     if (uploadBtn) {
                         if (data.can_upload || isManagerOrAdmin) {
                             uploadBtn.classList.remove('hidden');
-                            uploadBtn.style.display = 'inline-flex';
+                            uploadBtn.style.display = window.innerWidth >= 640 ? 'inline-flex' : 'none';
                         } else {
                             uploadBtn.classList.add('hidden');
                             uploadBtn.style.display = 'none';
