@@ -1647,13 +1647,13 @@ def verify_code(
                             "row_num": row_num
                         })
 
+                    # Stage updates and logs in one single transaction (no premature commit)
                     cur.execute("UPDATE codes SET status = 'CONSUMED', scanned_at = NOW() WHERE id = %s", (code_id,))
                     cur.execute("UPDATE job_cards SET consumed_codes = consumed_codes + 1 WHERE run_id = %s", (active_run_id,))
-                    conn.commit()
 
                     eval_result = "Pass (Potential Restart)"
                     msg = f"Potential file restart: row ({row_num}) is lower than previously scanned ({max_consumed_row_num})."
-                    log_scan(eval_result, msg)
+                    log_scan(eval_result, msg)  # Atomic single commit handles codes, job_cards, and scan_logs together
                     return JSONResponse(status_code=200, content={
                         "result": eval_result,
                         "message": msg,
@@ -1662,13 +1662,13 @@ def verify_code(
                     })
 
                 if current_status in ('PENDING', 'BLOCKED'):
+                    # Stage updates and logs in one single transaction (no premature commit)
                     cur.execute("UPDATE codes SET status = 'CONSUMED', scanned_at = NOW() WHERE id = %s", (code_id,))
                     cur.execute("UPDATE job_cards SET consumed_codes = consumed_codes + 1 WHERE run_id = %s", (active_run_id,))
-                    conn.commit()
 
                     eval_result = "PASS"
                     msg = f"Verified: {exact_code}"
-                    log_scan(eval_result, msg)
+                    log_scan(eval_result, msg)  # Atomic single commit handles codes, job_cards, and scan_logs together
                     return JSONResponse(status_code=200, content={
                         "result": eval_result,
                         "message": msg,
@@ -1715,6 +1715,11 @@ def verify_code(
                 "row_num": "-"
             })
     except Exception as e:
+        if conn:
+            try:
+                conn.rollback()  # Cleanly roll back any partial uncommitted changes
+            except Exception:
+                pass
         return JSONResponse(status_code=200, content={
             "result": "ERROR",
             "message": f"Server verification error: {str(e)}",
