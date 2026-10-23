@@ -595,7 +595,7 @@
 
         <!-- Job Context Ribbon, Search Bar, & Action Buttons -->
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-1.5 sm:gap-3 shrink-0">
-            <div class="flex items-center justify-between gap-2 min-w-0">
+            <div class="flex items-center justify-between gap-2 min-w-0 relative">
                 <div class="min-w-0">
                     <h1 id="active-title-card" class="text-base sm:text-2xl font-extrabold tracking-tight truncate flex items-center gap-1.5 sm:gap-2 table-text-theme">
                         <span>Job: <span id="active-job-id-text">None</span></span>
@@ -604,29 +604,32 @@
                     <p id="header-job-desc" class="text-[10px] sm:text-xs text-slate-400 truncate hidden sm:block">Search active production jobs using the search field.</p>
                 </div>
 
-                <!-- Mobile 'More Actions' Toggle Button -->
-                <button type="button" id="mobile-actions-toggle-btn" onclick="toggleMobileActionsMenu()" class="sm:hidden linear-button-secondary px-2.5 py-1 rounded text-[11px] font-bold flex items-center gap-1 shrink-0">
-                    <span>Actions</span>
-                    <span id="mobile-actions-caret">▾</span>
-                </button>
+                <!-- Mobile 'More Actions' Toggle Button & Dropdown Container -->
+                <div class="relative sm:static flex items-center">
+                    <button type="button" id="mobile-actions-toggle-btn" onclick="toggleMobileActionsMenu()" class="sm:hidden linear-button-secondary px-2.5 py-1 rounded text-[11px] font-bold flex items-center gap-1 shrink-0">
+                        <span>Actions</span>
+                        <span id="mobile-actions-caret">▾</span>
+                    </button>
+
+                    <!-- Action Controls: Compact Dropdown Drawer on Mobile, Inline Strip on Desktop -->
+                    <div id="job-actions-wrapper" class="hidden sm:flex flex-col sm:flex-row sm:items-center gap-1.5 shrink-0 p-2.5 sm:p-0 linear-card sm:bg-transparent rounded-lg sm:rounded-none border border-white/[0.12] sm:border-0 shadow-2xl sm:shadow-none absolute sm:relative right-0 sm:right-auto top-full sm:top-auto mt-2 sm:mt-0 z-50 min-w-[160px] sm:min-w-0">
+                        <button id="report-btn" onclick="openReportModal()" disabled 
+                                class="linear-button-secondary text-[11px] sm:text-xs px-3 py-2 sm:py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[32px] sm:min-h-[38px] font-medium shadow-sm whitespace-nowrap text-center justify-center flex items-center w-full sm:w-auto">
+                            QC Report
+                        </button>
+                        <button id="lifecycle-btn" onclick="openLifecycleModal()" disabled 
+                                class="linear-button-secondary text-[11px] sm:text-xs px-3 py-2 sm:py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[32px] sm:min-h-[38px] font-medium shadow-sm whitespace-nowrap text-center justify-center flex items-center w-full sm:w-auto">
+                            Lifecycle Audit
+                        </button>
+                        <button id="job-toggle-btn" onclick="handleJobStatusToggle()" disabled 
+                                class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-[11px] sm:text-xs px-3 py-2 sm:py-2 rounded opacity-30 pointer-events-none transition-all min-h-[32px] sm:min-h-[38px] font-semibold shadow-sm whitespace-nowrap text-center justify-center flex items-center w-full sm:w-auto">
+                            Job Completed
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto shrink-0">
-                <!-- Action Controls: Compact Dropdown Drawer on Mobile, Inline Strip on Desktop -->
-                <div id="job-actions-wrapper" class="hidden sm:flex flex-col sm:flex-row sm:items-center gap-1.5 shrink-0 p-2 sm:p-0 linear-card sm:bg-transparent rounded sm:rounded-none border border-white/[0.08] sm:border-0 shadow-lg sm:shadow-none absolute sm:relative right-2 sm:right-auto top-full sm:top-auto mt-1 sm:mt-0 z-30">
-                    <button id="report-btn" onclick="openReportModal()" disabled 
-                            class="linear-button-secondary text-[11px] sm:text-xs px-3 py-1.5 sm:py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[32px] sm:min-h-[38px] font-medium shadow-sm whitespace-nowrap text-center justify-center flex items-center">
-                        QC Report
-                    </button>
-                    <button id="lifecycle-btn" onclick="openLifecycleModal()" disabled 
-                            class="linear-button-secondary text-[11px] sm:text-xs px-3 py-1.5 sm:py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[32px] sm:min-h-[38px] font-medium shadow-sm whitespace-nowrap text-center justify-center flex items-center">
-                        Lifecycle Audit
-                    </button>
-                    <button id="job-toggle-btn" onclick="handleJobStatusToggle()" disabled 
-                            class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-[11px] sm:text-xs px-3 py-1.5 sm:py-2 rounded opacity-30 pointer-events-none transition-all min-h-[32px] sm:min-h-[38px] font-semibold shadow-sm whitespace-nowrap text-center justify-center flex items-center">
-                        Job Completed
-                    </button>
-                </div>
 
                 <div id="job-search-container" class="relative w-full sm:w-72 flex items-center">
                     <input type="text" id="job-search" oninput="handleJobSearch()" onkeydown="handleJobSearchKeyDown(event)" placeholder="Search Job" 
