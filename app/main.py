@@ -1411,14 +1411,22 @@ def proceed_override_job(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            # 1. Acquire exclusive row lock to serialize concurrent proceed or cancel requests
             cur.execute("""
                 SELECT job_card_id, status, total_codes, conflict_count, staged_file_path 
                 FROM job_cards 
                 WHERE run_id = %s
+                FOR UPDATE
             """, (run_id,))
             row = cur.fetchone()
-            if not row or row[1] != 'CONFLICT_DETECTED':
-                raise HTTPException(status_code=400, detail="Job is not awaiting duplicate override.")
+            if not row:
+                raise HTTPException(status_code=404, detail="Job Card not found")
+            
+            if row[1] != 'CONFLICT_DETECTED':
+                raise HTTPException(
+                    status_code=409, 
+                    detail=f"Job Card is currently '{row[1]}' and is no longer awaiting conflict resolution."
+                )
 
             job_card_id, _, total_codes, conflicts, clean_tsv_path = row
 
@@ -1428,9 +1436,21 @@ def proceed_override_job(
                     detail="Staged temporary file was cleared by server restart. Please delete this job card and re-upload."
                 )
 
-            cur.execute("UPDATE job_cards SET status = 'OVERRIDING', ingestion_progress = 'Starting background database insertion...' WHERE run_id = %s", (run_id,))
+            # 2. Atomic conditional state transition: guarantees single-worker execution
+            cur.execute("""
+                UPDATE job_cards 
+                SET status = 'OVERRIDING', 
+                    ingestion_progress = 'Starting background database insertion...' 
+                WHERE run_id = %s AND status = 'CONFLICT_DETECTED'
+            """, (run_id,))
+            
+            if cur.rowcount != 1:
+                conn.rollback()
+                raise HTTPException(status_code=409, detail="Concurrent state modification detected. Action aborted.")
+
             conn.commit()
 
+            # 3. Spawn background worker only after lock release and verified state change
             override_thread = threading.Thread(
                 target=process_override_worker,
                 args=(run_id, job_card_id, clean_tsv_path, conflicts, total_codes, user["username"], clean_reason, should_skip),
@@ -1449,31 +1469,30 @@ def proceed_override_job(
 
 @app.post("/api/jobs/{run_id}/cancel-upload")
 def cancel_upload_job(run_id: int, user: dict = Depends(require_uploader)):
+    file_to_cleanup = None
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT staged_file_path, job_card_id, status FROM job_cards WHERE run_id = %s", (run_id,))
+            # 1. Acquire exclusive row lock to block competing proceed operations
+            cur.execute("""
+                SELECT staged_file_path, job_card_id, status 
+                FROM job_cards 
+                WHERE run_id = %s
+                FOR UPDATE
+            """, (run_id,))
             row = cur.fetchone()
             if not row:
                 raise HTTPException(status_code=404, detail="Job Card not found")
 
             staged_file_path, jc_id, status = row
 
-            # Restrict cancellation strictly to pending conflict decisions or failed uploads
             if status not in ('CONFLICT_DETECTED', 'FAILED'):
                 raise HTTPException(
-                    status_code=400,
-                    detail=f"Cannot cancel Job Card '{jc_id}' in state '{status}'. Only pending uploads with detected conflicts can be cancelled."
+                    status_code=409,
+                    detail=f"Cannot cancel Job Card '{jc_id}' in state '{status}'. Only pending uploads with detected conflicts or failures can be cancelled."
                 )
 
-            # Clean up staged temporary ingestion file if present
-            if staged_file_path and os.path.exists(staged_file_path):
-                try:
-                    os.remove(staged_file_path)
-                except OSError:
-                    pass
-
-            # Record immutable audit event
+            # 2. Record immutable system audit event
             log_system_event(
                 cur, 
                 "JOB_LIFECYCLE", 
@@ -1483,13 +1502,22 @@ def cancel_upload_job(run_id: int, user: dict = Depends(require_uploader)):
                 f"Batch upload for Job Card '{jc_id}' discarded by operator during conflict review."
             )
 
-            # Clean up any partial codes and release the Job Card ID for future uploads
+            # 3. Clean up database entries first within the locked transaction
             cur.execute("DELETE FROM codes WHERE run_id = %s", (run_id,))
             cur.execute("DELETE FROM job_cards WHERE run_id = %s", (run_id,))
             conn.commit()
+
+            # 4. Stage file path for removal strictly AFTER successful database commit
+            file_to_cleanup = staged_file_path
             return {"status": "success", "message": f"Upload for Job Card '{jc_id}' successfully discarded."}
     finally:
         release_connection(conn)
+        # 5. Remove the physical file on disk outside the DB lock only if commit succeeded
+        if file_to_cleanup and os.path.exists(file_to_cleanup):
+            try:
+                os.remove(file_to_cleanup)
+            except OSError:
+                pass
 
 @app.post("/api/admin/jobs/{run_id}/purge")
 def purge_job(
