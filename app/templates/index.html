@@ -2949,7 +2949,8 @@
                     user: currentUser ? currentUser.username : 'Operator',
                     row_num: data.row_num ?? '-'
                 });
-                if (allScans.length > currentStreamLimit) allScans.pop();
+                // Cap memory buffer to 500 items during long shifts if older pages were loaded
+                if (allScans.length > 500) allScans.pop();
                 renderStreamTable();
 
             } catch (ex) {
