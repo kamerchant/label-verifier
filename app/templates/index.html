@@ -3042,7 +3042,20 @@
             renderStreamTable();
         }
 
-                function renderStreamTable() {
+                function toggleMobileScanRow(rowEl) {
+            const fullBox = rowEl.querySelector('.scan-code-full');
+            if (!fullBox) return;
+            const isHidden = fullBox.classList.contains('hidden');
+            if (isHidden) {
+                fullBox.classList.remove('hidden');
+                rowEl.classList.add('bg-white/[0.05]');
+            } else {
+                fullBox.classList.add('hidden');
+                rowEl.classList.remove('bg-white/[0.05]');
+            }
+        }
+
+        function renderStreamTable() {
             const tbody = document.getElementById('recent-scans-rows');
             const mobileContainer = document.getElementById('recent-scans-mobile');
 
@@ -3080,7 +3093,7 @@
             }
 
 
-            // 2. Render High-Legibility Floor Scan Strips
+            // 2. Render High-Legibility Floor Scan Strips with Tap-to-Expand
             if (mobileContainer) {
                 const streamCountEl = document.getElementById('stream-count-indicator');
                 if (streamCountEl) streamCountEl.innerText = `${visibleScans.length} scans`;
@@ -3094,15 +3107,26 @@
                     const timeOnly = s.time ? (s.time.split(' ')[1] || s.time) : '';
 
                     return `
-                        <div class="linear-subcard px-2.5 py-1.5 rounded ${leftBorder} flex items-center justify-between gap-2 shadow-sm font-mono text-xs leading-none hover:bg-white/[0.03]">
-                            <div class="flex items-center gap-1.5 min-w-0 truncate">
-                                <span class="text-[11px] text-indigo-400 font-extrabold shrink-0">${rowText}</span>
-                                <span class="text-slate-600 shrink-0">&middot;</span>
-                                <span class="font-extrabold table-text-theme truncate text-xs sm:text-[13px] tracking-tight">${escapeHtml(s.code)}</span>
+                        <div onclick="toggleMobileScanRow(this)" 
+                             class="linear-subcard px-2.5 py-1.5 rounded ${leftBorder} flex flex-col gap-1 shadow-sm font-mono text-xs cursor-pointer select-none transition-colors active:bg-white/[0.05] hover:bg-white/[0.02]">
+                            <div class="flex items-center justify-between gap-2 leading-none">
+                                <div class="flex items-center gap-1.5 min-w-0 truncate">
+                                    <span class="text-[11px] text-indigo-400 font-extrabold shrink-0">${rowText}</span>
+                                    <span class="text-slate-600 shrink-0">&middot;</span>
+                                    <span class="font-extrabold table-text-theme truncate text-xs sm:text-[13px] tracking-tight">${escapeHtml(s.code)}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    <span class="${badgeClass} px-2 py-0.5 rounded text-[9.5px] font-black uppercase tracking-wider">${isRestart ? 'RESTART' : escapeHtml(s.result)}</span>
+                                    <span class="text-[10px] text-slate-400 font-medium">${timeOnly}</span>
+                                </div>
                             </div>
-                            <div class="flex items-center gap-1.5 shrink-0">
-                                <span class="${badgeClass} px-2 py-0.5 rounded text-[9.5px] font-black uppercase tracking-wider">${isRestart ? 'RESTART' : escapeHtml(s.result)}</span>
-                                <span class="text-[10px] text-slate-400 font-medium">${timeOnly}</span>
+                            <!-- Expandable drawer showing full un-truncated code on tap -->
+                            <div class="scan-code-full hidden pt-1.5 mt-0.5 border-t border-white/[0.06] text-[11px] text-indigo-300 break-all select-text leading-relaxed flex items-start justify-between gap-2">
+                                <span class="break-all font-bold">${escapeHtml(s.code)}</span>
+                                <button type="button" onclick="event.stopPropagation(); copyJobCardNumber('${escapeHtml(s.code)}', this)" 
+                                        class="linear-button-secondary text-[10px] px-2 py-0.5 rounded font-semibold shrink-0" title="Copy full code">
+                                    Copy
+                                </button>
                             </div>
                         </div>
                     `;
