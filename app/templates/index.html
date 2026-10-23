@@ -1650,6 +1650,20 @@
             }
         }
 
+        // Close mobile actions drawer automatically when tapping outside
+        document.addEventListener('click', (e) => {
+            const wrapper = document.getElementById('job-actions-wrapper');
+            const toggleBtn = document.getElementById('mobile-actions-toggle-btn');
+            if (wrapper && toggleBtn && window.innerWidth < 640) {
+                if (!wrapper.classList.contains('hidden') && !wrapper.contains(e.target) && !toggleBtn.contains(e.target)) {
+                    wrapper.classList.add('hidden');
+                    wrapper.classList.remove('flex');
+                    const caret = document.getElementById('mobile-actions-caret');
+                    if (caret) caret.innerText = '▾';
+                }
+            }
+        });
+
         function escapeHtml(str) {
             if (str === null || str === undefined) return '';
             return String(str)
@@ -2642,9 +2656,11 @@
             const isHidden = wrapper.classList.contains('hidden');
             if (isHidden) {
                 wrapper.classList.remove('hidden');
+                wrapper.classList.add('flex');
                 if (caret) caret.innerText = '▴';
             } else {
                 wrapper.classList.add('hidden');
+                wrapper.classList.remove('flex');
                 if (caret) caret.innerText = '▾';
             }
         }
