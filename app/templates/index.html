@@ -1316,20 +1316,37 @@
                 </div>
             </div>
 
-            <div class="print-table-container flex-1 overflow-y-auto border border-white/[0.08] rounded">
-                <table class="w-full text-left whitespace-nowrap">
-                    <thead>
-                        <tr class="border-b border-white/[0.08] text-sm font-bold table-header-theme sticky top-0">
-                            <th class="px-3.5 py-2.5">Timestamp</th>
-                            <th class="px-3.5 py-2.5">Inspector</th>
-                            <th class="px-3.5 py-2.5">Code</th>
-                            <th class="px-3.5 py-2.5 w-24">Row #</th>
-                            <th class="px-3.5 py-2.5">Evaluation</th>
-                        </tr>
-                    </thead>
-                    <tbody id="report-log-rows" class="divide-y divide-white/[0.04] table-text-theme text-xs"></tbody>
-                </table>
+                <!-- Mobile Action Group: Job Completed Button + Reports Dropdown -->
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <button id="job-toggle-btn" onclick="handleJobStatusToggle()" disabled 
+                            class="sm:hidden bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-2.5 py-1 rounded text-[11px] font-bold opacity-30 pointer-events-none transition-all whitespace-nowrap min-h-[28px] flex items-center justify-center">
+                        Job Completed
+                    </button>
+                    
+                    <!-- Mobile 'Reports' Toggle Button -->
+                    <button type="button" id="mobile-actions-toggle-btn" onclick="toggleMobileActionsMenu()" class="sm:hidden linear-button-secondary px-2.5 py-1 rounded text-[11px] font-bold flex items-center gap-1 shrink-0">
+                        <span>Reports</span>
+                        <span id="mobile-actions-caret">▾</span>
+                    </button>
+                </div>
             </div>
+
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto shrink-0">
+                <!-- Action Controls: Compact Dropdown Drawer on Mobile (QC Report & Lifecycle Audit), Inline Strip on Desktop -->
+                <div id="job-actions-wrapper" class="hidden sm:flex flex-col sm:flex-row sm:items-center gap-1.5 shrink-0 p-2.5 sm:p-0 linear-card sm:bg-transparent rounded-lg sm:rounded-none border border-white/[0.12] sm:border-0 shadow-2xl sm:shadow-none absolute sm:relative right-0 sm:right-auto top-full sm:top-auto mt-2 sm:mt-0 z-50 min-w-[160px] sm:min-w-0">
+                    <button id="report-btn" onclick="openReportModal()" disabled 
+                            class="linear-button-secondary text-[11px] sm:text-xs px-3 py-2 sm:py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[32px] sm:min-h-[38px] font-medium shadow-sm whitespace-nowrap text-center justify-center flex items-center w-full sm:w-auto">
+                        QC Report
+                    </button>
+                    <button id="lifecycle-btn" onclick="openLifecycleModal()" disabled 
+                            class="linear-button-secondary text-[11px] sm:text-xs px-3 py-2 sm:py-2 rounded opacity-30 pointer-events-none transition-opacity min-h-[32px] sm:min-h-[38px] font-medium shadow-sm whitespace-nowrap text-center justify-center flex items-center w-full sm:w-auto">
+                        Lifecycle Audit
+                    </button>
+                    <button id="job-toggle-btn-desktop" onclick="handleJobStatusToggle()" disabled 
+                            class="hidden sm:inline-flex bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 text-[11px] sm:text-xs px-3 py-1.5 sm:py-2 rounded opacity-30 pointer-events-none transition-all min-h-[30px] sm:min-h-[38px] font-semibold shadow-sm whitespace-nowrap text-center justify-center items-center">
+                        Job Completed
+                    </button>
+                </div>
             <div id="print-report-timestamp" class="print-timestamp-footer"></div>
         </div>
     </div>
