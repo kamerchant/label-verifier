@@ -1570,12 +1570,18 @@ def purge_job(
             if not user_row or not verify_password(admin_password, user_row[0]):
                 raise HTTPException(status_code=403, detail="Invalid password. Purge authorization denied.")
 
-            cur.execute("SELECT staged_file_path, job_card_id, consumed_codes FROM job_cards WHERE run_id = %s", (run_id,))
+            cur.execute("SELECT staged_file_path, job_card_id, consumed_codes, status FROM job_cards WHERE run_id = %s", (run_id,))
             row = cur.fetchone()
             if not row:
                 raise HTTPException(status_code=404, detail="Job not found")
 
-            staged_file_path, jc_id, consumed_codes = row
+            staged_file_path, jc_id, consumed_codes, current_status = row
+
+            if current_status in ('INGESTING', 'OVERRIDING'):
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Cannot purge Job Card '{jc_id}': batch is actively being processed ({current_status}). Wait for completion or failure before purging."
+                )
 
             cur.execute("SELECT COUNT(*) FROM scan_logs WHERE job_card_id = %s", (jc_id,))
             scan_count = cur.fetchone()[0]

@@ -1,7 +1,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CCL ME - PK - Variable Data Verification</title>
     <link rel="icon" type="image/png" href="/static/ico.png">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -633,7 +633,7 @@
 
         <!-- Scanning Terminal Canvas -->
         <div class="linear-card p-1 sm:p-3 rounded flex flex-col gap-1 sm:gap-2 shrink-0">
-            <div id="status-card" class="px-1.5 py-1 sm:py-2 rounded flex items-center justify-center text-center gap-1 status-state-black">
+            <div id="status-card" role="status" aria-live="polite" aria-atomic="true" class="px-1.5 py-1 sm:py-2 rounded flex items-center justify-center text-center gap-1 status-state-black">
                 <div class="flex items-center justify-center gap-1.5 min-w-0">
                     <span id="status-dot" class="w-1.5 h-1.5 rounded-full bg-[#5e6ad2] shrink-0 hidden"></span>
                     <div class="min-w-0">
@@ -1054,12 +1054,15 @@
     </div>
 
     <!-- Job Control Center Modal -->
-    <div id="master-jobs-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-1.5 sm:p-4 z-50">
+    <div id="master-jobs-modal" role="dialog" aria-modal="true" aria-labelledby="master-jobs-modal-title" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-1.5 sm:p-4 z-50">
         <div class="linear-card p-3 sm:p-6 rounded-lg max-w-6xl w-full shadow-2xl flex flex-col h-[96vh] sm:max-h-[92vh]">
             <div class="flex justify-between items-center mb-2 sm:mb-3 border-b border-white/[0.08] pb-2 sm:pb-3 shrink-0">
-                <div>
-                    <h3 class="text-base sm:text-xl font-extrabold modal-title-theme">Job Control Center</h3>
-                    <p class="text-[10px] sm:text-xs modal-subtitle-theme mt-0.5 hidden sm:block">Select a status from any job row to change state directly</p>
+                <div class="flex items-center gap-3">
+                    <div>
+                        <h3 id="master-jobs-modal-title" class="text-base sm:text-xl font-extrabold modal-title-theme">Job Control Center</h3>
+                        <p class="text-[10px] sm:text-xs modal-subtitle-theme mt-0.5 hidden sm:block">Select a status from any job row to change state directly</p>
+                    </div>
+                    <span id="master-sync-indicator" class="hidden text-[11px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded"></span>
                 </div>
                 <button onclick="toggleModal('master-jobs-modal')" class="linear-button-secondary px-3 py-1 sm:px-3.5 sm:py-1.5 text-xs rounded font-medium">Close</button>
             </div>
@@ -1603,13 +1606,25 @@
     <!-- Client Script Layer -->
     <script>
         let lastFocusedElementBeforeModal = null;
+
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
         function formatCodeDisplay(rawCode) {
             if (!rawCode) return '-';
-            const match = rawCode.match(/^(https?:\/\/.*?\/)([A-Za-z0-9_-]+)$/i);
+            const safeCode = escapeHtml(rawCode);
+            const match = safeCode.match(/^(https?:\/\/.*?\/)([A-Za-z0-9_-]+)$/i);
             if (match) {
                 return `<span class="code-url-prefix">${match[1]}</span><span class="code-url-suffix">${match[2]}</span>`;
             }
-            return `<span class="code-url-suffix">${rawCode}</span>`;
+            return `<span class="code-url-suffix">${safeCode}</span>`;
         }
 
         function toggleModal(id) {
@@ -2957,15 +2972,17 @@
             // 1. Render Desktop Table Rows (Legible Font & Clear Alignment)
             if (tbody) {
                 tbody.innerHTML = visibleScans.map((s) => {
-                    let badge = (s.result === 'PASS' || s.result === 'Pass (Potential Restart)') ? "linear-badge-pass" : "linear-badge-fail";
-                    let rowDisplay = (s.row_num && s.row_num !== '-') ? `Row ${s.row_num}` : '-';
+                    const isRestart = s.result && s.result.includes('Potential Restart');
+                    const isPass = s.result === 'PASS';
+                    const badge = isRestart ? "linear-badge-warn" : (isPass ? "linear-badge-pass" : "linear-badge-fail");
+                    const rowDisplay = (s.row_num && s.row_num !== '-') ? `Row ${escapeHtml(s.row_num)}` : '-';
                     return `
                         <tr class="hover:bg-black/[0.02] border-b border-white/[0.04] transition-colors text-center">
                             <td class="px-3.5 py-2.5 font-mono text-left text-xs sm:text-sm" style="text-align: left !important;">${formatCodeDisplay(s.code)}</td>
                             <td class="px-3 py-2.5 text-slate-400 font-mono text-xs font-semibold text-center" style="text-align: center !important;">${rowDisplay}</td>
-                            <td class="px-3 py-2.5 text-center" style="text-align: center !important;"><span class="${badge} px-2.5 py-0.5 rounded text-xs font-bold">${s.result}</span></td>
-                            <td class="px-3 py-2.5 text-slate-400 text-xs font-mono text-center" style="text-align: center !important;">${s.time}</td>
-                            <td class="px-3 py-2.5 text-xs text-center font-semibold text-slate-300" style="text-align: center !important;">${s.user}</td>
+                            <td class="px-3 py-2.5 text-center" style="text-align: center !important;"><span class="${badge} px-2.5 py-0.5 rounded text-xs font-bold">${escapeHtml(s.result)}</span></td>
+                            <td class="px-3 py-2.5 text-slate-400 text-xs font-mono text-center" style="text-align: center !important;">${escapeHtml(s.time)}</td>
+                            <td class="px-3 py-2.5 text-xs text-center font-semibold text-slate-300" style="text-align: center !important;">${escapeHtml(s.user)}</td>
                         </tr>
                     `;
                 }).join('');
@@ -2974,23 +2991,24 @@
             // 2. Render Ultra-Compact Mobile Touch Cards (Maximized view space)
             if (mobileContainer) {
                 mobileContainer.innerHTML = visibleScans.map((s) => {
-                    const isPass = (s.result === 'PASS' || s.result === 'Pass (Potential Restart)');
-                    const badge = isPass ? "linear-badge-pass" : "linear-badge-fail";
-                    const borderAccent = isPass ? "border-l-emerald-500" : "border-l-red-500";
-                    const rowDisplay = (s.row_num && s.row_num !== '-') ? `Row ${s.row_num}` : '';
+                    const isRestart = s.result && s.result.includes('Potential Restart');
+                    const isPass = s.result === 'PASS';
+                    const badge = isRestart ? "linear-badge-warn" : (isPass ? "linear-badge-pass" : "linear-badge-fail");
+                    const borderAccent = isRestart ? "border-l-amber-500" : (isPass ? "border-l-emerald-500" : "border-l-red-500");
+                    const rowDisplay = (s.row_num && s.row_num !== '-') ? `Row ${escapeHtml(s.row_num)}` : '';
 
                     return `
                         <div class="linear-subcard px-2 py-1 rounded border-l-2 ${borderAccent} flex flex-col gap-0 shadow-sm text-[11px]">
                             <div class="flex items-center justify-between gap-1">
-                                <span class="font-bold text-[11px] tracking-tight table-text-theme break-all font-mono">${s.code}</span>
-                                <span class="${badge} px-1.5 py-0.1 rounded text-[8px] font-extrabold uppercase shrink-0">${s.result}</span>
+                                <span class="font-bold text-[11px] tracking-tight table-text-theme break-all font-mono">${escapeHtml(s.code)}</span>
+                                <span class="${badge} px-1.5 py-0.1 rounded text-[8px] font-extrabold uppercase shrink-0">${escapeHtml(s.result)}</span>
                             </div>
                             <div class="flex items-center justify-between text-[9px] text-slate-400 pt-0.5 border-t border-white/[0.04]">
                                 <div class="flex items-center gap-1 truncate">
-                                    <span class="font-medium text-slate-300">${s.user}</span>
+                                    <span class="font-medium text-slate-300">${escapeHtml(s.user)}</span>
                                     ${rowDisplay ? `<span class="text-slate-600">&middot;</span><span class="text-indigo-300 font-semibold">${rowDisplay}</span>` : ''}
                                 </div>
-                                <span class="text-[8px] text-slate-400 shrink-0 font-medium">${s.time}</span>
+                                <span class="text-[8px] text-slate-400 shrink-0 font-medium">${escapeHtml(s.time)}</span>
                             </div>
                         </div>
                     `;
@@ -4829,7 +4847,17 @@
                     return;
                 }
 
-                await loadMasterJobs(currentMasterTab, false);
+                const ok = await loadMasterJobs(currentMasterTab, false);
+                const syncBadge = document.getElementById('master-sync-indicator');
+                if (syncBadge) {
+                    if (ok) {
+                        syncBadge.classList.add('hidden');
+                        syncBadge.innerText = '';
+                    } else {
+                        syncBadge.classList.remove('hidden');
+                        syncBadge.innerText = '⚠ Connection lost (Data may be stale)';
+                    }
+                }
             }, 4000);
         }
 
@@ -4849,8 +4877,12 @@
                 if (res.ok) {
                     rawMasterJobs = await res.json();
                     renderMasterJobsTable();
+                    return true;
                 }
-            } catch(e) {}
+                return false;
+            } catch(e) {
+                return false;
+            }
         }
 
         function filterMasterJobs(filterType) {
@@ -4942,29 +4974,45 @@
                     if (j.status === 'INACTIVE') statusClass = 'status-inactive';
                     else if (j.status === 'COMPLETED') statusClass = 'status-completed';
 
-                    let statusDropdown = ['ACTIVE', 'INACTIVE', 'COMPLETED'].includes(j.status)
-                        ? `<select onfocus="recordJobInteraction()" onchange="recordJobInteraction(); handleJobStatusDropdownChange(this, '${j.job_card_id}', '${j.status}')" class="job-status-pill ${statusClass} text-[10px] py-0.5 px-2">
+                    const isProcessing = ['INGESTING', 'OVERRIDING'].includes(j.status);
+                    const pctMatch = (j.ingestion_progress || '').match(/(\d+)%/);
+                    const ingestPct = pctMatch ? `${pctMatch[1]}%` : '...';
+
+                    let statusDisplay = '';
+                    if (['ACTIVE', 'INACTIVE', 'COMPLETED'].includes(j.status)) {
+                        statusDisplay = `<select onfocus="recordJobInteraction()" onchange="recordJobInteraction(); handleJobStatusDropdownChange(this, '${escapeHtml(j.job_card_id)}', '${j.status}')" class="job-status-pill ${statusClass} text-[10px] py-0.5 px-2">
                                <option value="ACTIVE" class="bg-[#12141a] text-emerald-400" ${j.status === 'ACTIVE' ? 'selected' : ''}>Active</option>
                                <option value="INACTIVE" class="bg-[#12141a] text-amber-400" ${j.status === 'INACTIVE' ? 'selected' : ''}>Inactive</option>
                                <option value="COMPLETED" class="bg-[#12141a] text-slate-400" ${j.status === 'COMPLETED' ? 'selected' : ''}>Completed</option>
-                           </select>`
-                        : (j.status === 'INGESTING' || j.status === 'OVERRIDING')
-                            ? `<span class="job-status-pill ${j.status === 'OVERRIDING' ? 'status-overriding' : 'status-ingesting'} text-[9px] py-0.5 px-2 inline-flex items-center gap-1" style="padding-right: 8px !important;">
-                                 <span class="inline-block w-2 h-2 border border-current border-t-transparent rounded-full animate-spin"></span>
-                                 <span>${j.status === 'OVERRIDING' ? 'Overriding...' : 'Ingesting...'}</span>
-                               </span>`
-                            : `<span class="job-status-pill status-completed text-[9px] py-0.5 px-2" style="padding-right: 8px !important;">${j.status}</span>`;
+                           </select>`;
+                    } else if (isProcessing) {
+                        const pillClass = j.status === 'OVERRIDING' ? 'status-overriding' : 'status-ingesting';
+                        statusDisplay = `<span class="job-status-pill ${pillClass} text-[9px] py-0.5 px-2 inline-flex items-center gap-1" style="padding-right: 8px !important;">
+                            <span class="inline-block w-2 h-2 border border-current border-t-transparent rounded-full animate-spin"></span>
+                            <span>${j.status === 'OVERRIDING' ? 'Overriding' : 'Ingesting'} ${ingestPct}</span>
+                        </span>`;
+                    } else if (j.status === 'CONFLICT_DETECTED') {
+                        statusDisplay = `<button type="button" onclick="resolveJobFromAdmin(${j.run_id}, ${j.conflict_count || 0}, ${j.total || 0})" class="job-status-pill status-inactive text-[9px] py-0.5 px-2 inline-flex items-center gap-1" style="padding-right: 8px !important;">
+                            <span>⚠️ Conflict (${conflictCount.toLocaleString()})</span>
+                        </button>`;
+                    } else if (j.status === 'FAILED') {
+                        statusDisplay = `<span class="job-status-pill status-failed text-[9px] py-0.5 px-2 inline-flex items-center gap-1" style="padding-right: 8px !important;" title="${escapeHtml(j.ingestion_progress || '')}">
+                            <span>✕ Failed</span>
+                        </span>`;
+                    } else {
+                        statusDisplay = `<span class="job-status-pill status-completed text-[9px] py-0.5 px-2" style="padding-right: 8px !important;">${escapeHtml(j.status)}</span>`;
+                    }
 
                     let conflictHtml = conflictCount > 0
-                        ? `<button type="button" onclick="openConflictReportFromMasterJobs(${j.run_id}, '${j.job_card_id}', ${conflictCount}, ${j.total || 0}, '${j.status}')" class="bg-amber-500/15 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold">⚠️ ${conflictCount} Conflict</button>`
+                        ? `<button type="button" onclick="openConflictReportFromMasterJobs(${j.run_id}, '${escapeHtml(j.job_card_id)}', ${conflictCount}, ${j.total || 0}, '${j.status}')" class="bg-amber-500/15 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold">⚠️ ${conflictCount} Conflict</button>`
                         : '';
 
                     let finalQcHtml = packingQcCount > 0
-                        ? `<button onclick="openPackingQCReportFromAdmin('${j.job_card_id}')" class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold">✓ ${packingQcCount} QC</button>`
+                        ? `<button onclick="openPackingQCReportFromAdmin('${escapeHtml(j.job_card_id)}')" class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold">✓ ${packingQcCount} QC</button>`
                         : '';
 
-                    let actionBtn = (consumedNum === 0 || j.status === 'FAILED')
-                        ? `<button onclick="purgeJobFromAdmin(${j.run_id}, '${j.job_card_id}')" class="btn-ghost-danger py-0.5 px-1.5 text-[10px]">Purge</button>`
+                    let actionBtn = (!isProcessing && (consumedNum === 0 || j.status === 'FAILED'))
+                        ? `<button onclick="purgeJobFromAdmin(${j.run_id}, '${escapeHtml(j.job_card_id)}')" class="btn-ghost-danger py-0.5 px-1.5 text-[10px]">Purge</button>`
                         : '';
 
                     return `
@@ -4972,16 +5020,16 @@
                             <div class="flex items-center justify-between gap-1">
                                 <div class="inline-flex items-center gap-1.5 min-w-0">
                                     <button type="button" class="font-mono text-indigo-400 hover:text-indigo-300 font-bold text-xs bg-transparent border-none p-0 cursor-pointer text-left truncate"
-                                            onclick="openJobFromMaster('${j.job_card_id}', '${encodeURIComponent(j.description || '')}', '${j.status}', ${j.consumed}, ${j.total})">
-                                        ${j.job_card_id}
+                                            onclick="openJobFromMaster('${escapeHtml(j.job_card_id)}', '${encodeURIComponent(j.description || '')}', '${j.status}', ${j.consumed}, ${j.total})">
+                                        ${escapeHtml(j.job_card_id)}
                                     </button>
-                                    <button type="button" onclick="copyJobCardNumber('${j.job_card_id}', this)" class="text-slate-500 text-[10px] p-0.5 border-none bg-transparent" title="Copy">📋</button>
+                                    <button type="button" onclick="copyJobCardNumber('${escapeHtml(j.job_card_id)}', this)" class="text-slate-500 text-[10px] p-0.5 border-none bg-transparent" title="Copy">📋</button>
                                 </div>
-                                <div class="shrink-0">${statusDropdown}</div>
+                                <div class="shrink-0">${statusDisplay}</div>
                             </div>
 
                             <div class="text-[11px] text-slate-400 truncate font-medium">
-                                ${j.description || '<span class="italic text-slate-500">No description</span>'}
+                                ${escapeHtml(j.description) || '<span class="italic text-slate-500">No description</span>'}
                             </div>
 
                             <div class="flex items-center justify-between gap-2 pt-0.5">
@@ -4993,7 +5041,7 @@
                             </div>
 
                             <div class="flex items-center justify-between pt-1 text-[10px] text-slate-500 border-t border-white/[0.04]">
-                                <span>${j.created_at ? j.created_at.split(' ')[0] : '-'}</span>
+                                <span>${j.created_at ? escapeHtml(j.created_at.split(' ')[0]) : '-'}</span>
                                 <div class="flex items-center gap-1">
                                     ${conflictHtml}
                                     ${finalQcHtml}
@@ -5004,6 +5052,7 @@
                     `;
                 }).join('');
             }
+
 
             // Render Desktop Table Rows
             if (tbody) tbody.innerHTML = filtered.map(j => {
@@ -5120,8 +5169,10 @@
                     actionHtml = `<span class="text-slate-500 text-[11px]">Deleted</span>`;
                 } else if (j.status === 'CONFLICT_DETECTED') {
                     actionHtml = `<button onclick="resolveJobFromAdmin(${j.run_id}, ${j.conflict_count || 0}, ${j.total || 0})" class="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded text-[11px] font-bold">Resolve</button>`;
+                } else if (j.status === 'INGESTING' || j.status === 'OVERRIDING') {
+                    actionHtml = `<span class="text-indigo-400/70 italic text-[11px]">Processing...</span>`;
                 } else if (consumedNum === 0 || j.status === 'FAILED') {
-                    actionHtml = `<button onclick="purgeJobFromAdmin(${j.run_id}, '${j.job_card_id}')" class="btn-ghost-danger">Purge</button>`;
+                    actionHtml = `<button onclick="purgeJobFromAdmin(${j.run_id}, '${escapeHtml(j.job_card_id)}')" class="btn-ghost-danger">Purge</button>`;
                 }
 
                 return `
