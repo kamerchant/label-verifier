@@ -2630,6 +2630,8 @@
             activeJobDesc = decodeURIComponent(descEncoded || "");
             activeJobStatus = status;
             allScans = [];
+            hasMoreScans = true;
+            isLoadingOlderScans = false;
 
             // Auto-collapse mobile action menu on job selection to keep screen clear
             const mobileWrapper = document.getElementById('job-actions-wrapper');
@@ -2744,7 +2746,8 @@
             activeJobDesc = "";
             activeJobStatus = null;
             allScans = [];
-            currentStreamLimit = 50;
+            hasMoreScans = true;
+            isLoadingOlderScans = false;
 
             const searchInput = document.getElementById('job-search');
             const shortcutBadge = document.getElementById('search-shortcut-badge');
@@ -2812,21 +2815,25 @@
             updateSystemMessage("Job Card closed. Ready to select job.", "info");
         }
 
-        let currentStreamLimit = 50;
+        let hasMoreScans = true;
+        let isLoadingOlderScans = false;
 
-        async function loadJobScanStream(jobCardId, appendLimit = 50) {
-            currentStreamLimit = appendLimit;
+        async function loadJobScanStream(jobCardId) {
+            hasMoreScans = true;
+            isLoadingOlderScans = false;
             try {
-                const res = await fetch(`/api/jobs/${encodeURIComponent(jobCardId)}/recent-scans?limit=${currentStreamLimit}`);
+                const res = await fetch(`/api/jobs/${encodeURIComponent(jobCardId)}/recent-scans?limit=50&offset=0`);
                 if (res.ok) {
                     const data = await res.json();
-                    allScans = (data.recent_logs || []).map(l => ({
+                    const logs = (data.recent_logs || []).map(l => ({
                         code: l.code,
                         result: l.result,
                         time: l.time,
                         user: l.user,
                         row_num: l.row_num
                     }));
+                    allScans = logs;
+                    hasMoreScans = data.has_more ?? (logs.length === 50);
                     renderStreamTable();
                 }
             } catch (e) {
@@ -2835,10 +2842,40 @@
         }
 
         async function loadMoreScans() {
-            if (!activeJobId) return;
+            if (!activeJobId || isLoadingOlderScans || !hasMoreScans) return;
+            
+            isLoadingOlderScans = true;
             const btn = document.getElementById('load-more-scans-btn');
-            if (btn) btn.innerText = "Loading older scans...";
-            await loadJobScanStream(activeJobId, currentStreamLimit + 50);
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = `${spinnerHtml} Loading older scans...`;
+            }
+
+            try {
+                const offset = allScans.length;
+                const res = await fetch(`/api/jobs/${encodeURIComponent(activeJobId)}/recent-scans?limit=50&offset=${offset}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const olderLogs = (data.recent_logs || []).map(l => ({
+                        code: l.code,
+                        result: l.result,
+                        time: l.time,
+                        user: l.user,
+                        row_num: l.row_num
+                    }));
+                    
+                    // True incremental append: add only the next batch to the tail
+                    allScans = allScans.concat(olderLogs);
+                    hasMoreScans = data.has_more ?? (olderLogs.length === 50);
+                } else {
+                    showCustomAlert("Failed to load older scans.", "Error");
+                }
+            } catch (e) {
+                showCustomAlert("Network error while fetching older scans.", "Network Error");
+            } finally {
+                isLoadingOlderScans = false;
+                renderStreamTable();
+            }
         }
 
         async function handleJobStatusToggle() {
@@ -3070,12 +3107,13 @@
                     `;
                 }).join('');
 
-                // Append "Load Older Scans" button to the end of the mobile stream
-                if (allScans.length >= currentStreamLimit) {
+                // Append "Load Older Scans" button only if older records exist in database
+                if (hasMoreScans && allScans.length >= 50) {
                     mobileContainer.innerHTML += `
-                        <div class="py-1 text-center">
-                            <button type="button" id="load-more-scans-btn" onclick="loadMoreScans()" class="linear-button-secondary w-full py-1.5 rounded text-[11px] font-semibold text-slate-300">
-                                ▾ Load Older Scans (+50)
+                        <div class="py-1.5 text-center">
+                            <button type="button" id="load-more-scans-btn" onclick="loadMoreScans()" ${isLoadingOlderScans ? 'disabled' : ''} 
+                                    class="linear-button-secondary w-full py-2 rounded text-xs font-semibold text-slate-300 flex items-center justify-center">
+                                ${isLoadingOlderScans ? `${spinnerHtml} Loading older scans...` : '▾ Load Older Scans (+50)'}
                             </button>
                         </div>
                     `;

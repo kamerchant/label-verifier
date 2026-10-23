@@ -1836,7 +1836,12 @@ def verify_code(
         release_connection(conn)
 
 @app.get("/api/jobs/{job_card_id}/recent-scans")
-def get_recent_scans(job_card_id: str, limit: int = 50, user: dict = Depends(get_current_user)):
+def get_recent_scans(
+    job_card_id: str, 
+    limit: int = 50, 
+    offset: int = 0, 
+    user: dict = Depends(get_current_user)
+):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -1855,14 +1860,14 @@ def get_recent_scans(job_card_id: str, limit: int = 50, user: dict = Depends(get
                         FROM scan_logs s
                         WHERE s.job_card_id = %s
                         ORDER BY s.id DESC
-                        LIMIT %s
+                        LIMIT %s OFFSET %s
                     )
                     SELECT r.code_scanned, r.result, r.scanned_by, r.scanned_at,
                            c.row_num
                     FROM recent r
                     LEFT JOIN codes c ON c.run_id = %s AND c.code_value = r.code_scanned
                     ORDER BY r.scanned_at DESC;
-                """, (job_card_id, limit, active_run_id))
+                """, (job_card_id, limit, offset, active_run_id))
             else:
                 cur.execute("""
                     SELECT s.code_scanned, s.result, s.scanned_by, s.scanned_at,
@@ -1870,8 +1875,8 @@ def get_recent_scans(job_card_id: str, limit: int = 50, user: dict = Depends(get
                     FROM scan_logs s
                     WHERE s.job_card_id = %s 
                     ORDER BY s.scanned_at DESC 
-                    LIMIT %s
-                """, (job_card_id, limit))
+                    LIMIT %s OFFSET %s
+                """, (job_card_id, limit, offset))
 
             logs = [{
                 "code": r[0],
@@ -1880,7 +1885,12 @@ def get_recent_scans(job_card_id: str, limit: int = 50, user: dict = Depends(get
                 "time": r[3].strftime("%Y-%m-%d %H:%M:%S") if r[3] else "",
                 "row_num": r[4] if r[4] is not None else "-"
             } for r in cur.fetchall()]
-            return {"recent_logs": logs}
+
+            # Determine whether more historical records remain in the database
+            return {
+                "recent_logs": logs,
+                "has_more": len(logs) == limit
+            }
     finally:
         release_connection(conn)
 
