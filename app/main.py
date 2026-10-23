@@ -460,13 +460,13 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                     body_conflicts = c_row[1] if c_row else 0
 
                     # If the first row caused conflicts, discard row 1 automatically
+                    # Keep transaction uncommitted so ON COMMIT DROP tables survive for breakdown query
                     if r1_conflicts > 0:
                         cur.execute(f"DELETE FROM {incoming_table} WHERE line_num = 1;")
                         cur.execute("DELETE FROM temp_conflicting_codes WHERE line_num = 1;")
                         cur.execute(f"SELECT COUNT(*) FROM {incoming_table};")
                         total_codes = cur.fetchone()[0]
                         cur.execute("UPDATE job_cards SET total_codes = %s WHERE run_id = %s", (total_codes, run_id))
-                        conn.commit()
 
                     # Only remaining data-line conflicts are flagged
                     conflicts_found = body_conflicts
@@ -611,64 +611,68 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
             with open(clean_tsv_path, "r", encoding="utf-8") as tsv_in:
                 cur.copy_expert(f"COPY {ovr_all_table} FROM STDIN WITH (FORMAT text)", tsv_in)
 
-            if skip_conflicts:
-                cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", 
-                            ("Ingesting: 35% (Filtering out conflicting codes)...", run_id))
-                conn.commit()
-
-                cur.execute(f"CREATE INDEX idx_temp_ovr_val_{run_id} ON {ovr_all_table} (code_value);")
-                cur.execute(f"ANALYZE {ovr_all_table};")
-
-                cur.execute("CREATE TEMP TABLE temp_active_runs ON COMMIT DROP AS SELECT run_id FROM job_cards WHERE status IN ('ACTIVE', 'INACTIVE', 'COMPLETED');")
-                cur.execute("CREATE INDEX idx_tmp_active_runs ON temp_active_runs(run_id);")
-
-                cur.execute(f"""
-                    CREATE UNLOGGED TABLE {ovr_filt_table} AS
-                    SELECT t.run_id, t.job_card_id, t.code_value, t.status, t.original_seq
-                    FROM {ovr_all_table} t
-                    WHERE NOT EXISTS (
-                        SELECT 1 
-                        FROM codes c
-                        JOIN temp_active_runs a ON c.run_id = a.run_id
-                        WHERE c.code_value = t.code_value
-                          AND c.status != 'DELETED'
-                    );
-                """)
-
-                cur.execute(f"SELECT COUNT(*) FROM {ovr_filt_table};")
-                row_eff = cur.fetchone()
-                effective_total = row_eff[0] if row_eff else 0
-
-                if effective_total == 0:
-                    cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = %s WHERE run_id = %s", 
-                                ("All codes conflicted and were skipped. 0 codes remaining.", run_id))
-                    cur.execute(f"DROP TABLE IF EXISTS {ovr_all_table}, {ovr_filt_table};")
-                    conn.commit()
-                    return
-
-                source_table = ovr_filt_table
-                cur.execute("UPDATE job_cards SET total_codes = %s WHERE run_id = %s", (effective_total, run_id))
-                conn.commit()
-
             cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", 
-                        ("Ingesting: 50% (Clustering and indexing batch for high-speed insertion)...", run_id))
+                        ("Waiting for verification gate...", run_id))
             conn.commit()
 
-            cur.execute(f"""
-                CREATE UNLOGGED TABLE {ovr_chunk_table} AS
-                SELECT run_id, job_card_id, code_value, status, original_seq,
-                       row_number() OVER (ORDER BY original_seq ASC) AS rnum
-                FROM {source_table};
-            """)
-            cur.execute(f"CREATE INDEX idx_tmp_chunk_rnum_{run_id} ON {ovr_chunk_table} (rnum);")
-            cur.execute(f"ANALYZE {ovr_chunk_table};")
-            conn.commit()
-
-            # Acquire global advisory lock during code insertion and activation
+            # Acquire global advisory lock BEFORE active-job evaluation to prevent concurrent activation bypass
             cur.execute("SELECT pg_advisory_lock(%s);", (CROSS_JOB_INGESTION_LOCK_ID,))
             lock_acquired = True
 
             try:
+                if skip_conflicts:
+                    cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", 
+                                ("Ingesting: 35% (Filtering out conflicting codes)...", run_id))
+                    conn.commit()
+
+                    cur.execute(f"CREATE INDEX idx_temp_ovr_val_{run_id} ON {ovr_all_table} (code_value);")
+                    cur.execute(f"ANALYZE {ovr_all_table};")
+
+                    cur.execute("CREATE TEMP TABLE temp_active_runs ON COMMIT DROP AS SELECT run_id FROM job_cards WHERE status IN ('ACTIVE', 'INACTIVE', 'COMPLETED');")
+                    cur.execute("CREATE INDEX idx_tmp_active_runs ON temp_active_runs(run_id);")
+
+                    cur.execute(f"""
+                        CREATE UNLOGGED TABLE {ovr_filt_table} AS
+                        SELECT t.run_id, t.job_card_id, t.code_value, t.status, t.original_seq
+                        FROM {ovr_all_table} t
+                        WHERE NOT EXISTS (
+                            SELECT 1 
+                            FROM codes c
+                            JOIN temp_active_runs a ON c.run_id = a.run_id
+                            WHERE c.code_value = t.code_value
+                              AND c.status != 'DELETED'
+                        );
+                    """)
+
+                    cur.execute(f"SELECT COUNT(*) FROM {ovr_filt_table};")
+                    row_eff = cur.fetchone()
+                    effective_total = row_eff[0] if row_eff else 0
+
+                    if effective_total == 0:
+                        cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = %s WHERE run_id = %s", 
+                                    ("All codes conflicted and were skipped. 0 codes remaining.", run_id))
+                        cur.execute(f"DROP TABLE IF EXISTS {ovr_all_table}, {ovr_filt_table};")
+                        conn.commit()
+                        return
+
+                    source_table = ovr_filt_table
+                    cur.execute("UPDATE job_cards SET total_codes = %s WHERE run_id = %s", (effective_total, run_id))
+                    conn.commit()
+
+                cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", 
+                            ("Ingesting: 50% (Clustering and indexing batch for high-speed insertion)...", run_id))
+                conn.commit()
+
+                cur.execute(f"""
+                    CREATE UNLOGGED TABLE {ovr_chunk_table} AS
+                    SELECT run_id, job_card_id, code_value, status, original_seq,
+                           row_number() OVER (ORDER BY original_seq ASC) AS rnum
+                    FROM {source_table};
+                """)
+                cur.execute(f"CREATE INDEX idx_tmp_chunk_rnum_{run_id} ON {ovr_chunk_table} (rnum);")
+                cur.execute(f"ANALYZE {ovr_chunk_table};")
+                conn.commit()
+
                 CHUNK_SIZE = 100_000
                 actual_inserted = 0
                 total_chunks = (effective_total + CHUNK_SIZE - 1) // CHUNK_SIZE
