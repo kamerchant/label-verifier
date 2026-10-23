@@ -118,6 +118,21 @@ app = FastAPI(
 SECRET_KEY = os.environ.get("SESSION_SECRET", "ccl-variable-data-secret-floor-key-2026")
 signer = URLSafeTimedSerializer(SECRET_KEY)
 
+# Dedicated 64-bit integer advisory lock key to serialize cross-job duplicate checks
+CROSS_JOB_INGESTION_LOCK_ID = 8492049102
+
+def release_advisory_lock_safe(conn, cur):
+    """Safely releases session advisory lock even if the transaction was previously aborted."""
+    try:
+        cur.execute("SELECT pg_advisory_unlock(%s);", (CROSS_JOB_INGESTION_LOCK_ID,))
+    except Exception:
+        try:
+            conn.rollback()
+            with conn.cursor() as c:
+                c.execute("SELECT pg_advisory_unlock(%s);", (CROSS_JOB_INGESTION_LOCK_ID,))
+        except Exception:
+            pass
+
 # ---------------------------------------------------------------------------
 # Rate-Limiting & Brute-Force Defense (5 failed attempts per 5 minutes)
 # ---------------------------------------------------------------------------
@@ -393,139 +408,150 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
             cur.execute(f"CREATE INDEX idx_temp_inc_seq_{run_id} ON {incoming_table} (original_seq);")
             cur.execute(f"ANALYZE {incoming_table};")
 
-            cur.execute("UPDATE job_cards SET total_codes = %s, ingestion_progress = 'Checking cross-job uniqueness...' WHERE run_id = %s", (total_codes, run_id))
+            cur.execute("UPDATE job_cards SET total_codes = %s, ingestion_progress = 'Waiting for verification gate...' WHERE run_id = %s", (total_codes, run_id))
             conn.commit()
 
-            conflicts_found = 0
-            if not is_override:
-                cur.execute("UPDATE job_cards SET ingestion_progress = 'Analyzing historical active jobs...' WHERE run_id = %s", (run_id,))
+            # Acquire global advisory lock: serializes the check-through-activation window
+            cur.execute("SELECT pg_advisory_lock(%s);", (CROSS_JOB_INGESTION_LOCK_ID,))
+            lock_acquired = True
+
+            try:
+                cur.execute("UPDATE job_cards SET ingestion_progress = 'Checking cross-job uniqueness...' WHERE run_id = %s", (run_id,))
                 conn.commit()
 
-                cur.execute("ANALYZE codes;")
-
-                cur.execute("""
-                    CREATE TEMP TABLE temp_active_runs ON COMMIT DROP AS
-                    SELECT run_id, job_card_id, COALESCE(description, 'No Description') AS description, status 
-                    FROM job_cards WHERE status IN ('ACTIVE', 'INACTIVE', 'COMPLETED');
-                    CREATE INDEX idx_tmp_act_run ON temp_active_runs (run_id);
-                """)
-
-                cur.execute(f"""
-                    CREATE TEMP TABLE temp_conflicting_codes ON COMMIT DROP AS
-                    SELECT DISTINCT t.code_value, t.line_num
-                    FROM {incoming_table} t
-                    WHERE EXISTS (
-                        SELECT 1 
-                        FROM codes c
-                        JOIN temp_active_runs a ON c.run_id = a.run_id
-                        WHERE c.code_value = t.code_value
-                          AND c.status != 'DELETED'
-                    );
-                    CREATE INDEX idx_tmp_conf_val ON temp_conflicting_codes (code_value);
-                    ANALYZE temp_conflicting_codes;
-                """)
-
-                # Check if conflicts belong to line 1 (header row) vs later data lines
-                cur.execute("""
-                    SELECT 
-                        COUNT(*) FILTER (WHERE line_num = 1) AS r1_conflicts,
-                        COUNT(*) FILTER (WHERE line_num > 1) AS body_conflicts
-                    FROM temp_conflicting_codes;
-                """)
-                c_row = cur.fetchone()
-                r1_conflicts = c_row[0] if c_row else 0
-                body_conflicts = c_row[1] if c_row else 0
-
-                # If the first row caused conflicts, discard row 1 automatically
-                if r1_conflicts > 0:
-                    cur.execute(f"DELETE FROM {incoming_table} WHERE line_num = 1;")
-                    cur.execute("DELETE FROM temp_conflicting_codes WHERE line_num = 1;")
-                    cur.execute(f"SELECT COUNT(*) FROM {incoming_table};")
-                    total_codes = cur.fetchone()[0]
-                    cur.execute("UPDATE job_cards SET total_codes = %s WHERE run_id = %s", (total_codes, run_id))
+                conflicts_found = 0
+                if not is_override:
+                    cur.execute("UPDATE job_cards SET ingestion_progress = 'Analyzing historical active jobs...' WHERE run_id = %s", (run_id,))
                     conn.commit()
 
-                # Only remaining data-line conflicts are flagged
-                conflicts_found = body_conflicts
+                    cur.execute("ANALYZE codes;")
 
-                if conflicts_found > 0:
                     cur.execute("""
-                        SELECT a.job_card_id, a.description, a.status, COUNT(c.code_value) as cnt
-                        FROM temp_conflicting_codes tc
-                        JOIN codes c ON c.code_value = tc.code_value
-                        JOIN temp_active_runs a ON a.run_id = c.run_id
-                        WHERE c.status != 'DELETED'
-                        GROUP BY a.job_card_id, a.description, a.status
-                        ORDER BY cnt DESC;
+                        CREATE TEMP TABLE temp_active_runs ON COMMIT DROP AS
+                        SELECT run_id, job_card_id, COALESCE(description, 'No Description') AS description, status 
+                        FROM job_cards WHERE status IN ('ACTIVE', 'INACTIVE', 'COMPLETED');
+                        CREATE INDEX idx_tmp_act_run ON temp_active_runs (run_id);
                     """)
-                    breakdown = [
-                        {"job_card_id": r[0], "description": r[1], "status": r[2], "conflict_count": r[3]}
-                        for r in cur.fetchall()
-                    ]
 
-                    clean_tsv_fd, clean_tsv_path = tempfile.mkstemp(suffix=".tsv")
                     cur.execute(f"""
-                        CREATE UNLOGGED TABLE {export_table} AS
-                        SELECT %s::int AS run_id, %s::text AS job_card_id, code_value, 'PENDING'::text AS status, original_seq
-                        FROM {incoming_table}
-                        ORDER BY original_seq;
-                    """, (run_id, job_card_id))
+                        CREATE TEMP TABLE temp_conflicting_codes ON COMMIT DROP AS
+                        SELECT DISTINCT t.code_value, t.line_num
+                        FROM {incoming_table} t
+                        WHERE EXISTS (
+                            SELECT 1 
+                            FROM codes c
+                            JOIN temp_active_runs a ON c.run_id = a.run_id
+                            WHERE c.code_value = t.code_value
+                              AND c.status != 'DELETED'
+                        );
+                        CREATE INDEX idx_tmp_conf_val ON temp_conflicting_codes (code_value);
+                        ANALYZE temp_conflicting_codes;
+                    """)
 
-                    with os.fdopen(clean_tsv_fd, "w", encoding="utf-8") as out_f:
-                        cur.copy_expert(f"COPY {export_table} TO STDOUT WITH (FORMAT text)", out_f)
-
+                    # Check if conflicts belong to line 1 (header row) vs later data lines
                     cur.execute("""
-                        UPDATE job_cards 
-                        SET status = 'CONFLICT_DETECTED', 
-                            conflict_count = %s, 
-                            conflict_resolution = 'PENDING',
-                            conflict_details = %s,
-                            staged_file_path = %s,
-                            ingestion_progress = 'Duplicate conflicts detected. Awaiting authorization.' 
-                        WHERE run_id = %s
-                    """, (conflicts_found, json.dumps(breakdown), clean_tsv_path, run_id))
-                    
-                    cur.execute(f"DROP TABLE IF EXISTS {incoming_table}, {export_table};")
+                        SELECT 
+                            COUNT(*) FILTER (WHERE line_num = 1) AS r1_conflicts,
+                            COUNT(*) FILTER (WHERE line_num > 1) AS body_conflicts
+                        FROM temp_conflicting_codes;
+                    """)
+                    c_row = cur.fetchone()
+                    r1_conflicts = c_row[0] if c_row else 0
+                    body_conflicts = c_row[1] if c_row else 0
+
+                    # If the first row caused conflicts, discard row 1 automatically
+                    if r1_conflicts > 0:
+                        cur.execute(f"DELETE FROM {incoming_table} WHERE line_num = 1;")
+                        cur.execute("DELETE FROM temp_conflicting_codes WHERE line_num = 1;")
+                        cur.execute(f"SELECT COUNT(*) FROM {incoming_table};")
+                        total_codes = cur.fetchone()[0]
+                        cur.execute("UPDATE job_cards SET total_codes = %s WHERE run_id = %s", (total_codes, run_id))
+                        conn.commit()
+
+                    # Only remaining data-line conflicts are flagged
+                    conflicts_found = body_conflicts
+
+                    if conflicts_found > 0:
+                        cur.execute("""
+                            SELECT a.job_card_id, a.description, a.status, COUNT(c.code_value) as cnt
+                            FROM temp_conflicting_codes tc
+                            JOIN codes c ON c.code_value = tc.code_value
+                            JOIN temp_active_runs a ON a.run_id = c.run_id
+                            WHERE c.status != 'DELETED'
+                            GROUP BY a.job_card_id, a.description, a.status
+                            ORDER BY cnt DESC;
+                        """)
+                        breakdown = [
+                            {"job_card_id": r[0], "description": r[1], "status": r[2], "conflict_count": r[3]}
+                            for r in cur.fetchall()
+                        ]
+
+                        clean_tsv_fd, clean_tsv_path = tempfile.mkstemp(suffix=".tsv")
+                        cur.execute(f"""
+                            CREATE UNLOGGED TABLE {export_table} AS
+                            SELECT %s::int AS run_id, %s::text AS job_card_id, code_value, 'PENDING'::text AS status, original_seq
+                            FROM {incoming_table}
+                            ORDER BY original_seq;
+                        """, (run_id, job_card_id))
+
+                        with os.fdopen(clean_tsv_fd, "w", encoding="utf-8") as out_f:
+                            cur.copy_expert(f"COPY {export_table} TO STDOUT WITH (FORMAT text)", out_f)
+
+                        cur.execute("""
+                            UPDATE job_cards 
+                            SET status = 'CONFLICT_DETECTED', 
+                                conflict_count = %s, 
+                                conflict_resolution = 'PENDING',
+                                conflict_details = %s,
+                                staged_file_path = %s,
+                                ingestion_progress = 'Duplicate conflicts detected. Awaiting authorization.' 
+                            WHERE run_id = %s
+                        """, (conflicts_found, json.dumps(breakdown), clean_tsv_path, run_id))
+                        
+                        cur.execute(f"DROP TABLE IF EXISTS {incoming_table}, {export_table};")
+                        conn.commit()
+                        return
+
+                cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", ("Ingesting: 75% (Direct database insertion in strict file order)...", run_id))
+                conn.commit()
+
+                # Insert strictly ordered by original_seq and store 1:1 file row index explicitly
+                cur.execute(f"""
+                    INSERT INTO codes (run_id, job_card_id, code_value, status, row_num)
+                    SELECT %s, %s, code_value, 'PENDING',
+                           row_number() OVER (ORDER BY original_seq ASC)
+                    FROM {incoming_table}
+                    ORDER BY original_seq ASC;
+                """, (run_id, job_card_id))
+                actual_inserted = cur.rowcount
+
+                cur.execute(f"DROP TABLE IF EXISTS {incoming_table};")
+
+                cur.execute("""
+                    UPDATE job_cards 
+                    SET status = 'ACTIVE', 
+                        total_codes = %s,
+                        conflict_resolution = 'NONE',
+                        ingestion_progress = %s 
+                    WHERE run_id = %s
+                """, (actual_inserted, '100%', run_id))
+
+                lifecycle_reason = f"Full batch ingestion completed ({actual_inserted:,} codes" + (f", {conflicts_found:,} conflicts overridden)" if is_override else ")")
+                cur.execute("""
+                    INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) 
+                    VALUES (%s, %s, %s, %s)
+                """, (job_card_id, "CREATED", username, lifecycle_reason))
+                log_system_event(cur, "JOB_LIFECYCLE", job_card_id, "CREATED", username, lifecycle_reason)
+
+                conn.commit()
+            finally:
+                if lock_acquired:
+                    release_advisory_lock_safe(conn, cur)
                     conn.commit()
-                    return
+                    lock_acquired = False
 
-            cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", ("Ingesting: 75% (Direct database insertion in strict file order)...", run_id))
-            conn.commit()
-
-            # Insert strictly ordered by original_seq and store 1:1 file row index explicitly
-            cur.execute(f"""
-                INSERT INTO codes (run_id, job_card_id, code_value, status, row_num)
-                SELECT %s, %s, code_value, 'PENDING',
-                       row_number() OVER (ORDER BY original_seq ASC)
-                FROM {incoming_table}
-                ORDER BY original_seq ASC;
-            """, (run_id, job_card_id))
-            actual_inserted = cur.rowcount
-
-            cur.execute(f"DROP TABLE IF EXISTS {incoming_table};")
-
-            cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", ("Ingesting: 95% (Updating table statistics)...", run_id))
-            conn.commit()
-            
+            # Statistics refresh performed outside the gate to free waiting uploads immediately
             restore_secondary_indexes(cur)
-            conn.commit()
-
-            cur.execute("""
-                UPDATE job_cards 
-                SET status = 'ACTIVE', 
-                    total_codes = %s,
-                    conflict_resolution = 'NONE',
-                    ingestion_progress = %s 
-                WHERE run_id = %s
-            """, (actual_inserted, '100%', run_id))
-
-            lifecycle_reason = f"Full batch ingestion completed ({actual_inserted:,} codes" + (f", {conflicts_found:,} conflicts overridden)" if is_override else ")")
-            cur.execute("""
-                INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) 
-                VALUES (%s, %s, %s, %s)
-            """, (job_card_id, "CREATED", username, lifecycle_reason))
-            log_system_event(cur, "JOB_LIFECYCLE", job_card_id, "CREATED", username, lifecycle_reason)
-
             conn.commit()
 
     except Exception as e:
@@ -638,62 +664,69 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
             cur.execute(f"ANALYZE {ovr_chunk_table};")
             conn.commit()
 
-            CHUNK_SIZE = 100_000
-            actual_inserted = 0
-            total_chunks = (effective_total + CHUNK_SIZE - 1) // CHUNK_SIZE
+            # Acquire global advisory lock during code insertion and activation
+            cur.execute("SELECT pg_advisory_lock(%s);", (CROSS_JOB_INGESTION_LOCK_ID,))
+            lock_acquired = True
 
-            for chunk_idx, start_rnum in enumerate(range(1, effective_total + 1, CHUNK_SIZE)):
-                end_rnum = start_rnum + CHUNK_SIZE
-                
-                pct = 55 + int(((chunk_idx + 1) / total_chunks) * 40)
-                status_msg = f"Ingesting: {pct}% ({actual_inserted:,} / {effective_total:,} codes inserted)..."
-                
-                cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", (status_msg, run_id))
+            try:
+                CHUNK_SIZE = 100_000
+                actual_inserted = 0
+                total_chunks = (effective_total + CHUNK_SIZE - 1) // CHUNK_SIZE
+
+                for chunk_idx, start_rnum in enumerate(range(1, effective_total + 1, CHUNK_SIZE)):
+                    end_rnum = start_rnum + CHUNK_SIZE
+                    
+                    pct = 55 + int(((chunk_idx + 1) / total_chunks) * 40)
+                    status_msg = f"Ingesting: {pct}% ({actual_inserted:,} / {effective_total:,} codes inserted)..."
+                    
+                    cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", (status_msg, run_id))
+                    conn.commit()
+
+                    # Insert original_seq as row_num to preserve exact 1:1 physical file row numbers
+                    cur.execute(f"""
+                        INSERT INTO codes (run_id, job_card_id, code_value, status, row_num)
+                        SELECT run_id, job_card_id, code_value, status, original_seq
+                        FROM {ovr_chunk_table}
+                        WHERE rnum >= %s AND rnum < %s
+                        ORDER BY rnum ASC;
+                    """, (start_rnum, end_rnum))
+                    actual_inserted += cur.rowcount
+                    conn.commit()
+
+                cur.execute(f"DROP TABLE IF EXISTS {ovr_all_table}, {ovr_filt_table}, {ovr_chunk_table};")
+
+                resolution_type = 'SKIPPED' if skip_conflicts else 'OVERRIDDEN'
+                cur.execute("""
+                    UPDATE job_cards 
+                    SET status = 'ACTIVE', 
+                        total_codes = %s, 
+                        conflict_resolution = %s, 
+                        override_by = %s,
+                        override_reason = %s,
+                        ingestion_progress = %s 
+                    WHERE run_id = %s
+                """, (actual_inserted, resolution_type, username, override_reason, '100%', run_id))
+
+                if skip_conflicts:
+                    lifecycle_reason = f"Conflicts Skipped: {actual_inserted:,} codes kept ({conflicts:,} skipped). Justification: {override_reason}"
+                else:
+                    lifecycle_reason = f"Duplicate Overridden: {conflicts:,} duplicates accepted ({actual_inserted:,} total codes). Justification: {override_reason}"
+
+                cur.execute("""
+                    INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) 
+                    VALUES (%s, %s, %s, %s)
+                """, (job_card_id, "CREATED", username, lifecycle_reason))
+                log_system_event(cur, "JOB_LIFECYCLE", job_card_id, "CREATED", username, lifecycle_reason)
+
                 conn.commit()
+            finally:
+                if lock_acquired:
+                    release_advisory_lock_safe(conn, cur)
+                    conn.commit()
+                    lock_acquired = False
 
-                # Insert original_seq as row_num to preserve exact 1:1 physical file row numbers
-                cur.execute(f"""
-                    INSERT INTO codes (run_id, job_card_id, code_value, status, row_num)
-                    SELECT run_id, job_card_id, code_value, status, original_seq
-                    FROM {ovr_chunk_table}
-                    WHERE rnum >= %s AND rnum < %s
-                    ORDER BY rnum ASC;
-                """, (start_rnum, end_rnum))
-                actual_inserted += cur.rowcount
-                conn.commit()
-
-            cur.execute(f"DROP TABLE IF EXISTS {ovr_all_table}, {ovr_filt_table}, {ovr_chunk_table};")
-
-            cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", 
-                        ("Ingesting: 98% (Updating table statistics)...", run_id))
-            conn.commit()
-            
+            # Statistics refresh performed outside the gate to free waiting uploads immediately
             restore_secondary_indexes(cur)
-            conn.commit()
-
-            resolution_type = 'SKIPPED' if skip_conflicts else 'OVERRIDDEN'
-            cur.execute("""
-                UPDATE job_cards 
-                SET status = 'ACTIVE', 
-                    total_codes = %s, 
-                    conflict_resolution = %s, 
-                    override_by = %s,
-                    override_reason = %s,
-                    ingestion_progress = %s 
-                WHERE run_id = %s
-            """, (actual_inserted, resolution_type, username, override_reason, '100%', run_id))
-
-            if skip_conflicts:
-                lifecycle_reason = f"Conflicts Skipped: {actual_inserted:,} codes kept ({conflicts:,} skipped). Justification: {override_reason}"
-            else:
-                lifecycle_reason = f"Duplicate Overridden: {conflicts:,} duplicates accepted ({actual_inserted:,} total codes). Justification: {override_reason}"
-
-            cur.execute("""
-                INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) 
-                VALUES (%s, %s, %s, %s)
-            """, (job_card_id, "CREATED", username, lifecycle_reason))
-            log_system_event(cur, "JOB_LIFECYCLE", job_card_id, "CREATED", username, lifecycle_reason)
-
             conn.commit()
 
     except Exception as e:
