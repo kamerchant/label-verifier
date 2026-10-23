@@ -58,6 +58,40 @@
             color: #94a3b8;
             border-color: rgba(148, 163, 184, 0.25);
         }
+                /* Ingestion & Overriding Live Status Pills */
+        .job-status-pill.status-ingesting {
+            background-color: rgba(94, 106, 210, 0.14);
+            color: #818cf8;
+            border-color: rgba(94, 106, 210, 0.35);
+        }
+        .job-status-pill.status-overriding {
+            background-color: rgba(245, 158, 11, 0.14);
+            color: #fbbf24;
+            border-color: rgba(245, 158, 11, 0.35);
+        }
+        .job-status-pill.status-failed {
+            background-color: rgba(239, 68, 68, 0.14);
+            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.35);
+        }
+
+        /* High-contrast Parchment Theme overrides */
+        html.theme-parchment .job-status-pill.status-ingesting {
+            background-color: #e0e7ff;
+            color: #4338ca;
+            border-color: #c7d2fe;
+        }
+        html.theme-parchment .job-status-pill.status-overriding {
+            background-color: #fef3c7;
+            color: #b45309;
+            border-color: #fde68a;
+        }
+        html.theme-parchment .job-status-pill.status-failed {
+            background-color: #fee2e2;
+            color: #dc2626;
+            border-color: #fca5a5;
+        }
+
 
         /* Subtle Action Buttons */
         .btn-ghost-danger {
@@ -4914,7 +4948,12 @@
                                <option value="INACTIVE" class="bg-[#12141a] text-amber-400" ${j.status === 'INACTIVE' ? 'selected' : ''}>Inactive</option>
                                <option value="COMPLETED" class="bg-[#12141a] text-slate-400" ${j.status === 'COMPLETED' ? 'selected' : ''}>Completed</option>
                            </select>`
-                        : `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold linear-badge-fail">${j.status}</span>`;
+                        : (j.status === 'INGESTING' || j.status === 'OVERRIDING')
+                            ? `<span class="job-status-pill ${j.status === 'OVERRIDING' ? 'status-overriding' : 'status-ingesting'} text-[9px] py-0.5 px-2 inline-flex items-center gap-1" style="padding-right: 8px !important;">
+                                 <span class="inline-block w-2 h-2 border border-current border-t-transparent rounded-full animate-spin"></span>
+                                 <span>${j.status === 'OVERRIDING' ? 'Overriding...' : 'Ingesting...'}</span>
+                               </span>`
+                            : `<span class="job-status-pill status-completed text-[9px] py-0.5 px-2" style="padding-right: 8px !important;">${j.status}</span>`;
 
                     let conflictHtml = conflictCount > 0
                         ? `<button type="button" onclick="openConflictReportFromMasterJobs(${j.run_id}, '${j.job_card_id}', ${conflictCount}, ${j.total || 0}, '${j.status}')" class="bg-amber-500/15 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold">⚠️ ${conflictCount} Conflict</button>`
@@ -4993,33 +5032,40 @@
                         </select>
                     `;
                 } else {
-                    let cssClass = 'ingesting';
-                    if (j.status === 'OVERRIDING') cssClass = 'overriding';
-                    else if (j.status === 'FAILED') cssClass = 'failed';
-
                     const progressText = j.ingestion_progress || 'Processing...';
 
                     if (j.status === 'INGESTING' || j.status === 'OVERRIDING') {
+                        const isOvr = j.status === 'OVERRIDING';
+                        const pctMatch = progressText.match(/(\d+)%/);
+                        const label = isOvr 
+                            ? (pctMatch ? `Overriding ${pctMatch[1]}%` : 'Overriding...')
+                            : (pctMatch ? `Ingesting ${pctMatch[1]}%` : 'Ingesting...');
+                        const pillClass = isOvr ? 'status-overriding' : 'status-ingesting';
+
                         statusCellHtml = `
-                            <div class="status-pill-progress ${cssClass}" title="${progressText}">
-                                <div class="status-spinner"></div>
-                                <span class="max-w-[160px] truncate"><strong>${j.status}:</strong> ${progressText}</span>
+                            <div class="job-status-pill ${pillClass} inline-flex items-center justify-center gap-1.5 cursor-help select-none whitespace-nowrap" 
+                                 title="${j.status}: ${progressText}" style="padding-right: 8px !important;">
+                                <span class="inline-block w-2.5 h-2.5 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0"></span>
+                                <span>${label}</span>
                             </div>
                         `;
                     } else if (j.status === 'CONFLICT_DETECTED') {
                         statusCellHtml = `
-                            <div class="status-pill-progress" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.25);">
-                                <span>⚠️ <strong>Conflict (${j.conflict_count || 0})</strong></span>
+                            <div class="job-status-pill status-inactive inline-flex items-center justify-center gap-1 cursor-pointer select-none whitespace-nowrap" 
+                                 onclick="resolveJobFromAdmin(${j.run_id}, ${j.conflict_count || 0}, ${j.total || 0})"
+                                 title="Action Required: Click to resolve duplicate conflicts" style="padding-right: 8px !important;">
+                                <span>⚠️ Conflict (${(Number(j.conflict_count) || 0).toLocaleString()})</span>
                             </div>
                         `;
                     } else if (j.status === 'FAILED') {
                         statusCellHtml = `
-                            <div class="status-pill-progress failed" title="${progressText}">
-                                <span class="max-w-[180px] truncate">⚠️ <strong>FAILED:</strong> ${progressText}</span>
+                            <div class="job-status-pill status-failed inline-flex items-center justify-center gap-1 cursor-help select-none whitespace-nowrap" 
+                                 title="Failed: ${progressText}" style="padding-right: 8px !important;">
+                                <span>✕ Failed</span>
                             </div>
                         `;
                     } else {
-                        statusCellHtml = `<span class="px-2 py-0.5 rounded text-[10px] font-bold linear-badge-fail">${j.status}</span>`;
+                        statusCellHtml = `<span class="job-status-pill status-completed inline-flex items-center justify-center">${j.status}</span>`;
                     }
                 }
 
