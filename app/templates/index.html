@@ -545,7 +545,7 @@
         }
     </style>
 </head>
-<body class="h-screen overflow-hidden flex flex-col justify-between selection:bg-[#5e6ad2] selection:text-white">
+<body class="h-screen h-[100dvh] overflow-hidden flex flex-col justify-between selection:bg-[#5e6ad2] selection:text-white">
 
     <!-- Top Command Navigation Bar -->
     <header class="border-b border-white/[0.08] bg-[#0d0e11]/95 backdrop-blur-md px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between text-sm shrink-0 z-40 gap-2">
@@ -571,7 +571,7 @@
 
     <!-- Main Workspace -->
    
-    <main class="max-w-6xl w-full mx-auto px-2 sm:px-6 py-1.5 sm:py-4 flex-1 overflow-hidden flex flex-col gap-1.5 sm:gap-4">
+    <main class="max-w-6xl w-full mx-auto px-2 sm:px-6 py-1 sm:py-3 flex-1 min-h-0 overflow-hidden flex flex-col gap-1 sm:gap-3">
 
         <!-- Job Context Ribbon, Search Bar, & Action Buttons -->
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-1.5 sm:gap-3 shrink-0">
@@ -616,25 +616,21 @@
             </div>
         </div>
 
-        <!-- Metric Figures (KPI Counters) -->
-        <div class="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-1 sm:gap-2 shrink-0">
-            <div class="linear-card px-2 py-1 sm:p-2.5 rounded text-center flex flex-col items-center justify-center">
-                <span id="kpi-total" class="text-sm sm:text-2xl md:text-3xl font-extrabold block table-text-theme font-mono">0</span>
-                <span class="text-[9px] sm:text-xs md:text-sm font-medium text-slate-500 block truncate mt-0.5">Assigned pool</span>
+        <!-- Compact KPI Bar -->
+        <div class="linear-card px-3 py-1.5 sm:py-2 rounded flex items-center justify-between text-xs sm:text-sm shrink-0 font-mono">
+            <div class="flex items-center gap-1 sm:gap-1.5 truncate">
+                <span class="text-slate-400 text-[10px] sm:text-xs uppercase font-semibold">Verified:</span>
+                <span id="kpi-consumed" class="font-extrabold text-[#2ed573] text-xs sm:text-base">0</span>
             </div>
-            
-            <span class="text-xs sm:text-xl font-bold text-slate-400 text-center">-</span>
-
-            <div class="linear-card px-2 py-1 sm:p-2.5 rounded text-center flex flex-col items-center justify-center">
-                <span id="kpi-consumed" class="text-sm sm:text-2xl md:text-3xl font-extrabold block text-[#2ed573] font-mono">0</span>
-                <span class="text-[9px] sm:text-xs md:text-sm font-medium text-slate-500 block truncate mt-0.5">Verified codes</span>
+            <span class="text-slate-600">&middot;</span>
+            <div class="flex items-center gap-1 sm:gap-1.5 truncate">
+                <span class="text-slate-400 text-[10px] sm:text-xs uppercase font-semibold">Remaining:</span>
+                <span id="kpi-pending" class="font-extrabold text-amber-400 text-xs sm:text-base">0</span>
             </div>
-
-            <span class="text-xs sm:text-xl font-bold text-slate-400 text-center">=</span>
-
-            <div class="linear-card px-2 py-1 sm:p-2.5 rounded text-center flex flex-col items-center justify-center">
-                <span id="kpi-pending" class="text-sm sm:text-2xl md:text-3xl font-extrabold block text-amber-500 font-mono">0</span>
-                <span class="text-[9px] sm:text-xs md:text-sm font-medium text-slate-500 block truncate mt-0.5">Remaining pool</span>
+            <span class="text-slate-600">&middot;</span>
+            <div class="flex items-center gap-1 sm:gap-1.5 truncate">
+                <span class="text-slate-400 text-[10px] sm:text-xs uppercase font-semibold">Total:</span>
+                <span id="kpi-total" class="font-bold table-text-theme text-xs sm:text-base">0</span>
             </div>
         </div>
 
@@ -667,14 +663,15 @@
 
 
         <!-- Verification Stream Table -->
-        <div class="linear-card rounded overflow-hidden flex-1 min-h-[140px] flex flex-col">
-            <div class="px-2 py-1.5 border-b border-white/[0.08] flex items-center justify-center text-[10px] shrink-0 bg-[#12141a]">
-                <span class="text-[10px] sm:text-xs font-black uppercase tracking-wider text-white text-center block w-full">Verification Stream</span>
+        <div class="linear-card rounded overflow-hidden flex-1 min-h-0 flex flex-col">
+            <div class="px-2 py-1 border-b border-white/[0.08] flex items-center justify-between text-[10px] shrink-0 bg-[#12141a]">
+                <span class="text-[10px] sm:text-xs font-black uppercase tracking-wider text-white">Verification Stream</span>
+                <span id="stream-count-indicator" class="text-[10px] text-slate-400 font-mono">0 scans</span>
             </div>
 
-            <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+            <div class="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden">
                 <!-- Desktop Table View (Hidden on Mobile) -->
-                <div class="hidden md:block flex-1 overflow-x-auto overflow-y-auto">
+                <div class="hidden md:block flex-1 min-h-0 overflow-x-auto overflow-y-auto">
                     <table class="w-full text-left whitespace-nowrap">
                         <thead>
                             <tr class="border-b border-white/[0.08] text-xs font-bold text-slate-300 uppercase tracking-wider table-header-theme sticky top-0 z-10">
@@ -2747,6 +2744,7 @@
             activeJobDesc = "";
             activeJobStatus = null;
             allScans = [];
+            currentStreamLimit = 50;
 
             const searchInput = document.getElementById('job-search');
             const shortcutBadge = document.getElementById('search-shortcut-badge');
@@ -2814,9 +2812,12 @@
             updateSystemMessage("Job Card closed. Ready to select job.", "info");
         }
 
-        async function loadJobScanStream(jobCardId) {
+        let currentStreamLimit = 50;
+
+        async function loadJobScanStream(jobCardId, appendLimit = 50) {
+            currentStreamLimit = appendLimit;
             try {
-                const res = await fetch(`/api/jobs/${encodeURIComponent(jobCardId)}/recent-scans?limit=50`);
+                const res = await fetch(`/api/jobs/${encodeURIComponent(jobCardId)}/recent-scans?limit=${currentStreamLimit}`);
                 if (res.ok) {
                     const data = await res.json();
                     allScans = (data.recent_logs || []).map(l => ({
@@ -2831,6 +2832,13 @@
             } catch (e) {
                 console.error("Failed to load stream history", e);
             }
+        }
+
+        async function loadMoreScans() {
+            if (!activeJobId) return;
+            const btn = document.getElementById('load-more-scans-btn');
+            if (btn) btn.innerText = "Loading older scans...";
+            await loadJobScanStream(activeJobId, currentStreamLimit + 50);
         }
 
         async function handleJobStatusToggle() {
@@ -2904,7 +2912,7 @@
                     user: currentUser ? currentUser.username : 'Operator',
                     row_num: data.row_num ?? '-'
                 });
-                if (allScans.length > 50) allScans.pop();
+                if (allScans.length > currentStreamLimit) allScans.pop();
                 renderStreamTable();
 
             } catch (ex) {
@@ -3006,7 +3014,7 @@
                 return;
             }
 
-            const visibleScans = allScans.slice(0, 50);
+            const visibleScans = allScans;
 
             if (visibleScans.length === 0) {
                 if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="px-2 py-4 text-center text-slate-400 italic text-[11px]">No scan events recorded yet</td></tr>`;
@@ -3014,7 +3022,7 @@
                 return;
             }
 
-            // 1. Render Desktop Table Rows (Legible Font & Clear Alignment)
+                        // 1. Render Desktop Table Rows (Legible Font & Clear Alignment)
             if (tbody) {
                 tbody.innerHTML = visibleScans.map((s) => {
                     const isRestart = s.result && s.result.includes('Potential Restart');
@@ -3033,31 +3041,47 @@
                 }).join('');
             }
 
-            // 2. Render Dense Single-Line Mobile Rows (Scan-First Viewport)
+
+            // 2. Render High-Legibility Floor Scan Strips
             if (mobileContainer) {
+                const streamCountEl = document.getElementById('stream-count-indicator');
+                if (streamCountEl) streamCountEl.innerText = `${visibleScans.length} scans`;
+
                 mobileContainer.innerHTML = visibleScans.map((s) => {
                     const isRestart = s.result && s.result.includes('Potential Restart');
                     const isPass = s.result === 'PASS';
                     const badgeClass = isRestart ? "linear-badge-warn" : (isPass ? "linear-badge-pass" : "linear-badge-fail");
-                    const leftBorder = isRestart ? "border-l-amber-500" : (isPass ? "border-l-emerald-500" : "border-l-red-500");
+                    const leftBorder = isRestart ? "border-l-amber-400 border-l-[3px]" : (isPass ? "border-l-emerald-500 border-l-2" : "border-l-red-500 border-l-2");
                     const rowText = (s.row_num && s.row_num !== '-') ? `#${escapeHtml(s.row_num)}` : '#-';
-                    const timeOnly = s.time ? s.time.split(' ')[1] || s.time : '';
+                    const timeOnly = s.time ? (s.time.split(' ')[1] || s.time) : '';
 
                     return `
-                        <div class="linear-subcard px-2 py-1 rounded border-l-2 ${leftBorder} flex items-center justify-between gap-1.5 shadow-sm font-mono text-[11px] leading-tight hover:bg-white/[0.02]">
+                        <div class="linear-subcard px-2.5 py-1.5 rounded ${leftBorder} flex items-center justify-between gap-2 shadow-sm font-mono text-xs leading-none hover:bg-white/[0.03]">
                             <div class="flex items-center gap-1.5 min-w-0 truncate">
-                                <span class="text-[10px] text-indigo-400 font-bold shrink-0">${rowText}</span>
+                                <span class="text-[11px] text-indigo-400 font-extrabold shrink-0">${rowText}</span>
                                 <span class="text-slate-600 shrink-0">&middot;</span>
-                                <span class="font-bold table-text-theme truncate text-[11px]">${escapeHtml(s.code)}</span>
+                                <span class="font-extrabold table-text-theme truncate text-xs sm:text-[13px] tracking-tight">${escapeHtml(s.code)}</span>
                             </div>
                             <div class="flex items-center gap-1.5 shrink-0">
-                                <span class="${badgeClass} px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider">${isRestart ? 'RESTART' : escapeHtml(s.result)}</span>
-                                <span class="text-[9px] text-slate-500">${timeOnly}</span>
+                                <span class="${badgeClass} px-2 py-0.5 rounded text-[9.5px] font-black uppercase tracking-wider">${isRestart ? 'RESTART' : escapeHtml(s.result)}</span>
+                                <span class="text-[10px] text-slate-400 font-medium">${timeOnly}</span>
                             </div>
                         </div>
                     `;
                 }).join('');
+
+                // Append "Load Older Scans" button to the end of the mobile stream
+                if (allScans.length >= currentStreamLimit) {
+                    mobileContainer.innerHTML += `
+                        <div class="py-1 text-center">
+                            <button type="button" id="load-more-scans-btn" onclick="loadMoreScans()" class="linear-button-secondary w-full py-1.5 rounded text-[11px] font-semibold text-slate-300">
+                                ▾ Load Older Scans (+50)
+                            </button>
+                        </div>
+                    `;
+                }
             }
+
         }
 
         let currentPackingQCLogs = [];
