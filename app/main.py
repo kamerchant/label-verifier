@@ -630,7 +630,7 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
 
             cur.execute(f"""
                 CREATE UNLOGGED TABLE {ovr_chunk_table} AS
-                SELECT run_id, job_card_id, code_value, status,
+                SELECT run_id, job_card_id, code_value, status, original_seq,
                        row_number() OVER (ORDER BY original_seq ASC) AS rnum
                 FROM {source_table};
             """)
@@ -651,9 +651,10 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", (status_msg, run_id))
                 conn.commit()
 
+                # Insert original_seq as row_num to preserve exact 1:1 physical file row numbers
                 cur.execute(f"""
                     INSERT INTO codes (run_id, job_card_id, code_value, status, row_num)
-                    SELECT run_id, job_card_id, code_value, status, rnum
+                    SELECT run_id, job_card_id, code_value, status, original_seq
                     FROM {ovr_chunk_table}
                     WHERE rnum >= %s AND rnum < %s
                     ORDER BY rnum ASC;
@@ -1451,17 +1452,42 @@ def cancel_upload_job(run_id: int, user: dict = Depends(require_uploader)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT staged_file_path FROM job_cards WHERE run_id = %s", (run_id,))
+            cur.execute("SELECT staged_file_path, job_card_id, status FROM job_cards WHERE run_id = %s", (run_id,))
             row = cur.fetchone()
-            if row and row[0] and os.path.exists(row[0]):
+            if not row:
+                raise HTTPException(status_code=404, detail="Job Card not found")
+
+            staged_file_path, jc_id, status = row
+
+            # Restrict cancellation strictly to pending conflict decisions or failed uploads
+            if status not in ('CONFLICT_DETECTED', 'FAILED'):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot cancel Job Card '{jc_id}' in state '{status}'. Only pending uploads with detected conflicts can be cancelled."
+                )
+
+            # Clean up staged temporary ingestion file if present
+            if staged_file_path and os.path.exists(staged_file_path):
                 try:
-                    os.remove(row[0])
+                    os.remove(staged_file_path)
                 except OSError:
                     pass
 
+            # Record immutable audit event
+            log_system_event(
+                cur, 
+                "JOB_LIFECYCLE", 
+                jc_id, 
+                "UPLOAD_DISCARDED", 
+                user["username"], 
+                f"Batch upload for Job Card '{jc_id}' discarded by operator during conflict review."
+            )
+
+            # Clean up any partial codes and release the Job Card ID for future uploads
+            cur.execute("DELETE FROM codes WHERE run_id = %s", (run_id,))
             cur.execute("DELETE FROM job_cards WHERE run_id = %s", (run_id,))
             conn.commit()
-            return {"status": "success"}
+            return {"status": "success", "message": f"Upload for Job Card '{jc_id}' successfully discarded."}
     finally:
         release_connection(conn)
 
