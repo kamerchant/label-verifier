@@ -53,6 +53,23 @@ async def lifespan(app: FastAPI):
             cur.execute("CREATE INDEX IF NOT EXISTS idx_scan_logs_jc_id ON scan_logs (job_card_id, id DESC);")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_packing_qc_jc_code ON packing_qc_logs (job_card_id, code_scanned);")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_sys_audit_ts ON system_audit_logs (timestamp DESC);")
+            
+            # 1. Add explicit row_num column and index
+            cur.execute("ALTER TABLE codes ADD COLUMN IF NOT EXISTS row_num INT;")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_rownum ON codes (run_id, row_num);")
+
+            # 2. Backfill row_num for any historical jobs that don't have it yet
+            cur.execute("""
+                UPDATE codes c
+                SET row_num = sub.calc_row
+                FROM (
+                    SELECT id, row_number() OVER (PARTITION BY run_id ORDER BY id ASC) AS calc_row
+                    FROM codes
+                    WHERE row_num IS NULL
+                ) sub
+                WHERE c.id = sub.id;
+            """)
+            conn.commit()
 
             cur.execute("""
                 UPDATE job_cards 
@@ -475,10 +492,11 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
             cur.execute("UPDATE job_cards SET ingestion_progress = %s WHERE run_id = %s", ("Ingesting: 75% (Direct database insertion in strict file order)...", run_id))
             conn.commit()
 
-            # Insert strictly ordered by original_seq to guarantee 1:1 file sequence match
+            # Insert strictly ordered by original_seq and store 1:1 file row index explicitly
             cur.execute(f"""
-                INSERT INTO codes (run_id, job_card_id, code_value, status)
-                SELECT %s, %s, code_value, 'PENDING'
+                INSERT INTO codes (run_id, job_card_id, code_value, status, row_num)
+                SELECT %s, %s, code_value, 'PENDING',
+                       row_number() OVER (ORDER BY original_seq ASC)
                 FROM {incoming_table}
                 ORDER BY original_seq ASC;
             """, (run_id, job_card_id))
@@ -634,8 +652,8 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                 conn.commit()
 
                 cur.execute(f"""
-                    INSERT INTO codes (run_id, job_card_id, code_value, status)
-                    SELECT run_id, job_card_id, code_value, status
+                    INSERT INTO codes (run_id, job_card_id, code_value, status, row_num)
+                    SELECT run_id, job_card_id, code_value, status, rnum
                     FROM {ovr_chunk_table}
                     WHERE rnum >= %s AND rnum < %s
                     ORDER BY rnum ASC;
@@ -1603,16 +1621,9 @@ def verify_code(
                 log_system_event(cur, "SCAN_VERIFICATION", job_card_id, f"SCAN_{res}", operator, f"Scanned code: {scanned} [{res}]")
                 conn.commit()
 
+            # Select code along with its immutable, explicit file row_num
             cur.execute("""
-                SELECT id FROM codes 
-                WHERE run_id = %s 
-                ORDER BY id ASC LIMIT 1;
-            """, (active_run_id,))
-            min_row = cur.fetchone()
-            min_id = min_row[0] if min_row else 0
-
-            cur.execute("""
-                SELECT id, code_value, status 
+                SELECT id, code_value, status, COALESCE(row_num, 0)
                 FROM codes 
                 WHERE run_id = %s AND code_value = %s
                 FOR UPDATE
@@ -1621,19 +1632,18 @@ def verify_code(
             code_row = cur.fetchone()
 
             if code_row:
-                code_id, exact_code, current_status = code_row
-                row_num = (code_id - min_id + 1) if min_id > 0 else code_id
+                code_id, exact_code, current_status, row_num = code_row
 
+                # Check previous highest verified row position directly
                 cur.execute("""
-                    SELECT id FROM codes 
+                    SELECT COALESCE(row_num, 0) FROM codes 
                     WHERE run_id = %s AND status = 'CONSUMED' 
-                    ORDER BY id DESC LIMIT 1;
+                    ORDER BY row_num DESC, id DESC LIMIT 1;
                 """, (active_run_id,))
-                max_consumed_row = cur.fetchone()
-                max_consumed_id = max_consumed_row[0] if max_consumed_row else 0
-                max_consumed_row_num = (max_consumed_id - min_id + 1) if (max_consumed_id > 0 and min_id > 0) else max_consumed_id
+                max_row = cur.fetchone()
+                max_consumed_row_num = max_row[0] if max_row else 0
 
-                out_of_sequence = max_consumed_id > 0 and code_id < max_consumed_id
+                out_of_sequence = max_consumed_row_num > 0 and row_num < max_consumed_row_num
 
                 if out_of_sequence:
                     if current_status == 'CONSUMED':
@@ -1741,13 +1751,7 @@ def get_recent_scans(job_card_id: str, limit: int = 50, user: dict = Depends(get
             jc_row = cur.fetchone()
             active_run_id = jc_row[0] if jc_row else None
 
-            min_id = None
             if active_run_id:
-                cur.execute("SELECT MIN(id) FROM codes WHERE run_id = %s", (active_run_id,))
-                min_row = cur.fetchone()
-                min_id = min_row[0] if min_row else None
-
-            if active_run_id and min_id is not None:
                 cur.execute("""
                     WITH recent AS (
                         SELECT s.code_scanned, s.result, s.scanned_by, s.scanned_at
@@ -1757,11 +1761,11 @@ def get_recent_scans(job_card_id: str, limit: int = 50, user: dict = Depends(get
                         LIMIT %s
                     )
                     SELECT r.code_scanned, r.result, r.scanned_by, r.scanned_at,
-                           (c.id - %s + 1) AS row_num
+                           c.row_num
                     FROM recent r
                     LEFT JOIN codes c ON c.run_id = %s AND c.code_value = r.code_scanned
                     ORDER BY r.scanned_at DESC;
-                """, (job_card_id, limit, min_id, active_run_id))
+                """, (job_card_id, limit, active_run_id))
             else:
                 cur.execute("""
                     SELECT s.code_scanned, s.result, s.scanned_by, s.scanned_at,
@@ -1828,11 +1832,7 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
             """, (jc_id,))
             results_breakdown = {r[0]: r[1] for r in cur.fetchall()}
 
-            cur.execute("SELECT MIN(id) FROM codes WHERE run_id = %s", (run_id,))
-            min_row = cur.fetchone()
-            min_id = min_row[0] if min_row else None
-
-            if min_id is not None:
+            if run_id:
                 cur.execute("""
                     WITH recent AS (
                         SELECT s.code_scanned, s.result, s.scanned_by, s.scanned_at
@@ -1842,11 +1842,11 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
                         LIMIT 5000
                     )
                     SELECT r.code_scanned, r.result, r.scanned_by, r.scanned_at,
-                           (c.id - %s + 1) AS row_num
+                           c.row_num
                     FROM recent r
                     LEFT JOIN codes c ON c.run_id = %s AND c.code_value = r.code_scanned
                     ORDER BY r.scanned_at DESC;
-                """, (jc_id, min_id, run_id))
+                """, (jc_id, run_id))
             else:
                 cur.execute("""
                     SELECT s.code_scanned, s.result, s.scanned_by, s.scanned_at,
@@ -1915,20 +1915,14 @@ def export_report_csv(job_card_id: str, user: dict = Depends(get_current_user)):
             (run_id, jc_desc, jc_status, conf_res, conf_cnt, 
              over_by, over_reason, conf_details) = jc_row
 
-            min_id = None
             if run_id:
-                cur.execute("SELECT MIN(id) FROM codes WHERE run_id = %s", (run_id,))
-                min_row = cur.fetchone()
-                min_id = min_row[0] if min_row else None
-
-            if run_id and min_id is not None:
                 cur.execute("""
-                    SELECT s.code_scanned, (c.id - %s + 1) AS row_num, s.result, s.scanned_by, s.scanned_at 
+                    SELECT s.code_scanned, c.row_num, s.result, s.scanned_by, s.scanned_at 
                     FROM scan_logs s
                     LEFT JOIN codes c ON c.run_id = %s AND c.code_value = s.code_scanned
                     WHERE s.job_card_id = %s 
                     ORDER BY s.scanned_at ASC
-                """, (min_id, run_id, job_card_id))
+                """, (run_id, job_card_id))
             else:
                 cur.execute("""
                     SELECT s.code_scanned, NULL AS row_num, s.result, s.scanned_by, s.scanned_at 
