@@ -565,22 +565,22 @@
             </button>
         </div>
 
-        <!-- 4-Button Action Strip (1 Line on Mobile with 2-Line Text Centering) -->
+        <!-- 4-Button Action Strip (Larger Mobile Text & Updated Labels) -->
         <div class="grid grid-cols-4 sm:flex sm:items-center gap-1 sm:gap-2 w-full sm:w-auto shrink-0">
-            <button onclick="openPackingQCModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-1 sm:px-3 py-1 sm:py-1.5 rounded text-[10px] sm:text-xs font-bold shadow-md transition-colors flex flex-col sm:flex-row items-center justify-center text-center leading-[1.1] sm:leading-tight min-h-[32px] sm:min-h-[34px] sm:whitespace-nowrap">
+            <button onclick="openPackingQCModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-0.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-bold shadow-md transition-colors flex flex-col sm:flex-row items-center justify-center text-center leading-[1.1] sm:leading-tight min-h-[34px] sm:min-h-[34px] sm:whitespace-nowrap">
                 <span>Final</span><span>QC</span>
             </button>
             <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-2.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-semibold whitespace-nowrap min-h-[28px] sm:min-h-[34px] sm:inline-flex items-center shrink-0">
                 Create Job
             </button>
-            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-1 sm:px-3 py-1 sm:py-1.5 rounded text-[10px] sm:text-xs font-medium sm:font-semibold flex flex-col sm:flex-row items-center justify-center text-center leading-[1.1] sm:leading-tight min-h-[32px] sm:min-h-[34px] sm:whitespace-nowrap">
-                <span>Control</span><span>Center</span>
+            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-0.5 sm:px-3 py-1 sm:py-1.5 rounded text-[10.5px] sm:text-xs font-medium sm:font-semibold flex flex-col sm:flex-row items-center justify-center text-center leading-[1.1] sm:leading-tight min-h-[34px] sm:min-h-[34px] sm:whitespace-nowrap">
+                <span>Job Control</span><span>Center</span>
             </button>
-            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-1 sm:px-3 py-1 sm:py-1.5 rounded text-[10px] sm:text-xs font-medium sm:font-semibold flex flex-col sm:flex-row items-center justify-center text-center leading-[1.1] sm:leading-tight min-h-[32px] sm:min-h-[34px] sm:whitespace-nowrap">
-                <span>User</span><span>Mgmt</span>
+            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-0.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-medium sm:font-semibold flex flex-col sm:flex-row items-center justify-center text-center leading-[1.1] sm:leading-tight min-h-[34px] sm:min-h-[34px] sm:whitespace-nowrap">
+                <span>Manage</span><span>Users</span>
             </button>
-            <button onclick="openChangePasswordModal()" class="linear-button-secondary px-1 sm:px-3 py-1 sm:py-1.5 rounded text-[10px] sm:text-xs font-medium sm:font-semibold flex flex-col sm:flex-row items-center justify-center text-center leading-[1.1] sm:leading-tight min-h-[32px] sm:min-h-[34px] sm:whitespace-nowrap">
-                <span>Change</span><span>Pass</span>
+            <button onclick="openChangePasswordModal()" class="linear-button-secondary px-0.5 sm:px-3 py-1 sm:py-1.5 rounded text-[10.5px] sm:text-xs font-medium sm:font-semibold flex flex-col sm:flex-row items-center justify-center text-center leading-[1.1] sm:leading-tight min-h-[34px] sm:min-h-[34px] sm:whitespace-nowrap">
+                <span>Change</span><span>Password</span>
             </button>
             <!-- Desktop Logout Button -->
             <button onclick="logout()" class="hidden sm:inline-flex bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-medium transition-colors whitespace-nowrap min-h-[28px] sm:min-h-[34px] items-center shrink-0">
