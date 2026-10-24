@@ -1686,12 +1686,143 @@
                 <button type="button" onclick="stopCameraScanner()" class="linear-button-secondary px-2.5 py-1 rounded text-xs font-semibold">✕ Close</button>
             </div>
             
-            <!-- Camera Viewport Canvas -->
-            <div id="camera-scanner-viewport" class="w-full aspect-square bg-black rounded overflow-hidden border border-white/[0.12] relative"></div>
+        let html5QrCodeScanner = null;
+        let activeVideoTrack = null;
+        let currentZoomFactor = 1.0;
 
-            <p class="text-[11px] text-slate-400 mt-2.5 text-center leading-tight">Align 2D DataMatrix, QR Code, or 1D Barcode within the frame</p>
-        </div>
-    </div>
+        async function startCameraScanner() {
+            if (!activeJobId || activeJobStatus !== 'ACTIVE') {
+                showCustomAlert("Please select an active Job Card first.", "No Job Selected");
+                return;
+            }
+
+            const modal = document.getElementById('camera-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.style.display = 'flex';
+            }
+
+            // Reset zoom to 1x upon opening
+            setCameraZoomLevel(1, false);
+
+            try {
+                if (!html5QrCodeScanner) {
+                    html5QrCodeScanner = new Html5Qrcode("camera-scanner-viewport");
+                }
+
+                const config = { 
+                    fps: 15, 
+                    qrbox: { width: 220, height: 220 },
+                    aspectRatio: 1.0 
+                };
+
+                await html5QrCodeScanner.start(
+                    { facingMode: "environment" },
+                    config,
+                    (decodedText) => {
+                        stopCameraScanner();
+                        const input = document.getElementById('barcode-input');
+                        if (input) {
+                            input.value = decodedText;
+                            document.getElementById('scan-form').dispatchEvent(new Event('submit', { cancelable: true }));
+                        }
+                    },
+                    (errorMessage) => {
+                        // Frame scan tick, keep empty for speed
+                    }
+                );
+
+                // Detect hardware camera track and zoom capabilities
+                setTimeout(() => {
+                    initCameraZoomCapabilities();
+                }, 300);
+
+            } catch (err) {
+                showCustomAlert("Unable to access camera. Please ensure camera permissions are granted in your browser settings.", "Camera Permission Required");
+                stopCameraScanner();
+            }
+        }
+
+        function initCameraZoomCapabilities() {
+            activeVideoTrack = null;
+            try {
+                const videoEl = document.querySelector("#camera-scanner-viewport video");
+                if (videoEl && videoEl.srcObject) {
+                    const tracks = videoEl.srcObject.getVideoTracks();
+                    if (tracks && tracks.length > 0) {
+                        activeVideoTrack = tracks[0];
+                        const capabilities = activeVideoTrack.getCapabilities ? activeVideoTrack.getCapabilities() : {};
+                        const slider = document.getElementById('camera-zoom-slider');
+                        if (capabilities.zoom && slider) {
+                            slider.min = capabilities.zoom.min || 1;
+                            slider.max = capabilities.zoom.max || 5;
+                            slider.step = capabilities.zoom.step || 0.1;
+                            slider.value = capabilities.zoom.min || 1;
+                        }
+                    }
+                }
+            } catch (e) {}
+        }
+
+        async function applyCameraZoom(level) {
+            currentZoomFactor = Math.max(1, level);
+            const slider = document.getElementById('camera-zoom-slider');
+            if (slider) slider.value = currentZoomFactor;
+
+            // Update preset button active highlights
+            [1, 2, 3].forEach(val => {
+                const btn = document.getElementById(`zoom-btn-${val}x`);
+                if (btn) {
+                    if (Math.round(currentZoomFactor) === val) {
+                        btn.className = "linear-button-primary px-2 py-0.5 rounded text-[10px] font-bold";
+                    } else {
+                        btn.className = "linear-button-secondary px-2 py-0.5 rounded text-[10px] font-bold";
+                    }
+                }
+            });
+
+            // 1. Hardware native optical/digital camera zoom
+            if (activeVideoTrack && typeof activeVideoTrack.applyConstraints === 'function') {
+                try {
+                    const capabilities = activeVideoTrack.getCapabilities ? activeVideoTrack.getCapabilities() : {};
+                    if (capabilities.zoom) {
+                        await activeVideoTrack.applyConstraints({
+                            advanced: [{ zoom: currentZoomFactor }]
+                        });
+                        return;
+                    }
+                } catch (e) {}
+            }
+
+            // 2. High-performance CSS transform fallback (magnifies viewfinder if hardware zoom is restricted)
+            const videoEl = document.querySelector("#camera-scanner-viewport video");
+            if (videoEl) {
+                videoEl.style.transform = `scale(${currentZoomFactor})`;
+                videoEl.style.transformOrigin = "center center";
+                videoEl.style.transition = "transform 0.15s ease-out";
+            }
+        }
+
+        function setCameraZoomLevel(level, apply = true) {
+            if (apply) applyCameraZoom(level);
+        }
+
+        async function stopCameraScanner() {
+            activeVideoTrack = null;
+            if (html5QrCodeScanner) {
+                try {
+                    if (html5QrCodeScanner.isScanning) {
+                        await html5QrCodeScanner.stop();
+                    }
+                } catch(e) {}
+            }
+            const modal = document.getElementById('camera-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+            }
+            resetInput();
+        }
 
     <!-- Client Script Layer -->
     <script>
