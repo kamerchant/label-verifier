@@ -113,10 +113,32 @@ def init_db():
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS packing_qc_logs (
                     id SERIAL PRIMARY KEY,
+                    run_id INT REFERENCES job_cards(run_id) ON DELETE CASCADE,
                     job_card_id TEXT NOT NULL,
                     code_scanned TEXT NOT NULL,
                     tested_by TEXT,
+                    qc_stage VARCHAR(20) NOT NULL DEFAULT 'PRECHECK',
                     tested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            cur.execute(
+                "ALTER TABLE packing_qc_logs ADD COLUMN IF NOT EXISTS "
+                "qc_stage VARCHAR(20) NOT NULL DEFAULT 'PRECHECK';"
+            )
+            cur.execute(
+                "ALTER TABLE packing_qc_logs ADD COLUMN IF NOT EXISTS "
+                "run_id INT REFERENCES job_cards(run_id) ON DELETE CASCADE;"
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_packing_qc_run_stage "
+                "ON packing_qc_logs (run_id, qc_stage, tested_at DESC);"
+            )
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS packing_qc_completions (
+                    run_id INT PRIMARY KEY REFERENCES job_cards(run_id) ON DELETE CASCADE,
+                    job_card_id TEXT NOT NULL,
+                    completed_by TEXT NOT NULL,
+                    completed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                 );
             """)
 
