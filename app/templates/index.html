@@ -1139,7 +1139,7 @@
                 <span id="packing-qc-detail-text" class="text-xs block"></span>
             </div>
 
-            <div class="print-table-container flex-1 min-h-0 overflow-y-auto border border-white/[0.08] rounded mb-4 no-print">
+            <div id="packing-qc-history-panel" class="print-table-container flex-1 min-h-0 overflow-y-auto border border-white/[0.08] rounded mb-4 no-print hidden">
                 <h4 class="text-xs font-bold table-header-theme px-2.5 py-2 border-b border-white/[0.08]">Packing QC Checks</h4>
                 <div class="max-h-40 overflow-auto">
                     <table class="w-full text-left text-xs whitespace-nowrap">
@@ -3828,7 +3828,12 @@
             const mode = document.getElementById('packing-qc-mode');
             if (!mode) return;
             const heading = document.getElementById('packing-qc-heading');
+            const historyPanel = document.getElementById('packing-qc-history-panel');
             const jobCardId = document.getElementById('packing-qc-job').value.trim();
+            historyPanel.classList.toggle(
+                'hidden',
+                !jobCardId || currentPackingQCHasProductionScans !== true
+            );
             if (!jobCardId) {
                 heading.innerText = "Final QC Terminal";
                 mode.innerText = "Enter a Job Card number to begin a pre-check or packing check.";
@@ -4135,12 +4140,9 @@
                     updatePackingQCCompletionControls();
                     codeInput.value = "";
                     codeInput.focus();
-                    updateSystemMessage(
-                        data.qc_stage === 'PACKING'
-                            ? `[Packing QC Check Passed] Code: ${data.code}`
-                            : `[Pre-check Passed] Code: ${data.code}`,
-                        "success"
-                    );
+                    if (data.qc_stage === 'PACKING') {
+                        updateSystemMessage(`[Packing QC Check Passed] Code: ${data.code}`, "success");
+                    }
                 } else {
                     resultBox.className = "p-3 rounded mb-3 border bg-red-500/10 border-red-500/25 text-red-400 text-center";
                     statusText.innerText = data.message?.toLowerCase().includes("already validated")
