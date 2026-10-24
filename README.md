@@ -17,7 +17,7 @@ The Render Blueprint generates `SESSION_SECRET` and enables secure session cooki
 
 Database timestamps are stored in UTC. Use the `TZ` control in the application footer to choose the display time zone; that preference is saved in the current browser.
 
-Before creating a job, the upload screen previews the selected file and reports repeated code values. Job creation is blocked when any duplicate is found; download the duplicate CSV report, correct the source file, and preview it again. The server repeats the duplicate check before creating a job, so bypassing the preview does not allow a duplicate file to be ingested. Downloading the preview report reprocesses the selected file.
+Job creation uses one action: select the CSV and click **Create Job**. The application first checks for repeated codes within the file; if found, it blocks creation, shows repeated-code details, and offers a downloadable duplicate report. Correct the file and click **Create Job** again. If the file is internally unique, the application checks the Job Card number and continues with the existing cross-job conflict checks. The server independently repeats the within-file duplicate check before accepting a job, so the client-side check cannot be bypassed.
 
 Final QC code checks are treated as pre-checks unless the same Job Card is loaded in the main workspace. Pre-checks are not recorded as packing QC. Packing-stage checks are recorded separately; after at least one successful check, any signed-in operator can explicitly mark Packing QC complete. The certificate is only available after that completion action and records who completed it and when.
 

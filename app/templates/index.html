@@ -1761,7 +1761,7 @@
 
                 <div id="csv-preview-box" class="hidden linear-subcard p-3 rounded border border-slate-500/20">
                     <p id="csv-preview-summary" class="text-xs font-semibold table-text-theme"></p>
-                    <p id="csv-preview-duplicates" class="text-xs text-amber-700 mt-1"></p>
+                    <p id="csv-preview-duplicates" class="text-xs mt-1"></p>
                     <div id="csv-preview-samples" class="hidden mt-2 max-h-28 overflow-y-auto text-[11px] text-slate-500"></div>
                     <button type="button" id="download-preview-duplicate-report-btn" onclick="downloadPreviewDuplicateReport()" class="hidden linear-button-secondary px-2.5 py-1 rounded text-xs font-medium mt-2">Download Duplicate Report</button>
                 </div>
@@ -1779,8 +1779,7 @@
 
                 <div class="flex justify-end gap-2 pt-2 flex-wrap">
                     <button type="button" id="upload-cancel-btn" onclick="toggleModal('upload-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
-                    <button type="button" id="preview-csv-btn" onclick="previewJobFile()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Preview CSV</button>
-                    <button type="submit" id="upload-btn" disabled class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold opacity-50">Create Job</button>
+                    <button type="submit" id="upload-btn" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold">Create Job</button>
                 </div>
             </form>
         </div>
@@ -2078,6 +2077,7 @@
         let masterJobsPollTimer = null;
         let uploadPreviewFile = null;
         let uploadPreviewData = null;
+        let jobAvailabilityRequestId = 0;
 
         let targetPurgeRunId = null;
         let targetPurgeJobId = null;
@@ -5161,52 +5161,47 @@
         async function checkJobCardAvailability() {
             const input = document.getElementById('new-job-id');
             const errBox = document.getElementById('job-id-availability-error');
-            const uploadBtn = document.getElementById('upload-btn');
             const jcId = input.value.trim();
+            const requestId = ++jobAvailabilityRequestId;
 
             if (!jcId) {
-                if (errBox) errBox.classList.add('hidden');
-                return;
+                errBox.classList.add('hidden');
+                input.classList.remove('border-red-500');
+                return false;
             }
 
             try {
                 const res = await fetch(`/api/jobs/check-availability?job_card_id=${encodeURIComponent(jcId)}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.exists) {
-                        errBox.innerText = `Job Card '${jcId}' already exists (${data.status}).`;
-                        errBox.classList.remove('hidden');
-                        input.classList.add('border-red-500');
-                        if (uploadBtn) {
-                            uploadBtn.disabled = true;
-                            uploadBtn.classList.add('opacity-40', 'cursor-not-allowed');
-                        }
-                    } else {
-                        errBox.classList.add('hidden');
-                        input.classList.remove('border-red-500');
-                        if (uploadBtn) {
-                            const blockedByDuplicates = Number(uploadPreviewData?.duplicate_rows) > 0;
-                            uploadBtn.disabled = !uploadPreviewData || blockedByDuplicates;
-                            uploadBtn.classList.toggle('opacity-50', !uploadPreviewData || blockedByDuplicates);
-                            uploadBtn.classList.remove('opacity-40', 'cursor-not-allowed');
-                        }
-                    }
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    throw new Error(data.detail || 'Could not check Job Card availability.');
                 }
-            } catch (e) {}
+                if (requestId !== jobAvailabilityRequestId || input.value.trim() !== jcId) return false;
+                if (data.exists) {
+                    errBox.innerText = `Job Card '${jcId}' already exists (${data.status}).`;
+                    errBox.classList.remove('hidden');
+                    input.classList.add('border-red-500');
+                    return false;
+                }
+
+                errBox.classList.add('hidden');
+                input.classList.remove('border-red-500');
+                return true;
+            } catch (error) {
+                if (requestId !== jobAvailabilityRequestId) return false;
+                errBox.innerText = error.message || 'Could not check Job Card availability.';
+                errBox.classList.remove('hidden');
+                input.classList.add('border-red-500');
+                return false;
+            }
         }
 
         function clearJobCardAvailabilityError() {
             const input = document.getElementById('new-job-id');
             const errBox = document.getElementById('job-id-availability-error');
-            const uploadBtn = document.getElementById('upload-btn');
+            jobAvailabilityRequestId += 1;
             if (errBox) errBox.classList.add('hidden');
             if (input) input.classList.remove('border-red-500');
-            if (uploadBtn) {
-                const blockedByDuplicates = Number(uploadPreviewData?.duplicate_rows) > 0;
-                uploadBtn.disabled = !uploadPreviewData || blockedByDuplicates;
-                uploadBtn.classList.toggle('opacity-50', !uploadPreviewData || blockedByDuplicates);
-                uploadBtn.classList.remove('opacity-40', 'cursor-not-allowed');
-            }
         }
 
                 function setJobProcessingLock(locked) {
@@ -5276,9 +5271,6 @@
                 const input = document.getElementById(id);
                 if (input) input.disabled = locked;
             });
-            const previewButton = document.getElementById('preview-csv-btn');
-            if (previewButton) previewButton.disabled = locked;
-
             // 6. Restore active states and sessions when unlocked
             if (!locked) {
                 checkSession();
@@ -5294,14 +5286,12 @@
             uploadPreviewFile = null;
             uploadPreviewData = null;
             const previewBox = document.getElementById('csv-preview-box');
-            const previewButton = document.getElementById('preview-csv-btn');
             const uploadButton = document.getElementById('upload-btn');
             const reportButton = document.getElementById('download-preview-duplicate-report-btn');
             if (previewBox) previewBox.classList.add('hidden');
-            if (previewButton) previewButton.disabled = false;
             if (uploadButton) {
-                uploadButton.disabled = true;
-                uploadButton.classList.add('opacity-50');
+                uploadButton.disabled = false;
+                uploadButton.classList.remove('opacity-50');
                 uploadButton.innerText = 'Create Job';
             }
             if (reportButton) reportButton.classList.add('hidden');
@@ -5309,16 +5299,11 @@
 
         async function previewJobFile() {
             const fileInput = document.getElementById('new-job-file');
-            const previewButton = document.getElementById('preview-csv-btn');
-            const uploadButton = document.getElementById('upload-btn');
             const file = fileInput.files?.[0];
             if (!file) {
-                showCustomAlert("Please select a batch CSV or TXT file.");
-                return;
+                throw new Error("Please select a batch CSV or TXT file.");
             }
 
-            previewButton.disabled = true;
-            previewButton.innerHTML = `${spinnerHtml} Checking...`;
             try {
                 const formData = new FormData();
                 formData.append('file', file);
@@ -5333,10 +5318,13 @@
                 document.getElementById('csv-preview-summary').innerText =
                     `${Number(data.total_rows).toLocaleString()} CSV values found; ` +
                     `${Number(data.unique_codes).toLocaleString()} unique codes detected.`;
-                document.getElementById('csv-preview-duplicates').innerText = data.duplicate_rows
+                const duplicateMessage = document.getElementById('csv-preview-duplicates');
+                duplicateMessage.innerText = data.duplicate_rows
                     ? `${Number(data.duplicate_rows).toLocaleString()} repeated row(s) across ` +
-                      `${Number(data.duplicate_groups).toLocaleString()} code(s). Job creation is blocked until the source file is corrected.`
-                    : 'No repeated code values found. This file can be used to create a job.';
+                      `${Number(data.duplicate_groups).toLocaleString()} code(s). The job was not created.`
+                    : 'No repeated codes found within the file. Continuing with Job Card and existing-job checks...';
+                duplicateMessage.classList.toggle('text-red-400', Number(data.duplicate_rows) > 0);
+                duplicateMessage.classList.toggle('text-emerald-500', !Number(data.duplicate_rows));
 
                 const samplesElement = document.getElementById('csv-preview-samples');
                 if (data.samples?.length) {
@@ -5355,25 +5343,18 @@
                 const reportButton = document.getElementById('download-preview-duplicate-report-btn');
                 if (reportButton) reportButton.classList.toggle('hidden', !data.duplicate_rows);
                 document.getElementById('csv-preview-box').classList.remove('hidden');
-                const jobCardUnavailable = !document.getElementById('job-id-availability-error').classList.contains('hidden');
-                const hasDuplicates = Number(data.duplicate_rows) > 0;
-                uploadButton.disabled = jobCardUnavailable || hasDuplicates;
-                uploadButton.classList.toggle('opacity-50', jobCardUnavailable || hasDuplicates);
-                uploadButton.innerText = hasDuplicates ? 'Correct duplicates to continue' : 'Create Job';
+                return Number(data.duplicate_rows) === 0;
             } catch (error) {
                 uploadPreviewFile = null;
                 uploadPreviewData = null;
-                showCustomAlert(error.message || 'Could not preview this file.', 'CSV Preview Error');
-            } finally {
-                previewButton.disabled = false;
-                previewButton.innerText = 'Preview CSV';
+                throw error;
             }
         }
 
         async function downloadPreviewDuplicateReport() {
             const file = document.getElementById('new-job-file').files?.[0];
             if (!file || file !== uploadPreviewFile || !uploadPreviewData?.duplicate_rows) {
-                showCustomAlert('Preview the selected file before downloading its duplicate report.');
+                showCustomAlert('Run Create Job to check the selected file before downloading its duplicate report.');
                 return;
             }
 
@@ -5415,37 +5396,65 @@
             const percentageLabel = document.getElementById('upload-percentage');
             const statusLabel = document.getElementById('upload-status-label');
 
-            const jcId = document.getElementById('new-job-id').value.trim();
-            const desc = document.getElementById('new-job-desc').value.trim();
+            const jobIdInput = document.getElementById('new-job-id');
+            const descriptionInput = document.getElementById('new-job-desc');
+            const jcId = jobIdInput.value.trim();
+            const desc = descriptionInput.value.trim();
             const fileInput = document.getElementById('new-job-file');
+            const file = fileInput.files?.[0];
 
-            if (!fileInput.files || fileInput.files.length === 0) {
+            if (!file) {
                 return showCustomAlert("Please select a batch CSV or TXT file.");
             }
-            if (fileInput.files[0] !== uploadPreviewFile || !uploadPreviewData) {
-                return showCustomAlert("Preview the selected CSV before creating the job.", "Preview Required");
+            if (!jcId) {
+                return showCustomAlert("Enter a Job Card number.");
             }
-            if (Number(uploadPreviewData.duplicate_rows) > 0) {
-                return showCustomAlert(
-                    `${Number(uploadPreviewData.duplicate_rows).toLocaleString()} repeated row(s) were found. ` +
-                    "Job creation is blocked. Download the duplicate report, correct the source file, and preview it again.",
-                    "Duplicate Codes Found"
-                );
-            }
-            if (!document.getElementById('job-id-availability-error').classList.contains('hidden')) {
-                return showCustomAlert("Choose a Job Card number that is not already in use.", "Job Card Exists");
+
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = `${spinnerHtml} Checking file...`;
+            jobIdInput.disabled = true;
+            descriptionInput.disabled = true;
+            fileInput.disabled = true;
+            cancelBtn.disabled = true;
+            const finishPreflight = () => {
+                jobIdInput.disabled = false;
+                descriptionInput.disabled = false;
+                fileInput.disabled = false;
+                cancelBtn.disabled = false;
+            };
+            try {
+                const fileHasNoInternalDuplicates = await previewJobFile();
+                if (!fileHasNoInternalDuplicates) {
+                    finishPreflight();
+                    uploadBtn.disabled = false;
+                    uploadBtn.innerText = 'Create Job';
+                    return;
+                }
+
+                statusLabel.innerText = 'Checking Job Card availability...';
+                if (!await checkJobCardAvailability()) {
+                    finishPreflight();
+                    uploadBtn.disabled = false;
+                    uploadBtn.innerText = 'Create Job';
+                    return;
+                }
+            } catch (error) {
+                finishPreflight();
+                uploadBtn.disabled = false;
+                uploadBtn.innerText = 'Create Job';
+                showCustomAlert(error.message || 'Could not check this file.', 'Job Creation Check Failed');
+                return;
             }
 
             const formData = new FormData();
             formData.append('job_card_id', jcId);
             formData.append('description', desc);
-            formData.append('file', fileInput.files[0]);
+            formData.append('file', file);
             formData.append('override_duplicate', overrideDuplicate ? 'true' : 'false');
 
             // Disengage all buttons immediately
             setJobProcessingLock(true);
             uploadBtn.disabled = true;
-            document.getElementById('preview-csv-btn').disabled = true;
             if (cancelBtn) {
                 cancelBtn.disabled = true;
                 cancelBtn.classList.add('opacity-30', 'pointer-events-none');
@@ -5454,7 +5463,7 @@
             progressBox.classList.remove('hidden');
             progressBar.style.width = '0%';
             percentageLabel.innerText = '0%';
-            statusLabel.innerText = 'Uploading file to server...';
+            statusLabel.innerText = 'Uploading file; checking against codes in existing jobs...';
 
             const xhr = new XMLHttpRequest();
             xhr.open('POST', '/api/jobs/create', true);
@@ -5986,14 +5995,10 @@
             const cancelBtn = document.getElementById('upload-cancel-btn');
             const progressBox = document.getElementById('upload-progress-box');
             if (uploadBtn) {
-                const jobCardUnavailable = !document.getElementById('job-id-availability-error').classList.contains('hidden');
-                const hasDuplicates = Number(uploadPreviewData?.duplicate_rows) > 0;
-                uploadBtn.disabled = !uploadPreviewData || jobCardUnavailable || hasDuplicates;
-                uploadBtn.innerHTML = hasDuplicates ? 'Correct duplicates to continue' : 'Create Job';
-                uploadBtn.classList.toggle('opacity-50', !uploadPreviewData || jobCardUnavailable || hasDuplicates);
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = 'Create Job';
+                uploadBtn.classList.remove('opacity-50');
             }
-            const previewButton = document.getElementById('preview-csv-btn');
-            if (previewButton) previewButton.disabled = false;
             if (cancelBtn) {
                 cancelBtn.disabled = false;
                 cancelBtn.classList.remove('opacity-30', 'pointer-events-none');
