@@ -3203,16 +3203,47 @@
 
             const capabilities = activeVideoTrack?.getCapabilities?.() || {};
             const slider = document.getElementById('camera-zoom-slider');
-            if (capabilities.zoom && slider) {
+            const hasNativeZoom = Boolean(
+                capabilities.zoom &&
+                activeVideoTrack?.applyConstraints &&
+                slider
+            );
+            const zoomStatus = document.getElementById('camera-zoom-status');
+
+            [slider, ...[1, 2, 3].map(value => document.getElementById(`zoom-btn-${value}x`))]
+                .filter(Boolean)
+                .forEach(control => {
+                    control.disabled = !hasNativeZoom;
+                    control.classList.toggle('opacity-40', !hasNativeZoom);
+                    control.classList.toggle('cursor-not-allowed', !hasNativeZoom);
+                });
+
+            if (zoomStatus) {
+                zoomStatus.classList.toggle('hidden', hasNativeZoom);
+                zoomStatus.textContent = hasNativeZoom
+                    ? ''
+                    : 'Zoom unavailable on this camera; move closer for a sharper image.';
+            }
+
+            if (hasNativeZoom) {
                 slider.min = capabilities.zoom.min ?? 1;
                 slider.max = capabilities.zoom.max ?? 5;
                 slider.step = capabilities.zoom.step ?? 0.1;
-                slider.value = capabilities.zoom.min ?? 1;
+                const currentZoom = activeVideoTrack.getSettings?.().zoom;
+                slider.value = currentZoom ?? capabilities.zoom.min ?? 1;
+                currentZoomFactor = Number(slider.value);
             }
         }
 
         async function applyCameraZoom(level) {
-            currentZoomFactor = Math.max(1, level);
+            const capabilities = activeVideoTrack?.getCapabilities?.() || {};
+            const zoomRange = capabilities.zoom;
+            if (!zoomRange || !activeVideoTrack?.applyConstraints) return;
+
+            currentZoomFactor = Math.min(
+                zoomRange.max ?? level,
+                Math.max(zoomRange.min ?? 1, level)
+            );
             const slider = document.getElementById('camera-zoom-slider');
             if (slider) slider.value = currentZoomFactor;
 
@@ -3225,23 +3256,24 @@
                 }
             });
 
-            const capabilities = activeVideoTrack?.getCapabilities?.() || {};
-            if (capabilities.zoom && activeVideoTrack?.applyConstraints) {
-                try {
-                    await activeVideoTrack.applyConstraints({
-                        advanced: [{ zoom: currentZoomFactor }]
-                    });
-                    return;
-                } catch (error) {
-                    console.warn("Hardware camera zoom unavailable; using viewfinder zoom.", error);
+            try {
+                await activeVideoTrack.applyConstraints({
+                    advanced: [{ zoom: currentZoomFactor }]
+                });
+                const zoomStatus = document.getElementById('camera-zoom-status');
+                if (zoomStatus) zoomStatus.classList.add('hidden');
+            } catch (error) {
+                console.warn("Could not apply camera zoom.", error);
+                const currentZoom = activeVideoTrack?.getSettings?.().zoom;
+                if (currentZoom !== undefined && slider) {
+                    slider.value = currentZoom;
+                    currentZoomFactor = currentZoom;
                 }
-            }
-
-            const videoEl = document.querySelector("#camera-scanner-viewport video");
-            if (videoEl) {
-                videoEl.style.transform = `scale(${currentZoomFactor})`;
-                videoEl.style.transformOrigin = "center center";
-                videoEl.style.transition = "transform 0.15s ease-out";
+                const zoomStatus = document.getElementById('camera-zoom-status');
+                if (zoomStatus) {
+                    zoomStatus.textContent = 'Camera could not apply zoom; move closer for a sharper image.';
+                    zoomStatus.classList.remove('hidden');
+                }
             }
         }
 
@@ -5929,6 +5961,7 @@
                 </div>
             </div>
 
+            <p id="camera-zoom-status" class="hidden text-[11px] text-amber-300 mt-1 text-center leading-tight" aria-live="polite"></p>
             <p class="text-[11px] text-slate-400 mt-2 text-center leading-tight">Align 2D DataMatrix, QR Code, or 1D Barcode within the frame</p>
         </div>
     </div>
