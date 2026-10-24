@@ -770,6 +770,10 @@
             </div>
         </div>
         <div class="flex items-center gap-2 sm:gap-2.5 shrink-0 ml-auto">
+            <button type="button" onclick="openTimezoneModal()" title="Change the display time zone"
+                    class="text-slate-400 hover:text-indigo-300 text-[11px] transition-colors bg-transparent border-none p-0 cursor-pointer whitespace-nowrap">
+                TZ: <span id="tz-name-text" class="font-semibold">UTC+05:00</span>
+            </button>
             <button type="button" onclick="toggleModal('shortcuts-modal')" title="Keyboard Shortcuts (F1 or ?)" class="text-slate-400 hover:text-indigo-300 text-[11px] transition-colors hidden sm:flex items-center gap-1 bg-transparent border-none p-0 cursor-pointer">
                 <span>Shortcuts</span>
                 <kbd class="bg-[#1e2029] border border-white/10 px-1 py-0.2 rounded text-[10px] font-mono font-bold">?</kbd>
@@ -2103,7 +2107,8 @@
                 const opt = select.querySelector(`option[value="${currentAppTimezone}"]`);
                 if (opt) displayText = opt.getAttribute('data-label') || opt.text;
             }
-            label.innerText = displayText;
+            label.innerText = displayText.split(' ')[0];
+            label.parentElement.title = displayText;
         }
 
         function initTimezone() {
@@ -2140,6 +2145,9 @@
                 currentAppTimezone = select.value;
                 localStorage.setItem('vdv_timezone', currentAppTimezone);
                 updateTimezoneFooterText();
+                renderStreamTable();
+                renderPackingQCChart();
+                renderGlobalAuditTable();
                 updateSystemMessage(`Time zone set to ${currentAppTimezone}`, 'success');
             }
             closeTimezoneModal();
@@ -2160,6 +2168,16 @@
             } catch (e) {
                 return dateObj.toLocaleString();
             }
+        }
+
+        function formatStoredTimestamp(value) {
+            if (!value) return '';
+            const rawValue = String(value).trim();
+            const timestamp = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})?$/.test(rawValue)
+                ? `${rawValue.replace(' ', 'T')}Z`
+                : rawValue;
+            const dateObj = new Date(timestamp);
+            return Number.isNaN(dateObj.getTime()) ? rawValue : formatAppTimestamp(dateObj);
         }
 
         initTimezone();
@@ -3073,7 +3091,7 @@
                 allScans.unshift({
                     code: code,
                     result: data.result,
-                    time: formatAppTimestamp(new Date()),
+                    time: new Date().toISOString(),
                     user: currentUser ? currentUser.username : 'Operator',
                     row_num: data.row_num ?? '-'
                 });
@@ -3414,7 +3432,7 @@
                             <td class="px-3.5 py-2.5 font-mono text-left text-xs sm:text-sm" style="text-align: left !important;">${formatCodeDisplay(s.code)}</td>
                             <td class="px-3 py-2.5 text-slate-400 font-mono text-xs font-semibold text-center" style="text-align: center !important;">${rowDisplay}</td>
                             <td class="px-3 py-2.5 text-center" style="text-align: center !important;"><span class="${badge} px-2.5 py-0.5 rounded text-xs font-bold">${escapeHtml(s.result)}</span></td>
-                            <td class="px-3 py-2.5 text-slate-400 text-xs font-mono text-center" style="text-align: center !important;">${escapeHtml(s.time)}</td>
+                            <td class="px-3 py-2.5 text-slate-400 text-xs font-mono text-center" style="text-align: center !important;">${escapeHtml(formatStoredTimestamp(s.time))}</td>
                             <td class="px-3 py-2.5 text-xs text-center font-semibold text-slate-300" style="text-align: center !important;">${escapeHtml(s.user)}</td>
                         </tr>
                     `;
@@ -3433,7 +3451,7 @@
                     const badgeClass = isRestart ? "linear-badge-warn" : (isPass ? "linear-badge-pass" : "linear-badge-fail");
                     const leftBorder = isRestart ? "border-l-amber-400 border-l-[3px]" : (isPass ? "border-l-emerald-500 border-l-2" : "border-l-red-500 border-l-2");
                     const rowText = (s.row_num && s.row_num !== '-') ? `#${escapeHtml(s.row_num)}` : '#-';
-                    const timeOnly = s.time ? (s.time.split(' ')[1] || s.time) : '';
+                    const timeOnly = formatStoredTimestamp(s.time).split(',')[1]?.trim() || '';
 
                     return `
                         <div onclick="toggleMobileScanRow(this)" 
@@ -3672,7 +3690,7 @@
                     currentPackingQCLogs.unshift({
                         code: data.code,
                         tested_by: currentUser ? currentUser.username : "Operator",
-                        tested_at: formatAppTimestamp()
+                        tested_at: new Date().toISOString()
                     });
                     renderPackingQCChart();
 
@@ -3712,7 +3730,7 @@
                     <td class="p-2.5 font-bold table-text-theme">${escapeHtml(l.code)}</td>
                     <td class="p-2.5 table-text-theme">${escapeHtml(currentPackingQCJob)}</td>
                     <td class="p-2.5 table-text-theme">${escapeHtml(l.tested_by)}</td>
-                    <td class="p-2.5 text-slate-400">${escapeHtml(l.tested_at)}</td>
+                    <td class="p-2.5 text-slate-400">${escapeHtml(formatStoredTimestamp(l.tested_at))}</td>
                 </tr>
             `).join('');
         }
@@ -3750,7 +3768,7 @@
                     <td style="font-weight: bold;">${escapeHtml(l.code)}</td>
                     <td>${escapeHtml(currentPackingQCJob)}</td>
                     <td>${escapeHtml(l.tested_by)}</td>
-                    <td>${escapeHtml(l.tested_at)}</td>
+                    <td>${escapeHtml(formatStoredTimestamp(l.tested_at))}</td>
                 </tr>
             `).join('');
 
@@ -3858,7 +3876,7 @@
                         const isPass = resStr.startsWith('Pass');
                         return `
                             <tr class="hover:bg-black/[0.02]">
-                                <td class="p-3 text-xs text-slate-300">${escapeHtml(log.time)}</td>
+                                <td class="p-3 text-xs text-slate-300">${escapeHtml(formatStoredTimestamp(log.time))}</td>
                                 <td class="p-3 font-bold table-text-theme text-xs">${escapeHtml(log.user)}</td>
                                 <td class="p-3 table-text-theme font-semibold text-xs">${escapeHtml(log.code)}</td>
                                 <td class="p-3 text-slate-300 font-semibold text-xs text-center">${rowDisplay}</td>
@@ -3935,7 +3953,7 @@
 
                         return `
                             <tr class="hover:bg-black/[0.02]">
-                                <td class="p-3 text-xs text-slate-300">${escapeHtml(log.time)}</td>
+                                <td class="p-3 text-xs text-slate-300">${escapeHtml(formatStoredTimestamp(log.time))}</td>
                                 <td class="p-3 font-bold table-text-theme text-xs">${escapeHtml(log.user)}</td>
                                 <td class="p-3 text-xs ${colorClass}">${escapeHtml(label)}</td>
                                 <td class="p-3 text-xs text-slate-300">${escapeHtml(log.reason) || '-'}</td>
@@ -4031,7 +4049,7 @@
 
                 return `
                     <tr class="hover:bg-black/[0.02]">
-                        <td class="px-3.5 py-2.5 text-xs text-slate-300">${escapeHtml(e.timestamp)}</td>
+                        <td class="px-3.5 py-2.5 text-xs text-slate-300">${escapeHtml(formatStoredTimestamp(e.timestamp))}</td>
                         <td class="px-3.5 py-2.5 font-bold table-text-theme text-xs">${escapeHtml(e.user)}</td>
                         <td class="px-3.5 py-2.5 table-text-theme text-xs font-semibold">${escapeHtml(e.job_card_id)}</td>
                         <td class="px-3.5 py-2.5 text-xs ${badgeColor}">${escapeHtml(e.activity_type)}</td>
@@ -5578,7 +5596,7 @@
                             </div>
 
                             <div class="flex items-center justify-between pt-1 text-[10px] text-slate-500 border-t border-white/[0.04]">
-                                <span>${j.created_at ? escapeHtml(j.created_at.split(' ')[0]) : '-'}</span>
+                                <span>${j.created_at ? escapeHtml(formatStoredTimestamp(j.created_at).split(',')[0]) : '-'}</span>
                                 <div class="flex items-center gap-1">
                                     ${conflictHtml}
                                     ${finalQcHtml}
@@ -5733,7 +5751,7 @@
 
                         <!-- Column 2: Created Date alone -->
                         <td class="px-4 py-2.5 whitespace-nowrap">
-                            <span class="text-xs text-slate-400 font-mono">${escapeHtml(j.created_at || '-')}</span>
+                            <span class="text-xs text-slate-400 font-mono">${escapeHtml(formatStoredTimestamp(j.created_at) || '-')}</span>
                         </td>
 
                         <!-- Column 3: Status -->
@@ -5847,7 +5865,7 @@
 
             const headers = ["Timestamp", "User / Inspector", "Job Card", "Activity Type", "Activity Details"];
             const rows = filtered.map(e => [
-                escapeCsv(e.timestamp),
+                escapeCsv(formatStoredTimestamp(e.timestamp)),
                 escapeCsv(e.user),
                 escapeCsv(e.job_card_id),
                 escapeCsv(e.activity_type),

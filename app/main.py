@@ -17,11 +17,6 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 from app.import_utils import escape_postgres_copy_text, iter_csv_tokens, spreadsheet_safe
 
-# Enforce Pakistan Standard Time (PKT / UTC+5) for Python datetime & logging
-os.environ["TZ"] = "Asia/Karachi"
-if hasattr(time, "tzset"):
-    time.tzset()
-
 from app.database import (
     init_db,
     get_connection,
@@ -41,7 +36,6 @@ async def lifespan(app: FastAPI):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SET TIME ZONE 'Asia/Karachi';")
             cur.execute("ALTER TABLE job_cards ALTER COLUMN ingestion_progress TYPE TEXT;")
             cur.execute("ALTER TABLE job_cards ALTER COLUMN status TYPE VARCHAR(100);")
             cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS conflict_resolution VARCHAR(50) DEFAULT 'NONE';")

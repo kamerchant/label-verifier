@@ -22,6 +22,7 @@ def init_db():
                 minconn=MIN_CONNECTIONS,
                 maxconn=MAX_CONNECTIONS,
                 dsn=DATABASE_URL,
+                options="-c timezone=UTC",
                 cursor_factory=psycopg2.extras.DictCursor if hasattr(psycopg2, 'extras') else None
             )
             print(f"Database connection pool initialized (Min: {MIN_CONNECTIONS}, Max: {MAX_CONNECTIONS})")
