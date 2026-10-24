@@ -185,7 +185,8 @@
         }
 
         /* High-contrast keyboard focus indicators for floor visibility */
-        button:focus-visible, select:focus-visible, [tabindex="0"]:focus-visible {
+        button:focus-visible, a:focus-visible, select:focus-visible,
+        input:focus-visible, textarea:focus-visible, [tabindex="0"]:focus-visible {
             outline: 2px solid #5e6ad2 !important;
             outline-offset: 2px !important;
         }
@@ -286,6 +287,17 @@
             color: #ffa502;
             border: 1px solid rgba(255, 165, 2, 0.35);
         }
+        .scan-result-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            white-space: nowrap;
+        }
+        .scan-result-icon {
+            font-weight: 900;
+            line-height: 1;
+        }
 
         .modal-title-theme {
             color: #ffffff !important;
@@ -344,8 +356,52 @@
             background-color: #f7f5f0 !important;
             border-color: #e3decb !important;
         }
-        html.theme-parchment header span, html.theme-parchment h1, html.theme-parchment footer span {
+        html.theme-parchment header .brand-title,
+        html.theme-parchment header .brand-subtitle,
+        html.theme-parchment footer #user-display,
+        html.theme-parchment h1 {
             color: #1a211e !important;
+        }
+        html.theme-parchment .text-slate-400 { color: #64748b !important; }
+        html.theme-parchment .text-slate-500 { color: #475569 !important; }
+        html.theme-parchment .text-slate-600 { color: #475569 !important; }
+        html.theme-parchment .linear-badge-pass {
+            background-color: #dcfce7;
+            color: #166534;
+            border-color: #86efac;
+        }
+        html.theme-parchment .linear-badge-fail {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            border-color: #fca5a5;
+        }
+        html.theme-parchment .linear-badge-warn {
+            background-color: #fef3c7;
+            color: #92400e;
+            border-color: #fcd34d;
+        }
+        html.theme-parchment #recent-scans-mobile .scan-code-full {
+            color: #4338ca;
+            border-color: #d4cebc;
+        }
+        html.theme-parchment #recent-scans-mobile .linear-subcard:hover {
+            background-color: #e8e2d2;
+        }
+        html.theme-parchment .status-state-black {
+            background-color: #e8e2d2 !important;
+            color: #1a211e !important;
+        }
+        html.theme-parchment .status-state-yellow {
+            background-color: #fef3c7 !important;
+            color: #78350f !important;
+        }
+        html.theme-parchment .status-state-green {
+            background-color: #dcfce7 !important;
+            color: #14532d !important;
+        }
+        html.theme-parchment .status-state-red {
+            background-color: #fee2e2 !important;
+            color: #7f1d1d !important;
         }
         html.theme-parchment .modal-title-theme {
             color: #0f172a !important;
@@ -368,6 +424,39 @@
         html.theme-parchment table td {
             border-color: #e3decb !important;
             color: #2c3531 !important;
+        }
+
+        @media (min-width: 640px) {
+            .linear-card {
+                border-radius: 0.5rem;
+            }
+            .linear-subcard {
+                border-radius: 0.375rem;
+            }
+            button:not(:disabled):active {
+                transform: translateY(1px);
+            }
+            #verify-btn:not(:disabled) {
+                min-width: 6rem;
+                font-weight: 700;
+                box-shadow: 0 2px 8px rgba(94, 106, 210, 0.2);
+            }
+            html.theme-parchment #verify-btn:not(:disabled) {
+                box-shadow: 0 2px 8px rgba(39, 103, 73, 0.18);
+            }
+            #recent-scans-rows td {
+                padding-top: 0.65rem;
+                padding-bottom: 0.65rem;
+            }
+            #recent-scans-rows tr {
+                transition: background-color 0.15s ease;
+            }
+            #recent-scans-rows tr:hover {
+                background-color: rgba(94, 106, 210, 0.06);
+            }
+            html:not(.theme-parchment) #recent-scans-rows tr:hover {
+                background-color: rgba(129, 140, 248, 0.08);
+            }
         }
 
         .status-state-black {
@@ -558,8 +647,8 @@
                     <img src="/static/logo.jpg" alt="CCL Logo" class="h-4 sm:h-7 w-auto max-w-[70px] sm:max-w-[110px] object-contain block" onerror="this.onerror=null; this.src='/logo.jpg';">
                 </div>
                 <div class="flex flex-col min-w-0 truncate">
-                    <span class="font-bold text-white text-[11px] sm:text-sm tracking-tight leading-tight truncate">Variable Data Verification System</span>
-                    <span class="text-[9px] sm:text-xs text-indigo-300 font-medium tracking-wide uppercase opacity-90 truncate">CCL Middle East – Pakistan</span>
+                    <span class="brand-title font-bold text-white text-[11px] sm:text-sm tracking-tight leading-tight truncate">Variable Data Verification System</span>
+                    <span class="brand-subtitle text-[9px] sm:text-xs text-indigo-300 font-medium tracking-wide uppercase opacity-90 truncate">CCL Middle East – Pakistan</span>
                 </div>
             </div>
             <!-- Logout Button: Top-Right on Mobile -->
@@ -761,9 +850,6 @@
             <button onclick="openGlobalAuditTrailModal()" class="text-indigo-400 hover:text-indigo-300 underline font-semibold cursor-pointer bg-transparent border-none p-0 text-[11px] shrink-0">Audit</button>
             <span class="text-slate-600 shrink-0">&middot;</span>
             <span id="user-display" class="truncate max-w-[90px] sm:max-w-none table-text-theme font-medium">Operator</span>
-            <span class="text-slate-600 shrink-0 hidden sm:inline">&middot;</span>
-            <button onclick="toggleTheme()" class="text-slate-300 hover:text-indigo-400 underline cursor-pointer bg-transparent border-none p-0 text-[11px] shrink-0 hidden sm:inline">Theme: <span id="theme-name-text" class="font-semibold">Obsidian</span></button>
-            <span class="text-slate-600 shrink-0 hidden sm:inline">&middot;</span>
             <div id="footer-sys-msg-box" class="flex items-center gap-1 text-[11px] truncate">
                 <span id="footer-sys-dot" class="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0"></span>
                 <span id="footer-sys-msg" class="truncate text-slate-400 max-w-[130px] sm:max-w-md">System Ready</span>
@@ -772,7 +858,8 @@
         <div class="flex items-center gap-2 sm:gap-2.5 shrink-0 ml-auto">
             <button type="button" onclick="openTimezoneModal()" title="Change the display time zone"
                     class="text-slate-400 hover:text-indigo-300 text-[11px] transition-colors bg-transparent border-none p-0 cursor-pointer whitespace-nowrap">
-                TZ: <span id="tz-name-text" class="font-semibold">UTC+05:00</span>
+                TZ: <span id="tz-name-text" class="font-semibold">Karachi</span>
+                <span class="hidden sm:inline">(<span id="tz-offset-text">UTC+05:00</span>)</span>
             </button>
             <button type="button" onclick="toggleModal('shortcuts-modal')" title="Keyboard Shortcuts (F1 or ?)" class="text-slate-400 hover:text-indigo-300 text-[11px] transition-colors hidden sm:flex items-center gap-1 bg-transparent border-none p-0 cursor-pointer">
                 <span>Shortcuts</span>
@@ -1306,6 +1393,7 @@
                     </div>
                     <div class="flex items-center gap-1.5 shrink-0">
                         <button onclick="window.print()" class="linear-button-secondary px-2.5 sm:px-3 py-1 rounded text-xs font-medium">Print Report</button>
+                        <button id="download-duplicate-csv-btn" class="linear-button-secondary px-2.5 sm:px-3 py-1 rounded text-xs font-semibold hidden">Duplicate Report</button>
                         <button id="download-csv-btn" class="linear-button-primary px-2.5 sm:px-3 py-1 rounded text-xs font-semibold">Download CSV</button>
                         <button onclick="toggleModal('report-modal')" class="linear-button-secondary px-2.5 sm:px-3 py-1 rounded text-xs font-medium">Close</button>
                     </div>
@@ -1659,8 +1747,15 @@
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Batch Data File (CSV / TXT) *</label>
-                    <input type="file" id="new-job-file" accept=".csv,.txt" required class="linear-input w-full p-2.5 text-xs rounded text-slate-400">
+                    <input type="file" id="new-job-file" accept=".csv,.txt" required onchange="resetCSVPreview()" class="linear-input w-full p-2.5 text-xs rounded text-slate-400">
                     <p class="text-xs text-slate-500 mt-1">Supports high-capacity files up to 4 million codes.</p>
+                </div>
+
+                <div id="csv-preview-box" class="hidden linear-subcard p-3 rounded border border-slate-500/20">
+                    <p id="csv-preview-summary" class="text-xs font-semibold table-text-theme"></p>
+                    <p id="csv-preview-duplicates" class="text-xs text-amber-700 mt-1"></p>
+                    <div id="csv-preview-samples" class="hidden mt-2 max-h-28 overflow-y-auto text-[11px] text-slate-500"></div>
+                    <button type="button" id="download-preview-duplicate-report-btn" onclick="downloadPreviewDuplicateReport()" class="hidden linear-button-secondary px-2.5 py-1 rounded text-xs font-medium mt-2">Download Duplicate Report</button>
                 </div>
 
                 <!-- Live Progress Box -->
@@ -1674,9 +1769,10 @@
                     </div>
                 </div>
 
-                <div class="flex justify-end gap-2 pt-2">
+                <div class="flex justify-end gap-2 pt-2 flex-wrap">
                     <button type="button" id="upload-cancel-btn" onclick="toggleModal('upload-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Cancel</button>
-                    <button type="submit" id="upload-btn" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold">Create Job</button>
+                    <button type="button" id="preview-csv-btn" onclick="previewJobFile()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Preview CSV</button>
+                    <button type="submit" id="upload-btn" disabled class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold opacity-50">Create Job</button>
                 </div>
             </form>
         </div>
@@ -1972,6 +2068,8 @@
         let activeIngestionJobCardId = null;
         let ingestionPollTimer = null;
         let masterJobsPollTimer = null;
+        let uploadPreviewFile = null;
+        let uploadPreviewData = null;
 
         let targetPurgeRunId = null;
         let targetPurgeJobId = null;
@@ -2062,36 +2160,6 @@
             }
         }
 
-        function initTheme() {
-            try {
-                const savedTheme = localStorage.getItem('vdv_theme') || 'parchment';
-                const themeName = document.getElementById('theme-name-text');
-                if (savedTheme === 'obsidian') {
-                    document.documentElement.classList.remove('theme-parchment');
-                    if (themeName) themeName.innerText = 'Obsidian';
-                } else {
-                    document.documentElement.classList.add('theme-parchment');
-                    if (themeName) themeName.innerText = 'Parchment';
-                }
-            } catch (e) {}
-        }
-
-        function toggleTheme() {
-            try {
-                const isParchment = document.documentElement.classList.toggle('theme-parchment');
-                const themeName = document.getElementById('theme-name-text');
-                if (isParchment) {
-                    localStorage.setItem('vdv_theme', 'parchment');
-                    if (themeName) themeName.innerText = 'Parchment';
-                } else {
-                    localStorage.setItem('vdv_theme', 'obsidian');
-                    if (themeName) themeName.innerText = 'Obsidian';
-                }
-            } catch (e) {}
-        }
-
-        initTheme();
-
         // -------------------------------------------------------------
         // Time Zone Engine (24 Offsets with LocalStorage Persistence)
         // -------------------------------------------------------------
@@ -2099,6 +2167,7 @@
 
         function updateTimezoneFooterText() {
             const label = document.getElementById('tz-name-text');
+            const offsetLabel = document.getElementById('tz-offset-text');
             const select = document.getElementById('tz-select-input');
             if (!label) return;
 
@@ -2107,7 +2176,11 @@
                 const opt = select.querySelector(`option[value="${currentAppTimezone}"]`);
                 if (opt) displayText = opt.getAttribute('data-label') || opt.text;
             }
-            label.innerText = displayText.split(' ')[0];
+            const offset = displayText.split(' ')[0];
+            const city = displayText.match(/\(([^,)]+)/)?.[1]
+                || currentAppTimezone.split('/').pop().replace(/_/g, ' ');
+            label.innerText = city;
+            if (offsetLabel) offsetLabel.innerText = offset;
             label.parentElement.title = displayText;
         }
 
@@ -3396,13 +3469,50 @@
             if (isHidden) {
                 fullBox.classList.remove('hidden');
                 rowEl.classList.add('bg-white/[0.05]');
-            } else {
-                fullBox.classList.add('hidden');
-                rowEl.classList.remove('bg-white/[0.05]');
-            }
-        }
+                        rowEl.setAttribute('aria-expanded', 'true');
+                    } else {
+                        fullBox.classList.add('hidden');
+                        rowEl.classList.remove('bg-white/[0.05]');
+                        rowEl.setAttribute('aria-expanded', 'false');
+                    }
+                }
 
-        function renderStreamTable() {
+                function getScanPresentation(result) {
+                    const value = String(result || '');
+                    const normalized = value.toLowerCase();
+                    if (normalized.includes('potential restart')) {
+                        return {
+                            className: 'linear-badge-warn',
+                            borderClass: 'border-l-amber-500 border-l-[3px]',
+                            icon: '!',
+                            shortLabel: 'RESTART'
+                        };
+                    }
+                    if (normalized.includes('duplicate')) {
+                        return {
+                            className: 'linear-badge-warn',
+                            borderClass: 'border-l-amber-500 border-l-[3px]',
+                            icon: '!',
+                            shortLabel: 'DUPLICATE'
+                        };
+                    }
+                    if (/^pass\b/i.test(value)) {
+                        return {
+                            className: 'linear-badge-pass',
+                            borderClass: 'border-l-emerald-500 border-l-2',
+                            icon: '✓',
+                            shortLabel: 'PASS'
+                        };
+                    }
+                    return {
+                        className: 'linear-badge-fail',
+                        borderClass: 'border-l-red-500 border-l-2',
+                        icon: '×',
+                        shortLabel: value || 'ERROR'
+                    };
+                }
+
+                function renderStreamTable() {
                 const tbody = document.getElementById('recent-scans-rows');
             const mobileContainer = document.getElementById('recent-scans-mobile');
 
@@ -3423,18 +3533,21 @@
                         // 1. Render Desktop Table Rows (Legible Font & Clear Alignment)
             if (tbody) {
                 tbody.innerHTML = visibleScans.map((s) => {
-                    const isRestart = s.result && s.result.includes('Potential Restart');
-                    const isPass = s.result === 'PASS';
-                    const badge = isRestart ? "linear-badge-warn" : (isPass ? "linear-badge-pass" : "linear-badge-fail");
-                    const rowDisplay = (s.row_num && s.row_num !== '-') ? `Row ${escapeHtml(s.row_num)}` : '-';
-                    return `
-                        <tr class="hover:bg-black/[0.02] border-b border-white/[0.04] transition-colors text-center">
-                            <td class="px-3.5 py-2.5 font-mono text-left text-xs sm:text-sm" style="text-align: left !important;">${formatCodeDisplay(s.code)}</td>
-                            <td class="px-3 py-2.5 text-slate-400 font-mono text-xs font-semibold text-center" style="text-align: center !important;">${rowDisplay}</td>
-                            <td class="px-3 py-2.5 text-center" style="text-align: center !important;"><span class="${badge} px-2.5 py-0.5 rounded text-xs font-bold">${escapeHtml(s.result)}</span></td>
-                            <td class="px-3 py-2.5 text-slate-400 text-xs font-mono text-center" style="text-align: center !important;">${escapeHtml(formatStoredTimestamp(s.time))}</td>
-                            <td class="px-3 py-2.5 text-xs text-center font-semibold text-slate-300" style="text-align: center !important;">${escapeHtml(s.user)}</td>
-                        </tr>
+                                const presentation = getScanPresentation(s.result);
+                                const rowDisplay = (s.row_num && s.row_num !== '-') ? `Row ${escapeHtml(s.row_num)}` : '-';
+                                return `
+                                    <tr class="hover:bg-black/[0.02] border-b border-white/[0.04] transition-colors text-center">
+                                        <td class="px-3.5 py-2.5 font-mono text-left text-xs sm:text-sm" style="text-align: left !important;">${formatCodeDisplay(s.code)}</td>
+                                        <td class="px-3 py-2.5 text-slate-400 font-mono text-xs font-semibold text-center" style="text-align: center !important;">${rowDisplay}</td>
+                                        <td class="px-3 py-2.5 text-center" style="text-align: center !important;">
+                                            <span class="scan-result-badge ${presentation.className} px-2.5 py-0.5 rounded text-xs font-bold" aria-label="${escapeHtml(s.result)}">
+                                                <span class="scan-result-icon" aria-hidden="true">${presentation.icon}</span>
+                                                <span>${escapeHtml(s.result)}</span>
+                                            </span>
+                                        </td>
+                                        <td class="px-3 py-2.5 text-slate-400 text-xs font-mono text-center" style="text-align: center !important;">${escapeHtml(formatStoredTimestamp(s.time))}</td>
+                                        <td class="px-3 py-2.5 text-xs text-center font-semibold text-slate-300" style="text-align: center !important;">${escapeHtml(s.user)}</td>
+                                    </tr>
                     `;
                 }).join('');
             }
@@ -3446,16 +3559,13 @@
                 if (streamCountEl) streamCountEl.innerText = `${visibleScans.length} scans`;
 
                 mobileContainer.innerHTML = visibleScans.map((s) => {
-                    const isRestart = s.result && s.result.includes('Potential Restart');
-                    const isPass = s.result === 'PASS';
-                    const badgeClass = isRestart ? "linear-badge-warn" : (isPass ? "linear-badge-pass" : "linear-badge-fail");
-                    const leftBorder = isRestart ? "border-l-amber-400 border-l-[3px]" : (isPass ? "border-l-emerald-500 border-l-2" : "border-l-red-500 border-l-2");
+                    const presentation = getScanPresentation(s.result);
                     const rowText = (s.row_num && s.row_num !== '-') ? `#${escapeHtml(s.row_num)}` : '#-';
                     const timeOnly = formatStoredTimestamp(s.time).split(',')[1]?.trim() || '';
 
                     return `
                         <div onclick="toggleMobileScanRow(this)" 
-                             class="linear-subcard px-2.5 py-1.5 rounded ${leftBorder} flex flex-col gap-1 shadow-sm font-mono text-xs cursor-pointer select-none transition-colors active:bg-white/[0.05] hover:bg-white/[0.02]">
+                             aria-expanded="false" class="linear-subcard min-h-[38px] px-2.5 py-2 rounded ${presentation.borderClass} flex flex-col justify-center gap-1 shadow-sm font-mono text-xs cursor-pointer select-none transition-colors active:bg-white/[0.05] hover:bg-white/[0.02]">
                             <div class="flex items-center justify-between gap-2 leading-none">
                                 <div class="flex items-center gap-1.5 min-w-0 truncate">
                                     <span class="text-[11px] text-indigo-400 font-extrabold shrink-0">${rowText}</span>
@@ -3463,7 +3573,10 @@
                                     <span class="font-extrabold table-text-theme truncate text-xs sm:text-[13px] tracking-tight">${escapeHtml(s.code)}</span>
                                 </div>
                                 <div class="flex items-center gap-1.5 shrink-0">
-                                    <span class="${badgeClass} px-2 py-0.5 rounded text-[9.5px] font-black uppercase tracking-wider">${isRestart ? 'RESTART' : escapeHtml(s.result)}</span>
+                                    <span class="scan-result-badge ${presentation.className} px-2 py-0.5 rounded text-[9.5px] font-black uppercase tracking-wider" aria-label="${escapeHtml(s.result)}">
+                                        <span class="scan-result-icon" aria-hidden="true">${presentation.icon}</span>
+                                        <span>${escapeHtml(presentation.shortLabel)}</span>
+                                    </span>
                                     <span class="text-[10px] text-slate-400 font-medium">${timeOnly}</span>
                                 </div>
                             </div>
@@ -3821,6 +3934,13 @@
                 document.getElementById('download-csv-btn').onclick = () => {
                     window.location.href = `/api/reports/${encodeURIComponent(activeJobId)}/csv`;
                 };
+                const duplicateReportButton = document.getElementById('download-duplicate-csv-btn');
+                if (duplicateReportButton) {
+                    duplicateReportButton.classList.toggle('hidden', !Number(data.duplicate_rows_count));
+                    duplicateReportButton.onclick = () => {
+                        window.location.href = `/api/reports/${encodeURIComponent(activeJobId)}/duplicates.csv`;
+                    };
+                }
 
                 const stats = document.getElementById('report-stats');
                 const totalVal = Number(data.total_codes) || 0;
@@ -4717,7 +4837,9 @@
                         errBox.classList.add('hidden');
                         input.classList.remove('border-red-500');
                         if (uploadBtn) {
-                            uploadBtn.disabled = false;
+                            const blockedByDuplicates = Number(uploadPreviewData?.duplicate_rows) > 0;
+                            uploadBtn.disabled = !uploadPreviewData || blockedByDuplicates;
+                            uploadBtn.classList.toggle('opacity-50', !uploadPreviewData || blockedByDuplicates);
                             uploadBtn.classList.remove('opacity-40', 'cursor-not-allowed');
                         }
                     }
@@ -4732,7 +4854,9 @@
             if (errBox) errBox.classList.add('hidden');
             if (input) input.classList.remove('border-red-500');
             if (uploadBtn) {
-                uploadBtn.disabled = false;
+                const blockedByDuplicates = Number(uploadPreviewData?.duplicate_rows) > 0;
+                uploadBtn.disabled = !uploadPreviewData || blockedByDuplicates;
+                uploadBtn.classList.toggle('opacity-50', !uploadPreviewData || blockedByDuplicates);
                 uploadBtn.classList.remove('opacity-40', 'cursor-not-allowed');
             }
         }
@@ -4804,6 +4928,8 @@
                 const input = document.getElementById(id);
                 if (input) input.disabled = locked;
             });
+            const previewButton = document.getElementById('preview-csv-btn');
+            if (previewButton) previewButton.disabled = locked;
 
             // 6. Restore active states and sessions when unlocked
             if (!locked) {
@@ -4813,6 +4939,122 @@
                     const consumed = document.getElementById('kpi-consumed').innerText.replace(/,/g, '');
                     selectJob(activeJobId, encodeURIComponent(activeJobDesc), activeJobStatus, consumed, total);
                 }
+            }
+        }
+
+        function resetCSVPreview() {
+            uploadPreviewFile = null;
+            uploadPreviewData = null;
+            const previewBox = document.getElementById('csv-preview-box');
+            const previewButton = document.getElementById('preview-csv-btn');
+            const uploadButton = document.getElementById('upload-btn');
+            const reportButton = document.getElementById('download-preview-duplicate-report-btn');
+            if (previewBox) previewBox.classList.add('hidden');
+            if (previewButton) previewButton.disabled = false;
+            if (uploadButton) {
+                uploadButton.disabled = true;
+                uploadButton.classList.add('opacity-50');
+                uploadButton.innerText = 'Create Job';
+            }
+            if (reportButton) reportButton.classList.add('hidden');
+        }
+
+        async function previewJobFile() {
+            const fileInput = document.getElementById('new-job-file');
+            const previewButton = document.getElementById('preview-csv-btn');
+            const uploadButton = document.getElementById('upload-btn');
+            const file = fileInput.files?.[0];
+            if (!file) {
+                showCustomAlert("Please select a batch CSV or TXT file.");
+                return;
+            }
+
+            previewButton.disabled = true;
+            previewButton.innerHTML = `${spinnerHtml} Checking...`;
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                const response = await fetch('/api/jobs/preview', { method: 'POST', body: formData });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Could not preview this file.');
+                }
+
+                uploadPreviewFile = file;
+                uploadPreviewData = data;
+                document.getElementById('csv-preview-summary').innerText =
+                    `${Number(data.total_rows).toLocaleString()} CSV values found; ` +
+                    `${Number(data.unique_codes).toLocaleString()} unique codes detected.`;
+                document.getElementById('csv-preview-duplicates').innerText = data.duplicate_rows
+                    ? `${Number(data.duplicate_rows).toLocaleString()} repeated row(s) across ` +
+                      `${Number(data.duplicate_groups).toLocaleString()} code(s). Job creation is blocked until the source file is corrected.`
+                    : 'No repeated code values found. This file can be used to create a job.';
+
+                const samplesElement = document.getElementById('csv-preview-samples');
+                if (data.samples?.length) {
+                    samplesElement.innerHTML = data.samples.map(sample =>
+                        `<div class="py-0.5"><span class="font-mono font-semibold">${escapeHtml(sample.code_value)}</span>` +
+                        ` &mdash; ${Number(sample.occurrences).toLocaleString()} occurrences; CSV rows ` +
+                        `${(sample.source_lines || []).map(line => Number(line).toLocaleString()).join(', ')}` +
+                        `${sample.occurrences > (sample.source_lines || []).length ? ', ...' : ''}</div>`
+                    ).join('');
+                    samplesElement.classList.remove('hidden');
+                } else {
+                    samplesElement.innerHTML = '';
+                    samplesElement.classList.add('hidden');
+                }
+
+                const reportButton = document.getElementById('download-preview-duplicate-report-btn');
+                if (reportButton) reportButton.classList.toggle('hidden', !data.duplicate_rows);
+                document.getElementById('csv-preview-box').classList.remove('hidden');
+                const jobCardUnavailable = !document.getElementById('job-id-availability-error').classList.contains('hidden');
+                const hasDuplicates = Number(data.duplicate_rows) > 0;
+                uploadButton.disabled = jobCardUnavailable || hasDuplicates;
+                uploadButton.classList.toggle('opacity-50', jobCardUnavailable || hasDuplicates);
+                uploadButton.innerText = hasDuplicates ? 'Correct duplicates to continue' : 'Create Job';
+            } catch (error) {
+                uploadPreviewFile = null;
+                uploadPreviewData = null;
+                showCustomAlert(error.message || 'Could not preview this file.', 'CSV Preview Error');
+            } finally {
+                previewButton.disabled = false;
+                previewButton.innerText = 'Preview CSV';
+            }
+        }
+
+        async function downloadPreviewDuplicateReport() {
+            const file = document.getElementById('new-job-file').files?.[0];
+            if (!file || file !== uploadPreviewFile || !uploadPreviewData?.duplicate_rows) {
+                showCustomAlert('Preview the selected file before downloading its duplicate report.');
+                return;
+            }
+
+            const button = document.getElementById('download-preview-duplicate-report-btn');
+            button.disabled = true;
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                const response = await fetch('/api/jobs/preview/duplicate-report.csv', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!response.ok) {
+                    const error = await response.json().catch(() => ({}));
+                    throw new Error(error.detail || 'Could not generate the duplicate report.');
+                }
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'duplicate_codes_preview.csv';
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                showCustomAlert(error.message || 'Could not download the duplicate report.', 'Report Error');
+            } finally {
+                button.disabled = false;
             }
         }
 
@@ -4832,6 +5074,19 @@
             if (!fileInput.files || fileInput.files.length === 0) {
                 return showCustomAlert("Please select a batch CSV or TXT file.");
             }
+            if (fileInput.files[0] !== uploadPreviewFile || !uploadPreviewData) {
+                return showCustomAlert("Preview the selected CSV before creating the job.", "Preview Required");
+            }
+            if (Number(uploadPreviewData.duplicate_rows) > 0) {
+                return showCustomAlert(
+                    `${Number(uploadPreviewData.duplicate_rows).toLocaleString()} repeated row(s) were found. ` +
+                    "Job creation is blocked. Download the duplicate report, correct the source file, and preview it again.",
+                    "Duplicate Codes Found"
+                );
+            }
+            if (!document.getElementById('job-id-availability-error').classList.contains('hidden')) {
+                return showCustomAlert("Choose a Job Card number that is not already in use.", "Job Card Exists");
+            }
 
             const formData = new FormData();
             formData.append('job_card_id', jcId);
@@ -4842,6 +5097,7 @@
             // Disengage all buttons immediately
             setJobProcessingLock(true);
             uploadBtn.disabled = true;
+            document.getElementById('preview-csv-btn').disabled = true;
             if (cancelBtn) {
                 cancelBtn.disabled = true;
                 cancelBtn.classList.add('opacity-30', 'pointer-events-none');
@@ -4878,7 +5134,14 @@
                     
                     startIngestionPolling(data.run_id);
                 } else {
-                    showCustomAlert("Failed to initiate ingestion.");
+                    let message = "Failed to initiate ingestion.";
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response.detail) message = response.detail;
+                    } catch (error) {
+                        console.error("Could not parse job creation error response.", error);
+                    }
+                    showCustomAlert(message, "Job Creation Blocked");
                     resetUploadUI();
                 }
             };
@@ -5375,9 +5638,14 @@
             const cancelBtn = document.getElementById('upload-cancel-btn');
             const progressBox = document.getElementById('upload-progress-box');
             if (uploadBtn) {
-                uploadBtn.disabled = false;
-                uploadBtn.innerHTML = 'Create Job';
+                const jobCardUnavailable = !document.getElementById('job-id-availability-error').classList.contains('hidden');
+                const hasDuplicates = Number(uploadPreviewData?.duplicate_rows) > 0;
+                uploadBtn.disabled = !uploadPreviewData || jobCardUnavailable || hasDuplicates;
+                uploadBtn.innerHTML = hasDuplicates ? 'Correct duplicates to continue' : 'Create Job';
+                uploadBtn.classList.toggle('opacity-50', !uploadPreviewData || jobCardUnavailable || hasDuplicates);
             }
+            const previewButton = document.getElementById('preview-csv-btn');
+            if (previewButton) previewButton.disabled = false;
             if (cancelBtn) {
                 cancelBtn.disabled = false;
                 cancelBtn.classList.remove('opacity-30', 'pointer-events-none');

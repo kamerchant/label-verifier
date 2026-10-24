@@ -17,4 +17,6 @@ The Render Blueprint generates `SESSION_SECRET` and enables secure session cooki
 
 Database timestamps are stored in UTC. Use the `TZ` control in the application footer to choose the display time zone; that preference is saved in the current browser.
 
+Before creating a job, the upload screen previews the selected file and reports repeated code values. Job creation is blocked when any duplicate is found; download the duplicate CSV report, correct the source file, and preview it again. The server repeats the duplicate check before creating a job, so bypassing the preview does not allow a duplicate file to be ingested. Downloading the preview report reprocesses the selected file.
+
 The upload limit applies while the application copies the uploaded file to its temporary working directory. Background ingestion still runs in a process-local thread and uses local temporary files; use durable storage and a persistent worker queue before relying on ingestion to survive instance restarts or multiple application instances.

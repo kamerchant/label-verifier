@@ -82,6 +82,24 @@ def init_db():
             """)
 
             cur.execute("""
+                CREATE TABLE IF NOT EXISTS job_code_duplicate_rows (
+                    id BIGSERIAL PRIMARY KEY,
+                    run_id INT NOT NULL REFERENCES job_cards(run_id) ON DELETE CASCADE,
+                    code_value TEXT NOT NULL,
+                    first_source_line BIGINT NOT NULL,
+                    first_source_column BIGINT NOT NULL,
+                    duplicate_source_line BIGINT NOT NULL,
+                    duplicate_source_column BIGINT NOT NULL,
+                    occurrence_number BIGINT NOT NULL,
+                    occurrence_count BIGINT NOT NULL
+                );
+            """)
+            cur.execute("""
+                CREATE INDEX IF NOT EXISTS idx_job_code_duplicate_rows_run
+                ON job_code_duplicate_rows (run_id, code_value, occurrence_number);
+            """)
+
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS scan_logs (
                     id SERIAL PRIMARY KEY,
                     job_card_id TEXT NOT NULL,

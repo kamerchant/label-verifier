@@ -7,6 +7,7 @@ import logging
 import time
 import tempfile
 import threading
+import uuid
 from typing import Optional
 from urllib.parse import quote
 from contextlib import asynccontextmanager
@@ -397,6 +398,7 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 SELECT 
                     row_number() OVER (ORDER BY t.line_num ASC, t.col_num ASC) AS original_seq,
                     t.line_num,
+                    t.col_num,
                     t.cleaned_val AS code_value
                 FROM (
                     SELECT 
@@ -431,14 +433,50 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
             internal_duplicates_count = max(0, raw_token_count - total_codes)
 
             if internal_duplicates_count > 0:
-                cur.execute(f"SELECT code_value FROM {tokens_table} GROUP BY code_value HAVING COUNT(*) > 1 LIMIT 5;")
-                samples = [r[0] for r in cur.fetchall()]
-                sample_str = ", ".join(samples)
-                error_msg = (
-                    f"File Integrity Error: Found {internal_duplicates_count:,} duplicate code(s) "
-                    f"within the CSV itself (Samples: {sample_str})."
+                cur.execute(f"""
+                    WITH duplicate_occurrences AS (
+                        SELECT
+                            code_value,
+                            line_num,
+                            col_num,
+                            original_seq,
+                            COUNT(*) OVER (PARTITION BY code_value) AS occurrence_count,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY code_value ORDER BY original_seq
+                            ) AS occurrence_number,
+                            FIRST_VALUE(line_num) OVER (
+                                PARTITION BY code_value ORDER BY original_seq
+                            ) AS first_source_line,
+                            FIRST_VALUE(col_num) OVER (
+                                PARTITION BY code_value ORDER BY original_seq
+                            ) AS first_source_column
+                        FROM {tokens_table}
+                    )
+                    INSERT INTO job_code_duplicate_rows (
+                        run_id, code_value, first_source_line, first_source_column,
+                        duplicate_source_line, duplicate_source_column,
+                        occurrence_number, occurrence_count
+                    )
+                    SELECT
+                        %s,
+                        duplicate.code_value,
+                        duplicate.first_source_line,
+                        duplicate.first_source_column,
+                        duplicate.line_num,
+                        duplicate.col_num,
+                        duplicate.occurrence_number,
+                        duplicate.occurrence_count
+                    FROM duplicate_occurrences duplicate
+                    WHERE duplicate.occurrence_count > 1
+                      AND duplicate.occurrence_number > 1;
+                """, (run_id,))
+                cur.execute(
+                    "UPDATE job_cards SET status = 'FAILED', ingestion_progress = %s WHERE run_id = %s",
+                    (
+                        f"Rejected: file contains {internal_duplicates_count:,} repeated row(s). No codes were activated.",
+                        run_id,
+                    ),
                 )
-                cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = %s WHERE run_id = %s", (error_msg, run_id))
                 cur.execute(f"DROP TABLE IF EXISTS {tokens_table}, {incoming_table};")
                 conn.commit()
                 return
@@ -1386,6 +1424,264 @@ def bulk_status_change(
     finally:
         release_connection(conn)
 
+def _check_upload_size(file: UploadFile):
+    size = file.size
+    if size is None:
+        file.file.seek(0, os.SEEK_END)
+        size = file.file.tell()
+        file.file.seek(0)
+    if size > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Upload exceeds the {MAX_UPLOAD_BYTES // (1024 * 1024)} MB size limit.",
+        )
+
+
+def _load_preview_tokens(cur, binary_file):
+    binary_file.seek(0)
+    cur.execute("""
+        CREATE TEMP TABLE upload_preview_tokens (
+            line_num BIGINT NOT NULL,
+            col_num BIGINT NOT NULL,
+            code_value TEXT NOT NULL
+        ) ON COMMIT DROP;
+    """)
+
+    text_file = io.TextIOWrapper(binary_file, encoding="utf-8-sig", newline="")
+    copy_buffer = io.StringIO()
+    buffered_tokens = 0
+    try:
+        for line_num, col_num, token in iter_csv_tokens(text_file):
+            copy_buffer.write(
+                f"{line_num}\t{col_num}\t{escape_postgres_copy_text(token)}\n"
+            )
+            buffered_tokens += 1
+            if buffered_tokens >= 50_000:
+                copy_buffer.seek(0)
+                cur.copy_expert(
+                    "COPY upload_preview_tokens (line_num, col_num, code_value) "
+                    "FROM STDIN WITH (FORMAT text)",
+                    copy_buffer,
+                )
+                copy_buffer = io.StringIO()
+                buffered_tokens = 0
+        if buffered_tokens:
+            copy_buffer.seek(0)
+            cur.copy_expert(
+                "COPY upload_preview_tokens (line_num, col_num, code_value) "
+                "FROM STDIN WITH (FORMAT text)",
+                copy_buffer,
+            )
+    finally:
+        text_file.detach()
+
+    cur.execute("""
+        CREATE INDEX upload_preview_tokens_code_idx
+        ON upload_preview_tokens (code_value, line_num, col_num);
+    """)
+    cur.execute("ANALYZE upload_preview_tokens;")
+
+
+def _count_upload_duplicates(cur):
+    cur.execute("""
+        SELECT COUNT(*), COALESCE(SUM(occurrences - 1), 0)
+        FROM (
+            SELECT COUNT(*) AS occurrences
+            FROM upload_preview_tokens
+            GROUP BY code_value
+            HAVING COUNT(*) > 1
+        ) duplicates;
+    """)
+    return cur.fetchone()
+
+
+def _duplicate_csv_stream(conn):
+    report_cursor = None
+    try:
+        report_cursor = conn.cursor(name=f"duplicate_csv_{uuid.uuid4().hex}")
+        report_cursor.itersize = 1000
+        report_cursor.execute("""
+            WITH duplicate_occurrences AS (
+                SELECT
+                    code_value,
+                    line_num,
+                    col_num,
+                    COUNT(*) OVER (PARTITION BY code_value) AS occurrence_count,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY code_value ORDER BY line_num, col_num
+                    ) AS occurrence_number,
+                    FIRST_VALUE(line_num) OVER (
+                        PARTITION BY code_value ORDER BY line_num, col_num
+                    ) AS first_source_line,
+                    FIRST_VALUE(col_num) OVER (
+                        PARTITION BY code_value ORDER BY line_num, col_num
+                    ) AS first_source_column
+                FROM upload_preview_tokens
+            )
+            SELECT
+                code_value, occurrence_count, occurrence_number, line_num, col_num,
+                first_source_line, first_source_column
+            FROM duplicate_occurrences
+            WHERE occurrence_count > 1
+              AND occurrence_number > 1
+            ORDER BY code_value, occurrence_number;
+        """)
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            "Code Value", "Total Occurrences", "Occurrence Number",
+            "Source CSV Row", "Source CSV Column",
+            "First Occurrence CSV Row", "First Occurrence CSV Column",
+        ])
+        yield "\ufeff" + output.getvalue()
+
+        for row in report_cursor:
+            output.seek(0)
+            output.truncate(0)
+            writer.writerow([spreadsheet_safe(value) for value in row])
+            yield output.getvalue()
+    finally:
+        try:
+            if report_cursor:
+                report_cursor.close()
+        finally:
+            release_connection(conn)
+
+
+def _stored_duplicate_csv_stream(conn, run_id: int):
+    report_cursor = None
+    try:
+        report_cursor = conn.cursor(name=f"stored_duplicate_csv_{uuid.uuid4().hex}")
+        report_cursor.itersize = 1000
+        report_cursor.execute("""
+            SELECT
+                code_value, occurrence_count, occurrence_number,
+                duplicate_source_line, duplicate_source_column,
+                first_source_line, first_source_column
+            FROM job_code_duplicate_rows
+            WHERE run_id = %s
+            ORDER BY code_value, occurrence_number;
+        """, (run_id,))
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            "Code Value", "Total Occurrences", "Occurrence Number",
+            "Source CSV Row", "Source CSV Column",
+            "First Occurrence CSV Row", "First Occurrence CSV Column",
+        ])
+        yield "\ufeff" + output.getvalue()
+
+        for row in report_cursor:
+            output.seek(0)
+            output.truncate(0)
+            writer.writerow([spreadsheet_safe(value) for value in row])
+            yield output.getvalue()
+    finally:
+        try:
+            if report_cursor:
+                report_cursor.close()
+        finally:
+            release_connection(conn)
+
+
+@app.post("/api/jobs/preview")
+def preview_job_file(
+    file: UploadFile = File(...),
+    uploader: dict = Depends(require_uploader),
+):
+    _check_upload_size(file)
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            _load_preview_tokens(cur, file.file)
+            cur.execute("""
+                SELECT COUNT(*), COUNT(DISTINCT code_value)
+                FROM upload_preview_tokens;
+            """)
+            row = cur.fetchone()
+            total_rows, unique_codes = row if row else (0, 0)
+            if not total_rows:
+                raise HTTPException(status_code=400, detail="No valid codes found in uploaded file.")
+
+            duplicate_groups, duplicate_rows = _count_upload_duplicates(cur)
+
+            cur.execute("""
+                SELECT
+                    grouped.code_value,
+                    grouped.occurrences,
+                    grouped.first_source_line,
+                    ARRAY(
+                        SELECT duplicate_rows.line_num
+                        FROM upload_preview_tokens duplicate_rows
+                        WHERE duplicate_rows.code_value = grouped.code_value
+                        ORDER BY duplicate_rows.line_num, duplicate_rows.col_num
+                        LIMIT 5
+                    ) AS source_lines
+                FROM (
+                    SELECT
+                        code_value,
+                        COUNT(*) AS occurrences,
+                        MIN(line_num) AS first_source_line
+                    FROM upload_preview_tokens
+                    GROUP BY code_value
+                    HAVING COUNT(*) > 1
+                    ORDER BY COUNT(*) DESC, code_value
+                    LIMIT 10
+                ) grouped;
+            """)
+            samples = [
+                {
+                    "code_value": sample[0],
+                    "occurrences": sample[1],
+                    "first_source_line": sample[2],
+                    "source_lines": sample[3],
+                }
+                for sample in cur.fetchall()
+            ]
+            conn.commit()
+            return {
+                "total_rows": total_rows,
+                "unique_codes": unique_codes,
+                "duplicate_groups": duplicate_groups,
+                "duplicate_rows": duplicate_rows,
+                "samples": samples,
+            }
+    except (csv.Error, UnicodeDecodeError) as exc:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Invalid CSV file: {exc}") from exc
+    finally:
+        release_connection(conn)
+
+
+@app.post("/api/jobs/preview/duplicate-report.csv")
+def download_preview_duplicate_report(
+    file: UploadFile = File(...),
+    uploader: dict = Depends(require_uploader),
+):
+    _check_upload_size(file)
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            _load_preview_tokens(cur, file.file)
+        return StreamingResponse(
+            _duplicate_csv_stream(conn),
+            media_type="text/csv; charset=utf-8",
+            headers={
+                "Content-Disposition": "attachment; filename=duplicate_codes_preview.csv"
+            },
+        )
+    except (csv.Error, UnicodeDecodeError) as exc:
+        conn.rollback()
+        release_connection(conn)
+        raise HTTPException(status_code=400, detail=f"Invalid CSV file: {exc}") from exc
+    except Exception:
+        conn.rollback()
+        release_connection(conn)
+        raise
+
+
 @app.post("/api/jobs/create")
 async def create_job(
     job_card_id: str = Form(...),
@@ -1399,11 +1695,7 @@ async def create_job(
     is_override = str(override_duplicate).strip().lower() in ("true", "1", "yes")
     if not job_card_id:
         raise HTTPException(status_code=400, detail="Job Card ID is required.")
-    if file.size is not None and file.size > MAX_UPLOAD_BYTES:
-        raise HTTPException(
-            status_code=413,
-            detail=f"Upload exceeds the {MAX_UPLOAD_BYTES // (1024 * 1024)} MB size limit.",
-        )
+    _check_upload_size(file)
 
     conn = None
     spool_path = None
@@ -1426,6 +1718,20 @@ async def create_job(
 
         conn = get_connection()
         with conn.cursor() as cur:
+            with open(spool_path, "rb") as staged_file:
+                _load_preview_tokens(cur, staged_file)
+            duplicate_groups, duplicate_rows = _count_upload_duplicates(cur)
+            if duplicate_rows:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Job creation is blocked: the file contains {duplicate_rows:,} "
+                        f"repeated row(s) across {duplicate_groups:,} code(s). "
+                        "Download the duplicate report, correct the source file, and upload it again."
+                    ),
+                )
+            cur.execute("DROP TABLE upload_preview_tokens;")
+
             cur.execute("SELECT run_id, status FROM job_cards WHERE job_card_id = %s AND status != 'DELETED'", (job_card_id,))
             existing = cur.fetchone()
             if existing:
@@ -1483,6 +1789,10 @@ async def create_job(
             "job_card_id": job_card_id,
             "message": "File received. Background ingestion initialized."
         })
+    except (csv.Error, UnicodeDecodeError) as exc:
+        if conn:
+            conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Invalid CSV file: {exc}") from exc
     except HTTPException:
         if conn:
             conn.rollback()
@@ -2049,6 +2359,13 @@ def get_report(job_card_id: str, user: dict = Depends(require_password_change_co
             (run_id, jc_id, jc_desc, jc_status, jc_created, total_pool, consumed_pool,
              conf_cnt, conf_res, over_by, over_reason, conf_details) = job
 
+            cur.execute(
+                "SELECT COUNT(*) FROM job_code_duplicate_rows WHERE run_id = %s",
+                (run_id,),
+            )
+            duplicate_rows_result = cur.fetchone()
+            duplicate_rows_count = duplicate_rows_result[0] if duplicate_rows_result else 0
+
             if not total_pool or total_pool == 0:
                 cur.execute("SELECT COUNT(*) FROM codes WHERE run_id = %s", (run_id,))
                 cnt_r = cur.fetchone()
@@ -2123,6 +2440,7 @@ def get_report(job_card_id: str, user: dict = Depends(require_password_change_co
                 "created_at": jc_created.strftime("%Y-%m-%d %H:%M") if jc_created else "",
                 "total_codes": total_pool or 0,
                 "consumed_codes": consumed_pool or 0,
+                "duplicate_rows_count": duplicate_rows_count,
                 "blocked_codes": pending_count if jc_status == 'COMPLETED' else 0,
                 "pending_codes": pending_count if jc_status != 'COMPLETED' else 0,
                 "results_breakdown": results_breakdown,
@@ -2137,6 +2455,47 @@ def get_report(job_card_id: str, user: dict = Depends(require_password_change_co
             }
     finally:
         release_connection(conn)
+
+@app.get("/api/reports/{job_card_id}/duplicates.csv")
+def export_duplicate_report_csv(
+    job_card_id: str,
+    user: dict = Depends(require_password_change_complete),
+):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT run_id
+                FROM job_cards
+                WHERE job_card_id = %s AND status != 'DELETED'
+                ORDER BY created_at DESC
+                LIMIT 1
+            """, (job_card_id,))
+            job = cur.fetchone()
+            if not job:
+                raise HTTPException(status_code=404, detail="Job Card not found.")
+            run_id = job[0]
+            cur.execute(
+                "SELECT EXISTS (SELECT 1 FROM job_code_duplicate_rows WHERE run_id = %s)",
+                (run_id,),
+            )
+            has_duplicates = cur.fetchone()[0]
+            if not has_duplicates:
+                raise HTTPException(status_code=404, detail="No duplicate codes were recorded for this job.")
+
+        return StreamingResponse(
+            _stored_duplicate_csv_stream(conn, run_id),
+            media_type="text/csv; charset=utf-8",
+            headers={
+                "Content-Disposition": (
+                    f"attachment; filename*=UTF-8''Duplicate_Codes_{quote(job_card_id, safe='')}.csv"
+                )
+            },
+        )
+    except Exception:
+        conn.rollback()
+        release_connection(conn)
+        raise
 
 @app.get("/api/reports/{job_card_id}/csv")
 def export_report_csv(job_card_id: str, user: dict = Depends(require_password_change_complete)):

@@ -26,6 +26,14 @@ class ImportUtilsTests(unittest.TestCase):
             [(2, 1, "ABC123"), (2, 2, "Widget")],
         )
 
+    def test_csv_parser_preserves_duplicate_occurrence_locations(self):
+        source = io.StringIO("code\nA-1,B-2\nA-1\n")
+
+        self.assertEqual(
+            list(iter_csv_tokens(source)),
+            [(2, 1, "A-1"), (2, 2, "B-2"), (3, 1, "A-1")],
+        )
+
     def test_csv_parser_skips_empty_values_and_header_labels(self):
         source = io.StringIO("id,,QR Code,Quantity\nA-1,,B-2,4\n")
 
