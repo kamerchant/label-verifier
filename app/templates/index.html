@@ -1721,6 +1721,10 @@
                 .replace(/'/g, '&#039;');
         }
 
+        function htmlJsArg(value) {
+            return escapeHtml(JSON.stringify(String(value)));
+        }
+
         function formatCodeDisplay(rawCode) {
             if (!rawCode) return '-';
             const safeCode = escapeHtml(rawCode);
@@ -2623,21 +2627,21 @@
                 currentAutocompleteJobs = await res.json();
 
                 if (currentAutocompleteJobs.length === 0) {
-                    list.innerHTML = `<div class="p-3 text-xs text-slate-500 italic text-center">No jobs match '${query}'</div>`;
+                    list.innerHTML = `<div class="p-3 text-xs text-slate-500 italic text-center">No jobs match '${escapeHtml(query)}'</div>`;
                     list.classList.remove('hidden');
                     return;
                 }
 
                 list.innerHTML = currentAutocompleteJobs.map((j, idx) => `
                     <div id="autocomplete-item-${idx}" 
-                         onclick="selectJob('${j.id}', '${encodeURIComponent(j.description)}', '${j.status}', ${j.consumed}, ${j.total})" 
+                         onclick="selectJob(${htmlJsArg(j.id)}, ${htmlJsArg(encodeURIComponent(j.description || ''))}, ${htmlJsArg(j.status)}, ${Number(j.consumed) || 0}, ${Number(j.total) || 0})"
                          class="p-2.5 hover:bg-black/[0.02] border-b cursor-pointer flex justify-between items-center transition-colors">
                         <div class="min-w-0 pr-2">
-                            <span class="font-bold text-xs block truncate">${j.id}</span>
-                            ${j.description ? `<span class="text-[11px] text-slate-400 block truncate max-w-[180px]">${j.description}</span>` : ''}
+                            <span class="font-bold text-xs block truncate">${escapeHtml(j.id)}</span>
+                            ${j.description ? `<span class="text-[11px] text-slate-400 block truncate max-w-[180px]">${escapeHtml(j.description)}</span>` : ''}
                         </div>
                         <div class="text-right shrink-0">
-                            <span class="text-[10px] px-1.5 py-0.5 rounded linear-badge-pass">${j.status}</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded linear-badge-pass">${escapeHtml(j.status)}</span>
                             <span class="block text-[10px] text-slate-500 mt-0.5">${(Number(j.consumed) || 0).toLocaleString()} / ${(Number(j.total) || 0).toLocaleString()}</span>
                         </div>
                     </div>
@@ -3416,7 +3420,7 @@
                             <!-- Expandable drawer showing full un-truncated code on tap -->
                             <div class="scan-code-full hidden pt-1.5 mt-0.5 border-t border-white/[0.06] text-[11px] text-indigo-300 break-all select-text leading-relaxed flex items-start justify-between gap-2">
                                 <span class="break-all font-bold">${escapeHtml(s.code)}</span>
-                                <button type="button" onclick="event.stopPropagation(); copyJobCardNumber('${escapeHtml(s.code)}', this)" 
+                                <button type="button" onclick="event.stopPropagation(); copyJobCardNumber(${htmlJsArg(s.code)}, this)"
                                         class="linear-button-secondary text-[10px] px-2 py-0.5 rounded font-semibold shrink-0" title="Copy full code">
                                     Copy
                                 </button>
@@ -3673,10 +3677,10 @@
 
             tbody.innerHTML = currentPackingQCLogs.map(l => `
                 <tr class="hover:bg-black/[0.02]">
-                    <td class="p-2.5 font-bold table-text-theme">${l.code}</td>
-                    <td class="p-2.5 table-text-theme">${currentPackingQCJob}</td>
-                    <td class="p-2.5 table-text-theme">${l.tested_by}</td>
-                    <td class="p-2.5 text-slate-400">${l.tested_at}</td>
+                    <td class="p-2.5 font-bold table-text-theme">${escapeHtml(l.code)}</td>
+                    <td class="p-2.5 table-text-theme">${escapeHtml(currentPackingQCJob)}</td>
+                    <td class="p-2.5 table-text-theme">${escapeHtml(l.tested_by)}</td>
+                    <td class="p-2.5 text-slate-400">${escapeHtml(l.tested_at)}</td>
                 </tr>
             `).join('');
         }
@@ -3705,16 +3709,16 @@
 
             document.getElementById('print-qc-footer-timestamp').innerHTML = `
                 Report Generated On: ${formatAppTimestamp()}<br>
-                <span style="font-family: monospace; font-size: 7.5pt; color: #64748b; margin-top: 3px; display: block;">${stamp}</span>
+                <span style="font-family: monospace; font-size: 7.5pt; color: #64748b; margin-top: 3px; display: block;">${escapeHtml(stamp)}</span>
             `;
 
             const printTableBody = document.getElementById('print-qc-table-rows');
             printTableBody.innerHTML = currentPackingQCLogs.map(l => `
                 <tr>
-                    <td style="font-weight: bold;">${l.code}</td>
-                    <td>${currentPackingQCJob}</td>
-                    <td>${l.tested_by}</td>
-                    <td>${l.tested_at}</td>
+                    <td style="font-weight: bold;">${escapeHtml(l.code)}</td>
+                    <td>${escapeHtml(currentPackingQCJob)}</td>
+                    <td>${escapeHtml(l.tested_by)}</td>
+                    <td>${escapeHtml(l.tested_at)}</td>
                 </tr>
             `).join('');
 
@@ -3995,11 +3999,11 @@
 
                 return `
                     <tr class="hover:bg-black/[0.02]">
-                        <td class="px-3.5 py-2.5 text-xs text-slate-300">${e.timestamp}</td>
-                        <td class="px-3.5 py-2.5 font-bold table-text-theme text-xs">${e.user}</td>
-                        <td class="px-3.5 py-2.5 table-text-theme text-xs font-semibold">${e.job_card_id}</td>
-                        <td class="px-3.5 py-2.5 text-xs ${badgeColor}">${e.activity_type}</td>
-                        <td class="px-3.5 py-2.5 text-xs table-text-theme opacity-90">${e.details}</td>
+                        <td class="px-3.5 py-2.5 text-xs text-slate-300">${escapeHtml(e.timestamp)}</td>
+                        <td class="px-3.5 py-2.5 font-bold table-text-theme text-xs">${escapeHtml(e.user)}</td>
+                        <td class="px-3.5 py-2.5 table-text-theme text-xs font-semibold">${escapeHtml(e.job_card_id)}</td>
+                        <td class="px-3.5 py-2.5 text-xs ${badgeColor}">${escapeHtml(e.activity_type)}</td>
+                        <td class="px-3.5 py-2.5 text-xs table-text-theme opacity-90">${escapeHtml(e.details)}</td>
                     </tr>
                 `;
             }).join('');
@@ -4358,25 +4362,25 @@
 
                     let uploadCheckboxHtml = isPerm 
                         ? `<input type="checkbox" checked disabled class="rounded w-3.5 h-3.5 cursor-not-allowed opacity-60">`
-                        : `<input type="checkbox" ${u.can_upload ? 'checked' : ''} onchange="stageUserUpload('${u.username}', this.checked)" class="rounded cursor-pointer w-3.5 h-3.5">`;
+                        : `<input type="checkbox" ${u.can_upload ? 'checked' : ''} onchange="stageUserUpload(${htmlJsArg(u.username)}, this.checked)" class="rounded cursor-pointer w-3.5 h-3.5">`;
 
                     let actionsHtml = '';
                     if (u.is_new) {
                         actionsHtml = `
                             <span class="text-[11px] text-amber-400 font-bold mr-1.5">(Unsaved)</span>
-                            <button type="button" onclick="removeStagedNewUser('${u.username}')" class="btn-ghost-danger">Remove</button>
+                            <button type="button" onclick="removeStagedNewUser(${htmlJsArg(u.username)})" class="btn-ghost-danger">Remove</button>
                         `;
                     } else if (isCurrent) {
                         actionsHtml = `<span class="text-[11px] text-slate-400 font-semibold italic">Current User</span>`;
                     } else {
                         let pwBtnHtml = hasStagedPw
-                            ? `<button type="button" onclick="promptAdminResetPassword('${u.username}')" class="linear-button-secondary text-[11px] px-2 py-0.5 rounded font-bold text-amber-400 mr-1">Edit PW</button>
-                               <button type="button" onclick="cancelStagedPasswordReset('${u.username}')" class="text-slate-400 hover:text-slate-300 text-[11px] underline mr-1.5">Undo</button>`
-                            : `<button type="button" onclick="promptAdminResetPassword('${u.username}')" class="linear-button-secondary text-[11px] px-2 py-0.5 rounded font-semibold text-indigo-400 mr-1.5">Reset PW</button>`;
+                            ? `<button type="button" onclick="promptAdminResetPassword(${htmlJsArg(u.username)})" class="linear-button-secondary text-[11px] px-2 py-0.5 rounded font-bold text-amber-400 mr-1">Edit PW</button>
+                               <button type="button" onclick="cancelStagedPasswordReset(${htmlJsArg(u.username)})" class="text-slate-400 hover:text-slate-300 text-[11px] underline mr-1.5">Undo</button>`
+                            : `<button type="button" onclick="promptAdminResetPassword(${htmlJsArg(u.username)})" class="linear-button-secondary text-[11px] px-2 py-0.5 rounded font-semibold text-indigo-400 mr-1.5">Reset PW</button>`;
 
                         actionsHtml = `
                             ${pwBtnHtml}
-                            <button type="button" onclick="stageUserActive('${u.username}')" class="${u.is_active ? 'btn-ghost-danger' : 'linear-button-secondary text-emerald-400 text-[11px] px-2 py-0.5 rounded'}">
+                            <button type="button" onclick="stageUserActive(${htmlJsArg(u.username)})" class="${u.is_active ? 'btn-ghost-danger' : 'linear-button-secondary text-emerald-400 text-[11px] px-2 py-0.5 rounded'}">
                                 ${u.is_active ? 'Suspend' : 'Activate'}
                             </button>
                         `;
@@ -4385,14 +4389,14 @@
                     return `
                         <tr class="hover:bg-black/[0.02] border-b border-white/[0.04] transition-colors">
                             <td class="px-3.5 py-2">
-                                <span class="font-bold table-text-theme text-xs font-mono">${u.username}</span>
+                                <span class="font-bold table-text-theme text-xs font-mono">${escapeHtml(u.username)}</span>
                                 ${hasStagedPw ? '<span class="text-[10px] text-amber-400 font-semibold block">(PW Revision Staged)</span>' : ''}
                                 ${!u.is_active ? '<span class="text-[10px] text-red-400 font-bold block">(Suspended)</span>' : ''}
                             </td>
-                            <td class="px-3.5 py-2 text-xs table-text-theme font-medium">${u.employee_name || '-'}</td>
-                            <td class="px-3.5 py-2 text-xs text-slate-400 font-mono">${u.employee_id || '-'}</td>
+                            <td class="px-3.5 py-2 text-xs table-text-theme font-medium">${escapeHtml(u.employee_name || '-')}</td>
+                            <td class="px-3.5 py-2 text-xs text-slate-400 font-mono">${escapeHtml(u.employee_id || '-')}</td>
                             <td class="px-3.5 py-2 text-center">
-                                <select onchange="stageUserRole('${u.username}', this.value)" 
+                                <select onchange="stageUserRole(${htmlJsArg(u.username)}, this.value)"
                                         class="job-status-pill ${u.role === 'admin' ? 'status-active' : (u.role === 'QC manager' ? 'status-inactive' : 'status-completed')} text-[11px]">
                                     <option value="QC officer" class="bg-[#12141a] text-slate-300" ${u.role === 'QC officer' ? 'selected' : ''}>QC officer</option>
                                     <option value="QC manager" class="bg-[#12141a] text-amber-400" ${u.role === 'QC manager' ? 'selected' : ''}>QC manager</option>
@@ -4416,7 +4420,7 @@
                     let uploadCheckboxHtml = isPerm
                         ? `<span class="text-[10px] text-emerald-500 font-bold">✓ Can Create Jobs</span>`
                         : `<label class="inline-flex items-center gap-1.5 text-[10px] font-medium table-text-theme cursor-pointer select-none">
-                               <input type="checkbox" ${u.can_upload ? 'checked' : ''} onchange="stageUserUpload('${u.username}', this.checked)" class="rounded w-3.5 h-3.5">
+                               <input type="checkbox" ${u.can_upload ? 'checked' : ''} onchange="stageUserUpload(${htmlJsArg(u.username)}, this.checked)" class="rounded w-3.5 h-3.5">
                                <span>Can Create Jobs</span>
                            </label>`;
 
@@ -4424,18 +4428,18 @@
                     if (u.is_new) {
                         actionsHtml = `
                             <span class="text-[10px] text-amber-400 font-bold mr-1">(Unsaved)</span>
-                            <button type="button" onclick="removeStagedNewUser('${u.username}')" class="btn-ghost-danger py-0.5 px-2 text-[10px]">Remove</button>
+                            <button type="button" onclick="removeStagedNewUser(${htmlJsArg(u.username)})" class="btn-ghost-danger py-0.5 px-2 text-[10px]">Remove</button>
                         `;
                     } else if (isCurrent) {
                         actionsHtml = `<span class="text-[10px] text-slate-400 italic">Current User</span>`;
                     } else {
                         let pwBtnHtml = hasStagedPw
-                            ? `<button type="button" onclick="promptAdminResetPassword('${u.username}')" class="linear-button-secondary text-amber-400 text-[10px] px-2 py-0.5 rounded font-bold mr-1">Edit PW</button>`
-                            : `<button type="button" onclick="promptAdminResetPassword('${u.username}')" class="linear-button-secondary text-indigo-400 text-[10px] px-2 py-0.5 rounded font-semibold mr-1">Reset PW</button>`;
+                            ? `<button type="button" onclick="promptAdminResetPassword(${htmlJsArg(u.username)})" class="linear-button-secondary text-amber-400 text-[10px] px-2 py-0.5 rounded font-bold mr-1">Edit PW</button>`
+                            : `<button type="button" onclick="promptAdminResetPassword(${htmlJsArg(u.username)})" class="linear-button-secondary text-indigo-400 text-[10px] px-2 py-0.5 rounded font-semibold mr-1">Reset PW</button>`;
 
                         actionsHtml = `
                             ${pwBtnHtml}
-                            <button type="button" onclick="stageUserActive('${u.username}')" class="${u.is_active ? 'btn-ghost-danger py-0.5 px-2 text-[10px]' : 'linear-button-secondary text-emerald-400 text-[10px] px-2 py-0.5 rounded'}">
+                            <button type="button" onclick="stageUserActive(${htmlJsArg(u.username)})" class="${u.is_active ? 'btn-ghost-danger py-0.5 px-2 text-[10px]' : 'linear-button-secondary text-emerald-400 text-[10px] px-2 py-0.5 rounded'}">
                                 ${u.is_active ? 'Suspend' : 'Activate'}
                             </button>
                         `;
@@ -4445,11 +4449,11 @@
                         <div class="linear-subcard p-2 rounded flex flex-col gap-1.5 shadow-sm border border-white/[0.06]">
                             <div class="flex items-center justify-between gap-1">
                                 <div class="min-w-0">
-                                    <span class="font-bold table-text-theme text-xs font-mono">${u.username}</span>
+                                    <span class="font-bold table-text-theme text-xs font-mono">${escapeHtml(u.username)}</span>
                                     ${!u.is_active ? '<span class="text-[9px] text-red-400 font-bold ml-1.5">(Suspended)</span>' : ''}
                                     ${hasStagedPw ? '<span class="text-[9px] text-amber-400 font-semibold block">(PW Changed)</span>' : ''}
                                 </div>
-                                <select onchange="stageUserRole('${u.username}', this.value)" 
+                                <select onchange="stageUserRole(${htmlJsArg(u.username)}, this.value)"
                                         class="job-status-pill ${u.role === 'admin' ? 'status-active' : (u.role === 'QC manager' ? 'status-inactive' : 'status-completed')} text-[10px] py-0.5 px-2">
                                     <option value="QC officer" class="bg-[#12141a] text-slate-300" ${u.role === 'QC officer' ? 'selected' : ''}>QC officer</option>
                                     <option value="QC manager" class="bg-[#12141a] text-amber-400" ${u.role === 'QC manager' ? 'selected' : ''}>QC manager</option>
@@ -4458,7 +4462,7 @@
                             </div>
 
                             <div class="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
-                                <span class="truncate">${u.employee_name || 'No name'} ${u.employee_id ? `<span class="font-mono text-slate-500">(${u.employee_id})</span>` : ''}</span>
+                                <span class="truncate">${escapeHtml(u.employee_name || 'No name')} ${u.employee_id ? `<span class="font-mono text-slate-500">(${escapeHtml(u.employee_id)})</span>` : ''}</span>
                                 <div>${uploadCheckboxHtml}</div>
                             </div>
 
@@ -5155,7 +5159,7 @@
 
             if (msgEl) {
                 msgEl.innerHTML = `
-                    Batch for Job Card <strong class="text-black font-extrabold">${jc}</strong> registered 
+                    Batch for Job Card <strong class="text-black font-extrabold">${escapeHtml(jc)}</strong> registered
                     <strong class="text-black font-extrabold">${(Number(cCount) || 0).toLocaleString()}</strong> unique conflicting code(s) 
                     out of <strong class="text-black font-extrabold">${(Number(tCodes) || 0).toLocaleString()}</strong> total batch codes.
                 `;
@@ -5199,10 +5203,10 @@
 
                         return `
                             <tr class="hover:bg-slate-50 border-b border-slate-200">
-                                <td class="px-3 py-2 font-bold text-black font-mono">${item.job_card_id}</td>
-                                <td class="px-3 py-2 text-slate-700 font-medium">${item.description || 'No Description'}</td>
+                                <td class="px-3 py-2 font-bold text-black font-mono">${escapeHtml(item.job_card_id)}</td>
+                                <td class="px-3 py-2 text-slate-700 font-medium">${escapeHtml(item.description || 'No Description')}</td>
                                 <td class="px-3 py-2 text-center">
-                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge}">${item.status}</span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge}">${escapeHtml(item.status)}</span>
                                 </td>
                                 <td class="px-3 py-2 text-right font-extrabold text-black">${count.toLocaleString()}</td>
                             </tr>
@@ -5457,8 +5461,8 @@
             const mobileContainer = document.getElementById('master-jobs-mobile');
 
             if (filtered.length === 0) {
-                if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400 italic text-xs">No job cards found matching '${query}'</td></tr>`;
-                if (mobileContainer) mobileContainer.innerHTML = `<div class="p-6 text-center text-slate-400 italic text-xs">No job cards found matching '${query}'</div>`;
+                if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400 italic text-xs">No job cards found matching '${escapeHtml(query)}'</td></tr>`;
+                if (mobileContainer) mobileContainer.innerHTML = `<div class="p-6 text-center text-slate-400 italic text-xs">No job cards found matching '${escapeHtml(query)}'</div>`;
                 return;
             }
 
@@ -5481,7 +5485,7 @@
 
                     let statusDisplay = '';
                     if (['ACTIVE', 'INACTIVE', 'COMPLETED'].includes(j.status)) {
-                        statusDisplay = `<select onfocus="recordJobInteraction()" onchange="recordJobInteraction(); handleJobStatusDropdownChange(this, '${escapeHtml(j.job_card_id)}', '${j.status}')" class="job-status-pill ${statusClass} text-[10px] py-0.5 px-2">
+                        statusDisplay = `<select onfocus="recordJobInteraction()" onchange="recordJobInteraction(); handleJobStatusDropdownChange(this, ${htmlJsArg(j.job_card_id)}, ${htmlJsArg(j.status)})" class="job-status-pill ${statusClass} text-[10px] py-0.5 px-2">
                                <option value="ACTIVE" class="bg-[#12141a] text-emerald-400" ${j.status === 'ACTIVE' ? 'selected' : ''}>Active</option>
                                <option value="INACTIVE" class="bg-[#12141a] text-amber-400" ${j.status === 'INACTIVE' ? 'selected' : ''}>Inactive</option>
                                <option value="COMPLETED" class="bg-[#12141a] text-slate-400" ${j.status === 'COMPLETED' ? 'selected' : ''}>Completed</option>
@@ -5493,7 +5497,7 @@
                             <span>${j.status === 'OVERRIDING' ? 'Overriding' : 'Ingesting'} ${ingestPct}</span>
                         </span>`;
                     } else if (j.status === 'CONFLICT_DETECTED') {
-                        statusDisplay = `<button type="button" onclick="resolveJobFromAdmin(${j.run_id}, ${j.conflict_count || 0}, ${j.total || 0})" class="job-status-pill status-inactive text-[9px] py-0.5 px-2 inline-flex items-center gap-1" style="padding-right: 8px !important;">
+                        statusDisplay = `<button type="button" onclick="resolveJobFromAdmin(${Number(j.run_id)}, ${Number(j.conflict_count) || 0}, ${Number(j.total) || 0})" class="job-status-pill status-inactive text-[9px] py-0.5 px-2 inline-flex items-center gap-1" style="padding-right: 8px !important;">
                             <span>⚠️ Conflict (${conflictCount.toLocaleString()})</span>
                         </button>`;
                     } else if (j.status === 'FAILED') {
@@ -5505,15 +5509,15 @@
                     }
 
                     let conflictHtml = conflictCount > 0
-                        ? `<button type="button" onclick="openConflictReportFromMasterJobs(${j.run_id}, '${escapeHtml(j.job_card_id)}', ${conflictCount}, ${j.total || 0}, '${j.status}')" class="bg-amber-500/15 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold">⚠️ ${conflictCount} Conflict</button>`
+                        ? `<button type="button" onclick="openConflictReportFromMasterJobs(${Number(j.run_id)}, ${htmlJsArg(j.job_card_id)}, ${conflictCount}, ${Number(j.total) || 0}, ${htmlJsArg(j.status)})" class="bg-amber-500/15 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold">⚠️ ${conflictCount} Conflict</button>`
                         : '';
 
                     let finalQcHtml = packingQcCount > 0
-                        ? `<button onclick="openPackingQCReportFromAdmin('${escapeHtml(j.job_card_id)}')" class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold">✓ ${packingQcCount} QC</button>`
+                        ? `<button onclick="openPackingQCReportFromAdmin(${htmlJsArg(j.job_card_id)})" class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold">✓ ${packingQcCount} QC</button>`
                         : '';
 
                     let actionBtn = (!isProcessing && (consumedNum === 0 || j.status === 'FAILED'))
-                        ? `<button onclick="purgeJobFromAdmin(${j.run_id}, '${escapeHtml(j.job_card_id)}')" class="btn-ghost-danger py-0.5 px-1.5 text-[10px]">Purge</button>`
+                        ? `<button onclick="purgeJobFromAdmin(${Number(j.run_id)}, ${htmlJsArg(j.job_card_id)})" class="btn-ghost-danger py-0.5 px-1.5 text-[10px]">Purge</button>`
                         : '';
 
                     return `
@@ -5521,10 +5525,10 @@
                             <div class="flex items-center justify-between gap-1">
                                 <div class="inline-flex items-center gap-1.5 min-w-0">
                                     <button type="button" class="font-mono text-indigo-400 hover:text-indigo-300 font-bold text-xs bg-transparent border-none p-0 cursor-pointer text-left truncate"
-                                            onclick="openJobFromMaster('${escapeHtml(j.job_card_id)}', '${encodeURIComponent(j.description || '')}', '${j.status}', ${j.consumed}, ${j.total})">
+                                            onclick="openJobFromMaster(${htmlJsArg(j.job_card_id)}, ${htmlJsArg(encodeURIComponent(j.description || ''))}, ${htmlJsArg(j.status)}, ${Number(j.consumed) || 0}, ${Number(j.total) || 0})">
                                         ${escapeHtml(j.job_card_id)}
                                     </button>
-                                    <button type="button" onclick="copyJobCardNumber('${escapeHtml(j.job_card_id)}', this)" class="text-slate-500 text-[10px] p-0.5 border-none bg-transparent" title="Copy">📋</button>
+                                    <button type="button" onclick="copyJobCardNumber(${htmlJsArg(j.job_card_id)}, this)" class="text-slate-500 text-[10px] p-0.5 border-none bg-transparent" title="Copy">📋</button>
                                 </div>
                                 <div class="shrink-0">${statusDisplay}</div>
                             </div>
@@ -5571,10 +5575,10 @@
                     else if (j.status === 'COMPLETED') statusClass = 'status-completed';
 
                     statusCellHtml = `
-                        <select id="status-select-${j.job_card_id}"
+                        <select id="status-select-${escapeHtml(j.job_card_id)}"
                                 onfocus="recordJobInteraction()"
                                 onmousedown="recordJobInteraction()"
-                                onchange="recordJobInteraction(); handleJobStatusDropdownChange(this, '${j.job_card_id}', '${j.status}')"
+                                onchange="recordJobInteraction(); handleJobStatusDropdownChange(this, ${htmlJsArg(j.job_card_id)}, ${htmlJsArg(j.status)})"
                                 class="job-status-pill ${statusClass}">
                             <option value="ACTIVE" class="bg-[#12141a] text-emerald-400" ${j.status === 'ACTIVE' ? 'selected' : ''}>Active</option>
                             <option value="INACTIVE" class="bg-[#12141a] text-amber-400" ${j.status === 'INACTIVE' ? 'selected' : ''}>Inactive</option>
@@ -5594,7 +5598,7 @@
 
                         statusCellHtml = `
                             <div class="job-status-pill ${pillClass} inline-flex items-center justify-center gap-1.5 cursor-help select-none whitespace-nowrap" 
-                                 title="${j.status}: ${progressText}" style="padding-right: 8px !important;">
+                                 title="${escapeHtml(j.status)}: ${escapeHtml(progressText)}" style="padding-right: 8px !important;">
                                 <span class="inline-block w-2.5 h-2.5 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0"></span>
                                 <span>${label}</span>
                             </div>
@@ -5602,7 +5606,7 @@
                     } else if (j.status === 'CONFLICT_DETECTED') {
                         statusCellHtml = `
                             <div class="job-status-pill status-inactive inline-flex items-center justify-center gap-1 cursor-pointer select-none whitespace-nowrap" 
-                                 onclick="resolveJobFromAdmin(${j.run_id}, ${j.conflict_count || 0}, ${j.total || 0})"
+                                 onclick="resolveJobFromAdmin(${Number(j.run_id)}, ${Number(j.conflict_count) || 0}, ${Number(j.total) || 0})"
                                  title="Action Required: Click to resolve duplicate conflicts" style="padding-right: 8px !important;">
                                 <span>⚠️ Conflict (${(Number(j.conflict_count) || 0).toLocaleString()})</span>
                             </div>
@@ -5610,12 +5614,12 @@
                     } else if (j.status === 'FAILED') {
                         statusCellHtml = `
                             <div class="job-status-pill status-failed inline-flex items-center justify-center gap-1 cursor-help select-none whitespace-nowrap" 
-                                 title="Failed: ${progressText}" style="padding-right: 8px !important;">
+                                 title="Failed: ${escapeHtml(progressText)}" style="padding-right: 8px !important;">
                                 <span>✕ Failed</span>
                             </div>
                         `;
                     } else {
-                        statusCellHtml = `<span class="job-status-pill status-completed inline-flex items-center justify-center">${j.status}</span>`;
+                        statusCellHtml = `<span class="job-status-pill status-completed inline-flex items-center justify-center">${escapeHtml(j.status)}</span>`;
                     }
                 }
 
@@ -5646,7 +5650,7 @@
 
                     conflictBadgeHtml = `
                         <button type="button" 
-                                onclick="openConflictReportFromMasterJobs(${j.run_id}, '${j.job_card_id}', ${conflictCount}, ${j.total || 0}, '${j.status}')" 
+                                onclick="openConflictReportFromMasterJobs(${Number(j.run_id)}, ${htmlJsArg(j.job_card_id)}, ${conflictCount}, ${totalNum}, ${htmlJsArg(j.status)})"
                                 class="${btnStyle} px-2 py-0.5 rounded text-[11px] font-semibold transition-colors cursor-pointer inline-flex items-center gap-1 shadow-sm">
                             ${label}
                         </button>
@@ -5657,7 +5661,7 @@
                 let finalQcHtml = `<span class="text-slate-500 text-xs font-mono">0</span>`;
                 if (packingQcCount > 0) {
                     finalQcHtml = `
-                        <button onclick="openPackingQCReportFromAdmin('${j.job_card_id}')" 
+                        <button onclick="openPackingQCReportFromAdmin(${htmlJsArg(j.job_card_id)})"
                                 class="bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-[11px] font-bold transition-colors">
                             ✓ ${packingQcCount} Checked
                         </button>
@@ -5669,11 +5673,11 @@
                 if (j.status === 'DELETED') {
                     actionHtml = `<span class="text-slate-500 text-[11px]">Deleted</span>`;
                 } else if (j.status === 'CONFLICT_DETECTED') {
-                    actionHtml = `<button onclick="resolveJobFromAdmin(${j.run_id}, ${j.conflict_count || 0}, ${j.total || 0})" class="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded text-[11px] font-bold">Resolve</button>`;
+                    actionHtml = `<button onclick="resolveJobFromAdmin(${Number(j.run_id)}, ${Number(j.conflict_count) || 0}, ${totalNum})" class="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded text-[11px] font-bold">Resolve</button>`;
                 } else if (j.status === 'INGESTING' || j.status === 'OVERRIDING') {
                     actionHtml = `<span class="text-indigo-400/70 italic text-[11px]">Processing...</span>`;
                 } else if (consumedNum === 0 || j.status === 'FAILED') {
-                    actionHtml = `<button onclick="purgeJobFromAdmin(${j.run_id}, '${escapeHtml(j.job_card_id)}')" class="btn-ghost-danger">Purge</button>`;
+                    actionHtml = `<button onclick="purgeJobFromAdmin(${Number(j.run_id)}, ${htmlJsArg(j.job_card_id)})" class="btn-ghost-danger">Purge</button>`;
                 }
 
                 return `
@@ -5683,21 +5687,21 @@
                         <div class="max-w-[240px]">
                             <div class="inline-flex items-center gap-1.5">
                                 <button type="button" class="font-mono text-indigo-400 hover:text-indigo-300 hover:underline font-bold text-xs bg-transparent border-none p-0 cursor-pointer text-left"
-                                        onclick="openJobFromMaster('${j.job_card_id}', '${encodeURIComponent(j.description || '')}', '${j.status}', ${j.consumed}, ${j.total})">
-                                    ${j.job_card_id}
+                                        onclick="openJobFromMaster(${htmlJsArg(j.job_card_id)}, ${htmlJsArg(encodeURIComponent(j.description || ''))}, ${htmlJsArg(j.status)}, ${consumedNum}, ${totalNum})">
+                                    ${escapeHtml(j.job_card_id)}
                                 </button>
-                                <button type="button" onclick="copyJobCardNumber('${j.job_card_id}', this)" class="text-slate-500 hover:text-slate-300 text-[10px] p-0.5 border-none bg-transparent cursor-pointer" title="Copy Job ID">
+                                <button type="button" onclick="copyJobCardNumber(${htmlJsArg(j.job_card_id)}, this)" class="text-slate-500 hover:text-slate-300 text-[10px] p-0.5 border-none bg-transparent cursor-pointer" title="Copy Job ID">
                                     📋
                                 </button>
                             </div>
-                            <span class="block truncate text-[11px] text-slate-400 mt-0.5 font-medium" title="${j.description || ''}">${j.description || 'No description'}</span>
+                            <span class="block truncate text-[11px] text-slate-400 mt-0.5 font-medium" title="${escapeHtml(j.description || '')}">${escapeHtml(j.description || 'No description')}</span>
                         </div>
                     </td>
 
 
                         <!-- Column 2: Created Date alone -->
                         <td class="px-4 py-2.5 whitespace-nowrap">
-                            <span class="text-xs text-slate-400 font-mono">${j.created_at || '-'}</span>
+                            <span class="text-xs text-slate-400 font-mono">${escapeHtml(j.created_at || '-')}</span>
                         </td>
 
                         <!-- Column 3: Status -->
@@ -5800,7 +5804,12 @@
 
             const escapeCsv = (val) => {
                 if (val == null) return '""';
-                const str = String(val).replace(/"/g, '""');
+                let value = String(val);
+                const firstVisible = value.replace(/^[ \t\r\n]+/, '').charAt(0);
+                if (/^[\t\r\n]/.test(value) || ['=', '+', '-', '@'].includes(firstVisible)) {
+                    value = `'${value}`;
+                }
+                const str = value.replace(/"/g, '""');
                 return `"${str}"`;
             };
 
@@ -5840,7 +5849,7 @@
 
             if (warningMsg) {
                 warningMsg.innerHTML = `
-                    Batch for Job Card <strong class="text-black font-extrabold">${targetJobCardId}</strong> contains 
+                    Batch for Job Card <strong class="text-black font-extrabold">${escapeHtml(targetJobCardId)}</strong> contains
                     <strong class="text-black font-extrabold">${cCount.toLocaleString()}</strong> unique conflicting code(s) 
                     out of <strong class="text-black font-extrabold">${tCount.toLocaleString()}</strong> total codes in file.
                 `;
@@ -5864,9 +5873,9 @@
 
                 return `
                     <tr class="hover:bg-slate-50 border-b border-slate-200">
-                        <td class="px-3 py-2 font-bold text-black font-mono">${item.job_card_id}</td>
+                        <td class="px-3 py-2 font-bold text-black font-mono">${escapeHtml(item.job_card_id)}</td>
                         <td class="px-3 py-2 text-center">
-                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge}">${item.status}</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge}">${escapeHtml(item.status)}</span>
                         </td>
                         <td class="px-3 py-2 text-right font-extrabold text-black">${count.toLocaleString()}</td>
                     </tr>

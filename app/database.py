@@ -1,5 +1,4 @@
 import os
-import bcrypt
 import psycopg2
 from psycopg2 import pool
 from contextlib import contextmanager
@@ -124,16 +123,10 @@ def init_db():
                 );
             """)
 
-            # Ensure default admin account exists
             cur.execute("SELECT COUNT(*) FROM users;")
             row = cur.fetchone()
-            user_count = row[0] if row else 0
-            if user_count == 0:
-                default_hash = bcrypt.hashpw("Admin@2026".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                cur.execute("""
-                    INSERT INTO users (username, password_hash, role, must_change_password, can_upload, is_active, employee_name, employee_id)
-                    VALUES ('admin', %s, 'admin', TRUE, TRUE, TRUE, 'System Administrator', 'EMP-001')
-                """, (default_hash,))
+            if row and row[0] == 0:
+                print("No users exist. Create the initial administrator by running: python seed_admin.py")
 
             conn.commit()
     finally:

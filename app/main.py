@@ -3,15 +3,19 @@ import os
 import re
 import csv
 import json
+import logging
 import time
 import tempfile
 import threading
 from typing import Optional
+from urllib.parse import quote
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Response, Depends
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Response, Depends, Query
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+
+from app.import_utils import escape_postgres_copy_text, iter_csv_tokens, spreadsheet_safe
 
 # Enforce Pakistan Standard Time (PKT / UTC+5) for Python datetime & logging
 os.environ["TZ"] = "Asia/Karachi"
@@ -115,8 +119,19 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-SECRET_KEY = os.environ.get("SESSION_SECRET", "ccl-variable-data-secret-floor-key-2026")
-signer = URLSafeTimedSerializer(SECRET_KEY)
+logger = logging.getLogger(__name__)
+SESSION_SECRET = os.environ.get("SESSION_SECRET", "")
+if len(SESSION_SECRET) < 32:
+    raise RuntimeError("SESSION_SECRET must be configured with at least 32 characters.")
+signer = URLSafeTimedSerializer(SESSION_SECRET)
+SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "true").strip().lower() not in {
+    "0",
+    "false",
+    "no",
+}
+MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_BYTES", 250 * 1024 * 1024))
+if MAX_UPLOAD_BYTES <= 0:
+    raise RuntimeError("MAX_UPLOAD_BYTES must be a positive integer.")
 
 # Dedicated 64-bit integer advisory lock key to serialize cross-job duplicate checks
 CROSS_JOB_INGESTION_LOCK_ID = 8492049102
@@ -195,8 +210,9 @@ def deployment_health_check():
             cur.execute("SELECT 1;")
             cur.fetchone()
         return {"status": "healthy", "database": "connected"}
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Database probe failed: {e}")
+    except Exception:
+        logger.exception("Database health check failed")
+        raise HTTPException(status_code=503, detail="Database health check failed")
     finally:
         if conn:
             release_connection(conn)
@@ -210,6 +226,8 @@ def log_system_event(cur, category: str, job_card_id: str, action: str, performe
 def validate_password_strength(password: str):
     if len(password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters long.")
+    if len(password.encode("utf-8")) > 72:
+        raise HTTPException(status_code=400, detail="Password must be no longer than 72 UTF-8 bytes.")
     if not re.search(r"[A-Z]", password):
         raise HTTPException(status_code=400, detail="Password must include at least one uppercase letter.")
     if not re.search(r"[a-z]", password):
@@ -226,31 +244,44 @@ def get_current_user(request: Request):
         conn = get_connection()
         try:
             with conn.cursor() as cur:
-                cur.execute("SELECT is_active, username, role FROM users WHERE LOWER(username) = LOWER(%s)", (data["username"],))
+                cur.execute(
+                    "SELECT is_active, username, role, must_change_password "
+                    "FROM users WHERE LOWER(username) = LOWER(%s)",
+                    (data["username"],),
+                )
                 row = cur.fetchone()
                 if not row or not row[0]:
                     raise HTTPException(status_code=403, detail="Account is suspended or deactivated.")
                 data["username"] = row[1]
                 data["role"] = row[2]
+                data["must_change_password"] = row[3]
         finally:
             release_connection(conn)
         return data
     except (BadSignature, SignatureExpired):
         raise HTTPException(status_code=401, detail="Session expired or invalid")
 
-def require_admin(user: dict = Depends(get_current_user)):
+def require_password_change_complete(user: dict = Depends(get_current_user)):
+    if user.get("must_change_password"):
+        raise HTTPException(
+            status_code=403,
+            detail="Change your password before using this feature.",
+        )
+    return user
+
+def require_admin(user: dict = Depends(require_password_change_complete)):
     role = str(user.get("role", "")).lower().strip()
     if role not in ["admin", "administrator"]:
         raise HTTPException(status_code=403, detail="Admin permissions required")
     return user
 
-def require_manager_or_admin(user: dict = Depends(get_current_user)):
+def require_manager_or_admin(user: dict = Depends(require_password_change_complete)):
     role = str(user.get("role", "")).lower().strip()
     if role not in ["admin", "administrator", "qc manager"]:
         raise HTTPException(status_code=403, detail="QC Manager or Admin permissions required")
     return user
 
-def require_uploader(user: dict = Depends(get_current_user)):
+def require_uploader(user: dict = Depends(require_password_change_complete)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -329,21 +360,44 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
 
             cur.execute(f"DROP TABLE IF EXISTS {raw_table}, {tokens_table}, {incoming_table}, {export_table};")
             
-            # 1. Capture exact physical line numbers sequentially during COPY
+            # 1. Parse CSV records so quoted commas remain part of their code values.
             cur.execute(f"""
                 CREATE UNLOGGED TABLE {raw_table} (
-                    line_num BIGINT GENERATED ALWAYS AS IDENTITY,
+                    line_num BIGINT,
+                    col_num BIGINT,
                     raw_line TEXT
                 );
             """)
-            
-            with open(temp_filepath, "r", encoding="utf-8", errors="ignore") as f:
-                cur.copy_expert(f"COPY {raw_table} (raw_line) FROM STDIN WITH (FORMAT text)", f)
+
+            with open(temp_filepath, "r", encoding="utf-8-sig", newline="") as csv_file:
+                copy_buffer = io.StringIO()
+                buffered_tokens = 0
+
+                def flush_csv_buffer():
+                    nonlocal copy_buffer, buffered_tokens
+                    if not buffered_tokens:
+                        return
+                    copy_buffer.seek(0)
+                    cur.copy_expert(
+                        f"COPY {raw_table} (line_num, col_num, raw_line) FROM STDIN WITH (FORMAT text)",
+                        copy_buffer,
+                    )
+                    copy_buffer = io.StringIO()
+                    buffered_tokens = 0
+
+                for line_num, col_num, token in iter_csv_tokens(csv_file):
+                    copy_buffer.write(
+                        f"{line_num}\t{col_num}\t{escape_postgres_copy_text(token)}\n"
+                    )
+                    buffered_tokens += 1
+                    if buffered_tokens >= 50_000:
+                        flush_csv_buffer()
+                flush_csv_buffer()
 
             cur.execute("UPDATE job_cards SET ingestion_progress = 'Extracting and ordering file tokens...' WHERE run_id = %s", (run_id,))
             conn.commit()
 
-            # 2. Unnest pairing line_num and col_num so row sequence cannot be scrambled
+            # 2. Preserve CSV record and column order for the verification sequence.
             cur.execute(f"""
                 CREATE UNLOGGED TABLE {tokens_table} AS
                 SELECT 
@@ -353,10 +407,9 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 FROM (
                     SELECT 
                         r.line_num,
-                        u.col_num,
-                        TRIM(BOTH '\"' FROM TRIM(BOTH '''' FROM TRIM(REPLACE(REPLACE(REPLACE(u.val, CHR(13), ''), CHR(10), ''), CHR(9), '')))) AS cleaned_val
-                    FROM {raw_table} r,
-                    LATERAL unnest(string_to_array(r.raw_line, ',')) WITH ORDINALITY AS u(val, col_num)
+                        r.col_num,
+                        r.raw_line AS cleaned_val
+                    FROM {raw_table} r
                     WHERE r.raw_line IS NOT NULL AND TRIM(r.raw_line) != ''
                 ) t
                 WHERE t.cleaned_val != ''
@@ -805,7 +858,7 @@ def login(request: Request, response: Response, username: str = Form(...), passw
                 httponly=True,
                 max_age=86400 * 7,
                 samesite="lax",
-                secure=False
+                secure=SESSION_COOKIE_SECURE
             )
             return {
                 "status": "success",
@@ -831,7 +884,12 @@ def logout(response: Response, request: Request):
     except Exception:
         pass
 
-    response.delete_cookie("qc_session")
+    response.delete_cookie(
+        "qc_session",
+        secure=SESSION_COOKIE_SECURE,
+        httponly=True,
+        samesite="lax",
+    )
     return {"status": "success"}
 
 @app.get("/api/auth/me")
@@ -1080,7 +1138,7 @@ def get_global_audit_trail(user: dict = Depends(require_manager_or_admin)):
         release_connection(conn)
 
 @app.get("/api/jobs/check-availability")
-def check_job_card_availability(job_card_id: str, user: dict = Depends(get_current_user)):
+def check_job_card_availability(job_card_id: str, user: dict = Depends(require_password_change_complete)):
     jc_id = job_card_id.strip()
     if not jc_id:
         return {"exists": False}
@@ -1107,7 +1165,7 @@ def check_job_card_availability(job_card_id: str, user: dict = Depends(get_curre
         release_connection(conn)
 
 @app.get("/api/jobs")
-def get_jobs(query: str = "", user: dict = Depends(get_current_user)):
+def get_jobs(query: str = "", user: dict = Depends(require_password_change_complete)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -1206,7 +1264,7 @@ def get_master_jobs_report(status_filter: str = "ALL", user: dict = Depends(requ
         release_connection(conn)
 
 @app.get("/api/admin/packing-qc/{job_card_id}")
-def get_packing_qc_logs(job_card_id: str, user: dict = Depends(get_current_user)):
+def get_packing_qc_logs(job_card_id: str, user: dict = Depends(require_password_change_complete)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -1235,7 +1293,7 @@ def get_packing_qc_logs(job_card_id: str, user: dict = Depends(get_current_user)
         release_connection(conn)
 
 @app.get("/api/jobs/{job_card_id}/lifecycle-logs")
-def get_job_lifecycle_logs(job_card_id: str, user: dict = Depends(get_current_user)):
+def get_job_lifecycle_logs(job_card_id: str, user: dict = Depends(require_password_change_complete)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -1275,7 +1333,7 @@ def get_job_lifecycle_logs(job_card_id: str, user: dict = Depends(get_current_us
         release_connection(conn)
 
 @app.post("/api/jobs/{job_card_id}/complete")
-def complete_job(job_card_id: str, user: dict = Depends(get_current_user)):
+def complete_job(job_card_id: str, user: dict = Depends(require_password_change_complete)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -1345,9 +1403,34 @@ async def create_job(
     job_card_id = job_card_id.strip()
     description = description.strip()
     is_override = str(override_duplicate).strip().lower() in ("true", "1", "yes")
+    if not job_card_id:
+        raise HTTPException(status_code=400, detail="Job Card ID is required.")
+    if file.size is not None and file.size > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Upload exceeds the {MAX_UPLOAD_BYTES // (1024 * 1024)} MB size limit.",
+        )
 
-    conn = get_connection()
+    conn = None
+    spool_path = None
+    staged_path_to_remove = None
     try:
+        spool_fd, spool_path = tempfile.mkstemp(suffix=".csv")
+        total_bytes = 0
+        with os.fdopen(spool_fd, "wb") as out_file:
+            while chunk := await file.read(1024 * 1024):
+                total_bytes += len(chunk)
+                if total_bytes > MAX_UPLOAD_BYTES:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"Upload exceeds the {MAX_UPLOAD_BYTES // (1024 * 1024)} MB size limit.",
+                    )
+                out_file.write(chunk)
+
+        if total_bytes == 0:
+            raise HTTPException(status_code=400, detail="The uploaded CSV file is empty.")
+
+        conn = get_connection()
         with conn.cursor() as cur:
             cur.execute("SELECT run_id, status FROM job_cards WHERE job_card_id = %s AND status != 'DELETED'", (job_card_id,))
             existing = cur.fetchone()
@@ -1355,9 +1438,18 @@ async def create_job(
                 ex_run_id, ex_status = existing
                 if ex_status in ('ACTIVE', 'COMPLETED', 'INACTIVE'):
                     raise HTTPException(status_code=400, detail=f"Active Job Card '{job_card_id}' already exists in the system.")
-                else:
-                    cur.execute("DELETE FROM job_cards WHERE run_id = %s", (ex_run_id,))
-                    conn.commit()
+                if ex_status in ('INGESTING', 'OVERRIDING', 'CONFLICT_DETECTED'):
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"Job Card '{job_card_id}' has an upload in progress or awaiting conflict resolution.",
+                    )
+                cur.execute(
+                    "SELECT staged_file_path FROM job_cards WHERE run_id = %s",
+                    (ex_run_id,),
+                )
+                staged_row = cur.fetchone()
+                staged_path_to_remove = staged_row[0] if staged_row else None
+                cur.execute("DELETE FROM job_cards WHERE run_id = %s", (ex_run_id,))
 
             cur.execute("""
                 INSERT INTO job_cards (job_card_id, description, status, ingestion_progress) 
@@ -1367,17 +1459,29 @@ async def create_job(
             run_id = cur.fetchone()[0]
             conn.commit()
 
-        spool_fd, spool_path = tempfile.mkstemp(suffix=".csv")
-        with os.fdopen(spool_fd, "wb") as out_file:
-            while chunk := await file.read(1024 * 1024):
-                out_file.write(chunk)
+        if staged_path_to_remove and os.path.exists(staged_path_to_remove):
+            try:
+                os.remove(staged_path_to_remove)
+            except OSError:
+                logger.exception("Failed to remove superseded staging file")
+        staged_path_to_remove = None
 
         worker_thread = threading.Thread(
             target=process_large_job_worker,
             args=(run_id, job_card_id, spool_path, is_override, uploader["username"]),
             daemon=True
         )
-        worker_thread.start()
+        try:
+            worker_thread.start()
+        except Exception:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE job_cards SET status = 'FAILED', ingestion_progress = %s WHERE run_id = %s",
+                    ("Could not start background ingestion.", run_id),
+                )
+                conn.commit()
+            raise
+        spool_path = None
 
         return JSONResponse(status_code=202, content={
             "status": "processing",
@@ -1385,18 +1489,27 @@ async def create_job(
             "job_card_id": job_card_id,
             "message": "File received. Background ingestion initialized."
         })
-
     except HTTPException:
-        conn.rollback()
+        if conn:
+            conn.rollback()
         raise
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to initiate job creation: {str(e)}")
+    except Exception:
+        logger.exception("Failed to initiate job creation for run %s", job_card_id)
+        if conn:
+            conn.rollback()
+        raise HTTPException(status_code=500, detail="Failed to initiate job creation.")
     finally:
-        release_connection(conn)
+        if conn:
+            release_connection(conn)
+        if spool_path and os.path.exists(spool_path):
+            try:
+                os.remove(spool_path)
+            except OSError:
+                logger.exception("Failed to remove temporary upload file")
+        await file.close()
 
 @app.get("/api/jobs/{run_id}/upload-status")
-def get_upload_status(run_id: int, user: dict = Depends(get_current_user)):
+def get_upload_status(run_id: int, user: dict = Depends(require_password_change_complete)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -1613,7 +1726,7 @@ def purge_job(
 def packing_qc_verify(
     job_card_id: str = Form(...),
     code: str = Form(...),
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_password_change_complete)
 ):
     jc_id = job_card_id.strip()
     scanned_code = code.strip().replace('\r', '').replace('\n', '')
@@ -1681,7 +1794,7 @@ def packing_qc_verify(
 def verify_code(
     job_card_id: str = Form(...), 
     code: str = Form(...),
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_password_change_complete)
 ):
     job_card_id = job_card_id.strip()
     scanned = code.strip().replace('\r', '').replace('\n', '')
@@ -1821,15 +1934,16 @@ def verify_code(
                 "message": msg,
                 "row_num": "-"
             })
-    except Exception as e:
+    except Exception:
         if conn:
             try:
-                conn.rollback()  # Cleanly roll back any partial uncommitted changes
+                conn.rollback()
             except Exception:
                 pass
-        return JSONResponse(status_code=200, content={
+        logger.exception("Code verification failed")
+        return JSONResponse(status_code=500, content={
             "result": "ERROR",
-            "message": f"Server verification error: {str(e)}",
+            "message": "Verification failed due to a server error.",
             "row_num": "-"
         })
     finally:
@@ -1838,9 +1952,9 @@ def verify_code(
 @app.get("/api/jobs/{job_card_id}/recent-scans")
 def get_recent_scans(
     job_card_id: str, 
-    limit: int = 50, 
-    before_id: Optional[int] = None, 
-    user: dict = Depends(get_current_user)
+    limit: int = Query(50, ge=1, le=500),
+    before_id: Optional[int] = Query(None, gt=0),
+    user: dict = Depends(require_password_change_complete)
 ):
     conn = get_connection()
     try:
@@ -1922,7 +2036,7 @@ def get_recent_scans(
         release_connection(conn)
 
 @app.get("/api/reports/{job_card_id}")
-def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
+def get_report(job_card_id: str, user: dict = Depends(require_password_change_complete)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -2031,7 +2145,7 @@ def get_report(job_card_id: str, user: dict = Depends(get_current_user)):
         release_connection(conn)
 
 @app.get("/api/reports/{job_card_id}/csv")
-def export_report_csv(job_card_id: str, user: dict = Depends(get_current_user)):
+def export_report_csv(job_card_id: str, user: dict = Depends(require_password_change_complete)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -2071,25 +2185,28 @@ def export_report_csv(job_card_id: str, user: dict = Depends(get_current_user)):
             output.write('\ufeff')
             writer = csv.writer(output)
 
-            writer.writerow(["JOB VERIFICATION REPORT & AUDIT TRAIL"])
-            writer.writerow(["Job Card ID:", job_card_id])
-            writer.writerow(["Description:", jc_desc or "No Description"])
-            writer.writerow(["Status:", jc_status])
+            def write_csv_row(values):
+                writer.writerow([spreadsheet_safe(value) for value in values])
+
+            write_csv_row(["JOB VERIFICATION REPORT & AUDIT TRAIL"])
+            write_csv_row(["Job Card ID:", job_card_id])
+            write_csv_row(["Description:", jc_desc or "No Description"])
+            write_csv_row(["Status:", jc_status])
 
             if conf_res and conf_res in ('OVERRIDDEN', 'SKIPPED'):
-                writer.writerow([])
-                writer.writerow(["--- CONFLICT RESOLUTION AUDIT ---"])
-                writer.writerow(["Resolution Type:", conf_res])
-                writer.writerow(["Conflicting Codes Found:", conf_cnt or 0])
-                writer.writerow(["Authorized By:", over_by or "System"])
-                writer.writerow(["Justification Reason:", over_reason or "N/A"])
+                write_csv_row([])
+                write_csv_row(["--- CONFLICT RESOLUTION AUDIT ---"])
+                write_csv_row(["Resolution Type:", conf_res])
+                write_csv_row(["Conflicting Codes Found:", conf_cnt or 0])
+                write_csv_row(["Authorized By:", over_by or "System"])
+                write_csv_row(["Justification Reason:", over_reason or "N/A"])
                 
                 if conf_details:
                     try:
                         breakdown = json.loads(conf_details)
-                        writer.writerow(["Colliding Batches:"])
+                        write_csv_row(["Colliding Batches:"])
                         for b in breakdown:
-                            writer.writerow([
+                            write_csv_row([
                                 "",
                                 f"Job: {b.get('job_card_id')}",
                                 f"Description: {b.get('description', 'N/A')}",
@@ -2099,18 +2216,22 @@ def export_report_csv(job_card_id: str, user: dict = Depends(get_current_user)):
                     except Exception:
                         pass
             
-            writer.writerow([])
-            writer.writerow(["--- SCAN LOGS ---"])
-            writer.writerow(["Job Card ID", "Scanned Code", "Row #", "Result", "Tested By", "Timestamp"])
+            write_csv_row([])
+            write_csv_row(["--- SCAN LOGS ---"])
+            write_csv_row(["Job Card ID", "Scanned Code", "Row #", "Result", "Tested By", "Timestamp"])
             for r in rows:
                 row_val = r[1] if r[1] is not None else "-"
-                writer.writerow([job_card_id, r[0], row_val, r[2], r[3], r[4].strftime("%Y-%m-%d %H:%M:%S") if r[4] else ""])
+                write_csv_row([job_card_id, r[0], row_val, r[2], r[3], r[4].strftime("%Y-%m-%d %H:%M:%S") if r[4] else ""])
 
             output.seek(0)
             return StreamingResponse(
                 iter([output.getvalue()]),
                 media_type="text/csv",
-                headers={"Content-Disposition": f"attachment; filename=QC_Report_{job_card_id}.csv"}
+                headers={
+                    "Content-Disposition": (
+                        f"attachment; filename*=UTF-8''QC_Report_{quote(job_card_id, safe='')}.csv"
+                    )
+                }
             )
     finally:
         release_connection(conn)

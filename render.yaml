@@ -11,6 +11,12 @@ services:
         fromDatabase:
           name: label-qc-db
           property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+      - key: MAX_UPLOAD_BYTES
+        value: "262144000"
 
 databases:
   - name: label-qc-db
