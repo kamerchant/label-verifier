@@ -1311,6 +1311,11 @@ def get_packing_qc_logs(job_card_id: str, user: dict = Depends(require_password_
                 raise HTTPException(status_code=404, detail=f"Job Card '{job_card_id}' does not exist.")
             run_id = jc_row[0]
             desc = jc_row[1] or ""
+            cur.execute(
+                "SELECT EXISTS (SELECT 1 FROM scan_logs WHERE job_card_id = %s)",
+                (job_card_id,),
+            )
+            has_production_scans = cur.fetchone()[0]
             rows = []
             completion = None
             cur.execute("""
@@ -1331,6 +1336,7 @@ def get_packing_qc_logs(job_card_id: str, user: dict = Depends(require_password_
                 "job_card_id": job_card_id,
                 "run_id": run_id,
                 "description": desc or "Serialized Production Batch",
+                "has_production_scans": has_production_scans,
                 "packing_qc_complete": completion is not None,
                 "completed_by": completion[0] if completion else "",
                 "completed_at": completion[1].strftime("%Y-%m-%d %H:%M:%S") if completion and completion[1] else "",
@@ -2053,12 +2059,10 @@ def purge_job(
 def packing_qc_verify(
     job_card_id: str = Form(...),
     code: str = Form(...),
-    main_screen_job_card_id: str = Form(""),
     user: dict = Depends(require_password_change_complete)
 ):
     jc_id = job_card_id.strip()
     scanned_code = code.strip().replace('\r', '').replace('\n', '')
-    is_packing_stage = main_screen_job_card_id.strip() == jc_id
 
     conn = get_connection()
     try:
@@ -2080,6 +2084,12 @@ def packing_qc_verify(
 
             run_id, status, description = jc
 
+            cur.execute(
+                "SELECT EXISTS (SELECT 1 FROM scan_logs WHERE job_card_id = %s)",
+                (jc_id,),
+            )
+            has_production_scans = cur.fetchone()[0]
+
             cur.execute("""
                 SELECT code_value, status 
                 FROM codes 
@@ -2093,7 +2103,7 @@ def packing_qc_verify(
                     "message": f"Code '{scanned_code}' does not belong to Job Card '{jc_id}'."
                 })
 
-            if is_packing_stage:
+            if has_production_scans:
                 cur.execute(
                     "SELECT 1 FROM packing_qc_completions WHERE run_id = %s",
                     (run_id,),
@@ -2131,7 +2141,8 @@ def packing_qc_verify(
                 "description": description or "Serialized Production Batch",
                 "code": scanned_code,
                 "status": status,
-                "qc_stage": "PACKING" if is_packing_stage else "PRECHECK",
+                "qc_stage": "PACKING" if has_production_scans else "PRECHECK",
+                "has_production_scans": has_production_scans,
                 "message": message
             })
     finally:
@@ -2154,6 +2165,16 @@ def complete_packing_qc(
             if not job:
                 raise HTTPException(status_code=404, detail="Job Card not found.")
             run_id = job[0]
+
+            cur.execute(
+                "SELECT EXISTS (SELECT 1 FROM scan_logs WHERE job_card_id = %s)",
+                (jc_id,),
+            )
+            if not cur.fetchone()[0]:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Packing QC completion requires production scans for this Job Card.",
+                )
 
             cur.execute("""
                 SELECT COUNT(*)

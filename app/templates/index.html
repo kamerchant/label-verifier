@@ -1139,54 +1139,25 @@
                 <span id="packing-qc-detail-text" class="text-xs block"></span>
             </div>
 
-            <div class="flex-1 min-h-0 overflow-y-auto mb-4 no-print">
-                <section class="print-table-container border border-white/[0.08] rounded mb-3">
-                    <div class="px-2.5 py-2 border-b border-white/[0.08]">
-                        <h4 class="text-xs font-bold table-header-theme">Production Scan History</h4>
-                        <p class="text-[10px] text-slate-400">Production scans shown for reference; they are not Packing QC checks.</p>
-                        <p id="packing-qc-production-scans-status" class="text-[10px] text-slate-400 mt-1" role="status" aria-live="polite"></p>
-                    </div>
-                    <div class="max-h-40 overflow-auto">
-                        <table class="w-full text-left text-xs whitespace-nowrap">
-                            <thead>
-                                <tr class="border-b border-white/[0.08] text-[11px] font-bold table-header-theme sticky top-0 bg-[#12141a]">
-                                    <th class="p-2">Code</th>
-                                    <th class="p-2">Result</th>
-                                    <th class="p-2">Inspector</th>
-                                    <th class="p-2">Scan Timestamp</th>
-                                </tr>
-                            </thead>
-                            <tbody id="packing-qc-production-scan-rows" class="divide-y divide-white/[0.04] table-text-theme">
-                                <tr>
-                                    <td colspan="4" class="p-3 text-center text-slate-400 italic">No Job Card selected</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <button id="packing-qc-load-more-scans" type="button" onclick="loadMorePackingQCProductionScans()"
-                            class="hidden linear-button-secondary w-full px-2 py-1.5 text-[11px] rounded-b">Load older production scans</button>
-                </section>
-
-                <section class="print-table-container border border-white/[0.08] rounded">
-                    <h4 class="text-xs font-bold table-header-theme px-2.5 py-2 border-b border-white/[0.08]">Packing QC Checks</h4>
-                    <div class="max-h-40 overflow-auto">
-                        <table class="w-full text-left text-xs whitespace-nowrap">
-                            <thead>
-                                <tr class="border-b border-white/[0.08] text-[11px] font-bold table-header-theme sticky top-0 bg-[#12141a]">
-                                    <th class="p-2">Tested Code</th>
-                                    <th class="p-2">Job Card</th>
-                                    <th class="p-2">Inspector</th>
-                                    <th class="p-2">Test Timestamp</th>
-                                </tr>
-                            </thead>
-                            <tbody id="packing-qc-chart-rows" class="divide-y divide-white/[0.04] table-text-theme">
-                                <tr>
-                                    <td colspan="4" class="p-3 text-center text-slate-400 italic">No Job Card selected</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+            <div class="print-table-container flex-1 min-h-0 overflow-y-auto border border-white/[0.08] rounded mb-4 no-print">
+                <h4 class="text-xs font-bold table-header-theme px-2.5 py-2 border-b border-white/[0.08]">Packing QC Checks</h4>
+                <div class="max-h-40 overflow-auto">
+                    <table class="w-full text-left text-xs whitespace-nowrap">
+                        <thead>
+                            <tr class="border-b border-white/[0.08] text-[11px] font-bold table-header-theme sticky top-0 bg-[#12141a]">
+                                <th class="p-2">Tested Code</th>
+                                <th class="p-2">Job Card</th>
+                                <th class="p-2">Inspector</th>
+                                <th class="p-2">Test Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody id="packing-qc-chart-rows" class="divide-y divide-white/[0.04] table-text-theme">
+                            <tr>
+                                <td colspan="4" class="p-3 text-center text-slate-400 italic">No Job Card selected</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <div id="packing-qc-printable" class="hidden">
@@ -3845,13 +3816,11 @@
         }
 
         let currentPackingQCLogs = [];
-        let currentProductionScans = [];
-        let productionScansHasMore = false;
-        let productionScansRequestId = 0;
 
         let currentPackingQCJob = "";
         let currentPackingQCDesc = "";
         let currentPackingQCComplete = false;
+        let currentPackingQCHasProductionScans = null;
         let currentPackingQCCompletedBy = "";
         let currentPackingQCCompletedAt = "";
 
@@ -3867,13 +3836,20 @@
                 return;
             }
 
-            const isPackingStage = Boolean(jobCardId && activeJobId === jobCardId);
+            if (currentPackingQCHasProductionScans === null) {
+                heading.innerText = "Final QC Terminal";
+                mode.innerText = "Validate the Job Card to determine the QC mode.";
+                mode.className = "text-xs modal-subtitle-theme mt-0.5";
+                return;
+            }
+
+            const isPackingStage = currentPackingQCHasProductionScans;
             heading.innerText = isPackingStage
                 ? "Final QC Terminal - Packing Check Mode"
                 : "Final QC Terminal - Pre Check Mode";
             mode.innerText = isPackingStage
                 ? "Record codes before packaging to generate an 'OK for Packing' certificate."
-                : "This Job Card is not loaded on the main screen. Successful checks will not be recorded as Packing QC.";
+                : "No production scans exist against this Job Card. Successful checks will not be recorded as Packing QC.";
             mode.className = isPackingStage
                 ? "text-xs font-semibold mt-1 text-emerald-500"
                 : "text-xs font-semibold mt-1 text-amber-500";
@@ -3882,7 +3858,8 @@
         function updatePackingQCCompletionControls() {
             const completeBtn = document.getElementById('packing-qc-complete-btn');
             const printBtn = document.getElementById('packing-qc-print-btn');
-            const hasPackingChecks = currentPackingQCLogs.length > 0;
+            const hasPackingChecks = currentPackingQCHasProductionScans === true
+                && currentPackingQCLogs.length > 0;
             if (completeBtn) {
                 completeBtn.classList.toggle('hidden', !hasPackingChecks || currentPackingQCComplete);
                 completeBtn.disabled = !hasPackingChecks || currentPackingQCComplete;
@@ -3905,6 +3882,7 @@
                 tested_at: log.tested_at
             }));
             currentPackingQCComplete = Boolean(data.packing_qc_complete);
+            currentPackingQCHasProductionScans = Boolean(data.has_production_scans);
             currentPackingQCCompletedBy = data.completed_by || "";
             currentPackingQCCompletedAt = data.completed_at || "";
             if (currentPackingQCComplete) {
@@ -3938,17 +3916,14 @@
             document.getElementById('packing-qc-job-error').classList.add('hidden');
             document.getElementById('packing-qc-result-box').classList.add('hidden');
             currentPackingQCLogs = [];
-            currentProductionScans = [];
-            productionScansHasMore = false;
-            productionScansRequestId += 1;
             currentPackingQCJob = "";
             currentPackingQCDesc = "";
             currentPackingQCComplete = false;
+            currentPackingQCHasProductionScans = null;
             currentPackingQCCompletedBy = "";
             currentPackingQCCompletedAt = "";
             updatePackingQCMode();
             renderPackingQCChart();
-            renderProductionScanHistory();
 
             updatePackingQCCompletionControls();
 
@@ -3963,7 +3938,6 @@
                 codeInput.disabled = true;
                 codeInput.classList.add('opacity-40', 'cursor-not-allowed');
                 setPackingQCCameraEnabled(false);
-                renderProductionScanHistory();
                 setTimeout(() => jcInput.focus(), 50);
             }
         }
@@ -3978,18 +3952,15 @@
                 errorElement.classList.add('hidden');
             }
             setPackingQCCameraEnabled(false);
-            updatePackingQCMode();
             if (jcId !== currentPackingQCJob) {
                 currentPackingQCJob = '';
                 currentPackingQCDesc = '';
                 currentPackingQCLogs = [];
-                currentProductionScans = [];
-                productionScansRequestId += 1;
                 currentPackingQCComplete = false;
+                currentPackingQCHasProductionScans = null;
                 currentPackingQCCompletedBy = "";
                 currentPackingQCCompletedAt = "";
                 renderPackingQCChart();
-                renderProductionScanHistory();
                 updatePackingQCCompletionControls();
             }
             codeInput.value = '';
@@ -4038,7 +4009,6 @@
                 }
                 updatePackingQCMode();
                 if (!currentPackingQCComplete) codeInput.focus();
-                void loadPackingQCProductionScans(jcId);
                 return true;
             } catch (error) {
                 jcInput.disabled = false;
@@ -4048,6 +4018,8 @@
                     errorElement.classList.remove('hidden', 'text-slate-400');
                     errorElement.classList.add('text-red-400');
                 }
+                currentPackingQCHasProductionScans = null;
+                updatePackingQCMode();
                 return false;
             }
         }
@@ -4089,15 +4061,13 @@
             setPackingQCCameraEnabled(false);
             codeInput.value = "";
             currentPackingQCLogs = [];
-            currentProductionScans = [];
-            productionScansRequestId += 1;
             currentPackingQCJob = "";
             currentPackingQCComplete = false;
+            currentPackingQCHasProductionScans = null;
             currentPackingQCCompletedBy = "";
             currentPackingQCCompletedAt = "";
             updatePackingQCMode();
             renderPackingQCChart();
-            renderProductionScanHistory();
             document.getElementById('packing-qc-result-box').classList.add('hidden');
             updatePackingQCCompletionControls();
             jcInput.focus();
@@ -4130,7 +4100,6 @@
             const body = new FormData();
             body.append("job_card_id", jcId);
             body.append("code", code);
-            body.append("main_screen_job_card_id", activeJobId || "");
 
             try {
                 const res = await fetch('/api/packing-qc/verify', { method: 'POST', body });
@@ -4143,6 +4112,8 @@
                 resultBox.classList.remove('hidden');
 
                 if (data.matched) {
+                    currentPackingQCHasProductionScans = data.qc_stage === 'PACKING';
+                    updatePackingQCMode();
                     resultBox.className = data.qc_stage === 'PACKING'
                         ? "p-3 rounded mb-3 border bg-emerald-500/10 border-emerald-500/30 text-emerald-400 text-center"
                         : "p-3 rounded mb-3 border bg-blue-500/10 border-blue-500/30 text-blue-400 text-center";
@@ -4243,86 +4214,6 @@
                     <td class="p-2.5 text-slate-400">${escapeHtml(formatStoredTimestamp(l.tested_at))}</td>
                 </tr>
             `).join('');
-        }
-
-        function renderProductionScanHistory() {
-            const tbody = document.getElementById('packing-qc-production-scan-rows');
-            const loadMoreButton = document.getElementById('packing-qc-load-more-scans');
-            const status = document.getElementById('packing-qc-production-scans-status');
-            if (!currentPackingQCJob) {
-                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-400 italic">No Job Card selected</td></tr>`;
-                status.innerText = '';
-                loadMoreButton.classList.add('hidden');
-                return;
-            }
-            if (currentProductionScans.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-400 italic">No production scans recorded for this Job Card</td></tr>`;
-            } else {
-                tbody.innerHTML = currentProductionScans.map(scan => {
-                    const presentation = getScanPresentation(scan.result);
-                    return `
-                        <tr class="hover:bg-black/[0.02]">
-                            <td class="p-2 font-mono font-semibold table-text-theme">${escapeHtml(scan.code)}</td>
-                            <td class="p-2"><span class="${presentation.className} px-1.5 py-0.5 rounded text-[9px] font-bold">${escapeHtml(scan.result)}</span></td>
-                            <td class="p-2 table-text-theme">${escapeHtml(scan.user || '-')}</td>
-                            <td class="p-2 text-slate-400">${escapeHtml(formatStoredTimestamp(scan.time))}</td>
-                        </tr>
-                    `;
-                }).join('');
-            }
-            loadMoreButton.classList.toggle('hidden', !productionScansHasMore);
-        }
-
-        async function loadPackingQCProductionScans(jobCardId, beforeId = null, append = false) {
-            const requestId = ++productionScansRequestId;
-            const status = document.getElementById('packing-qc-production-scans-status');
-            const loadMoreButton = document.getElementById('packing-qc-load-more-scans');
-            if (!append) {
-                currentProductionScans = [];
-                productionScansHasMore = false;
-                renderProductionScanHistory();
-                status.innerText = 'Loading production scans...';
-            } else {
-                loadMoreButton.disabled = true;
-                status.innerText = 'Loading older production scans...';
-            }
-
-            try {
-                const query = new URLSearchParams({ limit: '50' });
-                if (beforeId) query.set('before_id', String(beforeId));
-                const response = await fetch(
-                    `/api/jobs/${encodeURIComponent(jobCardId)}/recent-scans?${query.toString()}`
-                );
-                const data = await response.json().catch(() => ({}));
-                if (!response.ok) {
-                    throw new Error(data.detail || 'Could not load production scans.');
-                }
-                if (requestId !== productionScansRequestId || currentPackingQCJob !== jobCardId) return;
-
-                const logs = data.recent_logs || [];
-                currentProductionScans = append
-                    ? currentProductionScans.concat(logs)
-                    : logs;
-                productionScansHasMore = Boolean(data.has_more);
-                status.innerText = productionScansHasMore
-                    ? `Showing ${currentProductionScans.length.toLocaleString()} production scans.`
-                    : `${currentProductionScans.length.toLocaleString()} production scan(s) shown.`;
-                renderProductionScanHistory();
-            } catch (error) {
-                if (requestId !== productionScansRequestId) return;
-                status.innerText = error.message || 'Could not load production scans.';
-                loadMoreButton.classList.add('hidden');
-            } finally {
-                if (requestId === productionScansRequestId) {
-                    loadMoreButton.disabled = false;
-                }
-            }
-        }
-
-        function loadMorePackingQCProductionScans() {
-            if (!productionScansHasMore || currentProductionScans.length === 0) return;
-            const lastScan = currentProductionScans[currentProductionScans.length - 1];
-            void loadPackingQCProductionScans(currentPackingQCJob, lastScan.id, true);
         }
 
         async function generateCertificateFingerprint(rawString) {
