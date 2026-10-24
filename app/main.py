@@ -71,32 +71,20 @@ async def lifespan(app: FastAPI):
             conn.commit()
 
             cur.execute("""
-                UPDATE job_cards 
-                SET status = 'FAILED', 
-                    ingestion_progress = 'Interrupted by server restart. You can safely purge or re-upload.'
-                WHERE status IN ('INGESTING', 'OVERRIDING');
-            """)
-
-            # Only calculate counts for jobs that are actually missing them
-            cur.execute("""
                 UPDATE job_cards j
-                SET total_codes = COALESCE(sub.cnt, 0),
-                    consumed_codes = COALESCE(sub.consumed_cnt, 0)
-                FROM (
-                    SELECT c.run_id, 
-                           COUNT(*) as cnt,
-                           COUNT(*) FILTER (WHERE c.status = 'CONSUMED') as consumed_cnt
-                    FROM codes c
-                    WHERE c.run_id IN (
-                        SELECT run_id FROM job_cards 
-                        WHERE (total_codes IS NULL OR total_codes = 0) 
-                          AND status NOT IN ('DELETED', 'FAILED')
+                SET status = 'FAILED',
+                    ingestion_progress = 'Interrupted by server restart. You can safely purge or re-upload.',
+                    total_codes = (
+                        SELECT COUNT(*) FROM codes c WHERE c.run_id = j.run_id
+                    ),
+                    consumed_codes = (
+                        SELECT COUNT(*) FROM codes c
+                        WHERE c.run_id = j.run_id AND c.status = 'CONSUMED'
                     )
-                    GROUP BY c.run_id
-                ) sub
-                WHERE j.run_id = sub.run_id;
+                WHERE j.status IN ('INGESTING', 'OVERRIDING');
             """)
             conn.commit()
+
     finally:
         release_connection(conn)
 
@@ -613,11 +601,12 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 cur.execute(f"DROP TABLE IF EXISTS {incoming_table};")
 
                 cur.execute("""
-                    UPDATE job_cards 
-                    SET status = 'ACTIVE', 
+                    UPDATE job_cards
+                    SET status = 'ACTIVE',
                         total_codes = %s,
+                        consumed_codes = 0,
                         conflict_resolution = 'NONE',
-                        ingestion_progress = %s 
+                        ingestion_progress = %s
                     WHERE run_id = %s
                 """, (actual_inserted, '100%', run_id))
 
@@ -655,7 +644,17 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                 if indexes_dropped:
                     restore_secondary_indexes(cur)
                     fail_conn.commit()
-                cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = %s WHERE run_id = %s", (f"Ingestion Error: {str(e)}", run_id))
+                cur.execute("""
+                    UPDATE job_cards j
+                    SET status = 'FAILED',
+                        ingestion_progress = %s,
+                        total_codes = (SELECT COUNT(*) FROM codes c WHERE c.run_id = j.run_id),
+                        consumed_codes = (
+                            SELECT COUNT(*) FROM codes c
+                            WHERE c.run_id = j.run_id AND c.status = 'CONSUMED'
+                        )
+                    WHERE j.run_id = %s
+                """, (f"Ingestion Error: {str(e)}", run_id))
                 fail_conn.commit()
         except Exception:
             pass
@@ -789,6 +788,7 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                     UPDATE job_cards 
                     SET status = 'ACTIVE', 
                         total_codes = %s, 
+                        consumed_codes = 0,
                         conflict_resolution = %s, 
                         override_by = %s,
                         override_reason = %s,
@@ -831,8 +831,17 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
         try:
             fail_conn = get_connection()
             with fail_conn.cursor() as cur:
-                cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = %s WHERE run_id = %s", 
-                            (f"Override Error: {str(e)}", run_id))
+                cur.execute("""
+                    UPDATE job_cards j
+                    SET status = 'FAILED',
+                        ingestion_progress = %s,
+                        total_codes = (SELECT COUNT(*) FROM codes c WHERE c.run_id = j.run_id),
+                        consumed_codes = (
+                            SELECT COUNT(*) FROM codes c
+                            WHERE c.run_id = j.run_id AND c.status = 'CONSUMED'
+                        )
+                    WHERE j.run_id = %s
+                """, (f"Override Error: {str(e)}", run_id))
                 fail_conn.commit()
         except Exception:
             pass
@@ -1203,8 +1212,8 @@ def get_jobs(query: str = "", user: dict = Depends(require_password_change_compl
         with conn.cursor() as cur:
             base_sql = """
                 SELECT j.job_card_id, j.description, j.status, j.created_at, j.run_id,
-                       COALESCE(NULLIF(j.total_codes, 0), (SELECT COUNT(*) FROM codes c WHERE c.run_id = j.run_id), 0) AS total_codes,
-                       COALESCE(NULLIF(j.consumed_codes, 0), (SELECT COUNT(*) FROM codes c WHERE c.run_id = j.run_id AND c.status = 'CONSUMED'), 0) AS consumed_codes
+                       j.total_codes,
+                       j.consumed_codes
                 FROM job_cards j
                 WHERE j.status IN ('ACTIVE', 'COMPLETED', 'INACTIVE')
             """
@@ -1292,8 +1301,8 @@ def get_master_jobs_report(
             query_params = [*params, page_size, (page - 1) * page_size]
             sql = f"""
                 SELECT j.run_id, j.job_card_id, j.description, j.status,
-                       COALESCE(NULLIF(j.total_codes, 0), (SELECT COUNT(*) FROM codes c WHERE c.run_id = j.run_id), 0) as total,
-                       COALESCE(NULLIF(j.consumed_codes, 0), (SELECT COUNT(*) FROM codes c WHERE c.run_id = j.run_id AND c.status = 'CONSUMED'), 0) as consumed,
+                       j.total_codes as total,
+                       j.consumed_codes as consumed,
                        j.created_at,
                        j.deleted_by,
                        j.deleted_at,
@@ -1331,6 +1340,58 @@ def get_master_jobs_report(
                 "total": total,
                 "page": page,
                 "page_size": page_size,
+            }
+    finally:
+        release_connection(conn)
+
+@app.get("/api/admin/jobs/count-reconciliation")
+def get_job_count_reconciliation(user: dict = Depends(require_manager_or_admin)):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                WITH actual_counts AS (
+                    SELECT
+                        j.run_id,
+                        j.job_card_id,
+                        COALESCE(j.total_codes, 0) AS stored_total,
+                        COALESCE(j.consumed_codes, 0) AS stored_consumed,
+                        COUNT(c.id) AS actual_total,
+                        COUNT(c.id) FILTER (WHERE c.status = 'CONSUMED') AS actual_consumed
+                    FROM job_cards j
+                    LEFT JOIN codes c ON c.run_id = j.run_id
+                    GROUP BY j.run_id, j.job_card_id, j.total_codes, j.consumed_codes
+                ),
+                drift AS (
+                    SELECT *
+                    FROM actual_counts
+                    WHERE stored_total != actual_total
+                       OR stored_consumed != actual_consumed
+                )
+                SELECT
+                    COUNT(*) OVER () AS mismatch_count,
+                    run_id,
+                    job_card_id,
+                    stored_total,
+                    actual_total,
+                    stored_consumed,
+                    actual_consumed
+                FROM drift
+                ORDER BY job_card_id, run_id DESC
+                LIMIT 100
+            """)
+            rows = cur.fetchall()
+            return {
+                "mismatch_count": rows[0][0] if rows else 0,
+                "truncated": len(rows) == 100 and rows[0][0] > 100,
+                "jobs": [{
+                    "run_id": row[1],
+                    "job_card_id": row[2],
+                    "stored_total": row[3],
+                    "actual_total": row[4],
+                    "stored_consumed": row[5],
+                    "actual_consumed": row[6],
+                } for row in rows],
             }
     finally:
         release_connection(conn)
@@ -2534,23 +2595,6 @@ def get_report(job_card_id: str, user: dict = Depends(require_password_change_co
             )
             duplicate_rows_result = cur.fetchone()
             duplicate_rows_count = duplicate_rows_result[0] if duplicate_rows_result else 0
-
-            if not total_pool or total_pool == 0:
-                cur.execute("SELECT COUNT(*) FROM codes WHERE run_id = %s", (run_id,))
-                cnt_r = cur.fetchone()
-                total_pool = cnt_r[0] if cnt_r else 0
-                if total_pool > 0:
-                    cur.execute("UPDATE job_cards SET total_codes = %s WHERE run_id = %s", (total_pool, run_id))
-                    conn.commit()
-
-            if not consumed_pool or consumed_pool == 0:
-                cur.execute("SELECT COUNT(*) FROM codes WHERE run_id = %s AND status = 'CONSUMED'", (run_id,))
-                cons_r = cur.fetchone()
-                real_consumed = cons_r[0] if cons_r else 0
-                if real_consumed > 0:
-                    consumed_pool = real_consumed
-                    cur.execute("UPDATE job_cards SET consumed_codes = %s WHERE run_id = %s", (consumed_pool, run_id))
-                    conn.commit()
 
             pending_count = max(0, (total_pool or 0) - (consumed_pool or 0))
 
