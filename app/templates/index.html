@@ -1119,6 +1119,7 @@
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1">Job Card Number *</label>
                         <input type="text" id="packing-qc-job" required onkeydown="handlePackingQCJobKeyDown(event)" onblur="lockPackingQCJobCard()" oninput="handlePackingQCJobInput()" placeholder="" class="linear-input w-full p-2.5 text-xs rounded">
+                        <p id="packing-qc-job-error" class="hidden text-[11px] mt-1 text-red-400" role="status" aria-live="polite"></p>
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1">Scan or Enter Code *</label>
@@ -3697,10 +3698,13 @@
             const unlockBtn = document.getElementById('packing-qc-unlock-btn');
 
             jcInput.value = prefillJobId || "";
+            jcInput.disabled = false;
+            unlockBtn.classList.add('hidden');
             codeInput.value = "";
+            document.getElementById('packing-qc-job-error').classList.add('hidden');
             document.getElementById('packing-qc-result-box').classList.add('hidden');
             currentPackingQCLogs = [];
-            currentPackingQCJob = prefillJobId || "";
+            currentPackingQCJob = "";
             currentPackingQCDesc = "";
             currentPackingQCComplete = false;
             currentPackingQCCompletedBy = "";
@@ -3711,20 +3715,11 @@
             updatePackingQCCompletionControls();
 
             if (prefillJobId) {
-                jcInput.disabled = true;
-                unlockBtn.classList.remove('hidden');
-                codeInput.disabled = false;
-                codeInput.classList.remove('opacity-40', 'cursor-not-allowed');
-                setPackingQCCameraEnabled(true);
-                try {
-                    const res = await fetch(`/api/admin/packing-qc/${prefillJobId}`);
-                    if (res.ok) {
-                        const data = await res.json();
-                        applyPackingQCReport(data);
-                    }
-                } catch(e) {}
+                codeInput.disabled = true;
+                codeInput.classList.add('opacity-40', 'cursor-not-allowed');
+                setPackingQCCameraEnabled(false);
+                await lockPackingQCJobCard();
             } else {
-                jcInput.disabled = false;
                 unlockBtn.classList.add('hidden');
                 codeInput.disabled = true;
                 codeInput.classList.add('opacity-40', 'cursor-not-allowed');
@@ -3733,52 +3728,84 @@
             }
         }
 
-        async function handlePackingQCJobInput() {
+        function handlePackingQCJobInput() {
+            const jcInput = document.getElementById('packing-qc-job');
+            const codeInput = document.getElementById('packing-qc-code');
+            const jcId = jcInput.value.trim();
+            const errorElement = document.getElementById('packing-qc-job-error');
+            if (errorElement) {
+                errorElement.innerText = '';
+                errorElement.classList.add('hidden');
+            }
+            setPackingQCCameraEnabled(false);
+            updatePackingQCMode();
+            if (jcId !== currentPackingQCJob) {
+                currentPackingQCJob = '';
+                currentPackingQCDesc = '';
+                currentPackingQCLogs = [];
+                currentPackingQCComplete = false;
+                currentPackingQCCompletedBy = "";
+                currentPackingQCCompletedAt = "";
+                renderPackingQCChart();
+                updatePackingQCCompletionControls();
+            }
+            codeInput.value = '';
+            codeInput.disabled = true;
+            codeInput.classList.add('opacity-40', 'cursor-not-allowed');
+            updatePackingQCMode();
+        }
+
+        async function lockPackingQCJobCard() {
             const jcInput = document.getElementById('packing-qc-job');
             const codeInput = document.getElementById('packing-qc-code');
             const unlockBtn = document.getElementById('packing-qc-unlock-btn');
+            const errorElement = document.getElementById('packing-qc-job-error');
             const jcId = jcInput.value.trim();
-            setPackingQCCameraEnabled(Boolean(jcId));
-            updatePackingQCMode();
-            if (!jcId) {
-                currentPackingQCJob = "";
-                currentPackingQCLogs = [];
-                currentPackingQCComplete = false;
-                currentPackingQCCompletedBy = "";
-                currentPackingQCCompletedAt = "";
-                renderPackingQCChart();
-                updatePackingQCCompletionControls();
-                codeInput.disabled = true;
-                codeInput.classList.add('opacity-40', 'cursor-not-allowed');
-                return;
+            if (!jcId) return false;
+
+            if (jcInput.disabled && currentPackingQCJob === jcId) {
+                return true;
             }
 
-            if (currentPackingQCJob !== jcId) {
-                currentPackingQCJob = jcId;
-                currentPackingQCDesc = "";
-                currentPackingQCLogs = [];
-                currentPackingQCComplete = false;
-                currentPackingQCCompletedBy = "";
-                currentPackingQCCompletedAt = "";
-                renderPackingQCChart();
-                updatePackingQCCompletionControls();
+            if (errorElement) {
+                errorElement.innerText = 'Checking Job Card...';
+                errorElement.classList.remove('hidden', 'text-red-400');
+                errorElement.classList.add('text-slate-400');
             }
-            
+            jcInput.disabled = true;
+            setPackingQCCameraEnabled(false);
             try {
-                const res = await fetch(`/api/admin/packing-qc/${jcId}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (jcInput.value.trim() !== jcId) return;
-                    applyPackingQCReport(data);
-                    if (jcInput.value.trim() === jcId && !currentPackingQCComplete) {
-                        jcInput.disabled = true;
-                        unlockBtn.classList.remove('hidden');
-                        codeInput.disabled = false;
-                        codeInput.classList.remove('opacity-40', 'cursor-not-allowed');
-                        codeInput.focus();
-                    }
+                const res = await fetch(`/api/admin/packing-qc/${encodeURIComponent(jcId)}`);
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    throw new Error(data.detail || `Job Card '${jcId}' could not be found.`);
                 }
-            } catch(e) {}
+
+                currentPackingQCJob = jcId;
+                applyPackingQCReport(data);
+                unlockBtn.classList.remove('hidden');
+                codeInput.disabled = currentPackingQCComplete;
+                codeInput.classList.toggle('opacity-40', currentPackingQCComplete);
+                codeInput.classList.toggle('cursor-not-allowed', currentPackingQCComplete);
+                setPackingQCCameraEnabled(!currentPackingQCComplete);
+                if (errorElement) {
+                    errorElement.innerText = '';
+                    errorElement.classList.add('hidden');
+                    errorElement.classList.remove('text-slate-400');
+                }
+                updatePackingQCMode();
+                if (!currentPackingQCComplete) codeInput.focus();
+                return true;
+            } catch (error) {
+                jcInput.disabled = false;
+                setPackingQCCameraEnabled(false);
+                if (errorElement) {
+                    errorElement.innerText = error.message || 'Could not validate this Job Card. Try again.';
+                    errorElement.classList.remove('hidden', 'text-slate-400');
+                    errorElement.classList.add('text-red-400');
+                }
+                return false;
+            }
         }
 
         async function handlePackingQCJobKeyDown(e) {
@@ -3788,41 +3815,18 @@
                 const jcId = jcInput.value.trim();
                 if (!jcId) return;
 
-                lockPackingQCJobCard();
-                await handlePackingQCJobInput();
-                const codeInput = document.getElementById('packing-qc-code');
-                if (codeInput && !codeInput.disabled) {
-                    codeInput.focus();
-                }
+                await lockPackingQCJobCard();
             }
         }
 
-        function lockPackingQCJobCard() {
-            const jcInput = document.getElementById('packing-qc-job');
-            const codeInput = document.getElementById('packing-qc-code');
-            const unlockBtn = document.getElementById('packing-qc-unlock-btn');
-            if (jcInput.value.trim() !== "") {
-                jcInput.disabled = true;
-                unlockBtn.classList.remove('hidden');
-                currentPackingQCJob = jcInput.value.trim();
-                updatePackingQCMode();
-                codeInput.disabled = currentPackingQCComplete;
-                codeInput.classList.toggle('opacity-40', currentPackingQCComplete);
-                codeInput.classList.toggle('cursor-not-allowed', currentPackingQCComplete);
-                setPackingQCCameraEnabled(!currentPackingQCComplete);
-                renderPackingQCChart();
-                if (!currentPackingQCComplete) codeInput.focus();
-            }
-        }
-
-        function startPackingQCCameraScanner() {
+        async function startPackingQCCameraScanner() {
             const jobInput = document.getElementById('packing-qc-job');
             if (!jobInput.value.trim()) {
                 showCustomAlert("Enter a Job Card number before scanning a Final QC code.", "Job Card Required");
                 jobInput.focus();
                 return;
             }
-            lockPackingQCJobCard();
+            if (!await lockPackingQCJobCard()) return;
             startCameraScanner('packing-qc');
         }
 
@@ -3833,6 +3837,9 @@
             jcInput.disabled = false;
             jcInput.value = "";
             unlockBtn.classList.add('hidden');
+            const errorElement = document.getElementById('packing-qc-job-error');
+            errorElement.innerText = '';
+            errorElement.classList.add('hidden');
             codeInput.disabled = true;
             codeInput.classList.add('opacity-40', 'cursor-not-allowed');
             setPackingQCCameraEnabled(false);
@@ -3859,13 +3866,12 @@
             const code = codeInput.value.trim();
 
             if (jcId && !code) {
-                lockPackingQCJobCard();
-                await handlePackingQCJobInput();
-                codeInput.focus();
+                await lockPackingQCJobCard();
                 return;
             }
 
             if (!jcId || !code) return;
+            if (!jcInput.disabled && !await lockPackingQCJobCard()) return;
 
             const originalBtnText = submitBtn.innerHTML;
             submitBtn.disabled = true;

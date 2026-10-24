@@ -1307,24 +1307,25 @@ def get_packing_qc_logs(job_card_id: str, user: dict = Depends(require_password_
                 ORDER BY created_at DESC LIMIT 1
             """, (job_card_id,))
             jc_row = cur.fetchone()
-            run_id = jc_row[0] if jc_row else None
-            desc = jc_row[1] if jc_row else ""
+            if not jc_row:
+                raise HTTPException(status_code=404, detail=f"Job Card '{job_card_id}' does not exist.")
+            run_id = jc_row[0]
+            desc = jc_row[1] or ""
             rows = []
             completion = None
-            if run_id is not None:
-                cur.execute("""
-                    SELECT job_card_id, code_scanned, tested_by, tested_at
-                    FROM packing_qc_logs
-                    WHERE run_id = %s AND qc_stage = 'PACKING'
-                    ORDER BY tested_at DESC
-                """, (run_id,))
-                rows = cur.fetchall()
-                cur.execute("""
-                    SELECT completed_by, completed_at
-                    FROM packing_qc_completions
-                    WHERE run_id = %s
-                """, (run_id,))
-                completion = cur.fetchone()
+            cur.execute("""
+                SELECT job_card_id, code_scanned, tested_by, tested_at
+                FROM packing_qc_logs
+                WHERE run_id = %s AND qc_stage = 'PACKING'
+                ORDER BY tested_at DESC
+            """, (run_id,))
+            rows = cur.fetchall()
+            cur.execute("""
+                SELECT completed_by, completed_at
+                FROM packing_qc_completions
+                WHERE run_id = %s
+            """, (run_id,))
+            completion = cur.fetchone()
 
             return {
                 "job_card_id": job_card_id,
