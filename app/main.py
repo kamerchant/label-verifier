@@ -1229,18 +1229,67 @@ def get_jobs(query: str = "", user: dict = Depends(require_password_change_compl
         release_connection(conn)
 
 @app.get("/api/admin/master-jobs")
-def get_master_jobs_report(status_filter: str = "ALL", user: dict = Depends(require_manager_or_admin)):
+def get_master_jobs_report(
+    status_filter: str = "ALL",
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+    search: str = Query("", max_length=200),
+    sort_by: str = Query("default", max_length=32),
+    sort_desc: bool = False,
+    user: dict = Depends(require_manager_or_admin),
+):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            where_clause = ""
+            filters = []
             params = []
             if status_filter in ["ACTIVE", "INACTIVE", "COMPLETED", "DELETED"]:
-                where_clause = "WHERE j.status = %s"
+                filters.append("j.status = %s")
                 params.append(status_filter)
             elif status_filter == "STUCK":
-                where_clause = "WHERE j.status IN ('INGESTING', 'OVERRIDING', 'CONFLICT_DETECTED', 'FAILED')"
+                filters.append("j.status IN ('INGESTING', 'OVERRIDING', 'CONFLICT_DETECTED', 'FAILED')")
 
+            if search.strip():
+                filters.append(
+                    "(LOWER(j.job_card_id) LIKE %s "
+                    "OR LOWER(COALESCE(j.description, '')) LIKE %s "
+                    "OR LOWER(j.status) LIKE %s)"
+                )
+                search_term = f"%{search.strip().lower()}%"
+                params.extend([search_term, search_term, search_term])
+
+            where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
+            cur.execute(f"SELECT COUNT(*) FROM job_cards j {where_clause}", params)
+            total = cur.fetchone()[0]
+
+            urgency_order = """CASE j.status
+                WHEN 'CONFLICT_DETECTED' THEN 1
+                WHEN 'INGESTING' THEN 2
+                WHEN 'OVERRIDING' THEN 3
+                WHEN 'FAILED' THEN 4
+                WHEN 'ACTIVE' THEN 5
+                WHEN 'INACTIVE' THEN 6
+                WHEN 'COMPLETED' THEN 7
+                WHEN 'DELETED' THEN 8
+                ELSE 9
+            END"""
+            direction = "DESC" if sort_desc else "ASC"
+            if sort_by == "job_card_id":
+                order_clause = (
+                    f"CASE WHEN j.job_card_id ~ '^[0-9]+$' "
+                    f"THEN j.job_card_id::NUMERIC END {direction} NULLS LAST, "
+                    f"LOWER(j.job_card_id) {direction}, j.created_at DESC"
+                )
+            elif sort_by == "created_at":
+                order_clause = f"j.created_at {direction}, j.run_id DESC"
+            elif sort_by == "status":
+                order_clause = f"{urgency_order} {direction}, j.created_at DESC"
+            elif sort_by in {"consumed", "conflict_count", "packing_qc_count"}:
+                order_clause = f"{sort_by} {direction}, j.created_at DESC"
+            else:
+                order_clause = f"{urgency_order} ASC, j.created_at DESC"
+
+            query_params = [*params, page_size, (page - 1) * page_size]
             sql = f"""
                 SELECT j.run_id, j.job_card_id, j.description, j.status,
                        COALESCE(NULLIF(j.total_codes, 0), (SELECT COUNT(*) FROM codes c WHERE c.run_id = j.run_id), 0) as total,
@@ -1249,35 +1298,19 @@ def get_master_jobs_report(status_filter: str = "ALL", user: dict = Depends(requ
                        j.deleted_by,
                        j.deleted_at,
                        j.deletion_reason,
-                       COALESCE(pq.packing_qc_count, 0) as packing_qc_count,
+                       (SELECT COUNT(*) FROM packing_qc_logs p
+                        WHERE p.run_id = j.run_id AND p.qc_stage = 'PACKING') as packing_qc_count,
                        j.ingestion_progress,
                        j.conflict_count,
                        COALESCE(j.conflict_resolution, 'NONE') as conflict_resolution
                 FROM job_cards j
-                LEFT JOIN (
-                    SELECT p.run_id, COUNT(*) as packing_qc_count
-                    FROM packing_qc_logs p
-                    WHERE p.qc_stage = 'PACKING'
-                    GROUP BY p.run_id
-                ) pq ON j.run_id = pq.run_id
                 {where_clause}
-                ORDER BY 
-                    CASE j.status
-                        WHEN 'CONFLICT_DETECTED' THEN 1
-                        WHEN 'INGESTING' THEN 2
-                        WHEN 'OVERRIDING' THEN 3
-                        WHEN 'FAILED' THEN 4
-                        WHEN 'ACTIVE' THEN 5
-                        WHEN 'INACTIVE' THEN 6
-                        WHEN 'COMPLETED' THEN 7
-                        WHEN 'DELETED' THEN 8
-                        ELSE 9
-                    END ASC,
-                    j.created_at DESC
+                ORDER BY {order_clause}
+                LIMIT %s OFFSET %s
             """
-            cur.execute(sql, params)
+            cur.execute(sql, query_params)
             rows = cur.fetchall()
-            return [{
+            jobs = [{
                 "run_id": r[0],
                 "job_card_id": r[1],
                 "description": r[2] or "",
@@ -1293,6 +1326,12 @@ def get_master_jobs_report(status_filter: str = "ALL", user: dict = Depends(requ
                 "conflict_count": r[12] or 0,
                 "conflict_resolution": r[13] or "NONE"
             } for r in rows]
+            return {
+                "jobs": jobs,
+                "total": total,
+                "page": page,
+                "page_size": page_size,
+            }
     finally:
         release_connection(conn)
 
@@ -2513,47 +2552,6 @@ def get_report(job_card_id: str, user: dict = Depends(require_password_change_co
                     cur.execute("UPDATE job_cards SET consumed_codes = %s WHERE run_id = %s", (consumed_pool, run_id))
                     conn.commit()
 
-            cur.execute("""
-                SELECT result, COUNT(*) 
-                FROM scan_logs 
-                WHERE job_card_id = %s 
-                GROUP BY result
-            """, (jc_id,))
-            results_breakdown = {r[0]: r[1] for r in cur.fetchall()}
-
-            if run_id:
-                cur.execute("""
-                    WITH recent AS (
-                        SELECT s.code_scanned, s.result, s.scanned_by, s.scanned_at
-                        FROM scan_logs s
-                        WHERE s.job_card_id = %s
-                        ORDER BY s.id DESC
-                        LIMIT 5000
-                    )
-                    SELECT r.code_scanned, r.result, r.scanned_by, r.scanned_at,
-                           c.row_num
-                    FROM recent r
-                    LEFT JOIN codes c ON c.run_id = %s AND c.code_value = r.code_scanned
-                    ORDER BY r.scanned_at DESC;
-                """, (jc_id, run_id))
-            else:
-                cur.execute("""
-                    SELECT s.code_scanned, s.result, s.scanned_by, s.scanned_at,
-                           NULL AS row_num
-                    FROM scan_logs s
-                    WHERE s.job_card_id = %s 
-                    ORDER BY s.scanned_at DESC 
-                    LIMIT 5000
-                """, (jc_id,))
-
-            logs = [{
-                "code": r[0],
-                "result": r[1],
-                "user": r[2],
-                "time": r[3].strftime("%Y-%m-%d %H:%M:%S") if r[3] else "",
-                "row_num": r[4] if r[4] is not None else "-"
-            } for r in cur.fetchall()]
-
             pending_count = max(0, (total_pool or 0) - (consumed_pool or 0))
 
             conf_breakdown = []
@@ -2573,8 +2571,6 @@ def get_report(job_card_id: str, user: dict = Depends(require_password_change_co
                 "duplicate_rows_count": duplicate_rows_count,
                 "blocked_codes": pending_count if jc_status == 'COMPLETED' else 0,
                 "pending_codes": pending_count if jc_status != 'COMPLETED' else 0,
-                "results_breakdown": results_breakdown,
-                "recent_logs": logs,
                 "conflict_audit": {
                     "resolution": conf_res or "NONE",
                     "conflict_count": conf_cnt or 0,
@@ -2582,6 +2578,69 @@ def get_report(job_card_id: str, user: dict = Depends(require_password_change_co
                     "justification": over_reason or "-",
                     "colliding_batches": conf_breakdown
                 }
+            }
+    finally:
+        release_connection(conn)
+
+@app.get("/api/reports/{job_card_id}/scans")
+def get_report_scans(
+    job_card_id: str,
+    limit: int = Query(50, ge=1, le=100),
+    before_id: Optional[int] = Query(None, gt=0),
+    user: dict = Depends(require_password_change_complete),
+):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT run_id
+                FROM job_cards
+                WHERE job_card_id = %s AND status != 'DELETED'
+                ORDER BY created_at DESC
+                LIMIT 1
+            """, (job_card_id,))
+            job = cur.fetchone()
+            if not job:
+                raise HTTPException(status_code=404, detail="Active Job Card not found")
+            run_id = job[0]
+
+            params = [job_card_id]
+            before_clause = ""
+            if before_id is not None:
+                before_clause = "AND s.id < %s"
+                params.append(before_id)
+            params.append(limit + 1)
+
+            cur.execute(f"""
+                WITH recent AS (
+                    SELECT s.id, s.code_scanned, s.result, s.scanned_by, s.scanned_at
+                    FROM scan_logs s
+                    WHERE s.job_card_id = %s {before_clause}
+                    ORDER BY s.id DESC
+                    LIMIT %s
+                )
+                SELECT r.id, r.code_scanned, r.result, r.scanned_by, r.scanned_at,
+                       c.row_num
+                FROM recent r
+                LEFT JOIN codes c ON c.run_id = %s AND c.code_value = r.code_scanned
+                ORDER BY r.id DESC
+            """, (*params, run_id))
+            rows = cur.fetchall()
+            has_more = len(rows) > limit
+            rows = rows[:limit]
+            logs = [{
+                "id": r[0],
+                "code": r[1],
+                "result": r[2],
+                "user": r[3],
+                "time": r[4].strftime("%Y-%m-%d %H:%M:%S") if r[4] else "",
+                "row_num": r[5] if r[5] is not None else "-"
+            } for r in rows]
+
+            return {
+                "recent_logs": logs,
+                "has_more": has_more,
+                "next_before_id": logs[-1]["id"] if logs and has_more else None,
             }
     finally:
         release_connection(conn)

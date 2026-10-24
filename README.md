@@ -24,3 +24,5 @@ Final QC mode is determined by production scan history for the selected Job Card
 The camera scanner supports barcode/QR scanning and an OCR mode for printed text. OCR results are placed in the code field for operator review and correction; they are not submitted automatically. OCR requires a network connection the first time it loads its text-recognition engine and may misread characters, so verify the result before submitting.
 
 The upload limit applies while the application copies the uploaded file to its temporary working directory. Background ingestion still runs in a process-local thread and uses local temporary files; use durable storage and a persistent worker queue before relying on ingestion to survive instance restarts or multiple application instances.
+
+The Job Control Center loads jobs in pages of 50 and searches across the selected status filter on the server. QC reports load the latest 50 scan records when opened; use **Load older scans** to retrieve additional history. CSV exports continue to include the full report data.

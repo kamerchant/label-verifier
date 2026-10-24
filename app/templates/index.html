@@ -1238,7 +1238,7 @@
                     <button onclick="filterMasterJobs('DELETED')" id="filter-tab-deleted" class="linear-button-secondary px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded text-[11px] sm:text-xs font-medium whitespace-nowrap">Deleted Only</button>
                 </div>
                 <div class="relative w-full md:w-72">
-                    <input type="text" id="master-job-search" onfocus="recordJobInteraction()" oninput="recordJobInteraction(); renderMasterJobsTable()" placeholder="Search in all jobs..." 
+                    <input type="text" id="master-job-search" onfocus="recordJobInteraction()" oninput="recordJobInteraction(); searchMasterJobs()" placeholder="Search in all jobs..."
                            class="linear-input w-full px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs rounded placeholder-slate-500 min-h-[32px] sm:min-h-0">
                 </div>
             </div>
@@ -1278,6 +1278,13 @@
                 <!-- Mobile Touch Card List (Visible Only on Mobile) -->
                 <div id="master-jobs-mobile" class="md:hidden flex-1 overflow-y-auto p-1.5 space-y-1.5">
                     <div class="p-4 text-center text-slate-400 italic text-xs">Loading jobs...</div>
+                </div>
+            </div>
+            <div class="flex items-center justify-between gap-2 pt-2 shrink-0 text-[11px] text-slate-400">
+                <span id="master-jobs-page-info">Loading jobs...</span>
+                <div class="flex gap-1.5">
+                    <button type="button" id="master-jobs-prev" onclick="changeMasterJobsPage(-1)" class="linear-button-secondary px-2.5 py-1 rounded disabled:opacity-40" disabled>Previous</button>
+                    <button type="button" id="master-jobs-next" onclick="changeMasterJobsPage(1)" class="linear-button-secondary px-2.5 py-1 rounded disabled:opacity-40" disabled>Next</button>
                 </div>
             </div>
         </div>
@@ -1475,6 +1482,10 @@
                 </table>
             </div>
 
+            <div class="flex items-center justify-between gap-2 pt-1.5 shrink-0 no-print text-[10px] text-slate-400">
+                <span id="report-scan-history-info">Loading recent scans...</span>
+                <button type="button" id="report-load-older-scans-btn" onclick="loadOlderReportScans()" class="linear-button-secondary px-2.5 py-1 rounded text-xs font-medium hidden">Load older scans</button>
+            </div>
             <div id="print-report-timestamp" class="print-timestamp-footer"></div>
         </div>
     </div>
@@ -2055,6 +2066,7 @@
                 modal.style.display = 'flex';
                 const searchEl = document.getElementById('master-job-search');
                 if (searchEl) searchEl.value = "";
+                masterJobsPage = 1;
                 await loadMasterJobs('ALL');
                 startMasterJobsAutoRefresh();
             }
@@ -2067,6 +2079,16 @@
         let targetResetUsername = null;
         let currentMasterTab = 'ALL';
         let rawMasterJobs = [];
+        let masterJobsPage = 1;
+        let masterJobsPageSize = 50;
+        let masterJobsTotal = 0;
+        let masterJobsSearchTimer = null;
+        let masterJobsRequestId = 0;
+        let currentReportJobId = null;
+        let reportScanBeforeId = null;
+        let reportScanHasMore = false;
+        let reportScanLoading = false;
+        let reportScanTotalLoaded = 0;
         let allScans = [];
         let streamFilter = 'ALL';
         let alarmCount = 0;
@@ -2120,17 +2142,6 @@
         // Interactive sorting state
         let currentSortCol = 'default';
         let currentSortAsc = true;
-
-        const statusUrgencyRank = {
-            'CONFLICT_DETECTED': 1,
-            'INGESTING': 2,
-            'OVERRIDING': 3,
-            'FAILED': 4,
-            'ACTIVE': 5,
-            'INACTIVE': 6,
-            'COMPLETED': 7,
-            'DELETED': 8
-        };
 
         let audioCtx = null;
         function getAudioContext() {
@@ -4279,6 +4290,7 @@
                 showCustomAlert("Please select an active Job Card first.", "No Job Selected");
                 return;
             }
+            const reportJobCardId = activeJobId;
 
             // Immediately close the Reports dropdown
             const wrapper = document.getElementById('job-actions-wrapper');
@@ -4297,7 +4309,7 @@
             });
 
             try {
-                const res = await fetch(`/api/reports/${encodeURIComponent(activeJobId)}`);
+                const res = await fetch(`/api/reports/${encodeURIComponent(reportJobCardId)}`);
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
                     showCustomAlert(err.detail || "Failed to load report from server.", "Report Error");
@@ -4313,13 +4325,13 @@
                 if (rptTs) rptTs.innerText = `Report Generated On: ${formatAppTimestamp()}`;
 
                 document.getElementById('download-csv-btn').onclick = () => {
-                    window.location.href = `/api/reports/${encodeURIComponent(activeJobId)}/csv`;
+                    window.location.href = `/api/reports/${encodeURIComponent(reportJobCardId)}/csv`;
                 };
                 const duplicateReportButton = document.getElementById('download-duplicate-csv-btn');
                 if (duplicateReportButton) {
                     duplicateReportButton.classList.toggle('hidden', !Number(data.duplicate_rows_count));
                     duplicateReportButton.onclick = () => {
-                        window.location.href = `/api/reports/${encodeURIComponent(activeJobId)}/duplicates.csv`;
+                        window.location.href = `/api/reports/${encodeURIComponent(reportJobCardId)}/duplicates.csv`;
                     };
                 }
 
@@ -4366,12 +4378,50 @@
                     auditCard.classList.add('hidden');
                 }
 
+                currentReportJobId = reportJobCardId;
+                reportScanBeforeId = null;
+                reportScanHasMore = false;
+                reportScanTotalLoaded = 0;
+                reportScanLoading = false;
+                document.getElementById('report-log-rows').innerHTML = '';
+                document.getElementById('report-scan-history-info').innerText = 'Loading recent scans...';
+                document.getElementById('report-load-older-scans-btn').classList.add('hidden');
+                await loadReportScans(true);
+
+                toggleModal('report-modal');
+            } catch (ex) {
+                showCustomAlert("Network error or server unreachable while loading report.", "Network Error");
+            } finally {
+                rptBtns.forEach(btn => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                });
+            }
+        }
+
+        async function loadReportScans(reset = false) {
+            if (!currentReportJobId || reportScanLoading) return;
+            reportScanLoading = true;
+            const button = document.getElementById('report-load-older-scans-btn');
+            if (button) button.disabled = true;
+            try {
+                const query = new URLSearchParams({ limit: '50' });
+                if (!reset && reportScanBeforeId) query.set('before_id', reportScanBeforeId);
+                const response = await fetch(
+                    `/api/reports/${encodeURIComponent(currentReportJobId)}/scans?${query.toString()}`
+                );
+                if (!response.ok) {
+                    const error = await response.json().catch(() => ({}));
+                    throw new Error(error.detail || 'Failed to load scan history.');
+                }
+                const data = await response.json();
                 const tbody = document.getElementById('report-log-rows');
-                const recentLogs = data.recent_logs || [];
-                if (recentLogs.length === 0) {
+                const logs = data.recent_logs || [];
+                if (reset) tbody.innerHTML = '';
+                if (logs.length === 0 && reportScanTotalLoaded === 0) {
                     tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-slate-400 italic">No inspection logs recorded yet</td></tr>`;
                 } else {
-                    tbody.innerHTML = recentLogs.map(log => {
+                    tbody.insertAdjacentHTML('beforeend', logs.map(log => {
                         const rowDisplay = (log.row_num && log.row_num !== '-') ? `Row ${escapeHtml(log.row_num)}` : '-';
                         const resStr = log.result || '';
                         const isPass = resStr.startsWith('Pass');
@@ -4384,18 +4434,25 @@
                                 <td class="p-3 font-bold text-xs text-center ${isPass ? 'text-[#2ed573]' : 'text-red-400'}">${escapeHtml(resStr)}</td>
                             </tr>
                         `;
-                    }).join('');
+                    }).join(''));
                 }
-
-                toggleModal('report-modal');
-            } catch (ex) {
-                showCustomAlert("Network error or server unreachable while loading report.", "Network Error");
+                reportScanTotalLoaded += logs.length;
+                reportScanBeforeId = data.next_before_id;
+                reportScanHasMore = Boolean(data.has_more);
+                document.getElementById('report-scan-history-info').innerText = reportScanHasMore
+                    ? `Showing ${reportScanTotalLoaded} scans. Load older scans to include them in this report.`
+                    : `${reportScanTotalLoaded} scan${reportScanTotalLoaded === 1 ? '' : 's'} loaded.`;
+                if (button) button.classList.toggle('hidden', !reportScanHasMore);
+            } catch (error) {
+                showCustomAlert(error.message || 'Failed to load scan history.', 'Report Error');
             } finally {
-                rptBtns.forEach(btn => {
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
-                });
+                reportScanLoading = false;
+                if (button) button.disabled = false;
             }
+        }
+
+        function loadOlderReportScans() {
+            if (reportScanHasMore) return loadReportScans();
         }
 
         async function openLifecycleModal() {
@@ -4629,7 +4686,8 @@
                 currentSortAsc = true;
             }
             updateSortIndicators();
-            renderMasterJobsTable();
+            masterJobsPage = 1;
+            loadMasterJobs(currentMasterTab);
         }
 
         function updateSortIndicators() {
@@ -6077,6 +6135,7 @@
 
         async function loadMasterJobs(filterType, showLoadingError = true) {
             currentMasterTab = filterType;
+            const requestId = ++masterJobsRequestId;
             ['all', 'active', 'inactive', 'completed', 'stuck', 'deleted'].forEach(t => {
                 const btn = document.getElementById(`filter-tab-${t}`);
                 if (btn) {
@@ -6087,9 +6146,25 @@
             });
 
             try {
-                const res = await fetch(`/api/admin/master-jobs?status_filter=${filterType}`);
+                const query = new URLSearchParams({
+                    status_filter: filterType,
+                    page: String(masterJobsPage),
+                    page_size: String(masterJobsPageSize),
+                    search: document.getElementById('master-job-search')?.value.trim() || '',
+                    sort_by: currentSortCol,
+                    sort_desc: String(!currentSortAsc)
+                });
+                const res = await fetch(`/api/admin/master-jobs?${query.toString()}`);
                 if (res.ok) {
-                    rawMasterJobs = await res.json();
+                    const data = await res.json();
+                    if (requestId !== masterJobsRequestId) return true;
+                    rawMasterJobs = data.jobs || [];
+                    masterJobsTotal = Number(data.total) || 0;
+                    const pageCount = Math.max(1, Math.ceil(masterJobsTotal / masterJobsPageSize));
+                    if (masterJobsPage > pageCount) {
+                        masterJobsPage = pageCount;
+                        return loadMasterJobs(filterType, showLoadingError);
+                    }
                     renderMasterJobsTable();
                     return true;
                 }
@@ -6100,7 +6175,24 @@
         }
 
         function filterMasterJobs(filterType) {
+            masterJobsPage = 1;
             loadMasterJobs(filterType);
+        }
+
+        function searchMasterJobs() {
+            if (masterJobsSearchTimer) clearTimeout(masterJobsSearchTimer);
+            masterJobsSearchTimer = setTimeout(() => {
+                masterJobsPage = 1;
+                loadMasterJobs(currentMasterTab);
+            }, 250);
+        }
+
+        function changeMasterJobsPage(offset) {
+            const pageCount = Math.max(1, Math.ceil(masterJobsTotal / masterJobsPageSize));
+            const nextPage = Math.min(pageCount, Math.max(1, masterJobsPage + offset));
+            if (nextPage === masterJobsPage) return;
+            masterJobsPage = nextPage;
+            loadMasterJobs(currentMasterTab);
         }
         function openJobFromMaster(jobCardId, descEncoded, status, consumed, total) {
             if (activeJobId && activeJobId.toLowerCase() !== jobCardId.toLowerCase()) {
@@ -6120,58 +6212,23 @@
         }
         
         function renderMasterJobsTable() {
-            const query = (document.getElementById('master-job-search').value || "").toLowerCase().trim();
-            let filtered = rawMasterJobs.filter(j => 
-                j.job_card_id.toLowerCase().includes(query) ||
-                (j.description && j.description.toLowerCase().includes(query)) ||
-                (j.status && j.status.toLowerCase().includes(query))
-            );
-
-            // Sorting logic
-            if (currentSortCol === 'default') {
-                filtered.sort((a, b) => {
-                    const rankA = statusUrgencyRank[a.status] || 99;
-                    const rankB = statusUrgencyRank[b.status] || 99;
-                    if (rankA !== rankB) return rankA - rankB;
-                    return (b.created_at || '').localeCompare(a.created_at || '');
-                });
-            } else {
-                filtered.sort((a, b) => {
-                    // Natural numerical sorting for Job ID
-                    if (currentSortCol === 'job_card_id') {
-                        const cmp = (a.job_card_id || '').toString().localeCompare((b.job_card_id || '').toString(), undefined, { numeric: true, sensitivity: 'base' });
-                        return currentSortAsc ? cmp : -cmp;
-                    }
-
-                    if (currentSortCol === 'status') {
-                        const valA = statusUrgencyRank[a.status] || 99;
-                        const valB = statusUrgencyRank[b.status] || 99;
-                        return currentSortAsc ? valA - valB : valB - valA;
-                    }
-
-                    let valA = a[currentSortCol];
-                    let valB = b[currentSortCol];
-
-                    if (typeof valA === 'number' || typeof valB === 'number') {
-                        valA = Number(valA) || 0;
-                        valB = Number(valB) || 0;
-                    } else {
-                        valA = (valA || '').toString().toLowerCase();
-                        valB = (valB || '').toString().toLowerCase();
-                    }
-
-                    if (valA < valB) return currentSortAsc ? -1 : 1;
-                    if (valA > valB) return currentSortAsc ? 1 : -1;
-                    return 0;
-                });
-            }
+            let filtered = rawMasterJobs.slice();
 
             const tbody = document.getElementById('master-jobs-rows');
             const mobileContainer = document.getElementById('master-jobs-mobile');
+            const pageInfo = document.getElementById('master-jobs-page-info');
+            const previousButton = document.getElementById('master-jobs-prev');
+            const nextButton = document.getElementById('master-jobs-next');
+            const pageCount = Math.max(1, Math.ceil(masterJobsTotal / masterJobsPageSize));
+            const firstItem = masterJobsTotal ? ((masterJobsPage - 1) * masterJobsPageSize) + 1 : 0;
+            const lastItem = Math.min(masterJobsPage * masterJobsPageSize, masterJobsTotal);
+            if (pageInfo) pageInfo.innerText = `${firstItem}-${lastItem} of ${masterJobsTotal} jobs`;
+            if (previousButton) previousButton.disabled = masterJobsPage <= 1;
+            if (nextButton) nextButton.disabled = masterJobsPage >= pageCount;
 
             if (filtered.length === 0) {
-                if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400 italic text-xs">No job cards found matching '${escapeHtml(query)}'</td></tr>`;
-                if (mobileContainer) mobileContainer.innerHTML = `<div class="p-6 text-center text-slate-400 italic text-xs">No job cards found matching '${escapeHtml(query)}'</div>`;
+                if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400 italic text-xs">No job cards found.</td></tr>`;
+                if (mobileContainer) mobileContainer.innerHTML = `<div class="p-6 text-center text-slate-400 italic text-xs">No job cards found.</div>`;
                 return;
             }
 
