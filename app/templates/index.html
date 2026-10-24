@@ -1,4 +1,4 @@
-<html lang="en">
+<html lang="en" class="theme-parchment">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -2057,14 +2057,14 @@
 
         function initTheme() {
             try {
-                const savedTheme = localStorage.getItem('vdv_theme') || 'obsidian';
+                const savedTheme = localStorage.getItem('vdv_theme') || 'parchment';
                 const themeName = document.getElementById('theme-name-text');
-                if (savedTheme === 'parchment') {
-                    document.documentElement.classList.add('theme-parchment');
-                    if (themeName) themeName.innerText = 'Parchment';
-                } else {
+                if (savedTheme === 'obsidian') {
                     document.documentElement.classList.remove('theme-parchment');
                     if (themeName) themeName.innerText = 'Obsidian';
+                } else {
+                    document.documentElement.classList.add('theme-parchment');
+                    if (themeName) themeName.innerText = 'Parchment';
                 }
             } catch (e) {}
         }
@@ -2921,12 +2921,6 @@
             if (camBtn) {
                 camBtn.disabled = true;
                 camBtn.classList.add('opacity-30', 'pointer-events-none');
-            }
-            const camBtn = document.getElementById('camera-scan-btn');
-            if (camBtn) {
-                camBtn.disabled = locked;
-                if (locked) camBtn.classList.add('btn-flat-disabled');
-                else camBtn.classList.remove('btn-flat-disabled');
             }
 
             document.getElementById('kpi-total').innerText = "0";
@@ -4637,6 +4631,13 @@
 
             const barcodeInput = document.getElementById('barcode-input');
             if (barcodeInput && locked) barcodeInput.disabled = true;
+
+            const camBtn = document.getElementById('camera-scan-btn');
+            if (camBtn) {
+                camBtn.disabled = locked;
+                if (locked) camBtn.classList.add('btn-flat-disabled');
+                else camBtn.classList.remove('btn-flat-disabled');
+            }
 
             const modalInputs = ['new-job-id', 'new-job-desc', 'new-job-file'];
             modalInputs.forEach(id => {
