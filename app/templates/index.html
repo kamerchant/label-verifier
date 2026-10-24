@@ -5291,7 +5291,7 @@
             if (previewBox) previewBox.classList.add('hidden');
             if (uploadButton) {
                 uploadButton.disabled = false;
-                uploadButton.classList.remove('opacity-50');
+                uploadButton.classList.remove('btn-flat-disabled', 'opacity-50', 'cursor-not-allowed', 'pointer-events-none');
                 uploadButton.innerText = 'Create Job';
             }
             if (reportButton) reportButton.classList.add('hidden');
@@ -5426,8 +5426,9 @@
                 const fileHasNoInternalDuplicates = await previewJobFile();
                 if (!fileHasNoInternalDuplicates) {
                     finishPreflight();
-                    uploadBtn.disabled = false;
-                    uploadBtn.innerText = 'Create Job';
+                    uploadBtn.disabled = true;
+                    uploadBtn.innerText = 'Correct file duplicates to continue';
+                    uploadBtn.classList.add('btn-flat-disabled');
                     return;
                 }
 
@@ -5436,12 +5437,14 @@
                     finishPreflight();
                     uploadBtn.disabled = false;
                     uploadBtn.innerText = 'Create Job';
+                    uploadBtn.classList.remove('btn-flat-disabled');
                     return;
                 }
             } catch (error) {
                 finishPreflight();
                 uploadBtn.disabled = false;
                 uploadBtn.innerText = 'Create Job';
+                uploadBtn.classList.remove('btn-flat-disabled');
                 showCustomAlert(error.message || 'Could not check this file.', 'Job Creation Check Failed');
                 return;
             }
