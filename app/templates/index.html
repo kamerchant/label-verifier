@@ -570,19 +570,19 @@
 
         <!-- 4-Button Action Strip (Larger Mobile Text & Updated Labels) -->
         <div class="grid grid-cols-4 sm:flex sm:items-center gap-1 sm:gap-2 w-full sm:w-auto shrink-0">
-            <button onclick="openPackingQCModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-0.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-bold shadow-md transition-colors flex flex-col sm:flex-row items-center justify-center text-center leading-[1.1] sm:leading-tight min-h-[34px] sm:min-h-[34px] sm:whitespace-nowrap">
+            <button onclick="openPackingQCModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-0.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-bold shadow-md transition-colors flex flex-col sm:flex-row sm:gap-1 items-center justify-center text-center leading-[1.1] sm:leading-tight min-h-[34px] sm:min-h-[34px] sm:whitespace-nowrap">
                 <span>Final</span><span>QC</span>
             </button>
             <button id="btn-upload" onclick="toggleModal('upload-modal')" class="hidden linear-button-primary px-2.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-semibold whitespace-nowrap min-h-[28px] sm:min-h-[34px] sm:inline-flex items-center shrink-0">
                 Create Job
             </button>
-            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-0.5 sm:px-3 py-1 sm:py-1.5 rounded text-[10.5px] sm:text-xs font-medium sm:font-semibold flex flex-col sm:flex-row items-center justify-center text-center leading-[1.1] sm:leading-tight min-h-[34px] sm:min-h-[34px] sm:whitespace-nowrap">
+            <button id="btn-all-jobs" onclick="openMasterJobsModal()" class="hidden linear-button-secondary px-0.5 sm:px-3 py-1 sm:py-1.5 rounded text-[10.5px] sm:text-xs font-medium sm:font-semibold flex flex-col sm:flex-row sm:gap-1 items-center justify-center text-center leading-[1.1] sm:leading-tight min-h-[34px] sm:min-h-[34px] sm:whitespace-nowrap">
                 <span>Job Control</span><span>Center</span>
             </button>
-            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-0.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-medium sm:font-semibold flex flex-col sm:flex-row items-center justify-center text-center leading-[1.1] sm:leading-tight min-h-[34px] sm:min-h-[34px] sm:whitespace-nowrap">
+            <button id="btn-users" onclick="openUserModal()" class="hidden linear-button-secondary px-0.5 sm:px-3 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs font-medium sm:font-semibold flex flex-col sm:flex-row sm:gap-1 items-center justify-center text-center leading-[1.1] sm:leading-tight min-h-[34px] sm:min-h-[34px] sm:whitespace-nowrap">
                 <span>Manage</span><span>Users</span>
             </button>
-            <button onclick="openChangePasswordModal()" class="linear-button-secondary px-0.5 sm:px-3 py-1 sm:py-1.5 rounded text-[10.5px] sm:text-xs font-medium sm:font-semibold flex flex-col sm:flex-row items-center justify-center text-center leading-[1.1] sm:leading-tight min-h-[34px] sm:min-h-[34px] sm:whitespace-nowrap">
+            <button onclick="openChangePasswordModal()" class="linear-button-secondary px-0.5 sm:px-3 py-1 sm:py-1.5 rounded text-[10.5px] sm:text-xs font-medium sm:font-semibold flex flex-col sm:flex-row sm:gap-1 items-center justify-center text-center leading-[1.1] sm:leading-tight min-h-[34px] sm:min-h-[34px] sm:whitespace-nowrap">
                 <span>Change</span><span>Password</span>
             </button>
             <!-- Desktop Logout Button -->
@@ -1281,10 +1281,12 @@
         </div>
     </div>
 
-        <!-- QC Report Modal -->
+    <!-- QC Report Modal -->
     <div id="report-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
-        <div class="linear-card p-4 sm:p-6 rounded-lg max-w-4xl w-full shadow-2xl flex flex-col max-h-[92vh]">
-            <div class="report-header-box mb-3 border-b border-white/[0.08] pb-3">
+        <div class="linear-card p-3 sm:p-5 rounded-lg max-w-6xl w-full shadow-2xl flex flex-col h-[94vh]">
+            
+            <!-- Compact Executive Header Strip -->
+            <div class="report-header-box mb-2 border-b border-white/[0.08] pb-2 shrink-0">
                 <div class="print-brand-box">
                     <img src="/static/logo.jpg" alt="CCL Logo" class="print-brand-logo" onerror="this.onerror=null; this.src='/logo.jpg';">
                     <div style="display: flex; flex-direction: column; text-align: right;">
@@ -1292,52 +1294,62 @@
                         <span style="font-size: 8.5pt; color: #475569;">Variable Data Verification System</span>
                     </div>
                 </div>
-                <div class="flex justify-between items-start no-print mb-2">
-                    <div></div>
-                    <div class="flex gap-2">
-                        <button onclick="window.print()" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Print Report</button>
-                        <button id="download-csv-btn" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-medium">Download CSV</button>
-                        <button onclick="toggleModal('report-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Close</button>
+
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 no-print">
+                    <div>
+                        <h3 class="text-base sm:text-lg font-extrabold modal-title-theme tracking-tight">Quality Control Verification Report</h3>
+                        <p class="text-[10px] sm:text-xs modal-subtitle-theme">Comprehensive inspection and sequence evaluation record</p>
                     </div>
-                </div>
-                <h3 class="text-xl sm:text-2xl font-extrabold modal-title-theme text-center mb-1">Quality Control Verification Report</h3>
-                <p class="text-xs modal-subtitle-theme text-center mb-3">Comprehensive inspection and sequence evaluation record</p>
-                
-                <div class="linear-subcard p-3 rounded text-xs space-y-1 text-left">
-                    <p><strong>Job Card:</strong> <span id="report-job-num"></span></p>
-                    <p><strong>Description:</strong> <span id="report-desc-text"></span></p>
-                    <p><strong>Status:</strong> <span id="report-status-text"></span></p>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <button onclick="window.print()" class="linear-button-secondary px-2.5 sm:px-3 py-1 rounded text-xs font-medium">Print Report</button>
+                        <button id="download-csv-btn" class="linear-button-primary px-2.5 sm:px-3 py-1 rounded text-xs font-semibold">Download CSV</button>
+                        <button onclick="toggleModal('report-modal')" class="linear-button-secondary px-2.5 sm:px-3 py-1 rounded text-xs font-medium">Close</button>
+                    </div>
                 </div>
             </div>
 
-            <div id="report-stats" class="grid grid-cols-2 gap-3 mb-3 text-center"></div>
-
-            <!-- Conflict Resolution & Override Audit Card -->
-            <div id="report-conflict-card" class="linear-subcard p-3 rounded mb-3 border border-amber-500/30 text-left hidden">
-                <div class="flex items-center justify-between pb-2 mb-2 border-b border-white/[0.08]">
-                    <div class="flex items-center gap-2">
-                        <span class="text-amber-400 font-bold text-xs uppercase tracking-wide">⚠ Conflict Resolution Audit</span>
+            <!-- Single Compact Dashboard Ribbon (Job Metadata + Pool KPIs) -->
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 mb-2 shrink-0">
+                <!-- Job Card Info (8 cols on desktop) -->
+                <div class="sm:col-span-8 linear-subcard p-2 sm:px-3 sm:py-1.5 rounded text-xs flex flex-col justify-center">
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-0.5">
+                        <span><strong>Job Card:</strong> <span id="report-job-num" class="font-mono font-bold table-text-theme"></span></span>
+                        <span><strong>Status:</strong> <span id="report-status-text" class="font-bold table-text-theme"></span></span>
                     </div>
+                    <div class="truncate text-[11px] text-slate-400 mt-0.5">
+                        <strong class="text-slate-300">Description:</strong> <span id="report-desc-text"></span>
+                    </div>
+                </div>
+
+                <!-- Live Pool KPIs (4 cols on desktop) -->
+                <div id="report-stats" class="sm:col-span-4 linear-subcard p-1.5 sm:px-3 rounded grid grid-cols-2 gap-2 text-center items-center font-mono"></div>
+            </div>
+
+            <!-- Conflict Resolution Audit Banner (Compact & Scroll-Capped) -->
+            <div id="report-conflict-card" class="linear-subcard p-2 sm:px-3 sm:py-2 rounded mb-2 border border-amber-500/30 text-left shrink-0 hidden">
+                <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-white/[0.08]">
+                    <span class="text-amber-400 font-bold text-xs uppercase tracking-wide">⚠ Conflict Resolution Audit</span>
                     <span id="report-resolution-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">OVERRIDDEN</span>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs mb-2">
-                    <div>
-                        <span class="text-slate-400 block text-[11px]">Authorized By:</span>
-                        <strong id="report-auth-by" class="table-text-theme font-bold">-</strong>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs mb-1.5">
+                    <div class="truncate">
+                        <span class="text-slate-400 text-[11px]">Authorized By:</span>
+                        <strong id="report-auth-by" class="table-text-theme font-bold ml-1">-</strong>
                     </div>
-                    <div>
-                        <span class="text-slate-400 block text-[11px]">Justification Reason:</span>
-                        <strong id="report-justification" class="table-text-theme font-bold">-</strong>
+                    <div class="truncate">
+                        <span class="text-slate-400 text-[11px]">Justification:</span>
+                        <strong id="report-justification" class="table-text-theme font-bold ml-1">-</strong>
                     </div>
                 </div>
-                <div class="overflow-x-auto border border-white/[0.08] rounded bg-black/20">
+                <!-- Capped height so collisions table never eclipses the codes table -->
+                <div class="max-h-24 sm:max-h-28 overflow-y-auto border border-white/[0.08] rounded bg-black/20">
                     <table class="w-full text-left text-xs whitespace-nowrap">
                         <thead>
-                            <tr class="border-b border-white/[0.08] text-[11px] font-bold table-header-theme">
-                                <th class="px-2.5 py-1.5">Conflicting Job Card</th>
-                                <th class="px-2.5 py-1.5">Product Description</th>
-                                <th class="px-2.5 py-1.5 text-center">Status</th>
-                                <th class="px-2.5 py-1.5 text-right">Colliding Codes</th>
+                            <tr class="border-b border-white/[0.08] text-[10.5px] font-bold table-header-theme sticky top-0">
+                                <th class="px-2 py-1">Conflicting Job Card</th>
+                                <th class="px-2 py-1">Product Description</th>
+                                <th class="px-2 py-1 text-center">Status</th>
+                                <th class="px-2 py-1 text-right">Colliding Codes</th>
                             </tr>
                         </thead>
                         <tbody id="report-colliding-batches-body" class="divide-y divide-white/[0.04] table-text-theme"></tbody>
@@ -1345,16 +1357,16 @@
                 </div>
             </div>
 
-            <!-- Scan Logs Table with Horizontal Scroll Support -->
-            <div class="print-table-container flex-1 overflow-x-auto overflow-y-auto border border-white/[0.08] rounded no-scrollbar" style="-webkit-overflow-scrolling: touch;">
+            <!-- Maximized Codes Table Viewport (occupies remaining 70%+ of modal height) -->
+            <div class="print-table-container flex-1 min-h-0 overflow-x-auto overflow-y-auto border border-white/[0.08] rounded no-scrollbar" style="-webkit-overflow-scrolling: touch;">
                 <table class="w-full text-left whitespace-nowrap">
                     <thead>
-                        <tr class="border-b border-white/[0.08] text-xs sm:text-sm font-bold table-header-theme sticky top-0 z-10">
-                            <th class="px-3 py-2.5">Timestamp</th>
-                            <th class="px-3 py-2.5">Inspector</th>
-                            <th class="px-3 py-2.5">Code / QR Value</th>
-                            <th class="px-3 py-2.5 text-center">Row #</th>
-                            <th class="px-3 py-2.5 text-center">Evaluation</th>
+                        <tr class="border-b border-white/[0.08] text-xs font-bold table-header-theme sticky top-0 z-10">
+                            <th class="px-3.5 py-2">Timestamp</th>
+                            <th class="px-3.5 py-2">Inspector</th>
+                            <th class="px-3.5 py-2">Code / QR Value</th>
+                            <th class="px-3.5 py-2 text-center">Row #</th>
+                            <th class="px-3.5 py-2 text-center">Evaluation</th>
                         </tr>
                     </thead>
                     <tbody id="report-log-rows" class="divide-y divide-white/[0.04] table-text-theme text-xs"></tbody>
