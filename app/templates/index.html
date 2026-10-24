@@ -705,9 +705,9 @@
                     <input type="text" id="barcode-input" placeholder="Select a job to enable scanning..." disabled autocomplete="off"
                            class="linear-input w-full px-2.5 py-1 text-xs sm:text-sm rounded min-h-[30px] sm:min-h-[38px] opacity-40 cursor-not-allowed">
                 </div>
-                <!-- Dedicated Standalone Mobile Camera Button -->
+                <!-- Mobile Live Camera Scanner Button -->
                 <button type="button" id="camera-scan-btn" onclick="startCameraScanner()" disabled
-                        class="sm:hidden linear-button-secondary px-2.5 py-1 rounded text-sm min-h-[30px] sm:min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none shrink-0"
+                        class="sm:hidden linear-button-secondary px-3 py-1 rounded text-sm min-h-[30px] sm:min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none shrink-0"
                         title="Scan with Phone Camera">
                     📷
                 </button>
@@ -1678,152 +1678,6 @@
         </div>
     </div>
 
-    <!-- Mobile Camera Barcode Scanner Modal -->
-    <div id="camera-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[110]">
-        <div class="linear-card p-4 rounded-lg max-w-sm w-full shadow-2xl flex flex-col items-center">
-            <div class="flex justify-between items-center w-full mb-3 pb-2 border-b border-white/[0.08]">
-                <h3 class="text-sm font-bold modal-title-theme">Camera Barcode Scanner</h3>
-                <button type="button" onclick="stopCameraScanner()" class="linear-button-secondary px-2.5 py-1 rounded text-xs font-semibold">✕ Close</button>
-            </div>
-            
-        let html5QrCodeScanner = null;
-        let activeVideoTrack = null;
-        let currentZoomFactor = 1.0;
-
-        async function startCameraScanner() {
-            if (!activeJobId || activeJobStatus !== 'ACTIVE') {
-                showCustomAlert("Please select an active Job Card first.", "No Job Selected");
-                return;
-            }
-
-            const modal = document.getElementById('camera-modal');
-            if (modal) {
-                modal.classList.remove('hidden');
-                modal.style.display = 'flex';
-            }
-
-            // Reset zoom to 1x upon opening
-            setCameraZoomLevel(1, false);
-
-            try {
-                if (!html5QrCodeScanner) {
-                    html5QrCodeScanner = new Html5Qrcode("camera-scanner-viewport");
-                }
-
-                const config = { 
-                    fps: 15, 
-                    qrbox: { width: 220, height: 220 },
-                    aspectRatio: 1.0 
-                };
-
-                await html5QrCodeScanner.start(
-                    { facingMode: "environment" },
-                    config,
-                    (decodedText) => {
-                        stopCameraScanner();
-                        const input = document.getElementById('barcode-input');
-                        if (input) {
-                            input.value = decodedText;
-                            document.getElementById('scan-form').dispatchEvent(new Event('submit', { cancelable: true }));
-                        }
-                    },
-                    (errorMessage) => {
-                        // Frame scan tick, keep empty for speed
-                    }
-                );
-
-                // Detect hardware camera track and zoom capabilities
-                setTimeout(() => {
-                    initCameraZoomCapabilities();
-                }, 300);
-
-            } catch (err) {
-                showCustomAlert("Unable to access camera. Please ensure camera permissions are granted in your browser settings.", "Camera Permission Required");
-                stopCameraScanner();
-            }
-        }
-
-        function initCameraZoomCapabilities() {
-            activeVideoTrack = null;
-            try {
-                const videoEl = document.querySelector("#camera-scanner-viewport video");
-                if (videoEl && videoEl.srcObject) {
-                    const tracks = videoEl.srcObject.getVideoTracks();
-                    if (tracks && tracks.length > 0) {
-                        activeVideoTrack = tracks[0];
-                        const capabilities = activeVideoTrack.getCapabilities ? activeVideoTrack.getCapabilities() : {};
-                        const slider = document.getElementById('camera-zoom-slider');
-                        if (capabilities.zoom && slider) {
-                            slider.min = capabilities.zoom.min || 1;
-                            slider.max = capabilities.zoom.max || 5;
-                            slider.step = capabilities.zoom.step || 0.1;
-                            slider.value = capabilities.zoom.min || 1;
-                        }
-                    }
-                }
-            } catch (e) {}
-        }
-
-        async function applyCameraZoom(level) {
-            currentZoomFactor = Math.max(1, level);
-            const slider = document.getElementById('camera-zoom-slider');
-            if (slider) slider.value = currentZoomFactor;
-
-            // Update preset button active highlights
-            [1, 2, 3].forEach(val => {
-                const btn = document.getElementById(`zoom-btn-${val}x`);
-                if (btn) {
-                    if (Math.round(currentZoomFactor) === val) {
-                        btn.className = "linear-button-primary px-2 py-0.5 rounded text-[10px] font-bold";
-                    } else {
-                        btn.className = "linear-button-secondary px-2 py-0.5 rounded text-[10px] font-bold";
-                    }
-                }
-            });
-
-            // 1. Hardware native optical/digital camera zoom
-            if (activeVideoTrack && typeof activeVideoTrack.applyConstraints === 'function') {
-                try {
-                    const capabilities = activeVideoTrack.getCapabilities ? activeVideoTrack.getCapabilities() : {};
-                    if (capabilities.zoom) {
-                        await activeVideoTrack.applyConstraints({
-                            advanced: [{ zoom: currentZoomFactor }]
-                        });
-                        return;
-                    }
-                } catch (e) {}
-            }
-
-            // 2. High-performance CSS transform fallback (magnifies viewfinder if hardware zoom is restricted)
-            const videoEl = document.querySelector("#camera-scanner-viewport video");
-            if (videoEl) {
-                videoEl.style.transform = `scale(${currentZoomFactor})`;
-                videoEl.style.transformOrigin = "center center";
-                videoEl.style.transition = "transform 0.15s ease-out";
-            }
-        }
-
-        function setCameraZoomLevel(level, apply = true) {
-            if (apply) applyCameraZoom(level);
-        }
-
-        async function stopCameraScanner() {
-            activeVideoTrack = null;
-            if (html5QrCodeScanner) {
-                try {
-                    if (html5QrCodeScanner.isScanning) {
-                        await html5QrCodeScanner.stop();
-                    }
-                } catch(e) {}
-            }
-            const modal = document.getElementById('camera-modal');
-            if (modal) {
-                modal.classList.add('hidden');
-                modal.style.display = 'none';
-            }
-            resetInput();
-        }
-
     <!-- Client Script Layer -->
     <script>
         let lastFocusedElementBeforeModal = null;
@@ -2048,6 +1902,8 @@
                 closeConflictViewerModal();
             } else if (modal.id === 'user-modal') {
                 closeUserModal();
+            } else if (modal.id === 'camera-modal') {
+                stopCameraScanner();
             } else {
                 toggleModal(modal.id);
             }
@@ -3238,10 +3094,36 @@
         }
 
         let html5QrCodeScanner = null;
+        let activeVideoTrack = null;
+        let currentZoomFactor = 1;
 
         async function startCameraScanner() {
             if (!activeJobId || activeJobStatus !== 'ACTIVE') {
                 showCustomAlert("Please select an active Job Card first.", "No Job Selected");
+                return;
+            }
+
+            if (!window.isSecureContext) {
+                showCustomAlert(
+                    "Camera access requires a secure HTTPS connection. Open this page using its HTTPS address and try again.",
+                    "Secure Connection Required"
+                );
+                return;
+            }
+
+            if (!navigator.mediaDevices?.getUserMedia) {
+                showCustomAlert(
+                    "This browser does not provide camera access. Try a current browser and check its camera privacy settings.",
+                    "Camera Not Available"
+                );
+                return;
+            }
+
+            if (typeof Html5Qrcode === 'undefined') {
+                showCustomAlert(
+                    "The barcode scanner could not load. Check your internet connection or content-blocking settings, then reload the page.",
+                    "Scanner Could Not Load"
+                );
                 return;
             }
 
@@ -3250,6 +3132,7 @@
                 modal.classList.remove('hidden');
                 modal.style.display = 'flex';
             }
+            setCameraZoomLevel(1);
 
             try {
                 if (!html5QrCodeScanner) {
@@ -3263,7 +3146,7 @@
                 };
 
                 await html5QrCodeScanner.start(
-                    { facingMode: "environment" },
+                    { facingMode: { ideal: "environment" } },
                     config,
                     (decodedText) => {
                         stopCameraScanner();
@@ -3277,13 +3160,93 @@
                         // Frame scan tick, keep empty for speed
                     }
                 );
+                window.setTimeout(initCameraZoomCapabilities, 300);
             } catch (err) {
-                showCustomAlert("Unable to access camera. Please ensure camera permissions are granted in your browser settings.", "Camera Permission Required");
-                stopCameraScanner();
+                await stopCameraScanner();
+                showCustomAlert(getCameraScannerErrorMessage(err), "Camera Could Not Start");
             }
         }
 
+        function getCameraScannerErrorMessage(error) {
+            const errorName = error?.name || '';
+            const errorMessage = error?.message || String(error || '');
+
+            if (errorName === 'NotAllowedError' || errorName === 'PermissionDeniedError') {
+                return "Camera access was denied. Allow camera access for this site in your browser and device privacy settings, then reload the page.";
+            }
+            if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
+                return "No camera was found. Connect or enable a camera and try again.";
+            }
+            if (errorName === 'NotReadableError' || errorName === 'TrackStartError') {
+                return "The camera is unavailable or being used by another app. Close other camera apps and try again.";
+            }
+            if (errorName === 'OverconstrainedError' || errorName === 'ConstraintNotSatisfiedError') {
+                return "No compatible camera was found. Check that your camera is enabled and try again.";
+            }
+            if (errorName === 'SecurityError') {
+                return "The browser blocked camera access for this page. Use HTTPS and check the site's camera permission.";
+            }
+
+            return errorMessage
+                ? `The scanner could not start: ${errorMessage}`
+                : "The scanner could not start. Check this site's camera permission and device privacy settings.";
+        }
+
+        function initCameraZoomCapabilities() {
+            const videoEl = document.querySelector("#camera-scanner-viewport video");
+            const tracks = videoEl?.srcObject?.getVideoTracks?.() || [];
+            activeVideoTrack = tracks[0] || null;
+
+            const capabilities = activeVideoTrack?.getCapabilities?.() || {};
+            const slider = document.getElementById('camera-zoom-slider');
+            if (capabilities.zoom && slider) {
+                slider.min = capabilities.zoom.min ?? 1;
+                slider.max = capabilities.zoom.max ?? 5;
+                slider.step = capabilities.zoom.step ?? 0.1;
+                slider.value = capabilities.zoom.min ?? 1;
+            }
+        }
+
+        async function applyCameraZoom(level) {
+            currentZoomFactor = Math.max(1, level);
+            const slider = document.getElementById('camera-zoom-slider');
+            if (slider) slider.value = currentZoomFactor;
+
+            [1, 2, 3].forEach(value => {
+                const button = document.getElementById(`zoom-btn-${value}x`);
+                if (button) {
+                    button.className = Math.round(currentZoomFactor) === value
+                        ? "linear-button-primary px-2 py-1 rounded text-[11px] font-bold"
+                        : "linear-button-secondary px-2 py-1 rounded text-[11px] font-bold";
+                }
+            });
+
+            const capabilities = activeVideoTrack?.getCapabilities?.() || {};
+            if (capabilities.zoom && activeVideoTrack?.applyConstraints) {
+                try {
+                    await activeVideoTrack.applyConstraints({
+                        advanced: [{ zoom: currentZoomFactor }]
+                    });
+                    return;
+                } catch (error) {
+                    console.warn("Hardware camera zoom unavailable; using viewfinder zoom.", error);
+                }
+            }
+
+            const videoEl = document.querySelector("#camera-scanner-viewport video");
+            if (videoEl) {
+                videoEl.style.transform = `scale(${currentZoomFactor})`;
+                videoEl.style.transformOrigin = "center center";
+                videoEl.style.transition = "transform 0.15s ease-out";
+            }
+        }
+
+        function setCameraZoomLevel(level, apply = true) {
+            if (apply) applyCameraZoom(level);
+        }
+
         async function stopCameraScanner() {
+            activeVideoTrack = null;
             if (html5QrCodeScanner) {
                 try {
                     if (html5QrCodeScanner.isScanning) {
@@ -5931,5 +5894,35 @@
         }
 
     </script>
+    <!-- Mobile Live Camera Scanner Modal with Zoom -->
+    <div id="camera-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[110]">
+        <div class="linear-card p-4 rounded-lg max-w-sm w-full shadow-2xl flex flex-col items-center">
+            <div class="flex justify-between items-center w-full mb-3 pb-2 border-b border-white/[0.08]">
+                <h3 class="text-sm font-bold modal-title-theme">Camera Barcode Scanner</h3>
+                <button type="button" onclick="stopCameraScanner()" class="linear-button-secondary px-2.5 py-1 rounded text-xs font-semibold">✕ Close</button>
+            </div>
+
+            <!-- Video Viewport Canvas -->
+            <div id="camera-scanner-viewport" class="w-full aspect-square bg-black rounded overflow-hidden border border-white/[0.12] relative"></div>
+
+            <!-- Zoom Control Toolbar -->
+            <div class="w-full flex items-center justify-between gap-2 mt-2.5 px-1.5 py-1.5 linear-subcard rounded border border-white/[0.08]">
+                <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <span class="text-xs font-bold text-slate-400 select-none">🔍</span>
+                    <input type="range" id="camera-zoom-slider" min="1" max="3" step="0.1" value="1"
+                           oninput="applyCameraZoom(parseFloat(this.value))"
+                           class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-[#5e6ad2]">
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                    <button type="button" onclick="setCameraZoomLevel(1)" id="zoom-btn-1x" class="linear-button-primary px-2 py-1 rounded text-[11px] font-bold">1x</button>
+                    <button type="button" onclick="setCameraZoomLevel(2)" id="zoom-btn-2x" class="linear-button-secondary px-2 py-1 rounded text-[11px] font-bold">2x</button>
+                    <button type="button" onclick="setCameraZoomLevel(3)" id="zoom-btn-3x" class="linear-button-secondary px-2 py-1 rounded text-[11px] font-bold">3x</button>
+                </div>
+            </div>
+
+            <p class="text-[11px] text-slate-400 mt-2 text-center leading-tight">Align 2D DataMatrix, QR Code, or 1D Barcode within the frame</p>
+        </div>
+    </div>
+
 </body>
 </html>
