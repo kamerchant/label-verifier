@@ -6225,7 +6225,7 @@
                         ? `<button onclick="openPackingQCReportFromAdmin(${htmlJsArg(j.job_card_id)})" class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold">✓ ${packingQcCount} QC</button>`
                         : '';
 
-                    let actionBtn = (!isProcessing && (consumedNum === 0 || j.status === 'FAILED'))
+                    let actionBtn = (!isProcessing && consumedNum === 0)
                         ? `<button onclick="purgeJobFromAdmin(${Number(j.run_id)}, ${htmlJsArg(j.job_card_id)})" class="btn-ghost-danger py-0.5 px-1.5 text-[10px]">Purge</button>`
                         : '';
 
@@ -6385,7 +6385,7 @@
                     actionHtml = `<button onclick="resolveJobFromAdmin(${Number(j.run_id)}, ${Number(j.conflict_count) || 0}, ${totalNum})" class="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded text-[11px] font-bold">Resolve</button>`;
                 } else if (j.status === 'INGESTING' || j.status === 'OVERRIDING') {
                     actionHtml = `<span class="text-indigo-400/70 italic text-[11px]">Processing...</span>`;
-                } else if (consumedNum === 0 || j.status === 'FAILED') {
+                } else if (consumedNum === 0) {
                     actionHtml = `<button onclick="purgeJobFromAdmin(${Number(j.run_id)}, ${htmlJsArg(j.job_card_id)})" class="btn-ghost-danger">Purge</button>`;
                 }
 

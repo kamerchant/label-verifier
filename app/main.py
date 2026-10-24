@@ -2025,13 +2025,18 @@ def purge_job(
                     detail=f"Cannot purge Job Card '{jc_id}': batch is actively being processed ({current_status}). Wait for completion or failure before purging."
                 )
 
-            cur.execute("SELECT COUNT(*) FROM scan_logs WHERE job_card_id = %s", (jc_id,))
-            scan_count = cur.fetchone()[0]
+            cur.execute("""
+                SELECT COUNT(*)
+                FROM scan_logs
+                WHERE job_card_id = %s
+                  AND UPPER(result) IN ('PASS', 'PASS (POTENTIAL RESTART)')
+            """, (jc_id,))
+            verified_scan_count = cur.fetchone()[0]
 
-            if (consumed_codes and consumed_codes > 0) or scan_count > 0:
+            if (consumed_codes and consumed_codes > 0) or verified_scan_count > 0:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Cannot purge Job Card '{jc_id}': verification scans have already been recorded ({consumed_codes or scan_count} verified)."
+                    detail=f"Cannot purge Job Card '{jc_id}': verified scans have already been recorded ({consumed_codes or verified_scan_count} verified)."
                 )
 
             if staged_file_path and os.path.exists(staged_file_path):
