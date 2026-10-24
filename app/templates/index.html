@@ -3872,10 +3872,14 @@
                 completeBtn.classList.toggle('pointer-events-none', !hasPackingChecks || currentPackingQCComplete);
             }
             if (printBtn) {
+                printBtn.classList.toggle(
+                    'hidden',
+                    currentPackingQCHasProductionScans !== true
+                );
                 printBtn.disabled = !currentPackingQCComplete;
                 printBtn.classList.toggle('opacity-30', !currentPackingQCComplete);
                 printBtn.classList.toggle('pointer-events-none', !currentPackingQCComplete);
-                printBtn.innerText = currentPackingQCComplete ? 'Print Certificate' : 'Complete QC to Print';
+                printBtn.innerText = 'Print Certificate';
             }
         }
 

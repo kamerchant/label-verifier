@@ -2133,7 +2133,7 @@ def packing_qc_verify(
                 conn.commit()
                 message = "Code passed Packing QC and was recorded."
             else:
-                message = "Code passed the pre-check. It was not recorded as Packing QC."
+                message = "Code passed the pre-check."
 
             return JSONResponse(status_code=200, content={
                 "matched": True,
