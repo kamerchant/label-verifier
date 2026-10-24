@@ -3825,6 +3825,13 @@
             if (!mode) return;
             const heading = document.getElementById('packing-qc-heading');
             const jobCardId = document.getElementById('packing-qc-job').value.trim();
+            if (!jobCardId) {
+                heading.innerText = "Final QC Terminal";
+                mode.innerText = "Enter a Job Card number to begin a pre-check or packing check.";
+                mode.className = "text-xs modal-subtitle-theme mt-0.5";
+                return;
+            }
+
             const isPackingStage = Boolean(jobCardId && activeJobId === jobCardId);
             heading.innerText = isPackingStage
                 ? "Final QC Terminal - Packing Check Mode"
@@ -3833,8 +3840,8 @@
                 ? "Record codes before packaging to generate an 'OK for Packing' certificate."
                 : "No production scans against this Job Card. Successful checks will not be recorded as Packing QC.";
             mode.className = isPackingStage
-                ? "text-[11px] font-semibold mt-1 text-emerald-500"
-                : "text-[11px] font-semibold mt-1 text-amber-500";
+                ? "text-xs font-semibold mt-1 text-emerald-500"
+                : "text-xs font-semibold mt-1 text-amber-500";
         }
 
         function updatePackingQCCompletionControls() {
