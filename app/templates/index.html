@@ -5,6 +5,9 @@
     <title>CCL ME - PK - Variable Data Verification</title>
     <link rel="icon" type="image/png" href="/static/ico.png">
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- html5-qrcode for Camera Scanning -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
     <style>
         *, body, input, button, select, textarea, table, th, td {
             font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
@@ -697,12 +700,18 @@
                 </div>
             </div>
 
-            <form id="scan-form" onsubmit="handleScan(event)" class="flex gap-1.5">
-                <div class="relative flex-1">
+            <form id="scan-form" onsubmit="handleScan(event)" class="flex gap-1.5 items-center">
+                <div class="relative flex-1 min-w-0">
                     <input type="text" id="barcode-input" placeholder="Select a job to enable scanning..." disabled autocomplete="off"
                            class="linear-input w-full px-2.5 py-1 text-xs sm:text-sm rounded min-h-[30px] sm:min-h-[38px] opacity-40 cursor-not-allowed">
                 </div>
-                <button type="submit" id="verify-btn" disabled class="linear-button-primary px-3 py-1 rounded text-xs font-semibold min-h-[30px] sm:min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none">
+                <!-- Dedicated Standalone Mobile Camera Button -->
+                <button type="button" id="camera-scan-btn" onclick="startCameraScanner()" disabled
+                        class="sm:hidden linear-button-secondary px-2.5 py-1 rounded text-sm min-h-[30px] sm:min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none shrink-0"
+                        title="Scan with Phone Camera">
+                    📷
+                </button>
+                <button type="submit" id="verify-btn" disabled class="linear-button-primary px-3 py-1 rounded text-xs font-semibold min-h-[30px] sm:min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none shrink-0">
                     Verify
                 </button>
             </form>
@@ -1654,6 +1663,21 @@
                     <button type="submit" id="upload-btn" class="linear-button-primary px-3.5 py-1.5 rounded text-xs font-semibold">Create Job</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Mobile Camera Barcode Scanner Modal -->
+    <div id="camera-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[110]">
+        <div class="linear-card p-4 rounded-lg max-w-sm w-full shadow-2xl flex flex-col items-center">
+            <div class="flex justify-between items-center w-full mb-3 pb-2 border-b border-white/[0.08]">
+                <h3 class="text-sm font-bold modal-title-theme">Camera Barcode Scanner</h3>
+                <button type="button" onclick="stopCameraScanner()" class="linear-button-secondary px-2.5 py-1 rounded text-xs font-semibold">✕ Close</button>
+            </div>
+            
+            <!-- Camera Viewport Canvas -->
+            <div id="camera-scanner-viewport" class="w-full aspect-square bg-black rounded overflow-hidden border border-white/[0.12] relative"></div>
+
+            <p class="text-[11px] text-slate-400 mt-2.5 text-center leading-tight">Align 2D DataMatrix, QR Code, or 1D Barcode within the frame</p>
         </div>
     </div>
 
@@ -2771,6 +2795,12 @@
                 verifyBtn.disabled = false;
                 verifyBtn.classList.remove('opacity-30', 'pointer-events-none');
 
+                const camBtn = document.getElementById('camera-scan-btn');
+                if (camBtn) {
+                    camBtn.disabled = false;
+                    camBtn.classList.remove('opacity-30', 'pointer-events-none');
+                }
+
                 ['job-toggle-btn', 'job-toggle-btn-mobile'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el) {
@@ -2786,6 +2816,12 @@
 
                 verifyBtn.disabled = true;
                 verifyBtn.classList.add('opacity-30', 'pointer-events-none');
+
+                const camBtn = document.getElementById('camera-scan-btn');
+                if (camBtn) {
+                    camBtn.disabled = true;
+                    camBtn.classList.add('opacity-30', 'pointer-events-none');
+                }
 
                 ['job-toggle-btn', 'job-toggle-btn-mobile'].forEach(id => {
                     const el = document.getElementById(id);
@@ -2880,6 +2916,18 @@
 
             verifyBtn.disabled = true;
             verifyBtn.classList.add('opacity-30', 'pointer-events-none');
+
+            const camBtn = document.getElementById('camera-scan-btn');
+            if (camBtn) {
+                camBtn.disabled = true;
+                camBtn.classList.add('opacity-30', 'pointer-events-none');
+            }
+            const camBtn = document.getElementById('camera-scan-btn');
+            if (camBtn) {
+                camBtn.disabled = locked;
+                if (locked) camBtn.classList.add('btn-flat-disabled');
+                else camBtn.classList.remove('btn-flat-disabled');
+            }
 
             document.getElementById('kpi-total').innerText = "0";
             document.getElementById('kpi-consumed').innerText = "0";
@@ -3050,6 +3098,68 @@
                 isScanVerifying = false;
                 resetInput();
             }
+        }
+
+        let html5QrCodeScanner = null;
+
+        async function startCameraScanner() {
+            if (!activeJobId || activeJobStatus !== 'ACTIVE') {
+                showCustomAlert("Please select an active Job Card first.", "No Job Selected");
+                return;
+            }
+
+            const modal = document.getElementById('camera-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.style.display = 'flex';
+            }
+
+            try {
+                if (!html5QrCodeScanner) {
+                    html5QrCodeScanner = new Html5Qrcode("camera-scanner-viewport");
+                }
+
+                const config = { 
+                    fps: 15, 
+                    qrbox: { width: 220, height: 220 },
+                    aspectRatio: 1.0 
+                };
+
+                await html5QrCodeScanner.start(
+                    { facingMode: "environment" },
+                    config,
+                    (decodedText) => {
+                        stopCameraScanner();
+                        const input = document.getElementById('barcode-input');
+                        if (input) {
+                            input.value = decodedText;
+                            document.getElementById('scan-form').dispatchEvent(new Event('submit', { cancelable: true }));
+                        }
+                    },
+                    (errorMessage) => {
+                        // Frame scan tick, keep empty for speed
+                    }
+                );
+            } catch (err) {
+                showCustomAlert("Unable to access camera. Please ensure camera permissions are granted in your browser settings.", "Camera Permission Required");
+                stopCameraScanner();
+            }
+        }
+
+        async function stopCameraScanner() {
+            if (html5QrCodeScanner) {
+                try {
+                    if (html5QrCodeScanner.isScanning) {
+                        await html5QrCodeScanner.stop();
+                    }
+                } catch(e) {}
+            }
+            const modal = document.getElementById('camera-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+            }
+            resetInput();
         }
 
         function renderResult(result, msg, code, sequenceWarning = false) {
@@ -3531,12 +3641,12 @@
                 if (caret) caret.innerText = '▾';
             }
 
-            const rptBtn = document.getElementById('report-btn');
-            const originalText = rptBtn ? rptBtn.innerHTML : 'QC Report';
-            if (rptBtn) {
-                rptBtn.disabled = true;
-                rptBtn.innerHTML = `${spinnerHtml} Loading...`;
-            }
+            const rptBtns = [document.getElementById('report-btn'), document.getElementById('report-btn-mobile')].filter(Boolean);
+            const originalText = rptBtns[0]?.innerHTML || 'QC Report';
+            rptBtns.forEach(btn => {
+                btn.disabled = true;
+                btn.innerHTML = `${spinnerHtml} Loading...`;
+            });
 
             try {
                 const res = await fetch(`/api/reports/${encodeURIComponent(activeJobId)}`);
@@ -3626,10 +3736,10 @@
             } catch (ex) {
                 showCustomAlert("Network error or server unreachable while loading report.", "Network Error");
             } finally {
-                if (rptBtn) {
-                    rptBtn.disabled = false;
-                    rptBtn.innerHTML = originalText;
-                }
+                rptBtns.forEach(btn => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                });
             }
         }
 
@@ -3648,12 +3758,12 @@
                 if (caret) caret.innerText = '▾';
             }
 
-            const lifeBtn = document.getElementById('lifecycle-btn');
-            const originalText = lifeBtn ? lifeBtn.innerHTML : 'Lifecycle Audit';
-            if (lifeBtn) {
-                lifeBtn.disabled = true;
-                lifeBtn.innerHTML = `${spinnerHtml} Loading...`;
-            }
+            const lifeBtns = [document.getElementById('lifecycle-btn'), document.getElementById('lifecycle-btn-mobile')].filter(Boolean);
+            const originalText = lifeBtns[0]?.innerHTML || 'Lifecycle Audit';
+            lifeBtns.forEach(btn => {
+                btn.disabled = true;
+                btn.innerHTML = `${spinnerHtml} Loading...`;
+            });
 
             try {
                 const res = await fetch(`/api/jobs/${encodeURIComponent(activeJobId)}/lifecycle-logs`);
@@ -3702,10 +3812,10 @@
             } catch (ex) {
                 showCustomAlert("Network error or server unreachable while loading audit logs.", "Network Error");
             } finally {
-                if (lifeBtn) {
-                    lifeBtn.disabled = false;
-                    lifeBtn.innerHTML = originalText;
-                }
+                lifeBtns.forEach(btn => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                });
             }
         }
 

@@ -1839,7 +1839,7 @@ def verify_code(
 def get_recent_scans(
     job_card_id: str, 
     limit: int = 50, 
-    offset: int = 0, 
+    before_id: Optional[int] = None, 
     user: dict = Depends(get_current_user)
 ):
     conn = get_connection()
@@ -1854,39 +1854,66 @@ def get_recent_scans(
             active_run_id = jc_row[0] if jc_row else None
 
             if active_run_id:
-                cur.execute("""
-                    WITH recent AS (
-                        SELECT s.code_scanned, s.result, s.scanned_by, s.scanned_at
-                        FROM scan_logs s
-                        WHERE s.job_card_id = %s
-                        ORDER BY s.id DESC
-                        LIMIT %s OFFSET %s
-                    )
-                    SELECT r.code_scanned, r.result, r.scanned_by, r.scanned_at,
-                           c.row_num
-                    FROM recent r
-                    LEFT JOIN codes c ON c.run_id = %s AND c.code_value = r.code_scanned
-                    ORDER BY r.scanned_at DESC;
-                """, (job_card_id, limit, offset, active_run_id))
+                if before_id:
+                    cur.execute("""
+                        WITH recent AS (
+                            SELECT s.id, s.code_scanned, s.result, s.scanned_by, s.scanned_at
+                            FROM scan_logs s
+                            WHERE s.job_card_id = %s AND s.id < %s
+                            ORDER BY s.id DESC
+                            LIMIT %s
+                        )
+                        SELECT r.id, r.code_scanned, r.result, r.scanned_by, r.scanned_at,
+                               c.row_num
+                        FROM recent r
+                        LEFT JOIN codes c ON c.run_id = %s AND c.code_value = r.code_scanned
+                        ORDER BY r.id DESC;
+                    """, (job_card_id, before_id, limit, active_run_id))
+                else:
+                    cur.execute("""
+                        WITH recent AS (
+                            SELECT s.id, s.code_scanned, s.result, s.scanned_by, s.scanned_at
+                            FROM scan_logs s
+                            WHERE s.job_card_id = %s
+                            ORDER BY s.id DESC
+                            LIMIT %s
+                        )
+                        SELECT r.id, r.code_scanned, r.result, r.scanned_by, r.scanned_at,
+                               c.row_num
+                        FROM recent r
+                        LEFT JOIN codes c ON c.run_id = %s AND c.code_value = r.code_scanned
+                        ORDER BY r.id DESC;
+                    """, (job_card_id, limit, active_run_id))
             else:
-                cur.execute("""
-                    SELECT s.code_scanned, s.result, s.scanned_by, s.scanned_at,
-                           NULL AS row_num
-                    FROM scan_logs s
-                    WHERE s.job_card_id = %s 
-                    ORDER BY s.scanned_at DESC 
-                    LIMIT %s OFFSET %s
-                """, (job_card_id, limit, offset))
+                if before_id:
+                    cur.execute("""
+                        SELECT s.id, s.code_scanned, s.result, s.scanned_by, s.scanned_at,
+                               NULL AS row_num
+                        FROM scan_logs s
+                        WHERE s.job_card_id = %s AND s.id < %s
+                        ORDER BY s.id DESC 
+                        LIMIT %s
+                    """, (job_card_id, before_id, limit))
+                else:
+                    cur.execute("""
+                        SELECT s.id, s.code_scanned, s.result, s.scanned_by, s.scanned_at,
+                               NULL AS row_num
+                        FROM scan_logs s
+                        WHERE s.job_card_id = %s 
+                        ORDER BY s.id DESC 
+                        LIMIT %s
+                    """, (job_card_id, limit))
 
+            rows = cur.fetchall()
             logs = [{
-                "code": r[0],
-                "result": r[1],
-                "user": r[2],
-                "time": r[3].strftime("%Y-%m-%d %H:%M:%S") if r[3] else "",
-                "row_num": r[4] if r[4] is not None else "-"
-            } for r in cur.fetchall()]
+                "id": r[0],
+                "code": r[1],
+                "result": r[2],
+                "user": r[3],
+                "time": r[4].strftime("%Y-%m-%d %H:%M:%S") if r[4] else "",
+                "row_num": r[5] if r[5] is not None else "-"
+            } for r in rows]
 
-            # Determine whether more historical records remain in the database
             return {
                 "recent_logs": logs,
                 "has_more": len(logs) == limit
