@@ -1109,9 +1109,8 @@
     <div id="packing-qc-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-2xl w-full shadow-2xl flex flex-col max-h-[90vh]">
             <div class="mb-4 border-b border-white/[0.08] pb-3 shrink-0 no-print">
-                <h3 class="text-lg font-extrabold modal-title-theme">Final QC Terminal</h3>
-                <p class="text-xs modal-subtitle-theme mt-0.5">Check codes before packing, or record packing-stage QC for an explicitly completed certificate.</p>
-                <p id="packing-qc-mode" class="text-[11px] font-semibold mt-1 text-amber-500">Pre-check mode: this check will not be recorded as Packing QC.</p>
+                <h3 id="packing-qc-heading" class="text-lg font-extrabold modal-title-theme">Final QC Terminal - Pre Check Mode</h3>
+                <p id="packing-qc-mode" class="text-xs modal-subtitle-theme mt-0.5">No production scans against this Job Card. Successful checks will not be recorded as Packing QC.</p>
             </div>
             
             <form onsubmit="handlePackingQCVerify(event)" class="space-y-3 mb-4 shrink-0 no-print">
@@ -3824,11 +3823,15 @@
         function updatePackingQCMode() {
             const mode = document.getElementById('packing-qc-mode');
             if (!mode) return;
+            const heading = document.getElementById('packing-qc-heading');
             const jobCardId = document.getElementById('packing-qc-job').value.trim();
             const isPackingStage = Boolean(jobCardId && activeJobId === jobCardId);
+            heading.innerText = isPackingStage
+                ? "Final QC Terminal - Packing Check Mode"
+                : "Final QC Terminal - Pre Check Mode";
             mode.innerText = isPackingStage
-                ? "Packing QC mode: this same Job Card is loaded on the main screen; successful checks will be recorded."
-                : "Pre-check mode: this Job Card is not loaded on the main screen; successful checks will not be recorded as Packing QC.";
+                ? "Record codes before packaging to generate an 'OK for Packing' certificate."
+                : "No production scans against this Job Card. Successful checks will not be recorded as Packing QC.";
             mode.className = isPackingStage
                 ? "text-[11px] font-semibold mt-1 text-emerald-500"
                 : "text-[11px] font-semibold mt-1 text-amber-500";
