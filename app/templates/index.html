@@ -3199,6 +3199,12 @@
         let html5QrCodeScanner = null;
         let activeVideoTrack = null;
         let currentZoomFactor = 1;
+        let ocrCameraStream = null;
+        let currentCameraScanTarget = 'verification';
+        let currentCameraScanMode = 'barcode';
+        let isOcrRecognizing = false;
+        let ocrCaptureGeneration = 0;
+        let isCameraModeSwitching = false;
 
         async function startCameraScanner(scanTarget = 'verification') {
             if (scanTarget === 'verification' && (!activeJobId || activeJobStatus !== 'ACTIVE')) {
@@ -3235,10 +3241,15 @@
             }
 
             const modal = document.getElementById('camera-modal');
+            currentCameraScanTarget = scanTarget;
+            currentCameraScanMode = 'barcode';
+            document.getElementById('ocr-result-input').value = '';
+            setOcrStatus('Center the printed code and capture a clear image.');
             if (modal) {
                 modal.classList.remove('hidden');
                 modal.style.display = 'flex';
             }
+            updateCameraScanModeUi();
             setCameraZoomLevel(1);
 
             try {
@@ -3279,6 +3290,171 @@
             }
         }
 
+        function updateCameraScanModeUi() {
+            const barcodeViewport = document.getElementById('camera-scanner-viewport');
+            const ocrViewport = document.getElementById('ocr-camera-viewport');
+            const toolbar = document.getElementById('camera-scan-mode-toolbar');
+            const title = document.getElementById('camera-modal-title');
+            const instruction = document.getElementById('camera-scan-instruction');
+            const ocrControls = document.getElementById('ocr-camera-controls');
+            const isOcr = currentCameraScanMode === 'ocr';
+
+            barcodeViewport.classList.toggle('hidden', isOcr);
+            ocrViewport.classList.toggle('hidden', !isOcr);
+            ocrControls.classList.toggle('hidden', !isOcr);
+            toolbar.querySelectorAll('button').forEach(button => {
+                const selected = button.dataset.scanMode === currentCameraScanMode;
+                button.className = selected
+                    ? 'linear-button-primary px-3 py-1.5 rounded text-xs font-semibold'
+                    : 'linear-button-secondary px-3 py-1.5 rounded text-xs font-semibold';
+                button.setAttribute('aria-pressed', String(selected));
+            });
+            title.innerText = isOcr ? 'Camera Printed Text Reader' : 'Camera Barcode Scanner';
+            instruction.innerText = isOcr
+                ? 'Center the printed code, keep it sharp and well lit, then capture to read the text.'
+                : 'Align 2D DataMatrix, QR Code, or 1D Barcode within the frame';
+        }
+
+        async function switchCameraScanMode(mode) {
+            if (mode === currentCameraScanMode || isCameraModeSwitching) return;
+            isCameraModeSwitching = true;
+            const modeButtons = document.querySelectorAll('#camera-scan-mode-toolbar button');
+            modeButtons.forEach(button => { button.disabled = true; });
+            try {
+                currentCameraScanMode = mode;
+                await stopCameraScanner(false);
+                updateCameraScanModeUi();
+
+                if (mode === 'ocr') {
+                    document.getElementById('ocr-result-input').value = '';
+                    setOcrStatus('Center the printed code and capture a clear image.');
+                    await startOcrCamera();
+                } else {
+                    await startCameraScanner(currentCameraScanTarget);
+                }
+            } finally {
+                isCameraModeSwitching = false;
+                modeButtons.forEach(button => { button.disabled = false; });
+            }
+        }
+
+        async function startOcrCamera() {
+            if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+                showCustomAlert(
+                    "Camera access requires a secure HTTPS connection and a browser that supports camera access.",
+                    "Camera Not Available"
+                );
+                return;
+            }
+
+            const video = document.getElementById('ocr-camera-video');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: 'environment' } },
+                    audio: false
+                });
+                if (currentCameraScanMode !== 'ocr' || document.getElementById('camera-modal').classList.contains('hidden')) {
+                    stream.getTracks().forEach(track => track.stop());
+                    return;
+                }
+                ocrCameraStream = stream;
+                video.srcObject = ocrCameraStream;
+                await video.play();
+                initCameraZoomCapabilities();
+                setOcrStatus('Camera ready. Capture a clear image of the printed code.');
+            } catch (error) {
+                await stopCameraScanner();
+                showCustomAlert(getCameraScannerErrorMessage(error), "Camera Could Not Start");
+            }
+        }
+
+        async function loadTesseract() {
+            if (window.Tesseract) return window.Tesseract;
+            if (!window.tesseractScriptPromise) {
+                window.tesseractScriptPromise = new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js';
+                    script.onload = () => resolve(window.Tesseract);
+                    script.onerror = () => {
+                        window.tesseractScriptPromise = null;
+                        reject(new Error('The text reader could not load. Check your internet connection and try again.'));
+                    };
+                    document.head.appendChild(script);
+                });
+            }
+            return window.tesseractScriptPromise;
+        }
+
+        function setOcrStatus(message, isError = false) {
+            const status = document.getElementById('ocr-camera-status');
+            status.innerText = message;
+            status.classList.toggle('text-red-400', isError);
+            status.classList.toggle('text-slate-300', !isError);
+        }
+
+        async function captureOcrText() {
+            if (isOcrRecognizing) return;
+            const captureGeneration = ++ocrCaptureGeneration;
+            const video = document.getElementById('ocr-camera-video');
+            const canvas = document.getElementById('ocr-camera-canvas');
+            const captureButton = document.getElementById('ocr-capture-btn');
+            const resultInput = document.getElementById('ocr-result-input');
+            if (!video.videoWidth || !video.videoHeight) {
+                setOcrStatus('The camera image is not ready yet. Wait a moment and try again.', true);
+                return;
+            }
+
+            isOcrRecognizing = true;
+            captureButton.disabled = true;
+            resultInput.value = '';
+            setOcrStatus('Preparing text reader...');
+            try {
+                const tesseract = await loadTesseract();
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                setOcrStatus('Reading printed text...');
+                const result = await tesseract.recognize(canvas, 'eng', {
+                    logger: message => {
+                        if (message.status === 'recognizing text' && message.progress) {
+                            setOcrStatus(`Reading printed text... ${Math.round(message.progress * 100)}%`);
+                        }
+                    }
+                });
+                if (captureGeneration !== ocrCaptureGeneration) return;
+                const recognizedText = result.data.text.trim();
+                if (!recognizedText) {
+                    setOcrStatus('No text was detected. Improve focus or lighting, then capture again.', true);
+                    return;
+                }
+
+                resultInput.value = recognizedText;
+                setOcrStatus('Review the text below. Correct any mistakes before using it.');
+            } catch (error) {
+                if (captureGeneration === ocrCaptureGeneration) {
+                    setOcrStatus(error.message || 'Text recognition failed. Please try again.', true);
+                }
+            } finally {
+                isOcrRecognizing = false;
+                captureButton.disabled = false;
+            }
+        }
+
+        async function useOcrResult() {
+            const recognizedText = document.getElementById('ocr-result-input').value.trim();
+            if (!recognizedText) {
+                setOcrStatus('Capture text or enter a correction before using it.', true);
+                return;
+            }
+
+            const input = document.getElementById(
+                currentCameraScanTarget === 'packing-qc' ? 'packing-qc-code' : 'barcode-input'
+            );
+            input.value = recognizedText;
+            await stopCameraScanner();
+            input.focus();
+        }
+
         function getCameraScannerErrorMessage(error) {
             const errorName = error?.name || '';
             const errorMessage = error?.message || String(error || '');
@@ -3305,7 +3481,11 @@
         }
 
         function initCameraZoomCapabilities() {
-            const videoEl = document.querySelector("#camera-scanner-viewport video");
+            const videoEl = document.querySelector(
+                currentCameraScanMode === 'ocr'
+                    ? "#ocr-camera-video"
+                    : "#camera-scanner-viewport video"
+            );
             const tracks = videoEl?.srcObject?.getVideoTracks?.() || [];
             activeVideoTrack = tracks[0] || null;
 
@@ -3389,8 +3569,9 @@
             if (apply) applyCameraZoom(level);
         }
 
-        async function stopCameraScanner() {
+        async function stopCameraScanner(closeModal = true) {
             activeVideoTrack = null;
+            ocrCaptureGeneration += 1;
             if (html5QrCodeScanner) {
                 try {
                     if (html5QrCodeScanner.isScanning) {
@@ -3398,12 +3579,20 @@
                     }
                 } catch(e) {}
             }
-            const modal = document.getElementById('camera-modal');
-            if (modal) {
-                modal.classList.add('hidden');
-                modal.style.display = 'none';
+            if (ocrCameraStream) {
+                ocrCameraStream.getTracks().forEach(track => track.stop());
+                ocrCameraStream = null;
             }
-            resetInput();
+            const ocrVideo = document.getElementById('ocr-camera-video');
+            if (ocrVideo) ocrVideo.srcObject = null;
+            if (closeModal) {
+                const modal = document.getElementById('camera-modal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                    modal.style.display = 'none';
+                }
+                resetInput();
+            }
         }
 
         function renderResult(result, msg, code, sequenceWarning = false) {
@@ -6384,12 +6573,23 @@
     <div id="camera-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[110]">
         <div class="linear-card p-4 rounded-lg max-w-sm w-full shadow-2xl flex flex-col items-center">
             <div class="flex justify-between items-center w-full mb-3 pb-2 border-b border-white/[0.08]">
-                <h3 class="text-sm font-bold modal-title-theme">Camera Barcode Scanner</h3>
+                <h3 id="camera-modal-title" class="text-sm font-bold modal-title-theme">Camera Barcode Scanner</h3>
                 <button type="button" onclick="stopCameraScanner()" class="linear-button-secondary px-2.5 py-1 rounded text-xs font-semibold">✕ Close</button>
+            </div>
+
+            <div id="camera-scan-mode-toolbar" class="w-full flex gap-2 mb-3" role="group" aria-label="Camera scan mode">
+                <button type="button" data-scan-mode="barcode" aria-pressed="true" onclick="switchCameraScanMode('barcode')"
+                        class="linear-button-primary px-3 py-1.5 rounded text-xs font-semibold">Barcode / QR</button>
+                <button type="button" data-scan-mode="ocr" aria-pressed="false" onclick="switchCameraScanMode('ocr')"
+                        class="linear-button-secondary px-3 py-1.5 rounded text-xs font-semibold">Printed text (OCR)</button>
             </div>
 
             <!-- Video Viewport Canvas -->
             <div id="camera-scanner-viewport" class="w-full aspect-square bg-black rounded overflow-hidden border border-white/[0.12] relative"></div>
+            <div id="ocr-camera-viewport" class="hidden w-full aspect-square bg-black rounded overflow-hidden border border-white/[0.12] relative">
+                <video id="ocr-camera-video" class="w-full h-full object-cover" autoplay playsinline muted></video>
+                <canvas id="ocr-camera-canvas" class="hidden"></canvas>
+            </div>
 
             <!-- Zoom Control Toolbar -->
             <div class="w-full flex items-center justify-between gap-2 mt-2.5 px-1.5 py-1.5 linear-subcard rounded border border-white/[0.08]">
@@ -6407,7 +6607,25 @@
             </div>
 
             <p id="camera-zoom-status" class="hidden text-[11px] text-amber-300 mt-1 text-center leading-tight" aria-live="polite"></p>
-            <p class="text-[11px] text-slate-400 mt-2 text-center leading-tight">Align 2D DataMatrix, QR Code, or 1D Barcode within the frame</p>
+            <div id="ocr-camera-controls" class="hidden w-full mt-3 space-y-2">
+                <button id="ocr-capture-btn" type="button" onclick="captureOcrText()"
+                        class="linear-button-primary w-full px-3 py-2 rounded text-xs font-semibold">Capture and read text</button>
+                <p id="ocr-camera-status" class="text-[11px] text-slate-300 text-center leading-tight" role="status" aria-live="polite">
+                    Center the printed code and capture a clear image.
+                </p>
+                <label for="ocr-result-input" class="block text-[11px] font-medium text-slate-400">Review or correct the recognized text</label>
+                <textarea id="ocr-result-input" rows="2" autocomplete="off"
+                          class="linear-input w-full p-2 text-xs rounded resize-y"
+                          placeholder="Recognized text will appear here"></textarea>
+                <button type="button" onclick="useOcrResult()"
+                        class="linear-button-primary w-full px-3 py-2 rounded text-xs font-semibold">Use text in code field</button>
+                <p class="text-[10px] text-amber-300 text-center leading-tight">
+                    OCR can misread characters. Check the text before submitting it for verification.
+                </p>
+            </div>
+            <p id="camera-scan-instruction" class="text-[11px] text-slate-400 mt-2 text-center leading-tight">
+                Align 2D DataMatrix, QR Code, or 1D Barcode within the frame
+            </p>
         </div>
     </div>
 

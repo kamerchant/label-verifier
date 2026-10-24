@@ -21,4 +21,6 @@ Before creating a job, the upload screen previews the selected file and reports 
 
 Final QC code checks are treated as pre-checks unless the same Job Card is loaded in the main workspace. Pre-checks are not recorded as packing QC. Packing-stage checks are recorded separately; after at least one successful check, any signed-in operator can explicitly mark Packing QC complete. The certificate is only available after that completion action and records who completed it and when.
 
+The camera scanner supports barcode/QR scanning and an OCR mode for printed text. OCR results are placed in the code field for operator review and correction; they are not submitted automatically. OCR requires a network connection the first time it loads its text-recognition engine and may misread characters, so verify the result before submitting.
+
 The upload limit applies while the application copies the uploaded file to its temporary working directory. Background ingestion still runs in a process-local thread and uses local temporary files; use durable storage and a persistent worker queue before relying on ingestion to survive instance restarts or multiple application instances.
