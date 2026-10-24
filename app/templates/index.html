@@ -3257,7 +3257,7 @@
             currentCameraScanTarget = scanTarget;
             currentCameraScanMode = 'barcode';
             document.getElementById('ocr-result-input').value = '';
-            setOcrStatus('Center the printed code and capture a clear image.');
+            setOcrStatus('Align one line of code inside the guide and capture.');
             if (modal) {
                 modal.classList.remove('hidden');
                 modal.style.display = 'flex';
@@ -3324,7 +3324,7 @@
             });
             title.innerText = isOcr ? 'Camera Printed Text Reader' : 'Camera Barcode Scanner';
             instruction.innerText = isOcr
-                ? 'Center the printed code, keep it sharp and well lit, then capture to read the text.'
+                ? 'Align one line of printed code inside the guide, then capture.'
                 : 'Align 2D DataMatrix, QR Code, or 1D Barcode within the frame';
         }
 
@@ -3340,7 +3340,7 @@
 
                 if (mode === 'ocr') {
                     document.getElementById('ocr-result-input').value = '';
-                    setOcrStatus('Center the printed code and capture a clear image.');
+                    setOcrStatus('Align one line of code inside the guide and capture.');
                     await startOcrCamera();
                 } else {
                     await startCameraScanner(currentCameraScanTarget);
@@ -3374,7 +3374,7 @@
                 video.srcObject = ocrCameraStream;
                 await video.play();
                 initCameraZoomCapabilities();
-                setOcrStatus('Camera ready. Capture a clear image of the printed code.');
+                setOcrStatus('Align one line of code inside the guide and capture.');
             } catch (error) {
                 await stopCameraScanner();
                 showCustomAlert(getCameraScannerErrorMessage(error), "Camera Could Not Start");
@@ -3423,11 +3423,32 @@
             setOcrStatus('Preparing text reader...');
             try {
                 const tesseract = await loadTesseract();
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                const viewport = document.getElementById('ocr-camera-viewport');
+                const guide = document.getElementById('ocr-text-guide');
+                const viewportBounds = viewport.getBoundingClientRect();
+                const guideBounds = guide.getBoundingClientRect();
+                const scale = Math.max(
+                    viewportBounds.width / video.videoWidth,
+                    viewportBounds.height / video.videoHeight
+                );
+                const renderedWidth = video.videoWidth * scale;
+                const renderedHeight = video.videoHeight * scale;
+                const offsetX = (viewportBounds.width - renderedWidth) / 2;
+                const offsetY = (viewportBounds.height - renderedHeight) / 2;
+                const sourceX = Math.max(0, (guideBounds.left - viewportBounds.left - offsetX) / scale);
+                const sourceY = Math.max(0, (guideBounds.top - viewportBounds.top - offsetY) / scale);
+                const sourceWidth = Math.min(video.videoWidth - sourceX, guideBounds.width / scale);
+                const sourceHeight = Math.min(video.videoHeight - sourceY, guideBounds.height / scale);
+                canvas.width = Math.round(sourceWidth);
+                canvas.height = Math.round(sourceHeight);
+                canvas.getContext('2d').drawImage(
+                    video,
+                    sourceX, sourceY, sourceWidth, sourceHeight,
+                    0, 0, canvas.width, canvas.height
+                );
                 setOcrStatus('Reading printed text...');
                 const result = await tesseract.recognize(canvas, 'eng', {
+                    tessedit_pageseg_mode: '7',
                     logger: message => {
                         if (message.status === 'recognizing text' && message.progress) {
                             setOcrStatus(`Reading printed text... ${Math.round(message.progress * 100)}%`);
@@ -3435,7 +3456,7 @@
                     }
                 });
                 if (captureGeneration !== ocrCaptureGeneration) return;
-                const recognizedText = result.data.text.trim();
+                const recognizedText = result.data.text.replace(/\s+/g, ' ').trim();
                 if (!recognizedText) {
                     setOcrStatus('No text was detected. Improve focus or lighting, then capture again.', true);
                     return;
@@ -6686,9 +6707,12 @@
 
             <!-- Video Viewport Canvas -->
             <div id="camera-scanner-viewport" class="w-full aspect-square bg-black rounded overflow-hidden border border-white/[0.12] relative"></div>
-            <div id="ocr-camera-viewport" class="hidden w-full aspect-square bg-black rounded overflow-hidden border border-white/[0.12] relative">
+            <div id="ocr-camera-viewport" class="hidden w-full aspect-[16/7] bg-black rounded overflow-hidden border border-white/[0.12] relative">
                 <video id="ocr-camera-video" class="w-full h-full object-cover" autoplay playsinline muted></video>
                 <canvas id="ocr-camera-canvas" class="hidden"></canvas>
+                <div id="ocr-text-guide" class="absolute left-[4%] right-[4%] top-[32%] bottom-[32%] rounded border-2 border-emerald-400 shadow-[0_0_0_999px_rgba(0,0,0,0.35)] pointer-events-none">
+                    <span class="absolute -top-5 left-0 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300">Single line of code</span>
+                </div>
             </div>
 
             <!-- Zoom Control Toolbar -->
@@ -6711,7 +6735,7 @@
                 <button id="ocr-capture-btn" type="button" onclick="captureOcrText()"
                         class="linear-button-primary w-full px-3 py-2 rounded text-xs font-semibold">Capture and read text</button>
                 <p id="ocr-camera-status" class="text-[11px] text-slate-300 text-center leading-tight" role="status" aria-live="polite">
-                    Center the printed code and capture a clear image.
+                    Align one line of code inside the guide and capture.
                 </p>
                 <label for="ocr-result-input" class="block text-[11px] font-medium text-slate-400">Review or correct the recognized text</label>
                 <textarea id="ocr-result-input" rows="2" autocomplete="off"
