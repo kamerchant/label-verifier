@@ -1628,44 +1628,87 @@ def get_job_count_reconciliation(user: dict = Depends(require_manager_or_admin))
         release_connection(conn)
 
 @app.get("/api/admin/packing-qc/{job_card_id}")
-def get_packing_qc_logs(job_card_id: str, user: dict = Depends(require_password_change_complete)):
+def get_packing_qc_logs(
+    job_card_id: str,
+    limit: int = Query(100, ge=1, le=200),
+    before_id: Optional[int] = Query(None, ge=1),
+    user: dict = Depends(require_password_change_complete),
+):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT run_id, description FROM job_cards
+                SELECT run_id, description, created_at FROM job_cards
                 WHERE job_card_id = %s AND status != 'DELETED'
                 ORDER BY created_at DESC LIMIT 1
             """, (job_card_id,))
             jc_row = cur.fetchone()
             if not jc_row:
                 raise HTTPException(status_code=404, detail=f"Job Card '{job_card_id}' does not exist.")
-            run_id = jc_row[0]
+            run_id, job_created_at = jc_row[0], jc_row[2]
             desc = jc_row[1] or ""
-            cur.execute(
-                "SELECT EXISTS (SELECT 1 FROM scan_logs WHERE job_card_id = %s)",
-                (job_card_id,),
-            )
-            has_production_scans = cur.fetchone()[0]
-            rows = []
             cur.execute("""
-                SELECT job_card_id, code_scanned, tested_by, tested_at
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM scan_logs s
+                    WHERE s.job_card_id = %s
+                      AND UPPER(s.result) IN ('PASS', 'PASS (POTENTIAL RESTART)')
+                      AND (
+                          s.run_id = %s
+                          OR (
+                              s.run_id IS NULL
+                              AND s.scanned_at >= %s
+                              AND EXISTS (
+                                  SELECT 1
+                                  FROM codes c
+                                  WHERE c.run_id = %s
+                                    AND c.code_value = s.code_scanned
+                                    AND c.status != 'DELETED'
+                              )
+                          )
+                      )
+                )
+            """, (job_card_id, run_id, job_created_at, run_id))
+            has_production_scans = cur.fetchone()[0]
+            cur.execute("""
+                SELECT COUNT(*)
                 FROM packing_qc_logs
                 WHERE run_id = %s AND qc_stage = 'PACKING'
-                ORDER BY tested_at DESC
             """, (run_id,))
+            total_logs = cur.fetchone()[0]
+            if before_id is None:
+                cur.execute("""
+                    SELECT id, job_card_id, code_scanned, tested_by, tested_at
+                    FROM packing_qc_logs
+                    WHERE run_id = %s AND qc_stage = 'PACKING'
+                    ORDER BY id DESC
+                    LIMIT %s
+                """, (run_id, limit + 1))
+            else:
+                cur.execute("""
+                    SELECT id, job_card_id, code_scanned, tested_by, tested_at
+                    FROM packing_qc_logs
+                    WHERE run_id = %s AND qc_stage = 'PACKING' AND id < %s
+                    ORDER BY id DESC
+                    LIMIT %s
+                """, (run_id, before_id, limit + 1))
             rows = cur.fetchall()
+            has_more = len(rows) > limit
+            rows = rows[:limit]
 
             return {
                 "job_card_id": job_card_id,
                 "run_id": run_id,
                 "description": desc or "Serialized Production Batch",
                 "has_production_scans": has_production_scans,
+                "total_logs": total_logs,
                 "logs": [{
-                    "code": r[1],
-                    "tested_by": r[2],
-                    "tested_at": r[3].strftime("%Y-%m-%d %H:%M:%S") if r[3] else ""
-                } for r in rows]
+                    "id": r[0],
+                    "code": r[2],
+                    "tested_by": r[3],
+                    "tested_at": r[4].strftime("%Y-%m-%d %H:%M:%S") if r[4] else ""
+                } for r in rows],
+                "next_before_id": rows[-1][0] if has_more and rows else None,
             }
     finally:
         release_connection(conn)
@@ -2394,7 +2437,7 @@ def packing_qc_verify(
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT j.run_id, j.status, j.description 
+                SELECT j.run_id, j.status, j.description, j.created_at
                 FROM job_cards j 
                 WHERE j.job_card_id = %s AND j.status != 'DELETED'
                 ORDER BY j.created_at DESC
@@ -2408,12 +2451,30 @@ def packing_qc_verify(
                     "message": f"Job Card '{jc_id}' does not exist or is deleted."
                 })
 
-            run_id, status, description = jc
+            run_id, status, description, job_created_at = jc
 
-            cur.execute(
-                "SELECT EXISTS (SELECT 1 FROM scan_logs WHERE job_card_id = %s)",
-                (jc_id,),
-            )
+            cur.execute("""
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM scan_logs s
+                    WHERE s.job_card_id = %s
+                      AND UPPER(s.result) IN ('PASS', 'PASS (POTENTIAL RESTART)')
+                      AND (
+                          s.run_id = %s
+                          OR (
+                              s.run_id IS NULL
+                              AND s.scanned_at >= %s
+                              AND EXISTS (
+                                  SELECT 1
+                                  FROM codes c
+                                  WHERE c.run_id = %s
+                                    AND c.code_value = s.code_scanned
+                                    AND c.status != 'DELETED'
+                              )
+                          )
+                      )
+                )
+            """, (jc_id, run_id, job_created_at, run_id))
             has_production_scans = cur.fetchone()[0]
 
             cur.execute("""
@@ -2506,8 +2567,8 @@ def verify_code(
 
             def log_scan(res, msg):
                 cur.execute(
-                    "INSERT INTO scan_logs (job_card_id, code_scanned, result, scanned_by) VALUES (%s, %s, %s, %s)",
-                    (job_card_id, scanned, res, operator)
+                    "INSERT INTO scan_logs (run_id, job_card_id, code_scanned, result, scanned_by) VALUES (%s, %s, %s, %s, %s)",
+                    (active_run_id, job_card_id, scanned, res, operator)
                 )
                 log_system_event(cur, "SCAN_VERIFICATION", job_card_id, f"SCAN_{res}", operator, f"Scanned code: {scanned} [{res}]")
                 conn.commit()

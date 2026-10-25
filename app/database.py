@@ -102,6 +102,7 @@ def init_db():
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS scan_logs (
                     id SERIAL PRIMARY KEY,
+                    run_id INT,
                     job_card_id TEXT NOT NULL,
                     code_scanned TEXT NOT NULL,
                     result TEXT NOT NULL,
@@ -109,6 +110,10 @@ def init_db():
                     scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
+            cur.execute(
+                "ALTER TABLE scan_logs ADD COLUMN IF NOT EXISTS "
+                "run_id INT;"
+            )
 
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS packing_qc_logs (
