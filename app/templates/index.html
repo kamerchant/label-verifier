@@ -806,6 +806,9 @@
                         title="Pair a phone to scan labels">
                     Use phone scanner
                 </button>
+                <button type="button" id="phone-scanner-show-qr-btn" onclick="showPhoneScannerPairing()" class="hidden linear-button-secondary px-2 py-1 rounded text-[11px] font-semibold shrink-0">
+                    Show QR
+                </button>
                 <button type="submit" id="verify-btn" disabled class="linear-button-primary px-3 py-1 rounded text-xs font-semibold min-h-[30px] sm:min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none shrink-0">
                     Verify
                 </button>
@@ -3162,12 +3165,12 @@
         let phoneScannerPollTimer = null;
 
         async function startPhoneScannerPairing() {
-            if (!activeJobId || activeJobStatus !== 'ACTIVE') {
-                showCustomAlert("Select an active Job Card before pairing a phone scanner.");
+            if (phoneScannerSessionId) {
+                await stopPhoneScannerSession();
                 return;
             }
-            if (phoneScannerSessionId) {
-                document.getElementById('phone-scanner-modal').classList.remove('hidden');
+            if (!activeJobId || activeJobStatus !== 'ACTIVE') {
+                showCustomAlert("Select an active Job Card before pairing a phone scanner.");
                 return;
             }
 
@@ -3204,12 +3207,27 @@
                 document.getElementById('phone-scanner-job').textContent = data.job_card_id;
                 document.getElementById('phone-scanner-status').textContent = 'Waiting for your phone to connect…';
                 document.getElementById('phone-scanner-modal').classList.remove('hidden');
+                button.textContent = 'End phone session';
+                button.title = 'End the active phone scanner session';
+                button.classList.remove('linear-button-secondary');
+                button.classList.add('linear-button-primary');
+                document.getElementById('phone-scanner-show-qr-btn').classList.remove('hidden');
                 pollPhoneScannerSession();
             } catch (error) {
                 showCustomAlert(error.message || 'Could not create a phone scanner session.', 'Phone Scanner');
             } finally {
                 button.disabled = false;
             }
+        }
+
+        function showPhoneScannerPairing() {
+            if (phoneScannerSessionId) {
+                document.getElementById('phone-scanner-modal').classList.remove('hidden');
+            }
+        }
+
+        function hidePhoneScannerPairing() {
+            document.getElementById('phone-scanner-modal').classList.add('hidden');
         }
 
         async function pollPhoneScannerSession() {
@@ -3283,7 +3301,13 @@
                     console.error('Could not end phone scanner session.', error);
                 }
             }
-            document.getElementById('phone-scanner-modal').classList.add('hidden');
+            hidePhoneScannerPairing();
+            const button = document.getElementById('phone-scanner-btn');
+            button.textContent = 'Use phone scanner';
+            button.title = 'Pair a phone to scan labels';
+            button.classList.remove('linear-button-primary');
+            button.classList.add('linear-button-secondary');
+            document.getElementById('phone-scanner-show-qr-btn').classList.add('hidden');
         }
 
         async function handleScan(e) {
@@ -6836,7 +6860,7 @@
         <div class="linear-card p-5 rounded-lg max-w-md w-full shadow-2xl">
             <div class="flex items-center justify-between mb-4 pb-2 border-b border-white/[0.08]">
                 <h3 class="text-sm font-bold modal-title-theme">Pair a phone scanner</h3>
-                <button type="button" onclick="stopPhoneScannerSession()" class="linear-button-secondary px-2.5 py-1 rounded text-xs font-semibold">✕ Close</button>
+                <button type="button" onclick="hidePhoneScannerPairing()" class="linear-button-secondary px-2.5 py-1 rounded text-xs font-semibold">✕ Close</button>
             </div>
             <p class="text-xs text-slate-300 mb-1">Open your phone camera and scan this QR code.</p>
             <p class="text-xs text-slate-400 mb-3">Job Card: <strong id="phone-scanner-job" class="text-white"></strong></p>
@@ -6846,7 +6870,7 @@
                 Or open <a id="phone-scanner-link" class="text-indigo-300 underline break-all" target="_blank" rel="noopener noreferrer"></a>
                 on your phone. Scans are verified on this desktop.
             </p>
-            <button type="button" onclick="stopPhoneScannerSession()" class="linear-button-secondary w-full px-3 py-2 rounded text-xs font-semibold mt-4">End phone session</button>
+            <button type="button" onclick="hidePhoneScannerPairing()" class="linear-button-secondary w-full px-3 py-2 rounded text-xs font-semibold mt-4">Close pairing screen</button>
         </div>
     </div>
 

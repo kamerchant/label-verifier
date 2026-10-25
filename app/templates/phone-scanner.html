@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="referrer" content="no-referrer">
-    <title>Phone Barcode Scanner</title>
+    <title>Phone Scanner</title>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -29,6 +29,49 @@
         h1 { margin: 0 0 8px; font-size: 20px; }
         p { color: #aab1c0; line-height: 1.45; }
         #scanner { width: 100%; overflow: hidden; border-radius: 8px; background: #000; }
+        .mode-toolbar { display: flex; gap: 8px; margin: 16px 0 12px; }
+        button {
+            border: 1px solid #454957;
+            border-radius: 7px;
+            padding: 10px 12px;
+            background: #20232c;
+            color: #e2e8f0;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        button[aria-pressed="true"], .primary {
+            border-color: #6875e5;
+            background: #4b56bb;
+        }
+        button:disabled { opacity: .5; }
+        #ocr-viewport {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            overflow: hidden;
+            border-radius: 8px;
+            background: #000;
+        }
+        #ocr-video { width: 100%; height: 100%; object-fit: cover; }
+        #ocr-guide {
+            position: absolute;
+            inset: 32% 4%;
+            border: 2px solid #34d399;
+            box-shadow: 0 0 0 999px rgb(0 0 0 / 35%);
+            pointer-events: none;
+        }
+        #ocr-input {
+            width: 100%;
+            min-height: 68px;
+            margin: 8px 0;
+            padding: 10px;
+            border: 1px solid #454957;
+            border-radius: 7px;
+            background: #0f1117;
+            color: #fff;
+            font: 15px ui-monospace, monospace;
+            resize: vertical;
+        }
         #status { min-height: 24px; color: #a5b4fc; }
         #status.error { color: #fca5a5; }
         #last-code { overflow-wrap: anywhere; color: #fff; font-family: ui-monospace, monospace; }
@@ -36,9 +79,23 @@
 </head>
 <body>
     <main>
-        <h1>Phone barcode scanner</h1>
+        <h1>Phone scanner</h1>
         <p id="job">Connecting to desktop…</p>
+        <div class="mode-toolbar" role="group" aria-label="Scanner mode">
+            <button type="button" data-mode="barcode" aria-pressed="true">Barcode / QR</button>
+            <button type="button" data-mode="ocr" aria-pressed="false">Printed text (OCR)</button>
+        </div>
         <div id="scanner"></div>
+        <div id="ocr-viewport" hidden>
+            <video id="ocr-video" autoplay playsinline muted></video>
+            <div id="ocr-guide" aria-hidden="true"></div>
+        </div>
+        <div id="ocr-controls" hidden>
+            <p>Align one line of printed code inside the guide and capture.</p>
+            <button id="capture-ocr" type="button">Capture and read text</button>
+            <textarea id="ocr-input" autocomplete="off" placeholder="Recognized text appears here. Review or correct it before sending."></textarea>
+            <button id="send-ocr" class="primary" type="button">Send text to desktop</button>
+        </div>
         <p id="status" role="status" aria-live="polite">Connecting to desktop…</p>
         <p id="last-code" aria-live="polite"></p>
     </main>
@@ -48,9 +105,19 @@
         window.history.replaceState({}, document.title, window.location.pathname);
         const statusElement = document.getElementById('status');
         const jobElement = document.getElementById('job');
+        const barcodeViewport = document.getElementById('scanner');
+        const ocrViewport = document.getElementById('ocr-viewport');
+        const ocrVideo = document.getElementById('ocr-video');
+        const ocrInput = document.getElementById('ocr-input');
+        const modeButtons = [...document.querySelectorAll('[data-mode]')];
         let scanner = null;
+        let ocrStream = null;
         let isSending = false;
+        let isRecognizing = false;
         let isRunning = false;
+        let currentMode = 'barcode';
+        let sessionEnded = false;
+        let heartbeatTimer = null;
 
         function setStatus(message, isError = false) {
             statusElement.textContent = message;
@@ -67,49 +134,188 @@
             return data;
         }
 
+        async function loadTesseract() {
+            if (window.Tesseract) return window.Tesseract;
+            if (!window.tesseractScriptPromise) {
+                window.tesseractScriptPromise = new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js';
+                    script.onload = () => resolve(window.Tesseract);
+                    script.onerror = () => {
+                        window.tesseractScriptPromise = null;
+                        reject(new Error('The text reader could not load. Check your internet connection and try again.'));
+                    };
+                    document.head.appendChild(script);
+                });
+            }
+            return window.tesseractScriptPromise;
+        }
+
+        async function stopCamera() {
+            if (currentMode === 'barcode' && isRunning && scanner) {
+                await scanner.stop();
+            }
+            isRunning = false;
+            if (ocrStream) {
+                ocrStream.getTracks().forEach(track => track.stop());
+                ocrStream = null;
+            }
+            ocrVideo.srcObject = null;
+        }
+
         async function startCamera() {
-            if (isRunning || isSending) return;
+            if (isRunning || isSending || sessionEnded) return;
             if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
                 setStatus('Camera scanning requires HTTPS and browser camera permission.', true);
                 return;
             }
-            if (typeof Html5Qrcode === 'undefined') {
-                setStatus('The scanner could not load. Check your connection and reload this page.', true);
-                return;
-            }
-            if (!scanner) scanner = new Html5Qrcode('scanner');
             try {
-                await scanner.start(
-                    { facingMode: 'environment' },
-                    { fps: 12, qrbox: { width: 240, height: 180 } },
-                    sendScannedCode,
-                    () => {}
-                );
+                if (currentMode === 'barcode') {
+                    if (typeof Html5Qrcode === 'undefined') {
+                        throw new Error('The scanner could not load. Check your connection and reload this page.');
+                    }
+                    if (!scanner) scanner = new Html5Qrcode('scanner');
+                    await scanner.start(
+                        { facingMode: 'environment' },
+                        { fps: 12, qrbox: { width: 240, height: 180 } },
+                        sendScannedCode,
+                        () => {}
+                    );
+                } else {
+                    ocrStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: { ideal: 'environment' } },
+                        audio: false
+                    });
+                    ocrVideo.srcObject = ocrStream;
+                    await ocrVideo.play();
+                }
                 isRunning = true;
-                setStatus('Ready. Point the phone camera at a label.');
+                setStatus(currentMode === 'barcode'
+                    ? 'Ready. Point the phone camera at a label.'
+                    : 'Align one printed code line inside the guide, then capture.');
             } catch (error) {
+                isRunning = false;
+                if (ocrStream) {
+                    ocrStream.getTracks().forEach(track => track.stop());
+                    ocrStream = null;
+                }
+                ocrVideo.srcObject = null;
                 setStatus(error.message || 'Could not start the phone camera.', true);
             }
         }
 
+        async function switchMode(mode) {
+            if (mode === currentMode || isSending || isRecognizing || sessionEnded) return;
+            modeButtons.forEach(button => { button.disabled = true; });
+            try {
+                await stopCamera();
+                currentMode = mode;
+                modeButtons.forEach(button => {
+                    button.setAttribute('aria-pressed', String(button.dataset.mode === mode));
+                });
+                barcodeViewport.hidden = mode !== 'barcode';
+                ocrViewport.hidden = mode !== 'ocr';
+                document.getElementById('ocr-controls').hidden = mode !== 'ocr';
+                await startCamera();
+            } catch (error) {
+                setStatus(error.message || 'Could not switch scanner mode.', true);
+            } finally {
+                modeButtons.forEach(button => { button.disabled = false; });
+            }
+        }
+
+        async function captureOcrText() {
+            if (isRecognizing || currentMode !== 'ocr') return;
+            if (!ocrVideo.videoWidth || !ocrVideo.videoHeight) {
+                setStatus('The camera image is not ready yet. Wait a moment and try again.', true);
+                return;
+            }
+            const button = document.getElementById('capture-ocr');
+            isRecognizing = true;
+            button.disabled = true;
+            ocrInput.value = '';
+            setStatus('Preparing text reader…');
+            try {
+                const tesseract = await loadTesseract();
+                const viewportBounds = ocrViewport.getBoundingClientRect();
+                const guideBounds = document.getElementById('ocr-guide').getBoundingClientRect();
+                const scale = Math.max(
+                    viewportBounds.width / ocrVideo.videoWidth,
+                    viewportBounds.height / ocrVideo.videoHeight
+                );
+                const renderedWidth = ocrVideo.videoWidth * scale;
+                const renderedHeight = ocrVideo.videoHeight * scale;
+                const offsetX = (viewportBounds.width - renderedWidth) / 2;
+                const offsetY = (viewportBounds.height - renderedHeight) / 2;
+                const sourceX = Math.max(0, (guideBounds.left - viewportBounds.left - offsetX) / scale);
+                const sourceY = Math.max(0, (guideBounds.top - viewportBounds.top - offsetY) / scale);
+                const sourceWidth = Math.min(ocrVideo.videoWidth - sourceX, guideBounds.width / scale);
+                const sourceHeight = Math.min(ocrVideo.videoHeight - sourceY, guideBounds.height / scale);
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(sourceWidth);
+                canvas.height = Math.round(sourceHeight);
+                canvas.getContext('2d').drawImage(
+                    ocrVideo,
+                    sourceX, sourceY, sourceWidth, sourceHeight,
+                    0, 0, canvas.width, canvas.height
+                );
+                setStatus('Reading printed text…');
+                const result = await tesseract.recognize(canvas, 'eng', {
+                    tessedit_pageseg_mode: '7',
+                    logger: message => {
+                        if (message.status === 'recognizing text' && message.progress) {
+                            setStatus(`Reading printed text… ${Math.round(message.progress * 100)}%`);
+                        }
+                    }
+                });
+                const recognizedText = result.data.text.replace(/\s+/g, ' ').trim();
+                if (!recognizedText) {
+                    setStatus('No text detected. Improve focus or lighting, then capture again.', true);
+                    return;
+                }
+                ocrInput.value = recognizedText;
+                setStatus('Review or correct the recognized text before sending it.');
+            } catch (error) {
+                setStatus(error.message || 'Text recognition failed. Please try again.', true);
+            } finally {
+                isRecognizing = false;
+                button.disabled = false;
+            }
+        }
+
+        async function sendOcrText() {
+            const code = ocrInput.value.trim();
+            if (!code) {
+                setStatus('Capture text or enter a correction before sending.', true);
+                return;
+            }
+            await sendScannedCode(code);
+            if (!statusElement.classList.contains('error')) ocrInput.value = '';
+        }
+
         async function sendScannedCode(decodedText) {
-            if (isSending) return;
+            if (isSending || sessionEnded) return false;
             isSending = true;
             try {
-                if (isRunning) {
-                    await scanner.stop();
-                    isRunning = false;
-                }
+                if (currentMode === 'barcode' && isRunning) await stopCamera();
                 await postWithToken('/api/phone-scanner/scan', { code: decodedText });
                 document.getElementById('last-code').textContent = decodedText;
                 setStatus('Scan sent to desktop. Ready for the next label.');
+                return true;
             } catch (error) {
                 setStatus(error.message || 'Could not send the scan to desktop.', true);
+                return false;
             } finally {
                 isSending = false;
-                window.setTimeout(startCamera, 350);
+                if (currentMode === 'barcode') window.setTimeout(startCamera, 350);
             }
         }
+
+        modeButtons.forEach(button => {
+            button.addEventListener('click', () => switchMode(button.dataset.mode));
+        });
+        document.getElementById('capture-ocr').addEventListener('click', captureOcrText);
+        document.getElementById('send-ocr').addEventListener('click', sendOcrText);
 
         async function connect() {
             if (!token) {
@@ -120,15 +326,16 @@
                 const data = await postWithToken('/api/phone-scanner/connect');
                 jobElement.textContent = `Connected to Job Card ${data.job_card_id}`;
                 await startCamera();
-                window.setInterval(async () => {
+                heartbeatTimer = window.setInterval(async () => {
                     try {
                         await postWithToken('/api/phone-scanner/heartbeat');
                     } catch (error) {
+                        if (sessionEnded) return;
+                        sessionEnded = true;
+                        clearInterval(heartbeatTimer);
+                        document.querySelectorAll('button').forEach(button => { button.disabled = true; });
                         setStatus(error.message || 'Desktop connection ended.', true);
-                        if (isRunning) {
-                            await scanner.stop();
-                            isRunning = false;
-                        }
+                        await stopCamera();
                     }
                 }, 10000);
             } catch (error) {
