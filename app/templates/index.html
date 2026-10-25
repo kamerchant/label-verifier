@@ -3679,15 +3679,12 @@
                 }
 
                 const config = {
-                    fps: 15,
-                    qrbox: (viewfinderWidth, viewfinderHeight) => {
-                        const size = Math.floor(Math.min(
-                            320,
-                            viewfinderWidth * 0.82,
-                            viewfinderHeight * 0.82
-                        ));
-                        return { width: size, height: size };
-                    }
+                    fps: 12,
+                    aspectRatio: 300 / 130,
+                    qrbox: (viewfinderWidth, viewfinderHeight) => ({
+                        width: Math.min(280, Math.floor(viewfinderWidth - 20)),
+                        height: Math.min(110, Math.floor(viewfinderHeight - 20))
+                    })
                 };
 
                 await html5QrCodeScanner.start(
