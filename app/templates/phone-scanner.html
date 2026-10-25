@@ -11,104 +11,92 @@
         body {
             margin: 0;
             min-height: 100vh;
-            padding: 20px 14px;
+            padding: 24px 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background:
-                radial-gradient(ellipse at top, rgba(94, 106, 210, 0.16), transparent 46%),
-                #0d1017;
-            color: #e6eaf2;
+            background: #f7f5f0;
+            color: #2c3531;
             font: 16px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         }
         main {
             width: min(100%, 440px);
             padding: 20px;
-            border: 1px solid #2c3343;
-            border-radius: 14px;
-            background: linear-gradient(160deg, #171b26, #12151d 72%);
-            box-shadow: 0 20px 60px rgb(0 0 0 / 28%);
+            border: 1px solid #e3decb;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 2px 12px rgba(44, 53, 49, 0.08);
         }
-        h1 { margin: 0 0 8px; font-size: 20px; letter-spacing: -0.025em; }
-        p { color: #aab4c5; line-height: 1.45; }
-        #job { margin-top: 0; }
+        h1 { margin: 0 0 8px; font-size: 20px; }
+        p { color: #64748b; line-height: 1.45; }
         #scanner {
-            width: min(100%, 320px);
+            width: min(100%, 300px);
+            height: 130px;
             margin: 0 auto;
             overflow: hidden;
-            border: 1px solid #343c50;
-            border-radius: 10px;
-            background: #10131b;
+            border: 1px solid #d4cebc;
+            border-radius: 8px;
+            background: #000;
         }
-        #scanner video { object-fit: cover; }
+        #scanner video { width: 100%; height: 100%; object-fit: cover; }
         .mode-toolbar { display: flex; gap: 8px; margin: 16px 0 12px; }
         button {
-            border: 1px solid #394156;
-            border-radius: 8px;
+            border: 1px solid #d4cebc;
+            border-radius: 7px;
             padding: 10px 12px;
-            background: #1d2230;
-            color: #dce2ee;
+            background: #f0ece1;
+            color: #3d4a45;
             font-size: 14px;
             font-weight: 600;
-            transition: background-color 120ms ease, border-color 120ms ease;
         }
         button[aria-pressed="true"], .primary {
-            border-color: #7480ef;
-            background: #5e6ad2;
-            color: #fff;
+            border-color: #276749;
+            background: #276749;
+            color: #ffffff;
         }
-        button:not(:disabled):hover { border-color: #6875e5; }
         button:disabled { opacity: .5; }
         #ocr-viewport {
             position: relative;
-            width: min(100%, 320px);
-            height: 160px;
-            margin: 0 auto;
+            width: 100%;
+            aspect-ratio: 16 / 9;
             overflow: hidden;
-            border: 1px solid #343c50;
-            border-radius: 10px;
-            background: #10131b;
+            border: 1px solid #d4cebc;
+            border-radius: 8px;
+            background: #000;
         }
-        #ocr-video { display: block; width: 100%; height: 100%; object-fit: cover; }
+        #ocr-video { width: 100%; height: 100%; object-fit: cover; }
         #ocr-guide {
             position: absolute;
-            inset: 17% 3%;
-            border: 2px solid #6ee7b7;
-            border-radius: 5px;
-            box-shadow: 0 0 0 999px rgb(8 11 17 / 48%);
+            inset: 32% 4%;
+            border: 2px solid #34d399;
+            box-shadow: 0 0 0 999px rgb(0 0 0 / 35%);
             pointer-events: none;
         }
-        #ocr-controls { margin-top: 12px; }
-        #ocr-controls p { margin: 0 0 10px; font-size: 13px; }
         #ocr-input {
             width: 100%;
             min-height: 68px;
             margin: 8px 0;
             padding: 10px;
-            border: 1px solid #394156;
-            border-radius: 8px;
-            background: #10131b;
-            color: #e6eaf2;
+            border: 1px solid #d4cebc;
+            border-radius: 7px;
+            background: #fcfbfa;
+            color: #1a211e;
             font: 15px ui-monospace, monospace;
             resize: vertical;
         }
-        #ocr-input:focus { outline: 2px solid rgb(94 106 210 / 45%); border-color: #7480ef; }
-        #status { min-height: 24px; color: #a5b4fc; }
-        #status.error { color: #fca5a5; }
-        #last-code { overflow-wrap: anywhere; color: #e6eaf2; font-family: ui-monospace, monospace; }
+        #ocr-input:focus { border-color: #276749; box-shadow: 0 0 0 2px rgba(39, 103, 73, 0.2); outline: none; }
+        #status { min-height: 24px; color: #276749; }
+        #status.error { color: #b91c1c; }
+        #last-code { overflow-wrap: anywhere; color: #1a211e; font-family: ui-monospace, monospace; }
         #terminal-message {
             width: min(100%, 440px);
             padding: 24px;
-            border: 1px solid #2c3343;
-            border-radius: 14px;
-            background: #171b26;
+            border: 1px solid #e3decb;
+            border-radius: 12px;
+            background: #ffffff;
+            color: #2c3531;
             text-align: center;
             line-height: 1.5;
-        }
-        @media (max-width: 380px) {
-            main { padding: 16px; }
-            .mode-toolbar { gap: 6px; }
-            .mode-toolbar button { flex: 1; padding: 9px 7px; font-size: 12px; }
         }
     </style>
 </head>
@@ -232,10 +220,10 @@
                         { facingMode: 'environment' },
                         {
                             fps: 12,
-                            aspectRatio: 1.65,
+                            aspectRatio: 300 / 130,
                             qrbox: (viewfinderWidth, viewfinderHeight) => ({
-                                width: Math.min(300, Math.floor(viewfinderWidth * 0.88)),
-                                height: Math.min(120, Math.floor(viewfinderHeight * 0.58))
+                                width: Math.min(280, Math.floor(viewfinderWidth - 20)),
+                                height: Math.min(110, Math.floor(viewfinderHeight - 20))
                             })
                         },
                         sendScannedCode,
