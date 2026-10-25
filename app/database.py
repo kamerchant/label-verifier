@@ -164,6 +164,31 @@ def init_db():
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS phone_scanner_sessions (
+                    session_id TEXT PRIMARY KEY,
+                    token_hash CHAR(64) NOT NULL UNIQUE,
+                    username TEXT NOT NULL,
+                    job_card_id TEXT NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    expires_at TIMESTAMPTZ NOT NULL,
+                    connected_at TIMESTAMPTZ,
+                    last_seen_at TIMESTAMPTZ,
+                    revoked_at TIMESTAMPTZ
+                );
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS phone_scanner_scans (
+                    id BIGSERIAL PRIMARY KEY,
+                    session_id TEXT NOT NULL REFERENCES phone_scanner_sessions(session_id) ON DELETE CASCADE,
+                    code TEXT NOT NULL,
+                    received_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            cur.execute("""
+                CREATE INDEX IF NOT EXISTS idx_phone_scanner_scans_session_id
+                ON phone_scanner_scans (session_id, id);
+            """)
 
             cur.execute("SELECT COUNT(*) FROM users;")
             row = cur.fetchone()

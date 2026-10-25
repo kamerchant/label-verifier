@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="referrer" content="no-referrer">
+    <title>Phone Barcode Scanner</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 24px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #090a0d;
+            color: #e2e8f0;
+            font: 16px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        main {
+            width: min(100%, 440px);
+            padding: 20px;
+            border: 1px solid #30333d;
+            border-radius: 12px;
+            background: #15171d;
+        }
+        h1 { margin: 0 0 8px; font-size: 20px; }
+        p { color: #aab1c0; line-height: 1.45; }
+        #scanner { width: 100%; overflow: hidden; border-radius: 8px; background: #000; }
+        #status { min-height: 24px; color: #a5b4fc; }
+        #status.error { color: #fca5a5; }
+        #last-code { overflow-wrap: anywhere; color: #fff; font-family: ui-monospace, monospace; }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Phone barcode scanner</h1>
+        <p id="job">Connecting to desktop…</p>
+        <div id="scanner"></div>
+        <p id="status" role="status" aria-live="polite">Connecting to desktop…</p>
+        <p id="last-code" aria-live="polite"></p>
+    </main>
+    <script>
+        const params = new URLSearchParams(window.location.hash.slice(1));
+        const token = params.get('token');
+        window.history.replaceState({}, document.title, window.location.pathname);
+        const statusElement = document.getElementById('status');
+        const jobElement = document.getElementById('job');
+        let scanner = null;
+        let isSending = false;
+        let isRunning = false;
+
+        function setStatus(message, isError = false) {
+            statusElement.textContent = message;
+            statusElement.classList.toggle('error', isError);
+        }
+
+        async function postWithToken(path, extra = {}) {
+            const body = new FormData();
+            body.append('token', token);
+            Object.entries(extra).forEach(([key, value]) => body.append(key, value));
+            const response = await fetch(path, { method: 'POST', body });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.detail || 'Phone scanner session has ended.');
+            return data;
+        }
+
+        async function startCamera() {
+            if (isRunning || isSending) return;
+            if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+                setStatus('Camera scanning requires HTTPS and browser camera permission.', true);
+                return;
+            }
+            if (typeof Html5Qrcode === 'undefined') {
+                setStatus('The scanner could not load. Check your connection and reload this page.', true);
+                return;
+            }
+            if (!scanner) scanner = new Html5Qrcode('scanner');
+            try {
+                await scanner.start(
+                    { facingMode: 'environment' },
+                    { fps: 12, qrbox: { width: 240, height: 180 } },
+                    sendScannedCode,
+                    () => {}
+                );
+                isRunning = true;
+                setStatus('Ready. Point the phone camera at a label.');
+            } catch (error) {
+                setStatus(error.message || 'Could not start the phone camera.', true);
+            }
+        }
+
+        async function sendScannedCode(decodedText) {
+            if (isSending) return;
+            isSending = true;
+            try {
+                if (isRunning) {
+                    await scanner.stop();
+                    isRunning = false;
+                }
+                await postWithToken('/api/phone-scanner/scan', { code: decodedText });
+                document.getElementById('last-code').textContent = decodedText;
+                setStatus('Scan sent to desktop. Ready for the next label.');
+            } catch (error) {
+                setStatus(error.message || 'Could not send the scan to desktop.', true);
+            } finally {
+                isSending = false;
+                window.setTimeout(startCamera, 350);
+            }
+        }
+
+        async function connect() {
+            if (!token) {
+                setStatus('This pairing link is missing its token. Pair again from the desktop.', true);
+                return;
+            }
+            try {
+                const data = await postWithToken('/api/phone-scanner/connect');
+                jobElement.textContent = `Connected to Job Card ${data.job_card_id}`;
+                await startCamera();
+                window.setInterval(async () => {
+                    try {
+                        await postWithToken('/api/phone-scanner/heartbeat');
+                    } catch (error) {
+                        setStatus(error.message || 'Desktop connection ended.', true);
+                        if (isRunning) {
+                            await scanner.stop();
+                            isRunning = false;
+                        }
+                    }
+                }, 10000);
+            } catch (error) {
+                setStatus(error.message || 'Could not connect to desktop.', true);
+            }
+        }
+
+        connect();
+    </script>
+</body>
+</html>

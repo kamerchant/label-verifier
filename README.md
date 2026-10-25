@@ -23,6 +23,8 @@ Final QC mode is determined by production scan history for the selected Job Card
 
 The camera scanner supports barcode/QR scanning and an OCR mode for printed text. OCR uses a short single-line guide and reads only the framed area; align one code line inside it. OCR results are placed in the code field for operator review and correction; they are not submitted automatically. OCR requires a network connection the first time it loads its text-recognition engine and may misread characters, so verify the result before submitting.
 
+On a desktop, select an active Job Card and choose **Use phone scanner** to pair a phone using the displayed QR code. The phone opens a camera-only scanner page; scans are sent to the desktop and verified against the selected Job Card. Camera access on the phone requires the application to be served over HTTPS. Pairing links expire after eight hours, and the desktop can end a session at any time.
+
 The upload limit applies while the application copies the uploaded file to its temporary working directory. Background ingestion still runs in a process-local thread and uses local temporary files; use durable storage and a persistent worker queue before relying on ingestion to survive instance restarts or multiple application instances.
 
 The Job Control Center loads jobs in pages of 50 and searches across the selected status filter on the server. QC reports load the latest 50 scan records when opened; use **Load older scans** to retrieve additional history. CSV exports continue to include the full report data.

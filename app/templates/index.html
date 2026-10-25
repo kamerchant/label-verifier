@@ -1,12 +1,13 @@
 <html lang="en" class="theme-parchment">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CCL ME - PK - Variable Data Verification</title>
     <link rel="icon" type="image/png" href="/static/ico.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- html5-qrcode for Camera Scanning -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
         *, body, input, button, select, textarea, table, th, td {
@@ -799,6 +800,11 @@
                         class="sm:hidden linear-button-secondary px-3 py-1 rounded text-sm min-h-[30px] sm:min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none shrink-0"
                         title="Scan with Phone Camera">
                     📷
+                </button>
+                <button type="button" id="phone-scanner-btn" onclick="startPhoneScannerPairing()"
+                        class="hidden sm:flex linear-button-secondary px-3 py-1 rounded text-xs font-semibold min-h-[30px] sm:min-h-[38px] items-center justify-center shrink-0"
+                        title="Pair a phone to scan labels">
+                    Use phone scanner
                 </button>
                 <button type="submit" id="verify-btn" disabled class="linear-button-primary px-3 py-1 rounded text-xs font-semibold min-h-[30px] sm:min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none shrink-0">
                     Verify
@@ -2831,6 +2837,9 @@
         }
 
         async function selectJob(id, descEncoded, status, consumed, total) {
+            if (phoneScannerSessionId && phoneScannerJobCardId !== id) {
+                await stopPhoneScannerSession();
+            }
             activeJobId = id;
             activeJobDesc = decodeURIComponent(descEncoded || "");
             activeJobStatus = status;
@@ -3147,6 +3156,136 @@
 
         let isScanVerifying = false;
 
+        let phoneScannerSessionId = null;
+        let phoneScannerJobCardId = null;
+        let phoneScannerCursor = 0;
+        let phoneScannerPollTimer = null;
+
+        async function startPhoneScannerPairing() {
+            if (!activeJobId || activeJobStatus !== 'ACTIVE') {
+                showCustomAlert("Select an active Job Card before pairing a phone scanner.");
+                return;
+            }
+            if (phoneScannerSessionId) {
+                document.getElementById('phone-scanner-modal').classList.remove('hidden');
+                return;
+            }
+
+            const button = document.getElementById('phone-scanner-btn');
+            button.disabled = true;
+            try {
+                const body = new FormData();
+                body.append('job_card_id', activeJobId);
+                const response = await fetch('/api/phone-scanner/sessions', { method: 'POST', body });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.detail || 'Could not create a phone scanner session.');
+
+                phoneScannerSessionId = data.session_id;
+                phoneScannerJobCardId = data.job_card_id;
+                phoneScannerCursor = 0;
+
+                const phoneUrl = new URL('/phone-scanner', window.location.origin);
+                phoneUrl.hash = new URLSearchParams({ token: data.token }).toString();
+                const link = document.getElementById('phone-scanner-link');
+                link.href = phoneUrl.toString();
+                link.textContent = phoneUrl.toString();
+                const qr = document.getElementById('phone-scanner-qr');
+                qr.replaceChildren();
+                if (typeof QRCode !== 'undefined') {
+                    new QRCode(qr, {
+                        text: phoneUrl.toString(),
+                        width: 220,
+                        height: 220,
+                        correctLevel: QRCode.CorrectLevel.M
+                    });
+                } else {
+                    qr.textContent = 'QR code unavailable; open the link below on your phone.';
+                }
+                document.getElementById('phone-scanner-job').textContent = data.job_card_id;
+                document.getElementById('phone-scanner-status').textContent = 'Waiting for your phone to connect…';
+                document.getElementById('phone-scanner-modal').classList.remove('hidden');
+                pollPhoneScannerSession();
+            } catch (error) {
+                showCustomAlert(error.message || 'Could not create a phone scanner session.', 'Phone Scanner');
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        async function pollPhoneScannerSession() {
+            const sessionId = phoneScannerSessionId;
+            if (!sessionId) return;
+            if (activeJobId !== phoneScannerJobCardId || activeJobStatus !== 'ACTIVE') {
+                await stopPhoneScannerSession();
+                return;
+            }
+            if (isScanVerifying) {
+                phoneScannerPollTimer = window.setTimeout(pollPhoneScannerSession, 250);
+                return;
+            }
+
+            try {
+                const response = await fetch(
+                    `/api/phone-scanner/sessions/${encodeURIComponent(sessionId)}/scans?after=${phoneScannerCursor}`
+                );
+                const data = await response.json();
+                if (!response.ok) {
+                    if (response.status >= 500) throw new Error('Desktop connection interrupted.');
+                    const message = data.detail || 'Phone scanner session ended.';
+                    await stopPhoneScannerSession();
+                    showCustomAlert(message, 'Phone Scanner');
+                    return;
+                }
+
+                const status = document.getElementById('phone-scanner-status');
+                status.textContent = data.connected
+                    ? `Phone connected · Job Card ${data.job_card_id}`
+                    : 'Waiting for your phone to connect…';
+
+                for (const scan of data.scans) {
+                    while (isScanVerifying && phoneScannerSessionId === sessionId) {
+                        await new Promise(resolve => window.setTimeout(resolve, 100));
+                    }
+                    if (phoneScannerSessionId !== sessionId) return;
+                    const input = document.getElementById('barcode-input');
+                    input.value = scan.code;
+                    const verified = await handleScan({ preventDefault() {} });
+                    if (!verified) break;
+                    phoneScannerCursor = scan.id;
+                }
+            } catch (error) {
+                if (phoneScannerSessionId !== sessionId) return;
+                if (error.message.includes('ended') || error.message.includes('expired')) {
+                    await stopPhoneScannerSession();
+                    showCustomAlert(error.message, 'Phone Scanner');
+                    return;
+                }
+                document.getElementById('phone-scanner-status').textContent = 'Connection interrupted; retrying…';
+            }
+
+            if (phoneScannerSessionId === sessionId) {
+                phoneScannerPollTimer = window.setTimeout(pollPhoneScannerSession, 700);
+            }
+        }
+
+        async function stopPhoneScannerSession() {
+            const sessionId = phoneScannerSessionId;
+            phoneScannerSessionId = null;
+            phoneScannerJobCardId = null;
+            if (phoneScannerPollTimer) {
+                window.clearTimeout(phoneScannerPollTimer);
+                phoneScannerPollTimer = null;
+            }
+            if (sessionId) {
+                try {
+                    await fetch(`/api/phone-scanner/sessions/${encodeURIComponent(sessionId)}/end`, { method: 'POST' });
+                } catch (error) {
+                    console.error('Could not end phone scanner session.', error);
+                }
+            }
+            document.getElementById('phone-scanner-modal').classList.add('hidden');
+        }
+
         async function handleScan(e) {
             e.preventDefault();
             if (isScanVerifying) return;
@@ -3178,6 +3317,7 @@
                 body.append("code", code);
 
                 const res = await fetch('/api/verify', { method: 'POST', body });
+                if (!res.ok) throw new Error("Verification request failed.");
                 const data = await res.json();
                 renderResult(data.result, data.message, code, data.sequence_warning);
 
@@ -3192,9 +3332,11 @@
                 // Cap memory buffer to 500 items during long shifts if older pages were loaded
                 if (allScans.length > 500) allScans.pop();
                 renderStreamTable();
+                return true;
 
             } catch (ex) {
                 renderResult("ERROR", "Network error or server unreachable", code, false);
+                return false;
             } finally {
                 input.value = "";
                 input.disabled = false;
@@ -6690,6 +6832,24 @@
         }
 
     </script>
+    <div id="phone-scanner-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-[120]">
+        <div class="linear-card p-5 rounded-lg max-w-md w-full shadow-2xl">
+            <div class="flex items-center justify-between mb-4 pb-2 border-b border-white/[0.08]">
+                <h3 class="text-sm font-bold modal-title-theme">Pair a phone scanner</h3>
+                <button type="button" onclick="stopPhoneScannerSession()" class="linear-button-secondary px-2.5 py-1 rounded text-xs font-semibold">✕ Close</button>
+            </div>
+            <p class="text-xs text-slate-300 mb-1">Open your phone camera and scan this QR code.</p>
+            <p class="text-xs text-slate-400 mb-3">Job Card: <strong id="phone-scanner-job" class="text-white"></strong></p>
+            <div id="phone-scanner-qr" class="min-h-[220px] flex items-center justify-center bg-white p-2 rounded mx-auto w-fit text-center text-xs text-slate-700"></div>
+            <p id="phone-scanner-status" class="text-xs text-center text-indigo-300 mt-3" role="status" aria-live="polite"></p>
+            <p class="text-[11px] text-slate-400 text-center mt-3">
+                Or open <a id="phone-scanner-link" class="text-indigo-300 underline break-all" target="_blank" rel="noopener noreferrer"></a>
+                on your phone. Scans are verified on this desktop.
+            </p>
+            <button type="button" onclick="stopPhoneScannerSession()" class="linear-button-secondary w-full px-3 py-2 rounded text-xs font-semibold mt-4">End phone session</button>
+        </div>
+    </div>
+
     <!-- Mobile Live Camera Scanner Modal with Zoom -->
     <div id="camera-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[110]">
         <div class="linear-card p-4 rounded-lg max-w-sm w-full shadow-2xl flex flex-col items-center">

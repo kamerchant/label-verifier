@@ -3,7 +3,9 @@ import os
 import re
 import csv
 import json
+import hashlib
 import logging
+import secrets
 import time
 import tempfile
 import threading
@@ -867,6 +869,198 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
 @app.get("/")
 async def index():
     return FileResponse(HTML_PATH, media_type="text/html")
+
+
+@app.get("/phone-scanner")
+async def phone_scanner_page():
+    return FileResponse(
+        os.path.join(BASE_DIR, "templates", "phone-scanner.html"),
+        media_type="text/html",
+        headers={"Cache-Control": "no-store", "Referrer-Policy": "no-referrer"},
+    )
+
+
+@app.post("/api/phone-scanner/sessions")
+def create_phone_scanner_session(
+    job_card_id: str = Form(...),
+    user: dict = Depends(require_password_change_complete),
+):
+    clean_job_card_id = job_card_id.strip()
+    if not clean_job_card_id:
+        raise HTTPException(status_code=400, detail="Select an active Job Card first.")
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT status FROM job_cards
+                WHERE job_card_id = %s AND status != 'DELETED'
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                (clean_job_card_id,),
+            )
+            job = cur.fetchone()
+            if not job or job[0] != "ACTIVE":
+                raise HTTPException(status_code=409, detail="Select an active Job Card before pairing a phone.")
+
+            cur.execute("DELETE FROM phone_scanner_sessions WHERE expires_at <= NOW() OR revoked_at IS NOT NULL")
+            session_id = str(uuid.uuid4())
+            token = secrets.token_urlsafe(32)
+            token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+            cur.execute(
+                """
+                INSERT INTO phone_scanner_sessions
+                    (session_id, token_hash, username, job_card_id, expires_at)
+                VALUES (%s, %s, %s, %s, NOW() + INTERVAL '8 hours')
+                """,
+                (session_id, token_hash, user["username"], clean_job_card_id),
+            )
+            conn.commit()
+            return {
+                "session_id": session_id,
+                "token": token,
+                "job_card_id": clean_job_card_id,
+                "expires_in_seconds": 8 * 60 * 60,
+            }
+    finally:
+        release_connection(conn)
+
+
+@app.get("/api/phone-scanner/sessions/{session_id}/scans")
+def poll_phone_scanner_scans(
+    session_id: str,
+    after: int = Query(0, ge=0),
+    user: dict = Depends(require_password_change_complete),
+):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT job_card_id, expires_at > NOW() AND revoked_at IS NULL,
+                       last_seen_at > NOW() - INTERVAL '30 seconds'
+                FROM phone_scanner_sessions
+                WHERE session_id = %s AND username = %s
+                """,
+                (session_id, user["username"]),
+            )
+            session = cur.fetchone()
+            if not session:
+                raise HTTPException(status_code=404, detail="Phone scanner session not found.")
+            job_card_id, is_active, is_connected = session
+            if not is_active:
+                raise HTTPException(status_code=410, detail="Phone scanner session has expired or ended.")
+
+            cur.execute(
+                "DELETE FROM phone_scanner_scans WHERE session_id = %s AND id <= %s",
+                (session_id, after),
+            )
+            cur.execute(
+                """
+                SELECT id, code FROM phone_scanner_scans
+                WHERE session_id = %s AND id > %s
+                ORDER BY id
+                LIMIT 20
+                """,
+                (session_id, after),
+            )
+            scans = [{"id": row[0], "code": row[1]} for row in cur.fetchall()]
+            conn.commit()
+            return {
+                "job_card_id": job_card_id,
+                "connected": bool(is_connected),
+                "scans": scans,
+            }
+    finally:
+        release_connection(conn)
+
+
+@app.post("/api/phone-scanner/sessions/{session_id}/end")
+def end_phone_scanner_session(
+    session_id: str,
+    user: dict = Depends(require_password_change_complete),
+):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE phone_scanner_sessions
+                SET revoked_at = NOW()
+                WHERE session_id = %s AND username = %s AND revoked_at IS NULL
+                """,
+                (session_id, user["username"]),
+            )
+            if cur.rowcount == 0:
+                raise HTTPException(status_code=404, detail="Phone scanner session not found.")
+            conn.commit()
+            return {"status": "ended"}
+    finally:
+        release_connection(conn)
+
+
+def update_phone_scanner_heartbeat(cur, token: str):
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    cur.execute(
+        """
+        UPDATE phone_scanner_sessions
+        SET connected_at = COALESCE(connected_at, NOW()), last_seen_at = NOW()
+        WHERE token_hash = %s AND expires_at > NOW() AND revoked_at IS NULL
+        RETURNING session_id, job_card_id
+        """,
+        (token_hash,),
+    )
+    session = cur.fetchone()
+    if not session:
+        raise HTTPException(status_code=410, detail="This phone scanner link has expired or ended.")
+    return session
+
+
+@app.post("/api/phone-scanner/connect")
+def connect_phone_scanner(token: str = Form(...)):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            session = update_phone_scanner_heartbeat(cur, token)
+            conn.commit()
+            return {"status": "connected", "job_card_id": session[1]}
+    finally:
+        release_connection(conn)
+
+
+@app.post("/api/phone-scanner/heartbeat")
+def phone_scanner_heartbeat(token: str = Form(...)):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            update_phone_scanner_heartbeat(cur, token)
+            conn.commit()
+            return {"status": "connected"}
+    finally:
+        release_connection(conn)
+
+
+@app.post("/api/phone-scanner/scan")
+def receive_phone_scanner_scan(token: str = Form(...), code: str = Form(...)):
+    clean_code = code.strip().replace("\r", "").replace("\n", "")
+    if not clean_code or len(clean_code) > 2048:
+        raise HTTPException(status_code=400, detail="Scanned code must contain 1 to 2048 characters.")
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            session_id, job_card_id = update_phone_scanner_heartbeat(cur, token)
+            cur.execute(
+                "INSERT INTO phone_scanner_scans (session_id, code) VALUES (%s, %s)",
+                (session_id, clean_code),
+            )
+            conn.commit()
+            return {"status": "received", "job_card_id": job_card_id}
+    finally:
+        release_connection(conn)
+
 
 @app.post("/api/auth/login")
 def login(request: Request, response: Response, username: str = Form(...), password: str = Form(...)):
