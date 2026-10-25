@@ -523,6 +523,20 @@
             background: rgba(var(--packing-qc-accent-rgb), 0.12);
             color: var(--packing-qc-accent);
         }
+        .modal-heading-with-icon::before {
+            content: attr(data-modal-icon);
+            display: inline-grid;
+            width: 2rem;
+            height: 2rem;
+            margin-right: 0.6rem;
+            place-items: center;
+            vertical-align: middle;
+            border: 1px solid rgba(94, 108, 212, 0.28);
+            border-radius: 0.65rem;
+            background: rgba(94, 108, 212, 0.12);
+            font-size: 1rem;
+            line-height: 1;
+        }
         #packing-qc-modal .packing-qc-eyebrow {
             color: var(--packing-qc-accent);
         }
@@ -7222,5 +7236,40 @@
         </div>
     </div>
 
+    <script>
+        const modalHeadingIcons = {
+            'global-audit-modal': ['h3', '📋'],
+            'purge-admin-pw-modal': ['h3', '🗑️'],
+            'duplicate-warning-modal': ['#duplicate-modal-title', '⚠️'],
+            'conflict-viewer-modal': ['h3', '⚠️'],
+            'master-jobs-modal': ['#master-jobs-modal-title', '🗂️'],
+            'user-modal': ['h3', '👥'],
+            'user-admin-pw-modal': ['h3', '🔒'],
+            'report-modal': ['.report-header-box h3', '📊'],
+            'lifecycle-modal': ['.report-header-box h3', '🕘'],
+            'custom-alert-modal': ['#custom-alert-title', 'ℹ️'],
+            'custom-confirm-modal': ['#custom-confirm-title', '❓'],
+            'admin-reset-pw-modal': ['#admin-reset-pw-title', '🔑'],
+            'bulk-status-modal': ['h3', '🔁'],
+            'override-reason-modal': ['h3', '📝'],
+            'shortcuts-modal': ['h3', '⌨️'],
+            'timezone-modal': ['h3', '🕒'],
+            'login-modal': ['.modal-title-theme', '🔐'],
+            'pw-modal': ['#pw-title', '🔑'],
+            'upload-modal': ['h3', '📦'],
+            'phone-scanner-modal': ['h3', '📱'],
+            'camera-modal': ['#camera-modal-title', '📷']
+        };
+
+        Object.entries(modalHeadingIcons).forEach(([modalId, [selector, icon]]) => {
+            const heading = document.querySelector(`#${modalId} ${selector}`);
+            if (!heading) {
+                console.error(`Could not find the heading for modal "${modalId}".`);
+                return;
+            }
+            heading.classList.add('modal-heading-with-icon');
+            heading.dataset.modalIcon = icon;
+        });
+    </script>
 </body>
 </html>
