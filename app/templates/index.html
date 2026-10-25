@@ -3681,7 +3681,12 @@
                 const config = {
                     fps: 15,
                     qrbox: { width: 220, height: 220 },
-                    aspectRatio: 1.0
+                    aspectRatio: 1.0,
+                    videoConstraints: {
+                        facingMode: { ideal: "environment" },
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
                 };
 
                 await html5QrCodeScanner.start(

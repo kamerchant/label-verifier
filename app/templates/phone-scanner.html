@@ -316,6 +316,11 @@
                         { facingMode: 'environment' },
                         {
                             fps: 15,
+                            videoConstraints: {
+                                facingMode: { ideal: 'environment' },
+                                width: { ideal: 1920 },
+                                height: { ideal: 1080 }
+                            },
                             qrbox: (viewfinderWidth, viewfinderHeight) => {
                                 const size = Math.min(
                                     220,
