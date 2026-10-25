@@ -96,6 +96,7 @@
             <textarea id="ocr-input" autocomplete="off" placeholder="Recognized text appears here. Review or correct it before sending."></textarea>
             <button id="send-ocr" class="primary" type="button">Send text to desktop</button>
         </div>
+        <button id="end-session" type="button" style="width:100%;margin-top:16px">End phone session</button>
         <p id="status" role="status" aria-live="polite">Connecting to desktop…</p>
         <p id="last-code" aria-live="polite"></p>
     </main>
@@ -311,11 +312,26 @@
             }
         }
 
+        async function endPhoneSession() {
+            if (sessionEnded) return;
+            sessionEnded = true;
+            clearInterval(heartbeatTimer);
+            document.querySelectorAll('button').forEach(button => { button.disabled = true; });
+            await stopCamera();
+            try {
+                await postWithToken('/api/phone-scanner/disconnect');
+                setStatus('Phone scanner session ended.');
+            } catch (error) {
+                setStatus(error.message || 'Could not end the phone scanner session.', true);
+            }
+        }
+
         modeButtons.forEach(button => {
             button.addEventListener('click', () => switchMode(button.dataset.mode));
         });
         document.getElementById('capture-ocr').addEventListener('click', captureOcrText);
         document.getElementById('send-ocr').addEventListener('click', sendOcrText);
+        document.getElementById('end-session').addEventListener('click', endPhoneSession);
 
         async function connect() {
             if (!token) {

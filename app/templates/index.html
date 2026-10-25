@@ -806,9 +806,6 @@
                         title="Pair a phone to scan labels">
                     Use phone scanner
                 </button>
-                <button type="button" id="phone-scanner-show-qr-btn" onclick="showPhoneScannerPairing()" class="hidden linear-button-secondary px-2 py-1 rounded text-[11px] font-semibold shrink-0">
-                    Show QR
-                </button>
                 <button type="submit" id="verify-btn" disabled class="linear-button-primary px-3 py-1 rounded text-xs font-semibold min-h-[30px] sm:min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none shrink-0">
                     Verify
                 </button>
@@ -3211,18 +3208,11 @@
                 button.title = 'End the active phone scanner session';
                 button.classList.remove('linear-button-secondary');
                 button.classList.add('linear-button-primary');
-                document.getElementById('phone-scanner-show-qr-btn').classList.remove('hidden');
                 pollPhoneScannerSession();
             } catch (error) {
                 showCustomAlert(error.message || 'Could not create a phone scanner session.', 'Phone Scanner');
             } finally {
                 button.disabled = false;
-            }
-        }
-
-        function showPhoneScannerPairing() {
-            if (phoneScannerSessionId) {
-                document.getElementById('phone-scanner-modal').classList.remove('hidden');
             }
         }
 
@@ -3242,6 +3232,7 @@
                 return;
             }
 
+            const status = document.getElementById('phone-scanner-status');
             try {
                 const response = await fetch(
                     `/api/phone-scanner/sessions/${encodeURIComponent(sessionId)}/scans?after=${phoneScannerCursor}`
@@ -3249,16 +3240,21 @@
                 const data = await response.json();
                 if (!response.ok) {
                     if (response.status >= 500) throw new Error('Desktop connection interrupted.');
+                    if (response.status === 404 || response.status === 410) {
+                        await stopPhoneScannerSession(false);
+                        status.textContent = 'Phone scanner session ended.';
+                        return;
+                    }
                     const message = data.detail || 'Phone scanner session ended.';
                     await stopPhoneScannerSession();
                     showCustomAlert(message, 'Phone Scanner');
                     return;
                 }
 
-                const status = document.getElementById('phone-scanner-status');
                 status.textContent = data.connected
                     ? `Phone connected · Job Card ${data.job_card_id}`
                     : 'Waiting for your phone to connect…';
+                if (data.connected) hidePhoneScannerPairing();
 
                 for (const scan of data.scans) {
                     while (isScanVerifying && phoneScannerSessionId === sessionId) {
@@ -3286,7 +3282,7 @@
             }
         }
 
-        async function stopPhoneScannerSession() {
+        async function stopPhoneScannerSession(notifyServer = true) {
             const sessionId = phoneScannerSessionId;
             phoneScannerSessionId = null;
             phoneScannerJobCardId = null;
@@ -3294,7 +3290,7 @@
                 window.clearTimeout(phoneScannerPollTimer);
                 phoneScannerPollTimer = null;
             }
-            if (sessionId) {
+            if (sessionId && notifyServer) {
                 try {
                     await fetch(`/api/phone-scanner/sessions/${encodeURIComponent(sessionId)}/end`, { method: 'POST' });
                 } catch (error) {
@@ -3307,7 +3303,6 @@
             button.title = 'Pair a phone to scan labels';
             button.classList.remove('linear-button-primary');
             button.classList.add('linear-button-secondary');
-            document.getElementById('phone-scanner-show-qr-btn').classList.add('hidden');
         }
 
         async function handleScan(e) {

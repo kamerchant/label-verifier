@@ -1042,6 +1042,29 @@ def phone_scanner_heartbeat(token: str = Form(...)):
         release_connection(conn)
 
 
+@app.post("/api/phone-scanner/disconnect")
+def disconnect_phone_scanner(token: str = Form(...)):
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE phone_scanner_sessions
+                SET revoked_at = NOW()
+                WHERE token_hash = %s AND expires_at > NOW() AND revoked_at IS NULL
+                RETURNING session_id
+                """,
+                (token_hash,),
+            )
+            if not cur.fetchone():
+                raise HTTPException(status_code=410, detail="This phone scanner session has already ended.")
+            conn.commit()
+            return {"status": "ended"}
+    finally:
+        release_connection(conn)
+
+
 @app.post("/api/phone-scanner/scan")
 def receive_phone_scanner_scan(token: str = Form(...), code: str = Form(...)):
     clean_code = code.strip().replace("\r", "").replace("\n", "")
