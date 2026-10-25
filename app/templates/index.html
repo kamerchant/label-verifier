@@ -499,7 +499,7 @@
         #packing-qc-modal > .packing-qc-dialog {
             position: relative;
             overflow: hidden;
-            width: min(100%, 54rem);
+            width: min(100%, 66rem);
             border-radius: 1rem;
             border-color: rgba(148, 163, 184, 0.22);
             box-shadow: 0 32px 100px rgba(0, 0, 0, 0.45);
@@ -574,7 +574,13 @@
             border-radius: 8px;
             box-shadow: 0 5px 16px rgba(var(--packing-qc-accent-rgb), 0.18);
         }
-        #packing-qc-modal #packing-qc-phone-btn,
+        #packing-qc-modal #packing-qc-phone-btn {
+            min-height: 44px;
+            padding-right: 16px;
+            padding-left: 16px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+        }
         #packing-qc-modal #packing-qc-camera-btn {
             min-height: 42px;
             border-radius: 8px;
@@ -1303,7 +1309,7 @@
                         <div class="flex items-center gap-1.5">
                             <input type="text" id="packing-qc-code" required disabled placeholder="Validate a Job Card first" class="linear-input w-full p-2.5 text-xs rounded opacity-40 cursor-not-allowed">
                             <button type="button" id="packing-qc-camera-btn" onclick="startPackingQCCameraScanner()" disabled class="sm:hidden linear-button-secondary px-3 py-2 rounded text-sm min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none shrink-0" title="Scan Final QC code with phone camera" aria-label="Scan Final QC code with phone camera">📷</button>
-                            <button type="button" id="packing-qc-phone-btn" onclick="startPhoneScannerPairing('packing-qc')" class="hidden sm:flex linear-button-secondary px-3 py-2 rounded text-[11px] font-semibold min-h-[42px] items-center justify-center shrink-0">📱 Use phone to scan</button>
+                            <button type="button" id="packing-qc-phone-btn" onclick="startPhoneScannerPairing('packing-qc')" class="hidden sm:flex linear-button-secondary px-3 py-2 rounded font-semibold min-h-[44px] items-center justify-center shrink-0">Use phone to scan</button>
                         </div>
                     </div>
                 </div>
@@ -4297,6 +4303,7 @@
             if (currentPackingQCComplete) {
                 const codeInput = document.getElementById('packing-qc-code');
                 codeInput.disabled = true;
+                codeInput.placeholder = 'Packing QC is complete';
                 codeInput.classList.add('opacity-40', 'cursor-not-allowed');
                 setPackingQCCameraEnabled(false);
             }
@@ -4322,6 +4329,7 @@
             jcInput.disabled = false;
             unlockBtn.classList.add('hidden');
             codeInput.value = "";
+            codeInput.placeholder = "Validate a Job Card first";
             document.getElementById('packing-qc-job-error').classList.add('hidden');
             document.getElementById('packing-qc-result-box').classList.add('hidden');
             currentPackingQCLogs = [];
@@ -4374,6 +4382,7 @@
             }
             codeInput.value = '';
             codeInput.disabled = true;
+            codeInput.placeholder = "Validate a Job Card first";
             codeInput.classList.add('opacity-40', 'cursor-not-allowed');
             updatePackingQCMode();
         }
@@ -4408,6 +4417,9 @@
                 applyPackingQCReport(data);
                 unlockBtn.classList.remove('hidden');
                 codeInput.disabled = currentPackingQCComplete;
+                codeInput.placeholder = currentPackingQCComplete
+                    ? "Packing QC is complete"
+                    : "Scan or enter a code to verify";
                 codeInput.classList.toggle('opacity-40', currentPackingQCComplete);
                 codeInput.classList.toggle('cursor-not-allowed', currentPackingQCComplete);
                 setPackingQCCameraEnabled(!currentPackingQCComplete);
@@ -4466,6 +4478,7 @@
             errorElement.innerText = '';
             errorElement.classList.add('hidden');
             codeInput.disabled = true;
+            codeInput.placeholder = "Validate a Job Card first";
             codeInput.classList.add('opacity-40', 'cursor-not-allowed');
             setPackingQCCameraEnabled(false);
             codeInput.value = "";
