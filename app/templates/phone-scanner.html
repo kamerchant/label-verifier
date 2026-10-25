@@ -75,10 +75,19 @@
         #status { min-height: 24px; color: #a5b4fc; }
         #status.error { color: #fca5a5; }
         #last-code { overflow-wrap: anywhere; color: #fff; font-family: ui-monospace, monospace; }
+        #terminal-message {
+            width: min(100%, 440px);
+            padding: 24px;
+            border: 1px solid #30333d;
+            border-radius: 12px;
+            background: #15171d;
+            text-align: center;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
-    <main>
+    <main id="scanner-app" hidden>
         <h1>Phone scanner</h1>
         <p id="job">Connecting to desktop…</p>
         <div class="mode-toolbar" role="group" aria-label="Scanner mode">
@@ -100,12 +109,17 @@
         <p id="status" role="status" aria-live="polite">Connecting to desktop…</p>
         <p id="last-code" aria-live="polite"></p>
     </main>
+    <div id="terminal-message" role="status" aria-live="polite">
+        Initiate a connection request from the desktop app.
+    </div>
     <script>
         const params = new URLSearchParams(window.location.hash.slice(1));
         const token = params.get('token');
         window.history.replaceState({}, document.title, window.location.pathname);
         const statusElement = document.getElementById('status');
         const jobElement = document.getElementById('job');
+        const scannerApp = document.getElementById('scanner-app');
+        const terminalMessage = document.getElementById('terminal-message');
         const barcodeViewport = document.getElementById('scanner');
         const ocrViewport = document.getElementById('ocr-viewport');
         const ocrVideo = document.getElementById('ocr-video');
@@ -123,6 +137,12 @@
         function setStatus(message, isError = false) {
             statusElement.textContent = message;
             statusElement.classList.toggle('error', isError);
+        }
+
+        function showTerminalMessage(message) {
+            scannerApp.hidden = true;
+            terminalMessage.textContent = message;
+            terminalMessage.hidden = false;
         }
 
         async function postWithToken(path, extra = {}) {
@@ -153,8 +173,13 @@
         }
 
         async function stopCamera() {
+            let stopError = null;
             if (currentMode === 'barcode' && isRunning && scanner) {
-                await scanner.stop();
+                try {
+                    await scanner.stop();
+                } catch (error) {
+                    stopError = error;
+                }
             }
             isRunning = false;
             if (ocrStream) {
@@ -162,6 +187,7 @@
                 ocrStream = null;
             }
             ocrVideo.srcObject = null;
+            if (stopError) throw stopError;
         }
 
         async function startCamera() {
@@ -317,12 +343,16 @@
             sessionEnded = true;
             clearInterval(heartbeatTimer);
             document.querySelectorAll('button').forEach(button => { button.disabled = true; });
-            await stopCamera();
             try {
+                try {
+                    await stopCamera();
+                } catch (error) {
+                    console.error('Could not stop the phone camera cleanly.', error);
+                }
                 await postWithToken('/api/phone-scanner/disconnect');
-                setStatus('Phone scanner session ended.');
+                showTerminalMessage('Phone scanner session ended.');
             } catch (error) {
-                setStatus(error.message || 'Could not end the phone scanner session.', true);
+                showTerminalMessage(error.message || 'Could not end the phone scanner session.');
             }
         }
 
@@ -335,11 +365,13 @@
 
         async function connect() {
             if (!token) {
-                setStatus('This pairing link is missing its token. Pair again from the desktop.', true);
+                showTerminalMessage('Initiate a new connection request from the desktop app.');
                 return;
             }
             try {
                 const data = await postWithToken('/api/phone-scanner/connect');
+                terminalMessage.hidden = true;
+                scannerApp.hidden = false;
                 jobElement.textContent = `Connected to Job Card ${data.job_card_id}`;
                 await startCamera();
                 heartbeatTimer = window.setInterval(async () => {
@@ -350,12 +382,17 @@
                         sessionEnded = true;
                         clearInterval(heartbeatTimer);
                         document.querySelectorAll('button').forEach(button => { button.disabled = true; });
-                        setStatus(error.message || 'Desktop connection ended.', true);
-                        await stopCamera();
+                        try {
+                            await stopCamera();
+                        } catch (stopError) {
+                            console.error('Could not stop the phone camera cleanly.', stopError);
+                        } finally {
+                            showTerminalMessage('Phone scanner session ended.');
+                        }
                     }
                 }, 10000);
             } catch (error) {
-                setStatus(error.message || 'Could not connect to desktop.', true);
+                showTerminalMessage('This scanner link is invalid or has expired. Initiate a new connection request from the desktop app.');
             }
         }
 
