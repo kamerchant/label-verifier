@@ -912,7 +912,7 @@
                     </button>
                 </div>
 
-                <div id="job-search-container" class="relative w-full sm:w-72 flex items-center">
+                <div id="job-search-container" class="relative w-full sm:w-56 flex items-center">
                     <input type="text" id="job-search" oninput="handleJobSearch()" onkeydown="handleJobSearchKeyDown(event)" placeholder="Search Job" 
                            class="linear-input w-full px-3 py-1.5 sm:py-2.5 text-xs sm:text-base rounded placeholder-slate-400 shadow-inner min-h-[34px] sm:min-h-[44px]" autocomplete="off">
                     <div id="job-list" role="listbox" class="absolute left-0 right-0 top-full mt-1 linear-card rounded shadow-2xl max-h-60 overflow-y-auto z-30 hidden"></div>
@@ -1298,7 +1298,7 @@
             </div>
             
             <form onsubmit="handlePackingQCVerify(event)" class="packing-qc-entry space-y-4 mb-4 shrink-0 no-print">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-[14rem_minmax(0,1fr)] gap-4">
                     <div>
                         <label for="packing-qc-job" class="packing-qc-field-label"><span>1</span>Job Card Number</label>
                         <input type="text" id="packing-qc-job" required onkeydown="handlePackingQCJobKeyDown(event)" onblur="lockPackingQCJobCard()" oninput="handlePackingQCJobInput()" placeholder="Enter or scan a Job Card" class="linear-input w-full p-2.5 text-xs rounded">
