@@ -125,9 +125,9 @@
             <button id="zoom-btn-3x" type="button" data-zoom="3" aria-pressed="false" disabled>3x</button>
         </div>
         <p id="zoom-status" role="status" aria-live="polite">Zoom unavailable until the camera starts.</p>
+        <p id="camera-resolution" aria-live="polite" style="color:#000">Camera resolution: not started.</p>
         <div id="ocr-controls" hidden>
             <p>Align one line of printed code inside the guide and capture.</p>
-            <p id="camera-resolution" aria-live="polite">Camera resolution: not started.</p>
             <button id="capture-ocr" type="button">Capture and read text</button>
             <textarea id="ocr-input" autocomplete="off" placeholder="Recognized text appears here. Review or correct it before sending."></textarea>
             <button id="send-ocr" class="primary" type="button">Send text to desktop</button>
@@ -172,9 +172,12 @@
         }
 
         function updateCameraResolution() {
-            const trackSettings = ocrStream?.getVideoTracks()[0]?.getSettings();
-            const width = trackSettings?.width || ocrVideo.videoWidth;
-            const height = trackSettings?.height || ocrVideo.videoHeight;
+            const video = currentMode === 'barcode'
+                ? barcodeViewport.querySelector('video')
+                : ocrVideo;
+            const trackSettings = video?.srcObject?.getVideoTracks?.()[0]?.getSettings?.();
+            const width = trackSettings?.width || video?.videoWidth;
+            const height = trackSettings?.height || video?.videoHeight;
             cameraResolution.textContent = width && height
                 ? `Camera resolution in use: ${width} × ${height}`
                 : 'Camera resolution: unavailable';
@@ -325,6 +328,8 @@
                         sendScannedCode,
                         () => {}
                     );
+                    cameraResolution.textContent = 'Reading camera resolution…';
+                    window.setTimeout(updateCameraResolution, 300);
                     window.setTimeout(updateCameraZoomCapabilities, 300);
                 } else {
                     cameraResolution.textContent = 'Requesting camera resolution…';

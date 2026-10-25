@@ -3704,6 +3704,8 @@
                         // Frame scan tick, keep empty for speed
                     }
                 );
+                document.getElementById('ocr-camera-resolution').textContent = 'Reading camera resolution...';
+                window.setTimeout(updateCameraResolution, 300);
                 window.setTimeout(initCameraZoomCapabilities, 300);
             } catch (err) {
                 await stopCameraScanner();
@@ -3787,12 +3789,7 @@
                 ocrCameraStream = stream;
                 video.srcObject = ocrCameraStream;
                 await video.play();
-                const settings = stream.getVideoTracks()[0]?.getSettings();
-                const width = settings?.width || video.videoWidth;
-                const height = settings?.height || video.videoHeight;
-                resolutionStatus.textContent = width && height
-                    ? `Camera resolution in use: ${width} × ${height}`
-                    : 'Camera resolution: unavailable';
+                updateCameraResolution();
                 initCameraZoomCapabilities();
                 setOcrStatus('Align one line of code inside the guide and capture.');
             } catch (error) {
@@ -3823,6 +3820,20 @@
             status.innerText = message;
             status.classList.toggle('text-red-400', isError);
             status.classList.toggle('text-slate-300', !isError);
+        }
+
+        function updateCameraResolution() {
+            if (document.getElementById('camera-modal').classList.contains('hidden')) return;
+            const video = currentCameraScanMode === 'ocr'
+                ? document.getElementById('ocr-camera-video')
+                : document.querySelector('#camera-scanner-viewport video');
+            const track = video?.srcObject?.getVideoTracks?.()[0];
+            const settings = track?.getSettings?.();
+            const width = settings?.width || video?.videoWidth;
+            const height = settings?.height || video?.videoHeight;
+            document.getElementById('ocr-camera-resolution').textContent = width && height
+                ? `Camera resolution in use: ${width} × ${height}`
+                : 'Camera resolution: unavailable';
         }
 
         async function captureOcrText() {
@@ -7207,10 +7218,10 @@
             </div>
 
             <p id="camera-zoom-status" class="hidden text-[11px] text-amber-300 mt-1 text-center leading-tight" aria-live="polite"></p>
+            <p id="ocr-camera-resolution" class="text-[11px] text-black text-center leading-tight" aria-live="polite" style="color:#000">
+                Camera resolution: not started.
+            </p>
             <div id="ocr-camera-controls" class="hidden w-full mt-3 space-y-2">
-                <p id="ocr-camera-resolution" class="text-[11px] text-slate-300 text-center leading-tight" aria-live="polite">
-                    Camera resolution: not started.
-                </p>
                 <button id="ocr-capture-btn" type="button" onclick="captureOcrText()"
                         class="linear-button-primary w-full px-3 py-2 rounded text-xs font-semibold">Capture and read text</button>
                 <p id="ocr-camera-status" class="text-[11px] text-slate-300 text-center leading-tight" role="status" aria-live="polite">
