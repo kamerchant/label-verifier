@@ -969,13 +969,13 @@
                         title="Scan with Phone Camera">
                     📷
                 </button>
+                <button type="submit" id="verify-btn" disabled class="linear-button-primary px-3 py-1 rounded text-xs font-semibold min-h-[30px] sm:min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none shrink-0">
+                    Verify
+                </button>
                 <button type="button" id="phone-scanner-btn" onclick="startPhoneScannerPairing()"
                         class="hidden sm:flex linear-button-secondary px-3 py-1 rounded text-xs font-semibold min-h-[30px] sm:min-h-[38px] items-center justify-center shrink-0"
                         title="Pair a phone to scan labels">
                     Use phone to scan
-                </button>
-                <button type="submit" id="verify-btn" disabled class="linear-button-primary px-3 py-1 rounded text-xs font-semibold min-h-[30px] sm:min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none shrink-0">
-                    Verify
                 </button>
             </form>
         </div>
@@ -1309,13 +1309,13 @@
                         <div class="flex items-center gap-1.5">
                             <input type="text" id="packing-qc-code" required disabled placeholder="Validate a Job Card first" class="linear-input w-full p-2.5 text-xs rounded opacity-40 cursor-not-allowed">
                             <button type="button" id="packing-qc-camera-btn" onclick="startPackingQCCameraScanner()" disabled class="sm:hidden linear-button-secondary px-3 py-2 rounded text-sm min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none shrink-0" title="Scan Final QC code with phone camera" aria-label="Scan Final QC code with phone camera">📷</button>
+                            <button type="submit" id="packing-qc-submit-btn" class="linear-button-primary px-5 py-2 rounded text-xs font-semibold shrink-0">Verify</button>
                             <button type="button" id="packing-qc-phone-btn" onclick="startPhoneScannerPairing('packing-qc')" class="hidden sm:flex linear-button-secondary px-3 py-2 rounded font-semibold min-h-[44px] items-center justify-center shrink-0">Use phone to scan</button>
                         </div>
                     </div>
                 </div>
                 <div class="flex justify-between items-center gap-3 pt-1">
                     <button type="button" id="packing-qc-unlock-btn" onclick="resetPackingQCJobLock()" class="text-xs text-indigo-400 hover:text-indigo-300 underline bg-transparent border-none p-0 cursor-pointer hidden">Unlock / Change Job Card</button>
-                    <button type="submit" id="packing-qc-submit-btn" class="linear-button-primary px-5 py-2 rounded text-xs font-semibold ml-auto">Verify</button>
                 </div>
             </form>
 
