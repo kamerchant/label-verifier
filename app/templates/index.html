@@ -3678,10 +3678,16 @@
                     html5QrCodeScanner = new Html5Qrcode("camera-scanner-viewport");
                 }
 
-                const config = { 
-                    fps: 15, 
-                    qrbox: { width: 220, height: 220 },
-                    aspectRatio: 1.0 
+                const config = {
+                    fps: 15,
+                    qrbox: (viewfinderWidth, viewfinderHeight) => {
+                        const size = Math.floor(Math.min(
+                            320,
+                            viewfinderWidth * 0.82,
+                            viewfinderHeight * 0.82
+                        ));
+                        return { width: size, height: size };
+                    }
                 };
 
                 await html5QrCodeScanner.start(
