@@ -170,6 +170,7 @@ def init_db():
                     token_hash CHAR(64) NOT NULL UNIQUE,
                     username TEXT NOT NULL,
                     job_card_id TEXT NOT NULL,
+                    scan_target TEXT NOT NULL DEFAULT 'verification',
                     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     expires_at TIMESTAMPTZ NOT NULL,
                     connected_at TIMESTAMPTZ,
@@ -177,6 +178,10 @@ def init_db():
                     revoked_at TIMESTAMPTZ
                 );
             """)
+            cur.execute(
+                "ALTER TABLE phone_scanner_sessions ADD COLUMN IF NOT EXISTS "
+                "scan_target TEXT NOT NULL DEFAULT 'verification';"
+            )
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS phone_scanner_scans (
                     id BIGSERIAL PRIMARY KEY,

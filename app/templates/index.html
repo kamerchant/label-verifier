@@ -1131,6 +1131,7 @@
                         <div class="flex items-center gap-1.5">
                             <input type="text" id="packing-qc-code" required disabled placeholder="" class="linear-input w-full p-2.5 text-xs rounded opacity-40 cursor-not-allowed">
                             <button type="button" id="packing-qc-camera-btn" onclick="startPackingQCCameraScanner()" disabled class="sm:hidden linear-button-secondary px-3 py-2 rounded text-sm min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none shrink-0" title="Scan Final QC code with phone camera" aria-label="Scan Final QC code with phone camera">📷</button>
+                            <button type="button" id="packing-qc-phone-btn" onclick="startPhoneScannerPairing('packing-qc')" class="hidden sm:flex linear-button-secondary px-2.5 py-2 rounded text-[11px] font-semibold min-h-[38px] items-center justify-center shrink-0">Use phone scanner</button>
                         </div>
                     </div>
                 </div>
@@ -2837,7 +2838,7 @@
         }
 
         async function selectJob(id, descEncoded, status, consumed, total) {
-            if (phoneScannerSessionId && phoneScannerJobCardId !== id) {
+            if (phoneScannerTarget === 'verification' && phoneScannerSessionId && phoneScannerJobCardId !== id) {
                 await stopPhoneScannerSession();
             }
             activeJobId = id;
@@ -3158,31 +3159,57 @@
 
         let phoneScannerSessionId = null;
         let phoneScannerJobCardId = null;
+        let phoneScannerTarget = null;
         let phoneScannerCursor = 0;
         let phoneScannerPollTimer = null;
 
-        async function startPhoneScannerPairing() {
+        function updatePhoneScannerButtonUi() {
+            const isActive = Boolean(phoneScannerSessionId);
+            ['phone-scanner-btn', 'packing-qc-phone-btn'].forEach(id => {
+                const button = document.getElementById(id);
+                if (!button) return;
+                button.textContent = isActive ? 'End phone session' : 'Use phone scanner';
+                button.title = isActive
+                    ? 'End the active phone scanner session'
+                    : 'Pair a phone to scan labels';
+                button.classList.toggle('linear-button-primary', isActive);
+                button.classList.toggle('linear-button-secondary', !isActive);
+            });
+        }
+
+        async function startPhoneScannerPairing(target = 'verification') {
             if (phoneScannerSessionId) {
                 await stopPhoneScannerSession();
                 return;
             }
-            if (!activeJobId || activeJobStatus !== 'ACTIVE') {
-                showCustomAlert("Select an active Job Card before pairing a phone scanner.");
+            const isPackingQc = target === 'packing-qc';
+            const jobCardId = isPackingQc ? currentPackingQCJob : activeJobId;
+            if (isPackingQc
+                ? (!jobCardId || currentPackingQCJob !== document.getElementById('packing-qc-job').value.trim() || currentPackingQCComplete)
+                : (!jobCardId || activeJobStatus !== 'ACTIVE')) {
+                showCustomAlert(
+                    isPackingQc
+                        ? "Validate an available Job Card before pairing a phone scanner."
+                        : "Select an active Job Card before pairing a phone scanner."
+                );
                 return;
             }
 
-            const button = document.getElementById('phone-scanner-btn');
+            const button = document.getElementById(isPackingQc ? 'packing-qc-phone-btn' : 'phone-scanner-btn');
             button.disabled = true;
             try {
                 const body = new FormData();
-                body.append('job_card_id', activeJobId);
+                body.append('job_card_id', jobCardId);
+                body.append('scan_target', target);
                 const response = await fetch('/api/phone-scanner/sessions', { method: 'POST', body });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.detail || 'Could not create a phone scanner session.');
 
                 phoneScannerSessionId = data.session_id;
                 phoneScannerJobCardId = data.job_card_id;
+                phoneScannerTarget = data.scan_target;
                 phoneScannerCursor = 0;
+                updatePhoneScannerButtonUi();
 
                 const phoneUrl = new URL('/phone-scanner', window.location.origin);
                 phoneUrl.hash = new URLSearchParams({ token: data.token }).toString();
@@ -3201,13 +3228,10 @@
                 } else {
                     qr.textContent = 'QR code unavailable; open the link below on your phone.';
                 }
-                document.getElementById('phone-scanner-job').textContent = data.job_card_id;
+                document.getElementById('phone-scanner-job').textContent =
+                    `${data.job_card_id}${isPackingQc ? ' · Final QC' : ''}`;
                 document.getElementById('phone-scanner-status').textContent = 'Waiting for your phone to connect…';
                 document.getElementById('phone-scanner-modal').classList.remove('hidden');
-                button.textContent = 'End phone session';
-                button.title = 'End the active phone scanner session';
-                button.classList.remove('linear-button-secondary');
-                button.classList.add('linear-button-primary');
                 pollPhoneScannerSession();
             } catch (error) {
                 showCustomAlert(error.message || 'Could not create a phone scanner session.', 'Phone Scanner');
@@ -3223,7 +3247,13 @@
         async function pollPhoneScannerSession() {
             const sessionId = phoneScannerSessionId;
             if (!sessionId) return;
-            if (activeJobId !== phoneScannerJobCardId || activeJobStatus !== 'ACTIVE') {
+            const currentScanJobId = phoneScannerTarget === 'packing-qc'
+                ? currentPackingQCJob
+                : activeJobId;
+            const canScan = phoneScannerTarget === 'packing-qc'
+                ? !currentPackingQCComplete
+                : activeJobStatus === 'ACTIVE';
+            if (currentScanJobId !== phoneScannerJobCardId || !canScan) {
                 await stopPhoneScannerSession();
                 return;
             }
@@ -3250,6 +3280,11 @@
                     showCustomAlert(message, 'Phone Scanner');
                     return;
                 }
+                if (data.scan_target !== phoneScannerTarget || data.job_card_id !== phoneScannerJobCardId) {
+                    await stopPhoneScannerSession();
+                    showCustomAlert('Phone scanner session target changed. Pair the phone again.', 'Phone Scanner');
+                    return;
+                }
 
                 status.textContent = data.connected
                     ? `Phone connected · Job Card ${data.job_card_id}`
@@ -3261,9 +3296,13 @@
                         await new Promise(resolve => window.setTimeout(resolve, 100));
                     }
                     if (phoneScannerSessionId !== sessionId) return;
-                    const input = document.getElementById('barcode-input');
+                    const input = document.getElementById(
+                        phoneScannerTarget === 'packing-qc' ? 'packing-qc-code' : 'barcode-input'
+                    );
                     input.value = scan.code;
-                    const verified = await handleScan({ preventDefault() {} });
+                    const verified = phoneScannerTarget === 'packing-qc'
+                        ? await handlePackingQCVerify({ preventDefault() {} })
+                        : await handleScan({ preventDefault() {} });
                     if (!verified) break;
                     phoneScannerCursor = scan.id;
                 }
@@ -3286,6 +3325,7 @@
             const sessionId = phoneScannerSessionId;
             phoneScannerSessionId = null;
             phoneScannerJobCardId = null;
+            phoneScannerTarget = null;
             if (phoneScannerPollTimer) {
                 window.clearTimeout(phoneScannerPollTimer);
                 phoneScannerPollTimer = null;
@@ -3298,11 +3338,7 @@
                 }
             }
             hidePhoneScannerPairing();
-            const button = document.getElementById('phone-scanner-btn');
-            button.textContent = 'Use phone scanner';
-            button.title = 'Pair a phone to scan labels';
-            button.classList.remove('linear-button-primary');
-            button.classList.add('linear-button-secondary');
+            updatePhoneScannerButtonUi();
         }
 
         async function handleScan(e) {
@@ -4286,11 +4322,11 @@
 
             if (jcId && !code) {
                 await lockPackingQCJobCard();
-                return;
+                return false;
             }
 
-            if (!jcId || !code) return;
-            if (!jcInput.disabled && !await lockPackingQCJobCard()) return;
+            if (!jcId || !code) return false;
+            if (!jcInput.disabled && !await lockPackingQCJobCard()) return false;
 
             const originalBtnText = submitBtn.innerHTML;
             submitBtn.disabled = true;
@@ -4348,9 +4384,11 @@
                     detailText.innerText = data.message;
                     updateSystemMessage(`[Final QC Failed] ${data.message}`, "error");
                 }
+                return true;
             } catch (ex) {
                 showCustomAlert("Server error during Final QC Test.");
                 updateSystemMessage("Final QC Server Error", "error");
+                return false;
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalBtnText;

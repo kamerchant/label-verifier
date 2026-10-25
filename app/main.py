@@ -883,11 +883,14 @@ async def phone_scanner_page():
 @app.post("/api/phone-scanner/sessions")
 def create_phone_scanner_session(
     job_card_id: str = Form(...),
+    scan_target: str = Form("verification"),
     user: dict = Depends(require_password_change_complete),
 ):
     clean_job_card_id = job_card_id.strip()
     if not clean_job_card_id:
-        raise HTTPException(status_code=400, detail="Select an active Job Card first.")
+        raise HTTPException(status_code=400, detail="Select a Job Card first.")
+    if scan_target not in {"verification", "packing-qc"}:
+        raise HTTPException(status_code=400, detail="Invalid phone scanner target.")
 
     conn = get_connection()
     try:
@@ -902,8 +905,13 @@ def create_phone_scanner_session(
                 (clean_job_card_id,),
             )
             job = cur.fetchone()
-            if not job or job[0] != "ACTIVE":
-                raise HTTPException(status_code=409, detail="Select an active Job Card before pairing a phone.")
+            if not job or (scan_target == "verification" and job[0] != "ACTIVE"):
+                raise HTTPException(
+                    status_code=409,
+                    detail="Select a valid Job Card before pairing a phone scanner."
+                    if scan_target == "packing-qc"
+                    else "Select an active Job Card before pairing a phone.",
+                )
 
             cur.execute("DELETE FROM phone_scanner_sessions WHERE expires_at <= NOW() OR revoked_at IS NOT NULL")
             session_id = str(uuid.uuid4())
@@ -912,16 +920,17 @@ def create_phone_scanner_session(
             cur.execute(
                 """
                 INSERT INTO phone_scanner_sessions
-                    (session_id, token_hash, username, job_card_id, expires_at)
-                VALUES (%s, %s, %s, %s, NOW() + INTERVAL '8 hours')
+                    (session_id, token_hash, username, job_card_id, scan_target, expires_at)
+                VALUES (%s, %s, %s, %s, %s, NOW() + INTERVAL '8 hours')
                 """,
-                (session_id, token_hash, user["username"], clean_job_card_id),
+                (session_id, token_hash, user["username"], clean_job_card_id, scan_target),
             )
             conn.commit()
             return {
                 "session_id": session_id,
                 "token": token,
                 "job_card_id": clean_job_card_id,
+                "scan_target": scan_target,
                 "expires_in_seconds": 8 * 60 * 60,
             }
     finally:
@@ -939,7 +948,7 @@ def poll_phone_scanner_scans(
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT job_card_id, expires_at > NOW() AND revoked_at IS NULL,
+                SELECT job_card_id, scan_target, expires_at > NOW() AND revoked_at IS NULL,
                        last_seen_at > NOW() - INTERVAL '30 seconds'
                 FROM phone_scanner_sessions
                 WHERE session_id = %s AND username = %s
@@ -949,7 +958,7 @@ def poll_phone_scanner_scans(
             session = cur.fetchone()
             if not session:
                 raise HTTPException(status_code=404, detail="Phone scanner session not found.")
-            job_card_id, is_active, is_connected = session
+            job_card_id, scan_target, is_active, is_connected = session
             if not is_active:
                 raise HTTPException(status_code=410, detail="Phone scanner session has expired or ended.")
 
@@ -970,6 +979,7 @@ def poll_phone_scanner_scans(
             conn.commit()
             return {
                 "job_card_id": job_card_id,
+                "scan_target": scan_target,
                 "connected": bool(is_connected),
                 "scans": scans,
             }
@@ -1008,7 +1018,7 @@ def update_phone_scanner_heartbeat(cur, token: str):
         UPDATE phone_scanner_sessions
         SET connected_at = COALESCE(connected_at, NOW()), last_seen_at = NOW()
         WHERE token_hash = %s AND expires_at > NOW() AND revoked_at IS NULL
-        RETURNING session_id, job_card_id
+        RETURNING session_id, job_card_id, scan_target
         """,
         (token_hash,),
     )
@@ -1025,7 +1035,11 @@ def connect_phone_scanner(token: str = Form(...)):
         with conn.cursor() as cur:
             session = update_phone_scanner_heartbeat(cur, token)
             conn.commit()
-            return {"status": "connected", "job_card_id": session[1]}
+            return {
+                "status": "connected",
+                "job_card_id": session[1],
+                "scan_target": session[2],
+            }
     finally:
         release_connection(conn)
 
@@ -1074,13 +1088,13 @@ def receive_phone_scanner_scan(token: str = Form(...), code: str = Form(...)):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            session_id, job_card_id = update_phone_scanner_heartbeat(cur, token)
+            session_id, job_card_id, scan_target = update_phone_scanner_heartbeat(cur, token)
             cur.execute(
                 "INSERT INTO phone_scanner_scans (session_id, code) VALUES (%s, %s)",
                 (session_id, clean_code),
             )
             conn.commit()
-            return {"status": "received", "job_card_id": job_card_id}
+            return {"status": "received", "job_card_id": job_card_id, "scan_target": scan_target}
     finally:
         release_connection(conn)
 
