@@ -1648,7 +1648,6 @@ def get_packing_qc_logs(job_card_id: str, user: dict = Depends(require_password_
             )
             has_production_scans = cur.fetchone()[0]
             rows = []
-            completion = None
             cur.execute("""
                 SELECT job_card_id, code_scanned, tested_by, tested_at
                 FROM packing_qc_logs
@@ -1656,21 +1655,12 @@ def get_packing_qc_logs(job_card_id: str, user: dict = Depends(require_password_
                 ORDER BY tested_at DESC
             """, (run_id,))
             rows = cur.fetchall()
-            cur.execute("""
-                SELECT completed_by, completed_at
-                FROM packing_qc_completions
-                WHERE run_id = %s
-            """, (run_id,))
-            completion = cur.fetchone()
 
             return {
                 "job_card_id": job_card_id,
                 "run_id": run_id,
                 "description": desc or "Serialized Production Batch",
                 "has_production_scans": has_production_scans,
-                "packing_qc_complete": completion is not None,
-                "completed_by": completion[0] if completion else "",
-                "completed_at": completion[1].strftime("%Y-%m-%d %H:%M:%S") if completion and completion[1] else "",
                 "logs": [{
                     "code": r[1],
                     "tested_by": r[2],
@@ -2440,16 +2430,6 @@ def packing_qc_verify(
                 })
 
             if has_production_scans:
-                cur.execute(
-                    "SELECT 1 FROM packing_qc_completions WHERE run_id = %s",
-                    (run_id,),
-                )
-                if cur.fetchone():
-                    return JSONResponse(status_code=200, content={
-                        "matched": False,
-                        "message": "Packing QC is already marked complete for this job."
-                    })
-
                 cur.execute("""
                     SELECT id FROM packing_qc_logs
                     WHERE run_id = %s AND code_scanned = %s AND qc_stage = 'PACKING'
@@ -2485,75 +2465,11 @@ def packing_qc_verify(
         release_connection(conn)
 
 @app.post("/api/packing-qc/complete")
-def complete_packing_qc(
-    job_card_id: str = Form(...),
-    user: dict = Depends(require_password_change_complete),
-):
-    jc_id = job_card_id.strip()
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT run_id FROM job_cards WHERE job_card_id = %s AND status != 'DELETED' ORDER BY created_at DESC LIMIT 1 FOR UPDATE",
-                (jc_id,),
-            )
-            job = cur.fetchone()
-            if not job:
-                raise HTTPException(status_code=404, detail="Job Card not found.")
-            run_id = job[0]
-
-            cur.execute(
-                "SELECT EXISTS (SELECT 1 FROM scan_logs WHERE job_card_id = %s)",
-                (jc_id,),
-            )
-            if not cur.fetchone()[0]:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Packing QC completion requires production scans for this Job Card.",
-                )
-
-            cur.execute("""
-                SELECT COUNT(*)
-                FROM packing_qc_logs
-                WHERE run_id = %s AND qc_stage = 'PACKING'
-            """, (run_id,))
-            count_row = cur.fetchone()
-            if not count_row or count_row[0] < 1:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Complete at least one successful Packing QC code check before marking this job complete.",
-                )
-
-            cur.execute("""
-                INSERT INTO packing_qc_completions (run_id, job_card_id, completed_by)
-                VALUES (%s, %s, %s)
-                ON CONFLICT (run_id) DO NOTHING
-            """, (run_id, jc_id, user["username"]))
-            if cur.rowcount:
-                log_system_event(
-                    cur,
-                    "FINAL_QC",
-                    jc_id,
-                    "PACKING_QC_COMPLETED",
-                    user["username"],
-                    "Operator explicitly marked Packing QC complete.",
-                )
-            cur.execute("""
-                SELECT completed_by, completed_at
-                FROM packing_qc_completions
-                WHERE run_id = %s
-            """, (run_id,))
-            completion = cur.fetchone()
-            conn.commit()
-
-            return {
-                "status": "success",
-                "job_card_id": jc_id,
-                "completed_by": completion[0] if completion else user["username"],
-                "completed_at": completion[1].strftime("%Y-%m-%d %H:%M:%S") if completion and completion[1] else "",
-            }
-    finally:
-        release_connection(conn)
+def complete_packing_qc(user: dict = Depends(require_password_change_complete)):
+    raise HTTPException(
+        status_code=410,
+        detail="Packing QC is no longer completed or locked. Continue verifying codes as needed.",
+    )
 
 @app.post("/api/verify")
 def verify_code(

@@ -1360,9 +1360,7 @@
                         <div class="linear-subcard" style="margin-bottom: 12px;">
                             <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Job Card:</strong> <span id="print-qc-job"></span></p>
                             <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Description:</strong> <span id="print-qc-desc"></span></p>
-                            <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Status:</strong> <span id="print-qc-status">Completed</span></p>
-                            <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Completed By:</strong> <span id="print-qc-completed-by"></span></p>
-                            <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Completed At:</strong> <span id="print-qc-completed-at"></span></p>
+                            <p style="font-size: 9.5pt; margin-bottom: 4px;"><strong>Status:</strong> <span id="print-qc-status">In Progress</span></p>
                         </div>
 
                         <p style="font-size: 9.5pt; margin-bottom: 10px;"><strong>Total Codes Verified:</strong> <span id="print-qc-count"></span></p>
@@ -1384,7 +1382,7 @@
                         </div>
 
                         <div style="margin-top: 14px; padding: 10px; background: #f0fdf4; border: 2px solid #16a34a; border-radius: 6px; text-align: center;">
-                            <span style="font-size: 11pt; font-weight: bold; color: #16a34a;">Final QC Approved, OK to Pack</span>
+                            <span style="font-size: 11pt; font-weight: bold; color: #16a34a;">Packing QC Checks Verified</span>
                         </div>
                     </div>
                     <div id="print-qc-footer-timestamp"></div>
@@ -1392,7 +1390,6 @@
             </div>
 
             <div class="packing-qc-footer flex justify-end shrink-0 no-print">
-                <button type="button" id="packing-qc-complete-btn" onclick="completePackingQC()" disabled class="hidden linear-button-secondary px-4 py-2 rounded text-xs font-semibold opacity-30 pointer-events-none">Complete Packing QC</button>
                 <button type="button" id="packing-qc-print-btn" onclick="printPackingQC()" disabled class="linear-button-primary px-4 py-2 rounded text-xs font-semibold opacity-30 pointer-events-none">Print Certificate</button>
             </div>
         </div>
@@ -3362,7 +3359,7 @@
             const isPackingQc = target === 'packing-qc';
             const jobCardId = isPackingQc ? currentPackingQCJob : activeJobId;
             if (isPackingQc
-                ? (!jobCardId || currentPackingQCJob !== document.getElementById('packing-qc-job').value.trim() || currentPackingQCComplete)
+                ? (!jobCardId || currentPackingQCJob !== document.getElementById('packing-qc-job').value.trim())
                 : (!jobCardId || activeJobStatus !== 'ACTIVE')) {
                 showCustomAlert(
                     isPackingQc
@@ -3428,7 +3425,7 @@
                 ? currentPackingQCJob
                 : activeJobId;
             const canScan = phoneScannerTarget === 'packing-qc'
-                ? !currentPackingQCComplete
+                ? Boolean(currentPackingQCJob)
                 : activeJobStatus === 'ACTIVE';
             if (currentScanJobId !== phoneScannerJobCardId || !canScan) {
                 await stopPhoneScannerSession();
@@ -4225,10 +4222,7 @@
 
         let currentPackingQCJob = "";
         let currentPackingQCDesc = "";
-        let currentPackingQCComplete = false;
         let currentPackingQCHasProductionScans = null;
-        let currentPackingQCCompletedBy = "";
-        let currentPackingQCCompletedAt = "";
 
         function updatePackingQCMode() {
             const mode = document.getElementById('packing-qc-mode');
@@ -4259,32 +4253,21 @@
                 ? "Final QC Terminal - Packing Check Mode"
                 : "Final QC Terminal - Pre Check Mode";
             mode.innerText = isPackingStage
-                ? "Record codes before packaging to generate an 'OK for Packing' certificate."
+                ? "Keep recording packing checks as needed. A certificate is available after the first successful check."
                 : "No production scans exist against this Job Card. Successful checks will not be recorded as Packing QC.";
             mode.className = isPackingStage
                 ? "text-xs font-semibold mt-1 text-emerald-500"
                 : "text-xs font-semibold mt-1 text-amber-500";
         }
 
-        function updatePackingQCCompletionControls() {
-            const completeBtn = document.getElementById('packing-qc-complete-btn');
+        function updatePackingQCActions() {
             const printBtn = document.getElementById('packing-qc-print-btn');
             const hasPackingChecks = currentPackingQCHasProductionScans === true
                 && currentPackingQCLogs.length > 0;
-            if (completeBtn) {
-                completeBtn.classList.toggle('hidden', !hasPackingChecks || currentPackingQCComplete);
-                completeBtn.disabled = !hasPackingChecks || currentPackingQCComplete;
-                completeBtn.classList.toggle('opacity-30', !hasPackingChecks || currentPackingQCComplete);
-                completeBtn.classList.toggle('pointer-events-none', !hasPackingChecks || currentPackingQCComplete);
-            }
             if (printBtn) {
-                printBtn.classList.toggle(
-                    'hidden',
-                    currentPackingQCHasProductionScans !== true
-                );
-                printBtn.disabled = !currentPackingQCComplete;
-                printBtn.classList.toggle('opacity-30', !currentPackingQCComplete);
-                printBtn.classList.toggle('pointer-events-none', !currentPackingQCComplete);
+                printBtn.disabled = !hasPackingChecks;
+                printBtn.classList.toggle('opacity-30', !hasPackingChecks);
+                printBtn.classList.toggle('pointer-events-none', !hasPackingChecks);
                 printBtn.innerText = 'Print Certificate';
             }
         }
@@ -4296,19 +4279,9 @@
                 tested_by: log.tested_by,
                 tested_at: log.tested_at
             }));
-            currentPackingQCComplete = Boolean(data.packing_qc_complete);
             currentPackingQCHasProductionScans = Boolean(data.has_production_scans);
-            currentPackingQCCompletedBy = data.completed_by || "";
-            currentPackingQCCompletedAt = data.completed_at || "";
-            if (currentPackingQCComplete) {
-                const codeInput = document.getElementById('packing-qc-code');
-                codeInput.disabled = true;
-                codeInput.placeholder = 'Packing QC is complete';
-                codeInput.classList.add('opacity-40', 'cursor-not-allowed');
-                setPackingQCCameraEnabled(false);
-            }
             renderPackingQCChart();
-            updatePackingQCCompletionControls();
+            updatePackingQCActions();
         }
 
         function setPackingQCCameraEnabled(enabled) {
@@ -4335,14 +4308,11 @@
             currentPackingQCLogs = [];
             currentPackingQCJob = "";
             currentPackingQCDesc = "";
-            currentPackingQCComplete = false;
             currentPackingQCHasProductionScans = null;
-            currentPackingQCCompletedBy = "";
-            currentPackingQCCompletedAt = "";
             updatePackingQCMode();
             renderPackingQCChart();
 
-            updatePackingQCCompletionControls();
+            updatePackingQCActions();
 
             if (prefillJobId) {
                 codeInput.disabled = true;
@@ -4373,12 +4343,9 @@
                 currentPackingQCJob = '';
                 currentPackingQCDesc = '';
                 currentPackingQCLogs = [];
-                currentPackingQCComplete = false;
                 currentPackingQCHasProductionScans = null;
-                currentPackingQCCompletedBy = "";
-                currentPackingQCCompletedAt = "";
                 renderPackingQCChart();
-                updatePackingQCCompletionControls();
+                updatePackingQCActions();
             }
             codeInput.value = '';
             codeInput.disabled = true;
@@ -4416,20 +4383,17 @@
                 currentPackingQCJob = jcId;
                 applyPackingQCReport(data);
                 unlockBtn.classList.remove('hidden');
-                codeInput.disabled = currentPackingQCComplete;
-                codeInput.placeholder = currentPackingQCComplete
-                    ? "Packing QC is complete"
-                    : "Scan or enter a code to verify";
-                codeInput.classList.toggle('opacity-40', currentPackingQCComplete);
-                codeInput.classList.toggle('cursor-not-allowed', currentPackingQCComplete);
-                setPackingQCCameraEnabled(!currentPackingQCComplete);
+                codeInput.disabled = false;
+                codeInput.placeholder = "Scan or enter a code to verify";
+                codeInput.classList.remove('opacity-40', 'cursor-not-allowed');
+                setPackingQCCameraEnabled(true);
                 if (errorElement) {
                     errorElement.innerText = '';
                     errorElement.classList.add('hidden');
                     errorElement.classList.remove('text-slate-400');
                 }
                 updatePackingQCMode();
-                if (!currentPackingQCComplete) codeInput.focus();
+                codeInput.focus();
                 return true;
             } catch (error) {
                 jcInput.disabled = false;
@@ -4484,14 +4448,11 @@
             codeInput.value = "";
             currentPackingQCLogs = [];
             currentPackingQCJob = "";
-            currentPackingQCComplete = false;
             currentPackingQCHasProductionScans = null;
-            currentPackingQCCompletedBy = "";
-            currentPackingQCCompletedAt = "";
             updatePackingQCMode();
             renderPackingQCChart();
             document.getElementById('packing-qc-result-box').classList.add('hidden');
-            updatePackingQCCompletionControls();
+            updatePackingQCActions();
             jcInput.focus();
         }
 
@@ -4554,7 +4515,7 @@
                         });
                         renderPackingQCChart();
                     }
-                    updatePackingQCCompletionControls();
+                    updatePackingQCActions();
                     codeInput.value = "";
                     codeInput.focus();
                     if (data.qc_stage === 'PACKING') {
@@ -4576,43 +4537,6 @@
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalBtnText;
-            }
-        }
-
-        async function completePackingQC() {
-            if (!currentPackingQCJob || currentPackingQCLogs.length === 0) {
-                showCustomAlert("At least one passing Packing QC code check is required before completion.", "Packing QC Incomplete");
-                return;
-            }
-            if (currentPackingQCComplete) return;
-
-            const confirmed = await showCustomConfirm(
-                `Confirm that Packing QC is complete for Job Card ${currentPackingQCJob}? A certificate will then be available.`,
-                null,
-                "Complete Packing QC"
-            );
-            if (!confirmed) return;
-
-            const button = document.getElementById('packing-qc-complete-btn');
-            const originalText = button.innerHTML;
-            button.disabled = true;
-            button.innerHTML = `${spinnerHtml} Completing...`;
-            try {
-                const body = new FormData();
-                body.append("job_card_id", currentPackingQCJob);
-                const response = await fetch('/api/packing-qc/complete', { method: 'POST', body });
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.detail || "Could not complete Packing QC.");
-
-                currentPackingQCComplete = true;
-                currentPackingQCCompletedBy = data.completed_by || "";
-                currentPackingQCCompletedAt = data.completed_at || "";
-                updatePackingQCCompletionControls();
-                showCustomAlert("Packing QC was marked complete. The certificate is now available.", "Packing QC Complete");
-            } catch (error) {
-                button.innerHTML = originalText;
-                updatePackingQCCompletionControls();
-                showCustomAlert(error.message || "Could not complete Packing QC.", "Completion Error");
             }
         }
 
@@ -4650,17 +4574,13 @@
         }
 
         async function printPackingQC() {
-            if (!currentPackingQCComplete || currentPackingQCLogs.length === 0) {
-                showCustomAlert("Complete Packing QC before printing its certificate.", "Certificate Not Available");
+            if (currentPackingQCHasProductionScans !== true || currentPackingQCLogs.length === 0) {
+                showCustomAlert("At least one Packing QC code check is required before printing its certificate.", "Certificate Not Available");
                 return;
             }
             document.getElementById('print-qc-job').innerText = currentPackingQCJob;
             document.getElementById('print-qc-desc').innerText = currentPackingQCDesc || "Serialized Production Batch";
-            document.getElementById('print-qc-status').innerText = "Completed";
-            document.getElementById('print-qc-completed-by').innerText = currentPackingQCCompletedBy || "-";
-            document.getElementById('print-qc-completed-at').innerText = currentPackingQCCompletedAt
-                ? formatStoredTimestamp(currentPackingQCCompletedAt)
-                : "-";
+            document.getElementById('print-qc-status').innerText = "In Progress";
             document.getElementById('print-qc-count').innerText = currentPackingQCLogs.length.toLocaleString();
 
             const rawHashPayload = `${currentPackingQCJob}|${currentPackingQCLogs.length}|${currentPackingQCDesc}|CCL-PK`;
@@ -6682,9 +6602,13 @@
                         ? `<button type="button" onclick="openConflictReportFromMasterJobs(${Number(j.run_id)}, ${htmlJsArg(j.job_card_id)}, ${conflictCount}, ${Number(j.total) || 0}, ${htmlJsArg(j.status)})" class="bg-amber-500/15 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold">⚠️ ${conflictCount} Conflict</button>`
                         : '';
 
-                    let finalQcHtml = packingQcCount > 0
-                        ? `<button onclick="openPackingQCReportFromAdmin(${htmlJsArg(j.job_card_id)})" class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold">✓ ${packingQcCount} QC</button>`
-                        : '';
+                    let finalQcHtml = `
+                        <button type="button" onclick="openPackingQCReportFromAdmin(${htmlJsArg(j.job_card_id)})"
+                                class="${packingQcCount > 0
+                                    ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                    : 'bg-slate-500/10 text-slate-400 border-slate-500/25'} border px-1.5 py-0.5 rounded text-[10px] font-bold">
+                            ${packingQcCount > 0 ? `✓ ${packingQcCount} QC` : 'Final QC'}
+                        </button>`;
 
                     let actionBtn = (!isProcessing && consumedNum === 0)
                         ? `<button onclick="purgeJobFromAdmin(${Number(j.run_id)}, ${htmlJsArg(j.job_card_id)})" class="btn-ghost-danger py-0.5 px-1.5 text-[10px]">Purge</button>`
@@ -6827,16 +6751,15 @@
                     `;
                 }
 
-                // 4. Final QC Count (Neutral gray for 0, green only when verified)
-                let finalQcHtml = `<span class="text-slate-500 text-xs font-mono">0</span>`;
-                if (packingQcCount > 0) {
-                    finalQcHtml = `
-                        <button onclick="openPackingQCReportFromAdmin(${htmlJsArg(j.job_card_id)})"
-                                class="bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-[11px] font-bold transition-colors">
-                            ✓ ${packingQcCount} Checked
-                        </button>
-                    `;
-                }
+                // Final QC stays available before the first check; green indicates recorded checks.
+                const finalQcHtml = `
+                    <button type="button" onclick="openPackingQCReportFromAdmin(${htmlJsArg(j.job_card_id)})"
+                            class="${packingQcCount > 0
+                                ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border-emerald-500/30'
+                                : 'bg-slate-500/10 hover:bg-slate-500/20 text-slate-400 border-slate-500/25'} border px-2 py-0.5 rounded text-[11px] font-bold transition-colors">
+                        ${packingQcCount > 0 ? `✓ ${packingQcCount} Checked` : 'Final QC'}
+                    </button>
+                `;
 
                 // 5. Ghost Purge Button
                 let actionHtml = `<span class="text-slate-500 italic text-[11px]">Locked</span>`;
