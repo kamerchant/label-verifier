@@ -115,6 +115,7 @@
         </div>
         <div id="ocr-controls" hidden>
             <p>Align one line of printed code inside the guide and capture.</p>
+            <p id="camera-resolution" aria-live="polite">Camera resolution: not started.</p>
             <button id="capture-ocr" type="button">Capture and read text</button>
             <textarea id="ocr-input" autocomplete="off" placeholder="Recognized text appears here. Review or correct it before sending."></textarea>
             <button id="send-ocr" class="primary" type="button">Send text to desktop</button>
@@ -138,6 +139,7 @@
         const ocrViewport = document.getElementById('ocr-viewport');
         const ocrVideo = document.getElementById('ocr-video');
         const ocrInput = document.getElementById('ocr-input');
+        const cameraResolution = document.getElementById('camera-resolution');
         const modeButtons = [...document.querySelectorAll('[data-mode]')];
         let scanner = null;
         let ocrStream = null;
@@ -151,6 +153,15 @@
         function setStatus(message, isError = false) {
             statusElement.textContent = message;
             statusElement.classList.toggle('error', isError);
+        }
+
+        function updateCameraResolution() {
+            const trackSettings = ocrStream?.getVideoTracks()[0]?.getSettings();
+            const width = trackSettings?.width || ocrVideo.videoWidth;
+            const height = trackSettings?.height || ocrVideo.videoHeight;
+            cameraResolution.textContent = width && height
+                ? `Camera resolution in use: ${width} × ${height}`
+                : 'Camera resolution: unavailable';
         }
 
         function showTerminalMessage(message) {
@@ -230,12 +241,18 @@
                         () => {}
                     );
                 } else {
+                    cameraResolution.textContent = 'Requesting camera resolution…';
                     ocrStream = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode: { ideal: 'environment' } },
+                        video: {
+                            facingMode: { ideal: 'environment' },
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 }
+                        },
                         audio: false
                     });
                     ocrVideo.srcObject = ocrStream;
                     await ocrVideo.play();
+                    updateCameraResolution();
                 }
                 isRunning = true;
                 setStatus(currentMode === 'barcode'

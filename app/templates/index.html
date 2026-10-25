@@ -3759,8 +3759,14 @@
 
             const video = document.getElementById('ocr-camera-video');
             try {
+                const resolutionStatus = document.getElementById('ocr-camera-resolution');
+                resolutionStatus.textContent = 'Requesting camera resolution...';
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: { ideal: 'environment' } },
+                    video: {
+                        facingMode: { ideal: 'environment' },
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    },
                     audio: false
                 });
                 if (currentCameraScanMode !== 'ocr' || document.getElementById('camera-modal').classList.contains('hidden')) {
@@ -3770,6 +3776,12 @@
                 ocrCameraStream = stream;
                 video.srcObject = ocrCameraStream;
                 await video.play();
+                const settings = stream.getVideoTracks()[0]?.getSettings();
+                const width = settings?.width || video.videoWidth;
+                const height = settings?.height || video.videoHeight;
+                resolutionStatus.textContent = width && height
+                    ? `Camera resolution in use: ${width} × ${height}`
+                    : 'Camera resolution: unavailable';
                 initCameraZoomCapabilities();
                 setOcrStatus('Align one line of code inside the guide and capture.');
             } catch (error) {
@@ -7185,6 +7197,9 @@
 
             <p id="camera-zoom-status" class="hidden text-[11px] text-amber-300 mt-1 text-center leading-tight" aria-live="polite"></p>
             <div id="ocr-camera-controls" class="hidden w-full mt-3 space-y-2">
+                <p id="ocr-camera-resolution" class="text-[11px] text-slate-300 text-center leading-tight" aria-live="polite">
+                    Camera resolution: not started.
+                </p>
                 <button id="ocr-capture-btn" type="button" onclick="captureOcrText()"
                         class="linear-button-primary w-full px-3 py-2 rounded text-xs font-semibold">Capture and read text</button>
                 <p id="ocr-camera-status" class="text-[11px] text-slate-300 text-center leading-tight" role="status" aria-live="polite">
