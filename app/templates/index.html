@@ -492,6 +492,8 @@
         .print-timestamp-footer { display: none !important; }
 
         #packing-qc-modal {
+            --packing-qc-accent: #5e6ad2;
+            --packing-qc-accent-rgb: 94, 106, 210;
             background: rgba(7, 10, 16, 0.78);
         }
         #packing-qc-modal > .packing-qc-dialog {
@@ -501,13 +503,6 @@
             border-radius: 1rem;
             border-color: rgba(148, 163, 184, 0.22);
             box-shadow: 0 32px 100px rgba(0, 0, 0, 0.45);
-        }
-        #packing-qc-modal > .packing-qc-dialog::before {
-            position: absolute;
-            inset: 0 0 auto;
-            height: 4px;
-            background: linear-gradient(90deg, #5e6ad2, #39a989);
-            content: "";
         }
         #packing-qc-modal .packing-qc-header {
             display: flex;
@@ -522,10 +517,13 @@
             height: 44px;
             flex: 0 0 auto;
             place-items: center;
-            border: 1px solid rgba(94, 106, 210, 0.28);
+            border: 1px solid rgba(var(--packing-qc-accent-rgb), 0.3);
             border-radius: 13px;
-            background: rgba(94, 106, 210, 0.12);
-            color: #818cf8;
+            background: rgba(var(--packing-qc-accent-rgb), 0.12);
+            color: var(--packing-qc-accent);
+        }
+        #packing-qc-modal .packing-qc-eyebrow {
+            color: var(--packing-qc-accent);
         }
         #packing-qc-modal #packing-qc-heading {
             font-size: 1.15rem;
@@ -558,8 +556,8 @@
             height: 18px;
             place-items: center;
             border-radius: 6px;
-            background: rgba(94, 106, 210, 0.16);
-            color: #a5b4fc;
+            background: rgba(var(--packing-qc-accent-rgb), 0.14);
+            color: var(--packing-qc-accent);
             font-size: 0.62rem;
         }
         #packing-qc-modal #packing-qc-job,
@@ -574,7 +572,7 @@
             padding-right: 18px;
             padding-left: 18px;
             border-radius: 8px;
-            box-shadow: 0 5px 16px rgba(94, 106, 210, 0.18);
+            box-shadow: 0 5px 16px rgba(var(--packing-qc-accent-rgb), 0.18);
         }
         #packing-qc-modal #packing-qc-phone-btn,
         #packing-qc-modal #packing-qc-camera-btn {
@@ -615,6 +613,10 @@
         html.theme-parchment #packing-qc-modal > .packing-qc-dialog {
             border-color: #e2ddcf;
             box-shadow: 0 30px 80px rgba(44, 53, 49, 0.2);
+        }
+        html.theme-parchment #packing-qc-modal {
+            --packing-qc-accent: #276749;
+            --packing-qc-accent-rgb: 39, 103, 73;
         }
         html.theme-parchment #packing-qc-modal .packing-qc-entry {
             border-color: #e7e2d7;
@@ -964,7 +966,7 @@
                 <button type="button" id="phone-scanner-btn" onclick="startPhoneScannerPairing()"
                         class="hidden sm:flex linear-button-secondary px-3 py-1 rounded text-xs font-semibold min-h-[30px] sm:min-h-[38px] items-center justify-center shrink-0"
                         title="Pair a phone to scan labels">
-                    Use phone scanner
+                    Use phone to scan
                 </button>
                 <button type="submit" id="verify-btn" disabled class="linear-button-primary px-3 py-1 rounded text-xs font-semibold min-h-[30px] sm:min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none shrink-0">
                     Verify
@@ -1282,7 +1284,7 @@
                     </svg>
                 </div>
                 <div class="min-w-0">
-                    <span class="block text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-400 mb-1">Quality assurance</span>
+                    <span class="packing-qc-eyebrow block text-[10px] font-bold uppercase tracking-[0.16em] mb-1">Quality assurance</span>
                     <h3 id="packing-qc-heading" class="text-lg font-extrabold modal-title-theme">Final QC Terminal - Pre Check Mode</h3>
                     <p id="packing-qc-mode" class="text-xs modal-subtitle-theme mt-1">Enter a Job Card number to begin a pre-check or packing check.</p>
                 </div>
@@ -1301,13 +1303,13 @@
                         <div class="flex items-center gap-1.5">
                             <input type="text" id="packing-qc-code" required disabled placeholder="Validate a Job Card first" class="linear-input w-full p-2.5 text-xs rounded opacity-40 cursor-not-allowed">
                             <button type="button" id="packing-qc-camera-btn" onclick="startPackingQCCameraScanner()" disabled class="sm:hidden linear-button-secondary px-3 py-2 rounded text-sm min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none shrink-0" title="Scan Final QC code with phone camera" aria-label="Scan Final QC code with phone camera">📷</button>
-                            <button type="button" id="packing-qc-phone-btn" onclick="startPhoneScannerPairing('packing-qc')" class="hidden sm:flex linear-button-secondary px-3 py-2 rounded text-[11px] font-semibold min-h-[42px] items-center justify-center shrink-0">📱 Use phone</button>
+                            <button type="button" id="packing-qc-phone-btn" onclick="startPhoneScannerPairing('packing-qc')" class="hidden sm:flex linear-button-secondary px-3 py-2 rounded text-[11px] font-semibold min-h-[42px] items-center justify-center shrink-0">📱 Use phone to scan</button>
                         </div>
                     </div>
                 </div>
                 <div class="flex justify-between items-center gap-3 pt-1">
                     <button type="button" id="packing-qc-unlock-btn" onclick="resetPackingQCJobLock()" class="text-xs text-indigo-400 hover:text-indigo-300 underline bg-transparent border-none p-0 cursor-pointer hidden">Unlock / Change Job Card</button>
-                    <button type="submit" id="packing-qc-submit-btn" class="linear-button-primary px-5 py-2 rounded text-xs font-semibold ml-auto">Verify & Add Code <span aria-hidden="true">→</span></button>
+                    <button type="submit" id="packing-qc-submit-btn" class="linear-button-primary px-5 py-2 rounded text-xs font-semibold ml-auto">Verify</button>
                 </div>
             </form>
 
@@ -3337,7 +3339,7 @@
             ['phone-scanner-btn', 'packing-qc-phone-btn'].forEach(id => {
                 const button = document.getElementById(id);
                 if (!button) return;
-                button.textContent = isActive ? 'End phone session' : 'Use phone scanner';
+                button.textContent = isActive ? 'End phone session' : 'Use phone to scan';
                 button.title = isActive
                     ? 'End the active phone scanner session'
                     : 'Pair a phone to scan labels';
