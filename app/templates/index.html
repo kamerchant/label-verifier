@@ -963,14 +963,14 @@
                     <input type="text" id="barcode-input" placeholder="Select a job to enable scanning..." disabled autocomplete="off"
                            class="linear-input w-full px-2.5 py-1 text-xs sm:text-sm rounded min-h-[30px] sm:min-h-[38px] opacity-40 cursor-not-allowed">
                 </div>
+                <button type="submit" id="verify-btn" disabled class="linear-button-primary px-3 py-1 rounded text-xs font-semibold min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none shrink-0">
+                    Verify
+                </button>
                 <!-- Mobile Live Camera Scanner Button -->
                 <button type="button" id="camera-scan-btn" onclick="startCameraScanner()" disabled
-                        class="sm:hidden linear-button-secondary px-3 py-1 rounded text-sm min-h-[30px] sm:min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none shrink-0"
-                        title="Scan with Phone Camera">
+                        class="sm:hidden linear-button-secondary px-3 py-1 rounded text-sm min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none shrink-0"
+                        title="Scan with Phone Camera" aria-label="Scan with phone camera">
                     📷
-                </button>
-                <button type="submit" id="verify-btn" disabled class="linear-button-primary px-3 py-1 rounded text-xs font-semibold min-h-[30px] sm:min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none shrink-0">
-                    Verify
                 </button>
                 <button type="button" id="phone-scanner-btn" onclick="startPhoneScannerPairing()"
                         class="hidden sm:flex linear-button-secondary px-3 py-1 rounded text-xs font-semibold min-h-[30px] sm:min-h-[38px] items-center justify-center shrink-0"
@@ -1308,8 +1308,8 @@
                         <label for="packing-qc-code" class="packing-qc-field-label"><span>2</span>Scan or Enter Code</label>
                         <div class="flex items-center gap-1.5">
                             <input type="text" id="packing-qc-code" required disabled placeholder="Validate a Job Card first" class="linear-input w-full p-2.5 text-xs rounded opacity-40 cursor-not-allowed">
-                            <button type="button" id="packing-qc-camera-btn" onclick="startPackingQCCameraScanner()" disabled class="sm:hidden linear-button-secondary px-3 py-2 rounded text-sm min-h-[38px] flex items-center justify-center opacity-30 pointer-events-none shrink-0" title="Scan Final QC code with phone camera" aria-label="Scan Final QC code with phone camera">📷</button>
                             <button type="submit" id="packing-qc-submit-btn" class="linear-button-primary px-5 py-2 rounded text-xs font-semibold shrink-0">Verify</button>
+                            <button type="button" id="packing-qc-camera-btn" onclick="startPackingQCCameraScanner()" disabled class="sm:hidden linear-button-secondary px-3 py-2 rounded text-sm min-h-[44px] flex items-center justify-center opacity-30 pointer-events-none shrink-0" title="Scan Final QC code with phone camera" aria-label="Scan Final QC code with phone camera">📷</button>
                             <button type="button" id="packing-qc-phone-btn" onclick="startPhoneScannerPairing('packing-qc')" class="hidden sm:flex linear-button-secondary px-3 py-2 rounded font-semibold min-h-[44px] items-center justify-center shrink-0">Use phone to scan</button>
                         </div>
                     </div>
@@ -1411,7 +1411,7 @@
                     </div>
                     <span id="master-sync-indicator" class="hidden text-[11px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded"></span>
                 </div>
-                <button onclick="toggleModal('master-jobs-modal')" class="linear-button-secondary px-3 py-1 sm:px-3.5 sm:py-1.5 text-xs rounded font-medium">Close</button>
+                <button type="button" onclick="toggleModal('master-jobs-modal')" class="relative z-10 linear-button-secondary min-h-[44px] min-w-[60px] px-3 py-2 sm:min-h-0 sm:min-w-0 sm:px-3.5 sm:py-1.5 text-xs rounded font-medium touch-manipulation shrink-0">Close</button>
             </div>
 
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-1.5 sm:gap-2.5 mb-2 sm:mb-3 shrink-0">
@@ -7130,7 +7130,7 @@
         <div class="linear-card p-5 rounded-lg max-w-md w-full shadow-2xl">
             <div class="flex items-center justify-between mb-4 pb-2 border-b border-white/[0.08]">
                 <h3 class="text-sm font-bold modal-title-theme">Pair a phone scanner</h3>
-                <button type="button" onclick="cancelPhoneScannerPairing()" class="linear-button-secondary px-2.5 py-1 rounded text-xs font-semibold">✕ Cancel session</button>
+                <button type="button" onclick="cancelPhoneScannerPairing()" class="linear-button-secondary px-2.5 py-1 rounded text-xs font-semibold">Cancel session</button>
             </div>
             <p class="text-xs text-slate-300 mb-1">Open your phone camera and scan this QR code.</p>
             <p class="text-xs text-slate-400 mb-3">Job Card: <strong id="phone-scanner-job" class="text-white"></strong></p>
@@ -7140,7 +7140,6 @@
                 Or open <a id="phone-scanner-link" class="text-indigo-300 underline break-all" target="_blank" rel="noopener noreferrer"></a>
                 on your phone. Scans are verified on this desktop.
             </p>
-            <button type="button" onclick="cancelPhoneScannerPairing()" class="linear-button-secondary w-full px-3 py-2 rounded text-xs font-semibold mt-4">Cancel and end phone session</button>
         </div>
     </div>
 
