@@ -31,8 +31,8 @@
         h1 { margin: 0 0 8px; font-size: 20px; }
         p { color: #64748b; line-height: 1.45; }
         #scanner {
-            width: min(100%, 300px);
-            height: 130px;
+            width: min(100%, 240px);
+            aspect-ratio: 1;
             margin: 0 auto;
             overflow: hidden;
             border: 1px solid #d4cebc;
@@ -40,6 +40,10 @@
             background: #000;
         }
         #scanner video { width: 100%; height: 100%; object-fit: cover; }
+        .zoom-toolbar { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+        .zoom-toolbar input[type="range"] { flex: 1; min-width: 0; accent-color: #276749; }
+        .zoom-toolbar button { padding: 7px 9px; font-size: 12px; }
+        #zoom-status { min-height: 18px; margin: 4px 0 0; color: #8a6d1d; font-size: 12px; text-align: center; }
         .mode-toolbar { display: flex; gap: 8px; margin: 16px 0 12px; }
         button {
             border: 1px solid #d4cebc;
@@ -114,6 +118,13 @@
             <video id="ocr-video" autoplay playsinline muted></video>
             <div id="ocr-guide" aria-hidden="true"></div>
         </div>
+        <div class="zoom-toolbar" role="group" aria-label="Camera zoom">
+            <input id="camera-zoom-slider" type="range" min="1" max="3" step="0.1" value="1" aria-label="Camera zoom" disabled>
+            <button id="zoom-btn-1x" type="button" data-zoom="1" aria-pressed="false" disabled>1x</button>
+            <button id="zoom-btn-2x" type="button" data-zoom="2" aria-pressed="false" disabled>2x</button>
+            <button id="zoom-btn-3x" type="button" data-zoom="3" aria-pressed="false" disabled>3x</button>
+        </div>
+        <p id="zoom-status" role="status" aria-live="polite">Zoom unavailable until the camera starts.</p>
         <div id="ocr-controls" hidden>
             <p>Align one line of printed code inside the guide and capture.</p>
             <p id="camera-resolution" aria-live="polite">Camera resolution: not started.</p>
@@ -141,6 +152,8 @@
         const ocrVideo = document.getElementById('ocr-video');
         const ocrInput = document.getElementById('ocr-input');
         const cameraResolution = document.getElementById('camera-resolution');
+        const zoomSlider = document.getElementById('camera-zoom-slider');
+        const zoomStatus = document.getElementById('zoom-status');
         const modeButtons = [...document.querySelectorAll('[data-mode]')];
         let scanner = null;
         let ocrStream = null;
@@ -150,6 +163,8 @@
         let currentMode = 'barcode';
         let sessionEnded = false;
         let heartbeatTimer = null;
+        let activeCameraTrack = null;
+        let currentZoomFactor = 1;
 
         function setStatus(message, isError = false) {
             statusElement.textContent = message;
@@ -163,6 +178,68 @@
             cameraResolution.textContent = width && height
                 ? `Camera resolution in use: ${width} × ${height}`
                 : 'Camera resolution: unavailable';
+        }
+
+        function updateCameraZoomCapabilities() {
+            const video = currentMode === 'barcode'
+                ? barcodeViewport.querySelector('video')
+                : ocrVideo;
+            activeCameraTrack = video?.srcObject?.getVideoTracks?.()[0] || null;
+            const capabilities = activeCameraTrack?.getCapabilities?.() || {};
+            const zoom = capabilities.zoom;
+            const supported = Boolean(zoom && activeCameraTrack?.applyConstraints);
+            const controls = [
+                zoomSlider,
+                ...document.querySelectorAll('[data-zoom]')
+            ];
+            controls.forEach(control => {
+                control.disabled = !supported;
+            });
+            if (!supported) {
+                zoomStatus.textContent = 'Zoom unavailable on this camera; move closer for a sharper image.';
+                return;
+            }
+
+            zoomSlider.min = zoom.min ?? 1;
+            zoomSlider.max = zoom.max ?? 5;
+            zoomSlider.step = zoom.step ?? 0.1;
+            currentZoomFactor = activeCameraTrack.getSettings?.().zoom ?? zoom.min ?? 1;
+            zoomSlider.value = currentZoomFactor;
+            document.querySelectorAll('[data-zoom]').forEach(button => {
+                button.setAttribute('aria-pressed', String(
+                    Math.round(currentZoomFactor) === Number(button.dataset.zoom)
+                ));
+            });
+            zoomStatus.textContent = '';
+        }
+
+        async function applyCameraZoom(level) {
+            const capabilities = activeCameraTrack?.getCapabilities?.() || {};
+            const zoom = capabilities.zoom;
+            if (!zoom || !activeCameraTrack?.applyConstraints) return;
+
+            currentZoomFactor = Math.min(zoom.max ?? level, Math.max(zoom.min ?? 1, level));
+            zoomSlider.value = currentZoomFactor;
+            document.querySelectorAll('[data-zoom]').forEach(button => {
+                button.setAttribute('aria-pressed', String(
+                    Math.round(currentZoomFactor) === Number(button.dataset.zoom)
+                ));
+            });
+
+            try {
+                await activeCameraTrack.applyConstraints({
+                    advanced: [{ zoom: currentZoomFactor }]
+                });
+                zoomStatus.textContent = '';
+            } catch (error) {
+                console.warn('Could not apply camera zoom.', error);
+                const appliedZoom = activeCameraTrack?.getSettings?.().zoom;
+                if (appliedZoom !== undefined) {
+                    currentZoomFactor = appliedZoom;
+                    zoomSlider.value = appliedZoom;
+                }
+                zoomStatus.textContent = 'Camera could not apply zoom; move closer for a sharper image.';
+            }
         }
 
         function showTerminalMessage(message) {
@@ -213,6 +290,10 @@
                 ocrStream = null;
             }
             ocrVideo.srcObject = null;
+            activeCameraTrack = null;
+            zoomSlider.disabled = true;
+            document.querySelectorAll('[data-zoom]').forEach(button => { button.disabled = true; });
+            zoomStatus.textContent = 'Zoom unavailable until the camera starts.';
             if (stopError) throw stopError;
         }
 
@@ -231,16 +312,20 @@
                     await scanner.start(
                         { facingMode: 'environment' },
                         {
-                            fps: 12,
-                            aspectRatio: 300 / 130,
-                            qrbox: (viewfinderWidth, viewfinderHeight) => ({
-                                width: Math.min(280, Math.floor(viewfinderWidth - 20)),
-                                height: Math.min(110, Math.floor(viewfinderHeight - 20))
-                            })
+                            fps: 15,
+                            qrbox: (viewfinderWidth, viewfinderHeight) => {
+                                const size = Math.min(
+                                    220,
+                                    Math.floor(viewfinderWidth - 20),
+                                    Math.floor(viewfinderHeight - 20)
+                                );
+                                return { width: size, height: size };
+                            }
                         },
                         sendScannedCode,
                         () => {}
                     );
+                    window.setTimeout(updateCameraZoomCapabilities, 300);
                 } else {
                     cameraResolution.textContent = 'Requesting camera resolution…';
                     ocrStream = await navigator.mediaDevices.getUserMedia({
@@ -254,6 +339,7 @@
                     ocrVideo.srcObject = ocrStream;
                     await ocrVideo.play();
                     updateCameraResolution();
+                    updateCameraZoomCapabilities();
                 }
                 isRunning = true;
                 setStatus(currentMode === 'barcode'
@@ -401,6 +487,10 @@
         document.getElementById('capture-ocr').addEventListener('click', captureOcrText);
         document.getElementById('send-ocr').addEventListener('click', sendOcrText);
         document.getElementById('end-session').addEventListener('click', endPhoneSession);
+        zoomSlider.addEventListener('input', () => applyCameraZoom(Number(zoomSlider.value)));
+        document.querySelectorAll('[data-zoom]').forEach(button => {
+            button.addEventListener('click', () => applyCameraZoom(Number(button.dataset.zoom)));
+        });
 
         async function connect() {
             if (!token) {
