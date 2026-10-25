@@ -511,17 +511,6 @@
             padding: 4px 0 18px;
             border-bottom-color: rgba(148, 163, 184, 0.18);
         }
-        #packing-qc-modal .packing-qc-header-icon {
-            display: grid;
-            width: 44px;
-            height: 44px;
-            flex: 0 0 auto;
-            place-items: center;
-            border: 1px solid rgba(var(--packing-qc-accent-rgb), 0.3);
-            border-radius: 13px;
-            background: rgba(var(--packing-qc-accent-rgb), 0.12);
-            color: var(--packing-qc-accent);
-        }
         .modal-heading-with-icon::before {
             content: "";
             display: inline-block;
@@ -1294,12 +1283,6 @@
     <div id="packing-qc-modal" role="dialog" aria-modal="true" aria-labelledby="packing-qc-heading" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[90]">
         <div class="packing-qc-dialog linear-card p-5 sm:p-7 w-full shadow-2xl flex flex-col max-h-[90vh]">
             <div class="packing-qc-header mb-5 shrink-0 no-print">
-                <div class="packing-qc-header-icon" aria-hidden="true">
-                    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M9 3H5a2 2 0 0 0-2 2v4m12-6h4a2 2 0 0 1 2 2v4M3 15v4a2 2 0 0 0 2 2h4m12-6v4a2 2 0 0 1-2 2h-4"/>
-                        <path d="m8 12 2.5 2.5L16 9"/>
-                    </svg>
-                </div>
                 <div class="min-w-0">
                     <span class="packing-qc-eyebrow block text-[10px] font-bold uppercase tracking-[0.16em] mb-1">Quality assurance</span>
                     <h3 id="packing-qc-heading" class="text-lg font-extrabold modal-title-theme">Final QC Terminal - Pre Check Mode</h3>
@@ -7252,6 +7235,7 @@
         const modalHeadingIcons = {
             'global-audit-modal': ['h3', 'clipboard'],
             'purge-admin-pw-modal': ['h3', 'trash'],
+            'packing-qc-modal': ['#packing-qc-heading', 'qc'],
             'duplicate-warning-modal': ['#duplicate-modal-title', 'warning'],
             'conflict-viewer-modal': ['h3', 'warning'],
             'master-jobs-modal': ['#master-jobs-modal-title', 'jobs'],
@@ -7292,7 +7276,8 @@
             shield: '<path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 12 2 2 4-4"/>',
             upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M12 16V3M7 8l5-5 5 5"/>',
             phone: '<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/>',
-            camera: '<path d="M14 4h-4L8 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-4z"/><circle cx="12" cy="13" r="3"/>'
+            camera: '<path d="M14 4h-4L8 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-4z"/><circle cx="12" cy="13" r="3"/>',
+            qc: '<path d="M9 3H5a2 2 0 0 0-2 2v4m12-6h4a2 2 0 0 1 2 2v4M3 15v4a2 2 0 0 0 2 2h4m12-6v4a2 2 0 0 1-2 2h-4"/><path d="m8 12 2.5 2.5L16 9"/>'
         };
 
         Object.entries(modalHeadingIcons).forEach(([modalId, [selector, icon]]) => {
