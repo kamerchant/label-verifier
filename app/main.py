@@ -13,7 +13,6 @@ import uuid
 from typing import Optional
 from urllib.parse import quote
 from contextlib import asynccontextmanager
-from starlette.concurrency import run_in_threadpool
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Response, Depends, Query
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -118,12 +117,6 @@ SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "true").strip().
 MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_BYTES", 250 * 1024 * 1024))
 if MAX_UPLOAD_BYTES <= 0:
     raise RuntimeError("MAX_UPLOAD_BYTES must be a positive integer.")
-MAX_OCR_IMAGE_BYTES = 8 * 1024 * 1024
-MAX_OCR_IMAGE_PIXELS = 20_000_000
-EASYOCR_ALLOWLIST = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-easyocr_reader = None
-easyocr_lock = threading.Lock()
-
 # Dedicated 64-bit integer advisory lock key to serialize cross-job duplicate checks
 CROSS_JOB_INGESTION_LOCK_ID = 8492049102
 
@@ -1032,81 +1025,6 @@ def update_phone_scanner_heartbeat(cur, token: str):
     if not session:
         raise HTTPException(status_code=410, detail="This phone scanner link has expired or ended.")
     return session
-
-
-def recognize_easyocr_image(image_bytes: bytes) -> str:
-    global easyocr_reader
-    try:
-        import easyocr
-        import numpy as np
-        from PIL import Image, UnidentifiedImageError
-    except ImportError:
-        logger.exception("EasyOCR dependencies are unavailable")
-        raise HTTPException(status_code=503, detail="EasyOCR is not available on this server.")
-
-    try:
-        with Image.open(io.BytesIO(image_bytes)) as source_image:
-            if source_image.format not in {"JPEG", "PNG", "WEBP"}:
-                raise HTTPException(status_code=400, detail="OCR image must be JPEG, PNG, or WebP.")
-            if source_image.width * source_image.height > MAX_OCR_IMAGE_PIXELS:
-                raise HTTPException(status_code=413, detail="OCR image dimensions are too large.")
-            image = np.asarray(source_image.convert("RGB"))
-    except HTTPException:
-        raise
-    except (UnidentifiedImageError, OSError, ValueError):
-        raise HTTPException(status_code=400, detail="Could not read the uploaded OCR image.")
-
-    try:
-        with easyocr_lock:
-            if easyocr_reader is None:
-                easyocr_reader = easyocr.Reader(["en"], gpu=False)
-            results = easyocr_reader.readtext(
-                image,
-                detail=0,
-                paragraph=False,
-                allowlist=EASYOCR_ALLOWLIST,
-            )
-        return "".join(str(result) for result in results).strip()
-    except Exception:
-        logger.exception("EasyOCR failed to initialize or recognize the uploaded image")
-        raise HTTPException(
-            status_code=503,
-            detail="EasyOCR could not process the image. Try again or select Tesseract.",
-        )
-
-
-async def process_easyocr_upload(image: UploadFile) -> dict:
-    content = await image.read(MAX_OCR_IMAGE_BYTES + 1)
-    if not content:
-        raise HTTPException(status_code=400, detail="OCR image is empty.")
-    if len(content) > MAX_OCR_IMAGE_BYTES:
-        raise HTTPException(status_code=413, detail="OCR image exceeds the 8 MB limit.")
-    recognized_text = await run_in_threadpool(recognize_easyocr_image, content)
-    clean_text = re.sub(r"[^A-Za-z0-9]", "", recognized_text)
-    return {"text": clean_text}
-
-
-@app.post("/api/ocr/easy")
-async def easyocr_scan(
-    image: UploadFile = File(...),
-    user: dict = Depends(require_password_change_complete),
-):
-    return await process_easyocr_upload(image)
-
-
-@app.post("/api/phone-scanner/ocr")
-async def easyocr_phone_scanner(
-    token: str = Form(...),
-    image: UploadFile = File(...),
-):
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            update_phone_scanner_heartbeat(cur, token)
-            conn.commit()
-    finally:
-        release_connection(conn)
-    return await process_easyocr_upload(image)
 
 
 @app.post("/api/phone-scanner/connect")
