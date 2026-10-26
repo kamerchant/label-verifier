@@ -90,6 +90,17 @@
             resize: vertical;
         }
         #ocr-input:focus { border-color: #276749; box-shadow: 0 0 0 2px rgba(39, 103, 73, 0.2); outline: none; }
+        #ocr-engine-select {
+            width: 100%;
+            margin: 8px 0;
+            padding: 9px;
+            border: 1px solid #d4cebc;
+            border-radius: 7px;
+            background: #fcfbfa;
+            color: #1a211e;
+            font: inherit;
+            font-size: 14px;
+        }
         #status { min-height: 24px; color: #276749; }
         #status.error { color: #b91c1c; }
         #last-code { overflow-wrap: anywhere; color: #1a211e; font-family: ui-monospace, monospace; }
@@ -128,6 +139,11 @@
         <p id="camera-resolution" aria-live="polite" style="color:#000">Camera resolution: not started.</p>
         <div id="ocr-controls" hidden>
             <p>Align one code line inside the guide. If blurry, move the phone farther away until it focuses; zoom in only after it is sharp.</p>
+            <label for="ocr-engine-select">OCR engine</label>
+            <select id="ocr-engine-select">
+                <option value="tesseract">Tesseract (on this device)</option>
+                <option value="easyocr">EasyOCR (server processing; uploads cropped image)</option>
+            </select>
             <button id="capture-ocr" type="button">Capture and read text</button>
             <textarea id="ocr-input" autocomplete="off" placeholder="Recognized text appears here. Review or correct it before sending."></textarea>
             <button id="send-ocr" class="primary" type="button">Send text to desktop</button>
@@ -434,6 +450,18 @@
             return enhancedCanvas;
         }
 
+        async function recognizeWithEasyOcr(imageCanvas) {
+            const imageBlob = await new Promise(resolve => imageCanvas.toBlob(resolve, 'image/jpeg', 0.92));
+            if (!imageBlob) throw new Error('Could not prepare the image for EasyOCR.');
+            const form = new FormData();
+            form.append('token', token);
+            form.append('image', imageBlob, 'ocr-capture.jpg');
+            const response = await fetch('/api/phone-scanner/ocr', { method: 'POST', body: form });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.detail || 'EasyOCR could not process the image.');
+            return data.text || '';
+        }
+
         async function captureOcrText() {
             if (isRecognizing || currentMode !== 'ocr') return;
             if (!ocrVideo.videoWidth || !ocrVideo.videoHeight) {
@@ -446,7 +474,11 @@
             ocrInput.value = '';
             setStatus('Preparing text reader…');
             try {
-                const worker = await getOcrWorker();
+                const engine = document.getElementById('ocr-engine-select').value;
+                const worker = engine === 'tesseract' ? await getOcrWorker() : null;
+                if (engine === 'easyocr') {
+                    setStatus('EasyOCR runs on the server. First use may take longer while its model loads.');
+                }
                 const viewportBounds = ocrViewport.getBoundingClientRect();
                 const guideBounds = document.getElementById('ocr-guide').getBoundingClientRect();
                 const scale = Math.max(
@@ -470,14 +502,16 @@
                     0, 0, canvas.width, canvas.height
                 );
                 const enhancedCanvas = prepareOcrImage(canvas);
-                setStatus('Reading printed text…');
-                const result = await worker.recognize(enhancedCanvas);
-                const recognizedText = result.data.text.replace(/[^A-Za-z0-9]/g, '');
-                if (!recognizedText) {
+                setStatus(engine === 'easyocr' ? 'Sending image securely for EasyOCR…' : 'Reading printed text…');
+                const recognizedText = engine === 'easyocr'
+                    ? await recognizeWithEasyOcr(enhancedCanvas)
+                    : (await worker.recognize(enhancedCanvas)).data.text;
+                const cleanText = recognizedText.replace(/[^A-Za-z0-9]/g, '');
+                if (!cleanText) {
                     setStatus('No text detected. Improve focus or lighting, then capture again.', true);
                     return;
                 }
-                ocrInput.value = recognizedText;
+                ocrInput.value = cleanText;
                 setStatus('Review the letters and numbers before sending. Spaces and other characters are removed.');
             } catch (error) {
                 setStatus(error.message || 'Text recognition failed. Please try again.', true);

@@ -3888,6 +3888,21 @@
             return enhancedCanvas;
         }
 
+        async function recognizeWithEasyOcr(imageCanvas) {
+            const imageBlob = await new Promise(resolve => imageCanvas.toBlob(resolve, 'image/jpeg', 0.92));
+            if (!imageBlob) throw new Error('Could not prepare the image for EasyOCR.');
+            const formData = new FormData();
+            formData.append('image', imageBlob, 'ocr-capture.jpg');
+            const response = await fetch('/api/ocr/easy', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.detail || 'EasyOCR could not process the image.');
+            return data.text || '';
+        }
+
         async function captureOcrText() {
             if (isOcrRecognizing) return;
             const captureGeneration = ++ocrCaptureGeneration;
@@ -3905,7 +3920,11 @@
             resultInput.value = '';
             setOcrStatus('Preparing text reader...');
             try {
-                const worker = await getOcrWorker();
+                const engine = document.getElementById('ocr-engine-select').value;
+                const worker = engine === 'tesseract' ? await getOcrWorker() : null;
+                if (engine === 'easyocr') {
+                    setOcrStatus('EasyOCR runs on the server. First use may take longer while its model loads.');
+                }
                 const viewport = document.getElementById('ocr-camera-viewport');
                 const guide = document.getElementById('ocr-text-guide');
                 const viewportBounds = viewport.getBoundingClientRect();
@@ -3930,16 +3949,18 @@
                     0, 0, canvas.width, canvas.height
                 );
                 const enhancedCanvas = prepareOcrImage(canvas);
-                setOcrStatus('Reading printed text...');
-                const result = await worker.recognize(enhancedCanvas);
+                setOcrStatus(engine === 'easyocr' ? 'Sending image securely for EasyOCR…' : 'Reading printed text...');
+                const recognizedText = engine === 'easyocr'
+                    ? await recognizeWithEasyOcr(enhancedCanvas)
+                    : (await worker.recognize(enhancedCanvas)).data.text;
                 if (captureGeneration !== ocrCaptureGeneration) return;
-                const recognizedText = result.data.text.replace(/[^A-Za-z0-9]/g, '');
-                if (!recognizedText) {
+                const cleanText = recognizedText.replace(/[^A-Za-z0-9]/g, '');
+                if (!cleanText) {
                     setOcrStatus('No text was detected. Improve focus or lighting, then capture again.', true);
                     return;
                 }
 
-                resultInput.value = recognizedText;
+                resultInput.value = cleanText;
                 setOcrStatus('Review the letters and numbers below. Spaces and other characters are removed.');
             } catch (error) {
                 if (captureGeneration === ocrCaptureGeneration) {
@@ -7270,6 +7291,11 @@
                 Camera resolution: not started.
             </p>
             <div id="ocr-camera-controls" class="hidden w-full mt-3 space-y-2">
+                <label for="ocr-engine-select" class="block text-[11px] font-medium text-slate-400">OCR engine</label>
+                <select id="ocr-engine-select" class="linear-input w-full p-2 text-xs rounded">
+                    <option value="tesseract">Tesseract (on this device)</option>
+                    <option value="easyocr">EasyOCR (server processing; uploads cropped image)</option>
+                </select>
                 <button id="ocr-capture-btn" type="button" onclick="captureOcrText()"
                         class="linear-button-primary w-full px-3 py-2 rounded text-xs font-semibold">Capture and read text</button>
                 <p id="ocr-camera-status" class="text-[11px] text-slate-300 text-center leading-tight" role="status" aria-live="polite">
