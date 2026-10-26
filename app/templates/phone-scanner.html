@@ -352,14 +352,6 @@
                                 width: { ideal: 1920 },
                                 height: { ideal: 1080 },
                                 advanced: [{ focusMode: 'continuous' }]
-                            },
-                            qrbox: (viewfinderWidth, viewfinderHeight) => {
-                                const size = Math.min(
-                                    220,
-                                    Math.floor(viewfinderWidth - 20),
-                                    Math.floor(viewfinderHeight - 20)
-                                );
-                                return { width: size, height: size };
                             }
                         },
                         sendScannedCode,

@@ -3672,7 +3672,6 @@
 
                 const config = {
                     fps: 15,
-                    qrbox: { width: 220, height: 220 },
                     aspectRatio: 1.0,
                     videoConstraints: {
                         facingMode: { ideal: "environment" },
@@ -3733,7 +3732,7 @@
             title.innerText = isOcr ? 'Camera Printed Text Reader' : 'Camera Barcode Scanner';
             instruction.innerText = isOcr
                 ? 'Align one printed code line inside the guide. Move the phone farther away if it looks blurry.'
-                : 'Align 2D DataMatrix, QR Code, or 1D Barcode within the frame';
+                : 'Place a QR code, DataMatrix, or barcode anywhere in the camera view.';
         }
 
         async function switchCameraScanMode(mode) {
