@@ -457,7 +457,16 @@
             form.append('token', token);
             form.append('image', imageBlob, 'ocr-capture.jpg');
             const response = await fetch('/api/phone-scanner/ocr', { method: 'POST', body: form });
-            const data = await response.json();
+            const responseText = await response.text();
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch {
+                throw new Error(
+                    `EasyOCR server returned a non-JSON response (HTTP ${response.status}). ` +
+                    'The service may be deploying, restarting, or unavailable; check Render logs.'
+                );
+            }
             if (!response.ok) throw new Error(data.detail || 'EasyOCR could not process the image.');
             return data.text || '';
         }
