@@ -3667,10 +3667,7 @@
 
             try {
                 if (!html5QrCodeScanner) {
-                    html5QrCodeScanner = new Html5Qrcode(
-                        "camera-scanner-viewport",
-                        { useBarCodeDetectorIfSupported: false }
-                    );
+                    html5QrCodeScanner = new Html5Qrcode("camera-scanner-viewport");
                 }
 
                 const config = {
