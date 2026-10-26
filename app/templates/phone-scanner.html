@@ -342,7 +342,12 @@
                     if (typeof Html5Qrcode === 'undefined') {
                         throw new Error('The scanner could not load. Check your connection and reload this page.');
                     }
-                    if (!scanner) scanner = new Html5Qrcode('scanner');
+                    if (!scanner) {
+                        scanner = new Html5Qrcode(
+                            'scanner',
+                            { useBarCodeDetectorIfSupported: false }
+                        );
+                    }
                     await scanner.start(
                         { facingMode: 'environment' },
                         {
