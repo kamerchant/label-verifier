@@ -3657,7 +3657,7 @@
             currentCameraScanTarget = scanTarget;
             currentCameraScanMode = 'barcode';
             document.getElementById('ocr-result-input').value = '';
-            setOcrStatus('Align one line of code inside the guide and capture.');
+            setOcrStatus('Align one code line inside the guide. If blurry, move the phone farther away until it focuses.');
             if (modal) {
                 modal.classList.remove('hidden');
                 modal.style.display = 'flex';
@@ -3732,7 +3732,7 @@
             });
             title.innerText = isOcr ? 'Camera Printed Text Reader' : 'Camera Barcode Scanner';
             instruction.innerText = isOcr
-                ? 'Align one line of printed code inside the guide, then capture.'
+                ? 'Align one printed code line inside the guide. Move the phone farther away if it looks blurry.'
                 : 'Align 2D DataMatrix, QR Code, or 1D Barcode within the frame';
         }
 
@@ -3748,7 +3748,7 @@
 
                 if (mode === 'ocr') {
                     document.getElementById('ocr-result-input').value = '';
-                    setOcrStatus('Align one line of code inside the guide and capture.');
+                    setOcrStatus('Align one code line inside the guide. If blurry, move the phone farther away until it focuses.');
                     await startOcrCamera();
                 } else {
                     await startCameraScanner(currentCameraScanTarget);
@@ -3790,7 +3790,7 @@
                 await video.play();
                 updateCameraResolution();
                 initCameraZoomCapabilities();
-                setOcrStatus('Align one line of code inside the guide and capture.');
+                setOcrStatus('Align one code line inside the guide. If blurry, move the phone farther away until it focuses.');
             } catch (error) {
                 await stopCameraScanner();
                 showCustomAlert(getCameraScannerErrorMessage(error), "Camera Could Not Start");
@@ -3835,6 +3835,29 @@
                 : 'Camera resolution: unavailable';
         }
 
+        function prepareOcrImage(sourceCanvas) {
+            const scale = Math.min(
+                3,
+                2400 / sourceCanvas.width,
+                900 / sourceCanvas.height
+            );
+            const enhancedCanvas = document.createElement('canvas');
+            enhancedCanvas.width = Math.max(1, Math.round(sourceCanvas.width * scale));
+            enhancedCanvas.height = Math.max(1, Math.round(sourceCanvas.height * scale));
+            const context = enhancedCanvas.getContext('2d');
+            if (!context) throw new Error('Could not prepare the camera image for text recognition.');
+
+            context.imageSmoothingEnabled = true;
+            context.imageSmoothingQuality = 'high';
+            context.filter = 'grayscale(1) contrast(1.5)';
+            context.drawImage(
+                sourceCanvas,
+                0, 0, sourceCanvas.width, sourceCanvas.height,
+                0, 0, enhancedCanvas.width, enhancedCanvas.height
+            );
+            return enhancedCanvas;
+        }
+
         async function captureOcrText() {
             if (isOcrRecognizing) return;
             const captureGeneration = ++ocrCaptureGeneration;
@@ -3876,9 +3899,12 @@
                     sourceX, sourceY, sourceWidth, sourceHeight,
                     0, 0, canvas.width, canvas.height
                 );
+                const enhancedCanvas = prepareOcrImage(canvas);
                 setOcrStatus('Reading printed text...');
-                const result = await tesseract.recognize(canvas, 'eng', {
+                const result = await tesseract.recognize(enhancedCanvas, 'eng', {
                     tessedit_pageseg_mode: '7',
+                    tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
+                    user_defined_dpi: '300',
                     logger: message => {
                         if (message.status === 'recognizing text' && message.progress) {
                             setOcrStatus(`Reading printed text... ${Math.round(message.progress * 100)}%`);
@@ -7226,7 +7252,7 @@
                 <button id="ocr-capture-btn" type="button" onclick="captureOcrText()"
                         class="linear-button-primary w-full px-3 py-2 rounded text-xs font-semibold">Capture and read text</button>
                 <p id="ocr-camera-status" class="text-[11px] text-slate-300 text-center leading-tight" role="status" aria-live="polite">
-                    Align one line of code inside the guide and capture.
+                    Align one code line inside the guide. If blurry, move the phone farther away until it focuses.
                 </p>
                 <label for="ocr-result-input" class="block text-[11px] font-medium text-slate-400">Review or correct the recognized text</label>
                 <textarea id="ocr-result-input" rows="2" autocomplete="off"
