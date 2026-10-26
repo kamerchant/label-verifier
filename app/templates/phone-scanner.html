@@ -278,6 +278,37 @@
             return window.tesseractScriptPromise;
         }
 
+        let ocrWorkerPromise = null;
+        async function getOcrWorker() {
+            if (!ocrWorkerPromise) {
+                ocrWorkerPromise = (async () => {
+                    const tesseract = await loadTesseract();
+                    const worker = await tesseract.createWorker('eng', 1, {
+                        logger: message => {
+                            if (message.status === 'recognizing text' && message.progress) {
+                                setStatus(`Reading printed text… ${Math.round(message.progress * 100)}%`);
+                            }
+                        }
+                    });
+                    try {
+                        await worker.setParameters({
+                            tessedit_pageseg_mode: tesseract.PSM?.SINGLE_LINE ?? '7',
+                            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
+                            user_defined_dpi: '300'
+                        });
+                    } catch (error) {
+                        await worker.terminate();
+                        throw error;
+                    }
+                    return worker;
+                })().catch(error => {
+                    ocrWorkerPromise = null;
+                    throw error;
+                });
+            }
+            return ocrWorkerPromise;
+        }
+
         async function stopCamera() {
             let stopError = null;
             if (currentMode === 'barcode' && isRunning && scanner) {
@@ -423,7 +454,7 @@
             ocrInput.value = '';
             setStatus('Preparing text reader…');
             try {
-                const tesseract = await loadTesseract();
+                const worker = await getOcrWorker();
                 const viewportBounds = ocrViewport.getBoundingClientRect();
                 const guideBounds = document.getElementById('ocr-guide').getBoundingClientRect();
                 const scale = Math.max(
@@ -448,16 +479,7 @@
                 );
                 const enhancedCanvas = prepareOcrImage(canvas);
                 setStatus('Reading printed text…');
-                const result = await tesseract.recognize(enhancedCanvas, 'eng', {
-                    tessedit_pageseg_mode: '7',
-                    tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
-                    user_defined_dpi: '300',
-                    logger: message => {
-                        if (message.status === 'recognizing text' && message.progress) {
-                            setStatus(`Reading printed text… ${Math.round(message.progress * 100)}%`);
-                        }
-                    }
-                });
+                const result = await worker.recognize(enhancedCanvas);
                 const recognizedText = result.data.text.replace(/[^A-Za-z0-9]/g, '');
                 if (!recognizedText) {
                     setStatus('No text detected. Improve focus or lighting, then capture again.', true);
