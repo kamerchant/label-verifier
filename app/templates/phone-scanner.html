@@ -319,7 +319,8 @@
                             videoConstraints: {
                                 facingMode: { ideal: 'environment' },
                                 width: { ideal: 1920 },
-                                height: { ideal: 1080 }
+                                height: { ideal: 1080 },
+                                advanced: [{ focusMode: 'continuous' }]
                             },
                             qrbox: (viewfinderWidth, viewfinderHeight) => {
                                 const size = Math.min(
@@ -342,7 +343,8 @@
                         video: {
                             facingMode: { ideal: 'environment' },
                             width: { ideal: 1920 },
-                            height: { ideal: 1080 }
+                            height: { ideal: 1080 },
+                            advanced: [{ focusMode: 'continuous' }]
                         },
                         audio: false
                     });
@@ -430,13 +432,13 @@
                         }
                     }
                 });
-                const recognizedText = result.data.text.replace(/\s+/g, ' ').trim();
+                const recognizedText = result.data.text.replace(/[^A-Za-z0-9]/g, '');
                 if (!recognizedText) {
                     setStatus('No text detected. Improve focus or lighting, then capture again.', true);
                     return;
                 }
                 ocrInput.value = recognizedText;
-                setStatus('Review or correct the recognized text before sending it.');
+                setStatus('Review the letters and numbers before sending. Spaces and other characters are removed.');
             } catch (error) {
                 setStatus(error.message || 'Text recognition failed. Please try again.', true);
             } finally {
@@ -446,11 +448,12 @@
         }
 
         async function sendOcrText() {
-            const code = ocrInput.value.trim();
+            const code = ocrInput.value.replace(/[^A-Za-z0-9]/g, '');
             if (!code) {
                 setStatus('Capture text or enter a correction before sending.', true);
                 return;
             }
+            ocrInput.value = code;
             await sendScannedCode(code);
             if (!statusElement.classList.contains('error')) ocrInput.value = '';
         }

@@ -522,6 +522,15 @@
             -webkit-mask: var(--modal-icon) center / contain no-repeat;
             mask: var(--modal-icon) center / contain no-repeat;
         }
+        #global-audit-modal .modal-heading-with-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #global-audit-modal .modal-heading-with-icon::before {
+            flex: 0 0 auto;
+            vertical-align: middle;
+        }
         #packing-qc-modal .packing-qc-eyebrow {
             color: var(--packing-qc-accent);
         }
@@ -3668,7 +3677,8 @@
                     videoConstraints: {
                         facingMode: { ideal: "environment" },
                         width: { ideal: 1920 },
-                        height: { ideal: 1080 }
+                        height: { ideal: 1080 },
+                        advanced: [{ focusMode: "continuous" }]
                     }
                 };
 
@@ -3766,7 +3776,8 @@
                     video: {
                         facingMode: { ideal: 'environment' },
                         width: { ideal: 1920 },
-                        height: { ideal: 1080 }
+                        height: { ideal: 1080 },
+                        advanced: [{ focusMode: 'continuous' }]
                     },
                     audio: false
                 });
@@ -3875,14 +3886,14 @@
                     }
                 });
                 if (captureGeneration !== ocrCaptureGeneration) return;
-                const recognizedText = result.data.text.replace(/\s+/g, ' ').trim();
+                const recognizedText = result.data.text.replace(/[^A-Za-z0-9]/g, '');
                 if (!recognizedText) {
                     setOcrStatus('No text was detected. Improve focus or lighting, then capture again.', true);
                     return;
                 }
 
                 resultInput.value = recognizedText;
-                setOcrStatus('Review the text below. Correct any mistakes before using it.');
+                setOcrStatus('Review the letters and numbers below. Spaces and other characters are removed.');
             } catch (error) {
                 if (captureGeneration === ocrCaptureGeneration) {
                     setOcrStatus(error.message || 'Text recognition failed. Please try again.', true);
@@ -3894,12 +3905,14 @@
         }
 
         async function useOcrResult() {
-            const recognizedText = document.getElementById('ocr-result-input').value.trim();
+            const resultInput = document.getElementById('ocr-result-input');
+            const recognizedText = resultInput.value.replace(/[^A-Za-z0-9]/g, '');
             if (!recognizedText) {
                 setOcrStatus('Capture text or enter a correction before using it.', true);
                 return;
             }
 
+            resultInput.value = recognizedText;
             const input = document.getElementById(
                 currentCameraScanTarget === 'packing-qc' ? 'packing-qc-code' : 'barcode-input'
             );
