@@ -1,13 +1,13 @@
 <html lang="en" class="theme-parchment">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CCL ME - PK - Variable Data Verification</title>
     <link rel="icon" type="image/svg+xml" href="/static/app-icon.svg">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/vendor/tailwind.css?v=3.4.17">
     <!-- html5-qrcode for Camera Scanning -->
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="/static/vendor/html5-qrcode.min.js?v=2.3.8"></script>
+    <script src="/static/vendor/qrcode.min.js?v=1.0.0"></script>
 
     <style>
         *, body, input, button, select, textarea, table, th, td {
@@ -1061,7 +1061,7 @@
 
 
     <!-- Global Audit Trail Modal -->
-    <div id="global-audit-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
+    <div id="global-audit-modal" role="dialog" aria-modal="true" aria-labelledby="global-audit-modal-title" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
         <div class="linear-card p-6 rounded-lg max-w-5xl w-full shadow-2xl flex flex-col max-h-[92vh]">
             <div class="report-header-box mb-3 border-b border-white/[0.08] pb-3">
                 <div class="print-brand-box">
@@ -1079,7 +1079,7 @@
                         <button onclick="toggleModal('global-audit-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Close</button>
                     </div>
                 </div>
-                <h3 class="text-xl sm:text-2xl font-extrabold modal-title-theme text-center mb-1">Global Activity Audit Trail</h3>
+                <h3 id="global-audit-modal-title" class="text-xl sm:text-2xl font-extrabold modal-title-theme text-center mb-1">Global Activity Audit Trail</h3>
                 <p class="text-xs modal-subtitle-theme text-center mb-3">Immutable record of all inspection scans, job lifecycles, and user administration events</p>
                 
                                 <div class="flex flex-col sm:flex-row items-center justify-between gap-2.5 no-print pt-2">
@@ -1118,9 +1118,9 @@
     </div>
 
     <!-- Password Prompt Modal for Purging Jobs -->
-    <div id="purge-admin-pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
+    <div id="purge-admin-pw-modal" role="dialog" aria-modal="true" aria-labelledby="purge-admin-pw-modal-title" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-red-500/30 shadow-2xl">
-            <h3 class="text-base sm:text-lg font-extrabold text-red-400 mb-1">Authorize Job Purge</h3>
+            <h3 id="purge-admin-pw-modal-title" class="text-base sm:text-lg font-extrabold text-red-400 mb-1">Authorize Job Purge</h3>
             <p id="purge-modal-subtitle" class="text-xs modal-subtitle-theme mb-4 leading-relaxed">Enter your password to authorize the permanent deletion of this unverified job card.</p>
             <form onsubmit="executePurgeJobWithPassword(event)" class="space-y-3.5">
                 <div>
@@ -1136,7 +1136,7 @@
     </div>
 
     <!-- Duplicate Warning Modal with In-Modal Progress Tracking -->
-    <div id="duplicate-warning-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
+    <div id="duplicate-warning-modal" role="dialog" aria-modal="true" aria-labelledby="duplicate-modal-title" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
         <div id="duplicate-modal-card" class="bg-white text-black p-5 sm:p-6 rounded-lg max-w-xl w-full border border-slate-300 shadow-2xl flex flex-col max-h-[90vh]">
             
             <!-- Printable Brand Header (Only visible on print) -->
@@ -1216,7 +1216,7 @@
     </div>
 
     <!-- Dedicated Conflict Analysis Report Viewer Modal (Job Control Center Read-Only View) -->
-    <div id="conflict-viewer-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
+    <div id="conflict-viewer-modal" role="dialog" aria-modal="true" aria-labelledby="conflict-viewer-modal-title" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[95]">
         <div class="bg-white text-black p-5 sm:p-6 rounded-lg max-w-xl w-full border border-slate-300 shadow-2xl flex flex-col max-h-[90vh]">
             
             <!-- Printable Brand Header (Only visible on print) -->
@@ -1229,7 +1229,7 @@
             </div>
 
             <div class="text-center shrink-0 mb-3">
-                <h3 class="text-base sm:text-lg font-extrabold text-black mb-0.5">Batch Uniqueness & Conflict Analysis Report</h3>
+                <h3 id="conflict-viewer-modal-title" class="text-base sm:text-lg font-extrabold text-black mb-0.5">Batch Uniqueness & Conflict Analysis Report</h3>
                 <p class="text-xs text-slate-600">Collision audit against registered production job cards</p>
             </div>
             
@@ -1486,11 +1486,11 @@
     </div>
 
     <!-- User Management Modal -->
-    <div id="user-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-1.5 sm:p-4 z-50">
+    <div id="user-modal" role="dialog" aria-modal="true" aria-labelledby="user-modal-title" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-1.5 sm:p-4 z-50">
         <div class="linear-card p-3 sm:p-6 rounded-lg max-w-4xl w-full shadow-2xl flex flex-col h-[96vh] sm:max-h-[92vh]">
             <div class="flex justify-between items-center mb-2 sm:mb-3 pb-2 border-b border-white/[0.08] shrink-0">
                 <div>
-                    <h3 class="text-base sm:text-xl font-extrabold modal-title-theme">User Management</h3>
+                    <h3 id="user-modal-title" class="text-base sm:text-xl font-extrabold modal-title-theme">User Management</h3>
                     <p class="text-[10px] sm:text-xs modal-subtitle-theme mt-0.5 hidden sm:block">Manage operator credentials, roles, and creation permissions</p>
                 </div>
                 <div class="flex items-center gap-2">
@@ -1567,9 +1567,9 @@
     </div>
 
     <!-- User Admin Submit Password Modal -->
-    <div id="user-admin-pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[85]">
+    <div id="user-admin-pw-modal" role="dialog" aria-modal="true" aria-labelledby="user-admin-pw-modal-title" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[85]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/30 shadow-2xl">
-            <h3 class="text-base sm:text-lg font-extrabold modal-title-theme mb-1">Confirm Administrator Password</h3>
+            <h3 id="user-admin-pw-modal-title" class="text-base sm:text-lg font-extrabold modal-title-theme mb-1">Confirm Administrator Password</h3>
             <p class="text-xs modal-subtitle-theme mb-4">Enter your password to authorize and apply all staged user changes to the database.</p>
             <form onsubmit="confirmAndSubmitUserChanges(event)" class="space-y-3.5">
                 <div>
@@ -1585,7 +1585,7 @@
     </div>
 
     <!-- QC Report Modal -->
-    <div id="report-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
+    <div id="report-modal" role="dialog" aria-modal="true" aria-labelledby="report-modal-title" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
         <div class="linear-card p-3 sm:p-5 rounded-lg max-w-6xl w-full shadow-2xl flex flex-col h-[94vh]">
             
             <!-- Compact Executive Header Strip -->
@@ -1600,7 +1600,7 @@
 
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 no-print">
                     <div>
-                        <h3 class="text-base sm:text-lg font-extrabold modal-title-theme tracking-tight">Quality Control Verification Report</h3>
+                        <h3 id="report-modal-title" class="text-base sm:text-lg font-extrabold modal-title-theme tracking-tight">Quality Control Verification Report</h3>
                         <p class="text-[10px] sm:text-xs modal-subtitle-theme">Comprehensive inspection and sequence evaluation record</p>
                     </div>
                     <div class="flex items-center gap-1.5 shrink-0">
@@ -1687,7 +1687,7 @@
 
 
     <!-- Job Lifecycle Audit Trail Modal -->
-    <div id="lifecycle-modal" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
+    <div id="lifecycle-modal" role="dialog" aria-modal="true" aria-labelledby="lifecycle-modal-title" class="printable-modal fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-2 sm:p-4 z-50">
         <div class="linear-card p-6 rounded-lg max-w-3xl w-full shadow-2xl flex flex-col max-h-[85vh]">
             <div class="report-header-box mb-3 border-b border-white/[0.08] pb-2">
                 <div class="print-brand-box">
@@ -1704,7 +1704,7 @@
                         <button onclick="toggleModal('lifecycle-modal')" class="linear-button-secondary px-3.5 py-1.5 rounded text-xs font-medium">Close</button>
                     </div>
                 </div>
-                <h3 class="text-xl sm:text-2xl font-extrabold modal-title-theme text-center mb-1">Job Lifecycle Audit Report</h3>
+                <h3 id="lifecycle-modal-title" class="text-xl sm:text-2xl font-extrabold modal-title-theme text-center mb-1">Job Lifecycle Audit Report</h3>
                 <p class="text-xs modal-subtitle-theme text-center mb-3">Chronological state transitions and authorization log</p>
                 
                 <div class="linear-subcard p-3 rounded text-xs space-y-1 text-left">
@@ -1732,7 +1732,7 @@
     </div>
 
     <!-- Custom Alert Modal -->
-    <div id="custom-alert-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[130]">
+    <div id="custom-alert-modal" role="alertdialog" aria-modal="true" aria-labelledby="custom-alert-title" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[130]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/35 shadow-2xl text-center">
             <h3 id="custom-alert-title" class="text-base sm:text-lg font-extrabold modal-title-theme mb-1">Please Verify</h3>
             <p id="custom-alert-msg" class="text-xs modal-subtitle-theme mb-5 leading-relaxed"></p>
@@ -1741,7 +1741,7 @@
     </div>
 
     <!-- Custom Confirm Modal -->
-    <div id="custom-confirm-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[120]">
+    <div id="custom-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="custom-confirm-title" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[120]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-amber-500/35 shadow-2xl text-center">
             <h3 id="custom-confirm-title" class="text-base sm:text-lg font-extrabold text-amber-400 mb-1">Confirmation Required</h3>
             <p id="custom-confirm-msg" class="text-xs modal-subtitle-theme mb-5 leading-relaxed"></p>
@@ -1753,7 +1753,7 @@
     </div>
 
     <!-- Admin Reset Password Modal -->
-    <div id="admin-reset-pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[80]">
+    <div id="admin-reset-pw-modal" role="dialog" aria-modal="true" aria-labelledby="admin-reset-pw-title" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[80]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-indigo-500/30 shadow-2xl">
             <h3 id="admin-reset-pw-title" class="text-base sm:text-lg font-extrabold modal-title-theme mb-1">Set Operator Password</h3>
             <p id="admin-reset-pw-subtitle" class="text-xs modal-subtitle-theme mb-4">Enter a new temporary password for this user (Min 8 chars, 1 uppercase, 1 lowercase, 1 number).</p>
@@ -1771,9 +1771,9 @@
     </div>
 
     <!-- Authorization Password Modal for Changing Individual Job Status -->
-    <div id="bulk-status-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[70]">
+    <div id="bulk-status-modal" role="dialog" aria-modal="true" aria-labelledby="bulk-status-modal-title" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[70]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full border border-amber-500/25 shadow-2xl">
-            <h3 class="text-base sm:text-lg font-extrabold text-amber-400 mb-1">Authorize Status Change</h3>
+            <h3 id="bulk-status-modal-title" class="text-base sm:text-lg font-extrabold text-amber-400 mb-1">Authorize Status Change</h3>
             <p id="bulk-status-subtitle" class="text-xs modal-subtitle-theme mb-4 leading-relaxed"></p>
             <form onsubmit="submitJobStatusChange(event)" class="space-y-3.5">
                 <div>
@@ -1788,9 +1788,9 @@
         </div>
     </div>
     <!-- Override Reason Authorization Modal -->
-    <div id="override-reason-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[98]">
+    <div id="override-reason-modal" role="dialog" aria-modal="true" aria-labelledby="override-reason-modal-title" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[98]">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full border border-amber-500/30 shadow-2xl">
-            <h3 class="text-base sm:text-lg font-extrabold text-amber-400 mb-1">Supervisor Override Justification</h3>
+            <h3 id="override-reason-modal-title" class="text-base sm:text-lg font-extrabold text-amber-400 mb-1">Supervisor Override Justification</h3>
             <p id="override-reason-subtitle" class="text-xs modal-subtitle-theme mb-3">ISO 9001 Compliance: Enter a mandatory reason for proceeding with duplicate or skipped codes.</p>
             <form onsubmit="submitOverrideWithReason(event)" class="space-y-3">
                 <div>
@@ -1806,10 +1806,10 @@
     </div>
 
     <!-- Keyboard Shortcuts Help Modal -->
-    <div id="shortcuts-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[100]">
+    <div id="shortcuts-modal" role="dialog" aria-modal="true" aria-labelledby="shortcuts-modal-title" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[100]">
         <div class="bg-white text-black p-5 sm:p-6 rounded-lg max-w-md w-full border border-slate-300 shadow-2xl">
             <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-200">
-                <h3 class="text-base sm:text-lg font-extrabold text-black">Keyboard Shortcuts</h3>
+                <h3 id="shortcuts-modal-title" class="text-base sm:text-lg font-extrabold text-black">Keyboard Shortcuts</h3>
                 <button type="button" onclick="toggleModal('shortcuts-modal')" class="bg-slate-100 hover:bg-slate-200 text-black border border-slate-300 text-xs px-2.5 py-1 rounded font-bold transition-colors">Esc</button>
             </div>
             <div class="space-y-2 text-xs">
@@ -1853,9 +1853,9 @@
     </div>
 
     <!-- Time Zone Setting Modal -->
-    <div id="timezone-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
+    <div id="timezone-modal" role="dialog" aria-modal="true" aria-labelledby="timezone-modal-title" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-lg w-full shadow-2xl">
-            <h3 class="text-base sm:text-lg font-extrabold modal-title-theme mb-1">Operational Time Zone Setting</h3>
+            <h3 id="timezone-modal-title" class="text-base sm:text-lg font-extrabold modal-title-theme mb-1">Operational Time Zone Setting</h3>
             <p class="text-xs modal-subtitle-theme mb-4">Select the reference time zone for inspection streams, report headers, and printable certificates.</p>
             <form onsubmit="handleTimezoneSave(event)" class="space-y-3.5">
                 <div>
@@ -1897,7 +1897,7 @@
     </div>
 
     <!-- Login Modal -->
-    <div id="login-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
+    <div id="login-modal" role="dialog" aria-modal="true" aria-labelledby="pw-title" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full shadow-2xl">
             <div class="flex items-center gap-3 mb-4">
                 <div class="bg-white p-1 rounded shrink-0">
@@ -1921,7 +1921,7 @@
     </div>
 
     <!-- Password Modal -->
-    <div id="pw-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
+    <div id="pw-modal" role="dialog" aria-modal="true" aria-labelledby="pw-title" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-sm w-full shadow-2xl">
             <h3 id="pw-title" class="text-base sm:text-lg font-extrabold modal-title-theme mb-1">Change Password</h3>
             <p id="pw-subtitle" class="text-xs modal-subtitle-theme mb-4">Enter current and new credentials</p>
@@ -1947,9 +1947,9 @@
     </div>
 
     <!-- Create Job Upload Modal -->
-    <div id="upload-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
+    <div id="upload-modal" role="dialog" aria-modal="true" aria-labelledby="upload-modal-title" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-50">
         <div class="linear-card p-5 sm:p-6 rounded-lg max-w-md w-full shadow-2xl">
-            <h3 class="text-base sm:text-lg font-extrabold modal-title-theme mb-1">Create New Job & Ingest Code Pool</h3>
+            <h3 id="upload-modal-title" class="text-base sm:text-lg font-extrabold modal-title-theme mb-1">Create New Job & Ingest Code Pool</h3>
             <p class="text-xs modal-subtitle-theme mb-3">Upload a CSV or TXT dataset to register a new production run</p>
             <form id="create-job-form" onsubmit="uploadJob(event, false)" class="space-y-3.5">
                 <div>
@@ -2242,10 +2242,13 @@
 
         async function refreshActiveJobState() {
             if (!activeJobId) return;
+            const requestedJobId = activeJobId;
             try {
-                const res = await fetch(`/api/reports/${encodeURIComponent(activeJobId)}`);
+                const res = await fetch(`/api/reports/${encodeURIComponent(requestedJobId)}`);
+                if (activeJobId !== requestedJobId) return;
                 if (res.ok) {
                     const data = await res.json();
+                    if (activeJobId !== requestedJobId) return;
                     if (data.status && data.status !== activeJobStatus) {
                         const total = data.total_codes || document.getElementById('kpi-total').innerText.replace(/,/g, '');
                         const consumed = data.consumed_codes || document.getElementById('kpi-consumed').innerText.replace(/,/g, '');
@@ -2615,55 +2618,60 @@
             const ctx = getAudioContext();
             if (!ctx) return;
             if (ctx.state === 'suspended') ctx.resume();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
+            const startAt = ctx.currentTime + 0.01;
+            const notes = type === 'PASS'
+                ? [{ frequency: 880, offset: 0, duration: 0.15, volume: 0.32 },
+                    { frequency: 1174.66, offset: 0.17, duration: 0.24, volume: 0.32 }]
+                : [{ frequency: 440, offset: 0, duration: 0.12, volume: 0.34 },
+                    { frequency: 440, offset: 0.22, duration: 0.12, volume: 0.34 }];
 
-            if (type === 'PASS') {
-                osc.frequency.setValueAtTime(1046.5, ctx.currentTime);
-                gain.gain.setValueAtTime(0.3, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-                osc.start();
-                osc.stop(ctx.currentTime + 0.15);
-            } else {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(440, ctx.currentTime);
-                osc.frequency.linearRampToValueAtTime(220, ctx.currentTime + 0.4);
-                gain.gain.setValueAtTime(0.6, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
-                osc.start();
-                osc.stop(ctx.currentTime + 0.4);
-            }
+            notes.forEach(({ frequency, offset, duration, volume }) => {
+                const noteStart = startAt + offset;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(frequency, noteStart);
+                gain.gain.setValueAtTime(0.001, noteStart);
+                gain.gain.linearRampToValueAtTime(volume, noteStart + 0.015);
+                gain.gain.exponentialRampToValueAtTime(0.001, noteStart + duration);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(noteStart);
+                osc.stop(noteStart + duration + 0.01);
+            });
         }
 
-        function playAlarmSiren() {
-            if (alarmCount >= 6) {
+        function playRestartWarning() {
+            if (alarmCount >= 2) {
                 stopAlarm();
                 return;
             }
             const ctx = getAudioContext();
             if (!ctx) return;
             if (ctx.state === 'suspended') ctx.resume();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(587.33, ctx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.2);
-            gain.gain.setValueAtTime(0.25, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.25);
+            const startAt = ctx.currentTime + 0.01;
+            [0, 0.22, 0.44].forEach((offset) => {
+                const noteStart = startAt + offset;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(660, noteStart);
+                gain.gain.setValueAtTime(0.001, noteStart);
+                gain.gain.linearRampToValueAtTime(0.32, noteStart + 0.015);
+                gain.gain.exponentialRampToValueAtTime(0.001, noteStart + 0.12);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(noteStart);
+                osc.stop(noteStart + 0.13);
+            });
             alarmCount++;
         }
 
         function startAlarm() {
             stopAlarm();
             alarmCount = 0;
-            playAlarmSiren();
-            alarmInterval = setInterval(playAlarmSiren, 350);
+            playRestartWarning();
+            alarmInterval = setInterval(playRestartWarning, 1200);
         }
 
         function stopAlarm() {
@@ -3807,11 +3815,11 @@
             if (!window.tesseractScriptPromise) {
                 window.tesseractScriptPromise = new Promise((resolve, reject) => {
                     const script = document.createElement('script');
-                    script.src = 'https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js';
+                    script.src = '/static/vendor/tesseract/tesseract.min.js?v=5.1.1';
                     script.onload = () => resolve(window.Tesseract);
                     script.onerror = () => {
                         window.tesseractScriptPromise = null;
-                        reject(new Error('The text reader could not load. Check your internet connection and try again.'));
+                        reject(new Error('The text reader could not load. Reload the page and try again.'));
                     };
                     document.head.appendChild(script);
                 });
@@ -3824,7 +3832,11 @@
             if (!ocrWorkerPromise) {
                 ocrWorkerPromise = (async () => {
                     const tesseract = await loadTesseract();
+                    const ocrBase = `${window.location.origin}/static/vendor/tesseract`;
                     const worker = await tesseract.createWorker('eng', 1, {
+                        workerPath: `${ocrBase}/worker.min.js`,
+                        corePath: ocrBase,
+                        langPath: ocrBase,
                         logger: message => {
                             if (message.status === 'recognizing text' && message.progress) {
                                 setOcrStatus(`Reading printed text... ${Math.round(message.progress * 100)}%`);
@@ -5157,6 +5169,22 @@
                     </tr>
                 `;
             }).join('');
+        }
+
+        async function forceFailJob(runId, jcId) {
+            if (!confirm(`Mark Job Card '${jcId}' as FAILED?\n\nOnly do this if it has been stuck for a long time. You can then purge it and re-upload.`)) return;
+            try {
+                const res = await fetch(`/api/admin/jobs/${runId}/force-fail`, { method: 'POST' });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    updateSystemMessage(`Job Card '${jcId}' marked as failed.`, "success");
+                    await loadMasterJobs(currentMasterTab);
+                } else {
+                    showCustomAlert(data.detail || "Could not force-fail this job.");
+                }
+            } catch (ex) {
+                showCustomAlert("Network error while connecting to server.");
+            }
         }
 
         function purgeJobFromAdmin(runId, jcId) {
@@ -6741,8 +6769,8 @@
                 showCustomConfirm(
                     `Job Card '${activeJobId}' is currently active. Do you want to close it and open Job Card '${jobCardId}'?`,
                     async () => {
-                        toggleModal('master-jobs-modal');
                         clearLoadedJob();
+                        toggleModal('master-jobs-modal');
                         await selectJob(jobCardId, descEncoded, status, consumed, total);
                     },
                     "Switch Active Job Card"
@@ -6830,7 +6858,7 @@
 
                     let actionBtn = (!isProcessing && consumedNum === 0)
                         ? `<button onclick="purgeJobFromAdmin(${Number(j.run_id)}, ${htmlJsArg(j.job_card_id)})" class="btn-ghost-danger py-0.5 px-1.5 text-[10px]">Purge</button>`
-                        : '';
+                        : (isProcessing ? `<button onclick="forceFailJob(${Number(j.run_id)}, ${htmlJsArg(j.job_card_id)})" class="btn-ghost-danger py-0.5 px-1.5 text-[10px]">Force fail</button>` : '');
 
                     return `
                         <div class="linear-subcard p-2 rounded flex flex-col gap-1 shadow-sm border border-white/[0.06]">
@@ -6986,7 +7014,7 @@
                 } else if (j.status === 'CONFLICT_DETECTED') {
                     actionHtml = `<button onclick="resolveJobFromAdmin(${Number(j.run_id)}, ${Number(j.conflict_count) || 0}, ${totalNum})" class="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded text-[11px] font-bold">Resolve</button>`;
                 } else if (j.status === 'INGESTING' || j.status === 'OVERRIDING') {
-                    actionHtml = `<span class="text-indigo-400/70 italic text-[11px]">Processing...</span>`;
+                    actionHtml = `<button onclick="forceFailJob(${Number(j.run_id)}, ${htmlJsArg(j.job_card_id)})" class="btn-ghost-danger" title="Mark this stuck job as failed">Force fail</button>`;
                 } else if (consumedNum === 0) {
                     actionHtml = `<button onclick="purgeJobFromAdmin(${Number(j.run_id)}, ${htmlJsArg(j.job_card_id)})" class="btn-ghost-danger">Purge</button>`;
                 }
@@ -7214,10 +7242,10 @@
         }
 
     </script>
-    <div id="phone-scanner-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-[120]">
+    <div id="phone-scanner-modal" role="dialog" aria-modal="true" aria-labelledby="phone-scanner-modal-title" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-4 z-[120]">
         <div class="linear-card p-5 rounded-lg max-w-md w-full shadow-2xl">
             <div class="flex items-center justify-between mb-4 pb-2 border-b border-white/[0.08]">
-                <h3 class="text-sm font-bold modal-title-theme">Pair a phone scanner</h3>
+                <h3 id="phone-scanner-modal-title" class="text-sm font-bold modal-title-theme">Pair a phone scanner</h3>
                 <button type="button" onclick="cancelPhoneScannerPairing()" class="linear-button-secondary px-2.5 py-1 rounded text-xs font-semibold">Cancel session</button>
             </div>
             <p class="text-xs text-slate-300 mb-1">Open your phone camera and scan this QR code.</p>
@@ -7232,7 +7260,7 @@
     </div>
 
     <!-- Mobile Live Camera Scanner Modal with Zoom -->
-    <div id="camera-modal" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[110]">
+    <div id="camera-modal" role="dialog" aria-modal="true" aria-labelledby="camera-modal-title" class="fixed inset-0 bg-[#090a0d]/90 backdrop-blur-sm flex items-center justify-center hidden p-3 sm:p-4 z-[110]">
         <div class="linear-card p-4 rounded-lg max-w-sm w-full shadow-2xl flex flex-col items-center">
             <div class="flex justify-between items-center w-full mb-3 pb-2 border-b border-white/[0.08]">
                 <h3 id="camera-modal-title" class="text-sm font-bold modal-title-theme">Camera Barcode Scanner</h3>

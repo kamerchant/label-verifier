@@ -27,6 +27,7 @@ from app.database import (
     hash_password,
     verify_password,
     close_connection_pool,
+    PoolBusyError,
 )
 
 # ---------------------------------------------------------------------------
@@ -46,17 +47,22 @@ async def lifespan(app: FastAPI):
             cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS override_by VARCHAR(100);")
             cur.execute("ALTER TABLE job_cards ADD COLUMN IF NOT EXISTS override_reason TEXT;")
             
+            # row_num must exist before any index that references it (fresh databases)
+            cur.execute("ALTER TABLE codes ADD COLUMN IF NOT EXISTS row_num INT;")
+
             # Auto-ensure high-speed verification indexes on startup
             cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_val ON codes (run_id, code_value);")
-            cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_id_asc ON codes (run_id, id ASC);")
-            cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_status_id ON codes (run_id, status, id);")
+            # Partial index covering only verified rows; replaces the much larger
+            # (run_id, status, id) and (run_id, id) indexes.
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_consumed ON codes (run_id, row_num, id) WHERE status = 'CONSUMED';")
+            cur.execute("DROP INDEX IF EXISTS idx_codes_run_id_asc;")
+            cur.execute("DROP INDEX IF EXISTS idx_codes_run_status_id;")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_val_active ON codes (code_value) WHERE status != 'DELETED';")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_scan_logs_jc_id ON scan_logs (job_card_id, id DESC);")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_packing_qc_jc_code ON packing_qc_logs (job_card_id, code_scanned);")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_sys_audit_ts ON system_audit_logs (timestamp DESC);")
             
-            # 1. Add explicit row_num column and index
-            cur.execute("ALTER TABLE codes ADD COLUMN IF NOT EXISTS row_num INT;")
+            # 1. Add explicit row_num index
             cur.execute("CREATE INDEX IF NOT EXISTS idx_codes_run_rownum ON codes (run_id, row_num);")
 
             # 2. Backfill row_num for any historical jobs that don't have it yet
@@ -83,12 +89,17 @@ async def lifespan(app: FastAPI):
                         SELECT COUNT(*) FROM codes c
                         WHERE c.run_id = j.run_id AND c.status = 'CONSUMED'
                     )
-                WHERE j.status IN ('INGESTING', 'OVERRIDING');
+                WHERE j.status IN ('INGESTING', 'OVERRIDING')
+                RETURNING j.job_card_id;
             """)
+            for (interrupted_job,) in cur.fetchall():
+                log_job_failure(cur, interrupted_job, "System", "Ingestion interrupted by a server restart before it finished.")
             conn.commit()
 
     finally:
         release_connection(conn)
+
+    threading.Thread(target=ingestion_watchdog_loop, daemon=True).start()
 
     yield  # Application handles incoming HTTP requests
 
@@ -117,6 +128,51 @@ SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "true").strip().
 MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_BYTES", 250 * 1024 * 1024))
 if MAX_UPLOAD_BYTES <= 0:
     raise RuntimeError("MAX_UPLOAD_BYTES must be a positive integer.")
+# Scripts and styles are served from /static/vendor, so no third-party origin is allowed. Inline scripts remain
+# permitted because the pages use inline handlers; 'wasm-unsafe-eval' is required by the OCR engine.
+CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob:; "
+    "media-src 'self' blob:; "
+    "connect-src 'self'; "
+    "worker-src 'self' blob:; "
+    "font-src 'self' data:; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "frame-ancestors 'none'"
+)
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    headers = response.headers
+    headers.setdefault("Content-Security-Policy", CONTENT_SECURITY_POLICY)
+    headers.setdefault("X-Content-Type-Options", "nosniff")
+    headers.setdefault("X-Frame-Options", "DENY")
+    headers.setdefault("Referrer-Policy", "same-origin")
+    headers.setdefault("Permissions-Policy", "camera=(self), microphone=(), geolocation=()")
+    if SESSION_COOKIE_SECURE:
+        headers.setdefault("Strict-Transport-Security", "max-age=31536000")
+    if request.url.path.startswith("/static/vendor/"):
+        headers.setdefault("Cache-Control", "public, max-age=86400")
+    elif request.url.path.startswith("/api/"):
+        headers.setdefault("Cache-Control", "no-store")
+    return response
+
+
+@app.exception_handler(PoolBusyError)
+async def database_busy_handler(request: Request, exc: PoolBusyError):
+    logger.warning("Request rejected: all database connections busy (%s %s)", request.method, request.url.path)
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "The server is busy. Please try again in a moment."},
+        headers={"Retry-After": "5"},
+    )
+
 # Dedicated 64-bit integer advisory lock key to serialize cross-job duplicate checks
 CROSS_JOB_INGESTION_LOCK_ID = 8492049102
 
@@ -133,35 +189,59 @@ def release_advisory_lock_safe(conn, cur):
             pass
 
 # ---------------------------------------------------------------------------
-# Rate-Limiting & Brute-Force Defense (5 failed attempts per 5 minutes)
+# Rate-Limiting & Brute-Force Defense
 # ---------------------------------------------------------------------------
+# Failed logins are limited per client address and, more loosely, per username so that rotating
+# addresses does not allow unlimited guessing against one account. State is per process.
 FAILED_ATTEMPTS = {}
+FAILED_ATTEMPTS_LOCK = threading.Lock()
+IP_MAX_ATTEMPTS, IP_WINDOW_SECONDS = 5, 300
+USER_MAX_ATTEMPTS, USER_WINDOW_SECONDS = 10, 900
+# Number of reverse proxies in front of the app that append to X-Forwarded-For. Leave at 0 when the app is
+# reached directly: the header is client-controlled and is only trusted for the hops counted here.
+TRUSTED_PROXY_COUNT = int(os.environ.get("TRUSTED_PROXY_COUNT", "0"))
+if TRUSTED_PROXY_COUNT < 0:
+    raise RuntimeError("TRUSTED_PROXY_COUNT must not be negative.")
 
 def get_client_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    if TRUSTED_PROXY_COUNT:
+        hops = [h.strip() for h in request.headers.get("x-forwarded-for", "").split(",") if h.strip()]
+        if len(hops) >= TRUSTED_PROXY_COUNT:
+            return hops[-TRUSTED_PROXY_COUNT]
     return request.client.host if request.client else "unknown"
 
-def check_rate_limit(request: Request, max_attempts: int = 5, window_seconds: int = 300):
-    client_ip = get_client_ip(request)
+def _login_keys(request: Request, username: str = ""):
+    keys = [(f"ip:{get_client_ip(request)}", IP_MAX_ATTEMPTS, IP_WINDOW_SECONDS)]
+    if username:
+        keys.append((f"user:{username.strip().lower()}", USER_MAX_ATTEMPTS, USER_WINDOW_SECONDS))
+    return keys
+
+def check_rate_limit(request: Request, username: str = ""):
     now = time.time()
-    attempts = [t for t in FAILED_ATTEMPTS.get(client_ip, []) if now - t < window_seconds]
-    FAILED_ATTEMPTS[client_ip] = attempts
-    if len(attempts) >= max_attempts:
-        minutes_remaining = int((attempts[0] + window_seconds - now) / 60) + 1
-        raise HTTPException(
-            status_code=429,
-            detail=f"Too many failed login attempts from this terminal. Please wait {minutes_remaining} minute(s)."
-        )
+    with FAILED_ATTEMPTS_LOCK:
+        for key, max_attempts, window in _login_keys(request, username):
+            attempts = [t for t in FAILED_ATTEMPTS.get(key, []) if now - t < window]
+            if attempts:
+                FAILED_ATTEMPTS[key] = attempts
+            else:
+                FAILED_ATTEMPTS.pop(key, None)
+            if len(attempts) >= max_attempts:
+                minutes_remaining = int((attempts[0] + window - now) / 60) + 1
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Too many failed login attempts. Please wait {minutes_remaining} minute(s).",
+                    headers={"Retry-After": str(minutes_remaining * 60)},
+                )
 
-def record_failed_attempt(request: Request):
-    client_ip = get_client_ip(request)
-    FAILED_ATTEMPTS.setdefault(client_ip, []).append(time.time())
+def record_failed_attempt(request: Request, username: str = ""):
+    with FAILED_ATTEMPTS_LOCK:
+        for key, _, _ in _login_keys(request, username):
+            FAILED_ATTEMPTS.setdefault(key, []).append(time.time())
 
-def clear_failed_attempts(request: Request):
-    client_ip = get_client_ip(request)
-    FAILED_ATTEMPTS.pop(client_ip, None)
+def clear_failed_attempts(request: Request, username: str = ""):
+    with FAILED_ATTEMPTS_LOCK:
+        for key, _, _ in _login_keys(request, username):
+            FAILED_ATTEMPTS.pop(key, None)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 HTML_PATH = os.path.join(BASE_DIR, "templates", "index.html")
@@ -206,6 +286,75 @@ def log_system_event(cur, category: str, job_card_id: str, action: str, performe
         INSERT INTO system_audit_logs (category, job_card_id, action, performed_by, details)
         VALUES (%s, %s, %s, %s, %s)
     """, (category, job_card_id or "-", action, performed_by or "System", details))
+
+def log_job_failure(cur, job_card_id: str, performed_by: str, reason: str):
+    reason = (reason or "Unknown error")[:1000]
+    cur.execute(
+        "INSERT INTO job_lifecycle_logs (job_card_id, action, performed_by, reason) VALUES (%s, %s, %s, %s)",
+        (job_card_id, "INGESTION_FAILED", performed_by or "System", reason),
+    )
+    log_system_event(cur, "JOB_LIFECYCLE", job_card_id, "INGESTION_FAILED", performed_by, reason)
+
+ACTIVE_WORKERS = {}
+ACTIVE_WORKERS_LOCK = threading.Lock()
+WATCHDOG_INTERVAL_SECONDS = int(os.environ.get("INGEST_WATCHDOG_INTERVAL_SECONDS", "60"))
+
+def run_tracked_worker(run_id: int, target, *args):
+    with ACTIVE_WORKERS_LOCK:
+        ACTIVE_WORKERS[run_id] = threading.current_thread()
+    try:
+        target(*args)
+    finally:
+        with ACTIVE_WORKERS_LOCK:
+            ACTIVE_WORKERS.pop(run_id, None)
+
+ORPHAN_SUSPECTS = set()
+
+def fail_orphaned_jobs():
+    """Fail INGESTING/OVERRIDING jobs with no live worker, after two consecutive sightings."""
+    global ORPHAN_SUSPECTS
+    with ACTIVE_WORKERS_LOCK:
+        live = list(ACTIVE_WORKERS.keys())
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT run_id FROM job_cards
+                WHERE status IN ('INGESTING', 'OVERRIDING') AND NOT (run_id = ANY(%s))
+                """,
+                (live,),
+            )
+            current = {r[0] for r in cur.fetchall()}
+            confirmed = list(current & ORPHAN_SUSPECTS)
+            ORPHAN_SUSPECTS = current
+            if not confirmed:
+                return
+            cur.execute(
+                """
+                UPDATE job_cards
+                SET status = 'FAILED',
+                    ingestion_progress = 'Processing stopped unexpectedly (no active worker). You can safely purge or re-upload.'
+                WHERE status IN ('INGESTING', 'OVERRIDING')
+                  AND run_id = ANY(%s)
+                  AND NOT (run_id = ANY(%s))
+                RETURNING job_card_id
+                """,
+                (confirmed, live),
+            )
+            for (jc_id,) in cur.fetchall():
+                log_job_failure(cur, jc_id, "System", "Watchdog: job was INGESTING but no worker was running; marked as failed.")
+            conn.commit()
+    finally:
+        release_connection(conn)
+
+def ingestion_watchdog_loop():
+    while True:
+        time.sleep(WATCHDOG_INTERVAL_SECONDS)
+        try:
+            fail_orphaned_jobs()
+        except Exception:
+            logger.exception("Ingestion watchdog pass failed")
 
 def validate_password_strength(password: str):
     if len(password) < 8:
@@ -323,6 +472,24 @@ def stream_file_to_codes_chunked(cur, conn, run_id: int, target_tsv_path: str, t
     
     return inserted
 
+def strip_repeated_header_row(cur, table: str) -> int:
+    """Drop row 1 when it repeats values only within itself (e.g. 'URL,URL' headings).
+
+    Real codes never repeat inside row 1 and nowhere else, so this is a header, not data.
+    Returns the number of tokens removed.
+    """
+    cur.execute(f"""
+        SELECT EXISTS (
+            SELECT 1 FROM {table}
+            GROUP BY code_value
+            HAVING COUNT(*) > 1 AND MAX(line_num) = 1
+        );
+    """)
+    if not cur.fetchone()[0]:
+        return 0
+    cur.execute(f"DELETE FROM {table} WHERE line_num = 1;")
+    return cur.rowcount
+
 def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, is_override: bool, username: str):
     conn = None
     indexes_dropped = False
@@ -402,6 +569,7 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
             """)
 
             cur.execute(f"DROP TABLE IF EXISTS {raw_table};")
+            strip_repeated_header_row(cur, tokens_table)
 
             # 3. Deduplicate preserving first appearance file sequence and track line_num
             cur.execute(f"""
@@ -459,13 +627,12 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                     WHERE duplicate.occurrence_count > 1
                       AND duplicate.occurrence_number > 1;
                 """, (run_id,))
+                reject_msg = f"Rejected: file contains {internal_duplicates_count:,} repeated row(s). No codes were activated."
                 cur.execute(
                     "UPDATE job_cards SET status = 'FAILED', ingestion_progress = %s WHERE run_id = %s",
-                    (
-                        f"Rejected: file contains {internal_duplicates_count:,} repeated row(s). No codes were activated.",
-                        run_id,
-                    ),
+                    (reject_msg, run_id),
                 )
+                log_job_failure(cur, job_card_id, username, reject_msg)
                 cur.execute(f"DROP TABLE IF EXISTS {tokens_table}, {incoming_table};")
                 conn.commit()
                 return
@@ -474,6 +641,7 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
 
             if total_codes == 0:
                 cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = 'No valid codes found in uploaded file' WHERE run_id = %s", (run_id,))
+                log_job_failure(cur, job_card_id, username, "No valid codes found in uploaded file")
                 cur.execute(f"DROP TABLE IF EXISTS {incoming_table};")
                 conn.commit()
                 return
@@ -656,6 +824,7 @@ def process_large_job_worker(run_id: int, job_card_id: str, temp_filepath: str, 
                         )
                     WHERE j.run_id = %s
                 """, (f"Ingestion Error: {str(e)}", run_id))
+                log_job_failure(cur, job_card_id, username, f"Ingestion Error: {str(e)}")
                 fail_conn.commit()
         except Exception:
             pass
@@ -736,6 +905,7 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                     if effective_total == 0:
                         cur.execute("UPDATE job_cards SET status = 'FAILED', ingestion_progress = %s WHERE run_id = %s", 
                                     ("All codes conflicted and were skipped. 0 codes remaining.", run_id))
+                        log_job_failure(cur, job_card_id, username, "All codes conflicted and were skipped. 0 codes remaining.")
                         cur.execute(f"DROP TABLE IF EXISTS {ovr_all_table}, {ovr_filt_table};")
                         conn.commit()
                         return
@@ -843,6 +1013,7 @@ def process_override_worker(run_id: int, job_card_id: str, clean_tsv_path: str, 
                         )
                     WHERE j.run_id = %s
                 """, (f"Override Error: {str(e)}", run_id))
+                log_job_failure(cur, job_card_id, username, f"Override Error: {str(e)}")
                 fail_conn.commit()
         except Exception:
             pass
@@ -948,7 +1119,8 @@ def poll_phone_scanner_scans(
             cur.execute(
                 """
                 SELECT job_card_id, scan_target, expires_at > NOW() AND revoked_at IS NULL,
-                       last_seen_at > NOW() - INTERVAL '30 seconds'
+                       last_seen_at > NOW() - INTERVAL '30 seconds',
+                       connected_at IS NOT NULL
                 FROM phone_scanner_sessions
                 WHERE session_id = %s AND username = %s
                 """,
@@ -957,7 +1129,15 @@ def poll_phone_scanner_scans(
             session = cur.fetchone()
             if not session:
                 raise HTTPException(status_code=404, detail="Phone scanner session not found.")
-            job_card_id, scan_target, is_active, is_connected = session
+            job_card_id, scan_target, is_active, is_connected, was_paired = session
+            if is_active and was_paired and not is_connected:
+                # The phone paired earlier but stopped sending heartbeats (browser closed or navigated away).
+                cur.execute(
+                    "UPDATE phone_scanner_sessions SET revoked_at = NOW() WHERE session_id = %s AND revoked_at IS NULL",
+                    (session_id,),
+                )
+                conn.commit()
+                is_active = False
             if not is_active:
                 raise HTTPException(status_code=410, detail="Phone scanner session has expired or ended.")
 
@@ -1100,15 +1280,15 @@ def receive_phone_scanner_scan(token: str = Form(...), code: str = Form(...)):
 
 @app.post("/api/auth/login")
 def login(request: Request, response: Response, username: str = Form(...), password: str = Form(...)):
-    check_rate_limit(request, max_attempts=5, window_seconds=300)
     clean_username = username.strip()
+    check_rate_limit(request, clean_username)
     conn = get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute("SELECT password_hash, role, must_change_password, can_upload, is_active, username FROM users WHERE LOWER(username) = LOWER(%s)", (clean_username,))
             user = cur.fetchone()
             if not user or not verify_password(password, user[0]):
-                record_failed_attempt(request)
+                record_failed_attempt(request, clean_username)
                 log_system_event(cur, "USER_MGMT", "-", "LOGIN_FAILED", clean_username, f"Failed login attempt for username '{clean_username}'")
                 conn.commit()
                 raise HTTPException(status_code=400, detail="Invalid username or password")
@@ -1116,7 +1296,7 @@ def login(request: Request, response: Response, username: str = Form(...), passw
             if not user[4]:
                 raise HTTPException(status_code=403, detail="This account has been suspended.")
 
-            clear_failed_attempts(request)
+            clear_failed_attempts(request, clean_username)
             original_username = user[5]
             log_system_event(cur, "USER_MGMT", "-", "LOGIN_SUCCESS", original_username, f"User '{original_username}' signed in successfully")
             conn.commit()
@@ -1984,6 +2164,7 @@ def preview_job_file(
     try:
         with conn.cursor() as cur:
             _load_preview_tokens(cur, file.file)
+            strip_repeated_header_row(cur, "upload_preview_tokens")
             cur.execute("""
                 SELECT COUNT(*), COUNT(DISTINCT code_value)
                 FROM upload_preview_tokens;
@@ -2053,6 +2234,7 @@ def download_preview_duplicate_report(
     try:
         with conn.cursor() as cur:
             _load_preview_tokens(cur, file.file)
+            strip_repeated_header_row(cur, "upload_preview_tokens")
         return StreamingResponse(
             _duplicate_csv_stream(conn),
             media_type="text/csv; charset=utf-8",
@@ -2108,6 +2290,7 @@ async def create_job(
         with conn.cursor() as cur:
             with open(spool_path, "rb") as staged_file:
                 _load_preview_tokens(cur, staged_file)
+                strip_repeated_header_row(cur, "upload_preview_tokens")
             duplicate_groups, duplicate_rows = _count_upload_duplicates(cur)
             if duplicate_rows:
                 raise HTTPException(
@@ -2155,8 +2338,8 @@ async def create_job(
         staged_path_to_remove = None
 
         worker_thread = threading.Thread(
-            target=process_large_job_worker,
-            args=(run_id, job_card_id, spool_path, is_override, uploader["username"]),
+            target=run_tracked_worker,
+            args=(run_id, process_large_job_worker, run_id, job_card_id, spool_path, is_override, uploader["username"]),
             daemon=True
         )
         try:
@@ -2167,6 +2350,7 @@ async def create_job(
                     "UPDATE job_cards SET status = 'FAILED', ingestion_progress = %s WHERE run_id = %s",
                     ("Could not start background ingestion.", run_id),
                 )
+                log_job_failure(cur, job_card_id, uploader["username"], "Could not start background ingestion.")
                 conn.commit()
             raise
         spool_path = None
@@ -2294,8 +2478,8 @@ def proceed_override_job(
 
             # 3. Spawn background worker only after lock release and verified state change
             override_thread = threading.Thread(
-                target=process_override_worker,
-                args=(run_id, job_card_id, clean_tsv_path, conflicts, total_codes, user["username"], clean_reason, should_skip),
+                target=run_tracked_worker,
+                args=(run_id, process_override_worker, run_id, job_card_id, clean_tsv_path, conflicts, total_codes, user["username"], clean_reason, should_skip),
                 daemon=True
             )
             override_thread.start()
@@ -2361,6 +2545,33 @@ def cancel_upload_job(run_id: int, user: dict = Depends(require_uploader)):
             except OSError:
                 pass
 
+@app.post("/api/admin/jobs/{run_id}/force-fail")
+def force_fail_job(run_id: int, user: dict = Depends(require_manager_or_admin)):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT job_card_id, status FROM job_cards WHERE run_id = %s FOR UPDATE", (run_id,))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Job not found")
+            jc_id, status = row
+            if status not in ('INGESTING', 'OVERRIDING'):
+                raise HTTPException(status_code=409, detail=f"Job Card '{jc_id}' is '{status}', not processing.")
+            cur.execute(
+                """
+                UPDATE job_cards
+                SET status = 'FAILED',
+                    ingestion_progress = %s
+                WHERE run_id = %s
+                """,
+                (f"Force-failed by {user['username']}. You can safely purge or re-upload.", run_id),
+            )
+            log_job_failure(cur, jc_id, user["username"], f"Processing manually force-failed by {user['username']} while in state {status}.")
+            conn.commit()
+            return {"status": "success", "message": f"Job Card '{jc_id}' marked as FAILED."}
+    finally:
+        release_connection(conn)
+
 @app.post("/api/admin/jobs/{run_id}/purge")
 def purge_job(
     run_id: int, 
@@ -2416,6 +2627,11 @@ def purge_job(
                 (run_id, jc_id),
             )
             cur.execute("DELETE FROM packing_qc_completions WHERE run_id = %s", (run_id,))
+            cur.execute(
+                "DELETE FROM scan_logs WHERE run_id = %s OR (run_id IS NULL AND job_card_id = %s)",
+                (run_id, jc_id),
+            )
+            cur.execute("DELETE FROM phone_scanner_sessions WHERE job_card_id = %s", (jc_id,))
             cur.execute("DELETE FROM job_lifecycle_logs WHERE job_card_id = %s", (jc_id,))
             cur.execute("DELETE FROM job_cards WHERE run_id = %s", (run_id,))
             conn.commit()

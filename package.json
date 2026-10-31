@@ -1,0 +1,16 @@
+{
+  "name": "label-verifier-assets",
+  "private": true,
+  "description": "Build tooling that bundles the front-end libraries and compiles Tailwind CSS so the app works without internet access.",
+  "scripts": {
+    "build": "bash scripts/build-assets.sh"
+  },
+  "devDependencies": {
+    "@tesseract.js-data/eng": "1.0.0",
+    "html5-qrcode": "2.3.8",
+    "qrcodejs": "1.0.0",
+    "tailwindcss": "3.4.17",
+    "tesseract.js": "5.1.1",
+    "tesseract.js-core": "5.1.1"
+  }
+}

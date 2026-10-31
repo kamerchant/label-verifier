@@ -1,4 +1,5 @@
 import os
+import threading
 import bcrypt
 import psycopg2
 from psycopg2 import pool
@@ -13,6 +14,17 @@ MAX_CONNECTIONS = int(os.environ.get("DB_MAX_CONNECTIONS", 25))
 
 # Thread-safe connection pool for concurrent background threads & web requests
 connection_pool = None
+
+# psycopg2's pool raises immediately when it is exhausted. This semaphore makes callers wait their turn instead,
+# and the set tracks checked-out connections so a duplicate release can never free a slot twice.
+POOL_WAIT_SECONDS = float(os.environ.get("DB_POOL_WAIT_SECONDS", 30))
+_pool_slots = threading.BoundedSemaphore(MAX_CONNECTIONS)
+_checked_out = set()
+_checked_out_lock = threading.Lock()
+
+
+class PoolBusyError(Exception):
+    """Raised when no database connection became available within the wait limit."""
 
 def init_db():
     global connection_pool
@@ -210,31 +222,43 @@ def init_db():
         release_connection(conn)
 
 def get_connection():
-    """Checkout a connection from the thread-safe pool with a timeout safety check."""
+    """Checkout a connection from the pool, waiting up to POOL_WAIT_SECONDS for a free slot."""
     if not connection_pool:
         init_db()
+    if not _pool_slots.acquire(timeout=POOL_WAIT_SECONDS):
+        raise PoolBusyError("All database connections are busy.")
     try:
-        # getconn() is thread-safe in psycopg2.pool.ThreadedConnectionPool
         conn = connection_pool.getconn()
         if conn.closed:
             # Re-establish if closed by server timeout
             connection_pool.putconn(conn, close=True)
             conn = connection_pool.getconn()
-        return conn
     except Exception as e:
+        _pool_slots.release()
         print(f"Error acquiring database connection: {e}")
         raise
+    with _checked_out_lock:
+        _checked_out.add(id(conn))
+    return conn
 
 def release_connection(conn):
-    """Return a connection back to the pool safely."""
-    if connection_pool and conn:
-        try:
-            # Reset connection state to prevent transaction pollution
-            if not conn.closed:
-                conn.rollback()
-            connection_pool.putconn(conn)
-        except Exception as e:
-            print(f"Error releasing connection: {e}")
+    """Return a connection back to the pool safely. Releasing the same connection twice is harmless."""
+    if not connection_pool or not conn:
+        return
+    with _checked_out_lock:
+        owned = id(conn) in _checked_out
+        _checked_out.discard(id(conn))
+    if not owned:
+        return
+    try:
+        # Reset connection state to prevent transaction pollution
+        if not conn.closed:
+            conn.rollback()
+        connection_pool.putconn(conn)
+    except Exception as e:
+        print(f"Error releasing connection: {e}")
+    finally:
+        _pool_slots.release()
 
 @contextmanager
 def db_transaction():

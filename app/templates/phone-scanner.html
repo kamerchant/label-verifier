@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="referrer" content="no-referrer">
     <title>Phone Scanner</title>
     <link rel="icon" type="image/svg+xml" href="/static/app-icon.svg">
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="/static/vendor/html5-qrcode.min.js?v=2.3.8"></script>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -266,7 +266,7 @@
             if (!window.tesseractScriptPromise) {
                 window.tesseractScriptPromise = new Promise((resolve, reject) => {
                     const script = document.createElement('script');
-                    script.src = 'https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js';
+                    script.src = '/static/vendor/tesseract/tesseract.min.js?v=5.1.1';
                     script.onload = () => resolve(window.Tesseract);
                     script.onerror = () => {
                         window.tesseractScriptPromise = null;
@@ -283,7 +283,11 @@
             if (!ocrWorkerPromise) {
                 ocrWorkerPromise = (async () => {
                     const tesseract = await loadTesseract();
+                    const ocrBase = `${window.location.origin}/static/vendor/tesseract`;
                     const worker = await tesseract.createWorker('eng', 1, {
+                        workerPath: `${ocrBase}/worker.min.js`,
+                        corePath: ocrBase,
+                        langPath: ocrBase,
                         logger: message => {
                             if (message.status === 'recognizing text' && message.progress) {
                                 setStatus(`Reading printed text… ${Math.round(message.progress * 100)}%`);
@@ -577,6 +581,15 @@
                 showTerminalMessage('This scanner link is invalid or has expired. Initiate a new connection request from the desktop app.');
             }
         }
+
+        // Tell the server right away when the page is closed or navigated away from.
+        window.addEventListener('pagehide', () => {
+            if (sessionEnded || !token) return;
+            sessionEnded = true;
+            const body = new FormData();
+            body.append('token', token);
+            navigator.sendBeacon('/api/phone-scanner/disconnect', body);
+        });
 
         connect();
     </script>

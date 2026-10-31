@@ -1,0 +1,15 @@
+{
+	# The proxy runs in a container, so it cannot install its CA into the host's trust store.
+	skip_install_trust
+	# Clients do not send SNI when connecting to an IP address.
+	default_sni {$SITE_ADDRESS}
+}
+
+# SITE_ADDRESS is the name or IP address that browsers and phones use, e.g. 192.168.1.50 or qc.company.local.
+# Caddy issues a certificate from its own internal CA for it. Replace `tls internal` with
+# `tls /certs/server.crt /certs/server.key` to use a certificate from your organization's CA.
+{$SITE_ADDRESS} {
+	tls internal
+	encode zstd gzip
+	reverse_proxy app:8000
+}

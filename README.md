@@ -1,5 +1,10 @@
 # Label Verifier
 
+## Documentation
+
+- [User manual](docs/user-manual.md) ([PDF](docs/Label-Verifier-User-Manual.pdf)) – screenshots and step-by-step usage for every role.
+- [Process flow diagrams](docs/process-flow.md) ([PDF](docs/Label-Verifier-Process-Flow.pdf)) – architecture, job ingestion, scan verification, phone pairing, status life cycle, security and backups.
+
 ## Initial administrator
 
 The application does not create an administrator with a built-in password. After configuring `DATABASE_URL`, run `python seed_admin.py` in an environment that can connect to the database. The script prompts for an administrator username and password without echoing the password.
@@ -14,6 +19,60 @@ The application does not create an administrator with a built-in password. After
 | `MAX_UPLOAD_BYTES` | Maximum accepted CSV upload size | `262144000` (250 MiB) |
 
 The Render Blueprint generates `SESSION_SECRET` and enables secure session cookies. For local development over plain HTTP, set `SESSION_COOKIE_SECURE=false`; do not disable secure cookies on a public HTTPS deployment.
+
+## Test locally on macOS and deploy to a Linux VM
+
+The app and PostgreSQL can run together with Docker Compose. This is a practical way to test on a Mac before moving the same Compose configuration to an Ubuntu VM. Install Docker Desktop, then from the repository root:
+
+```sh
+cp .env.example .env
+```
+
+Generate two different secrets with `openssl rand -hex 32` and put one in `POSTGRES_PASSWORD` and the other in `SESSION_SECRET` in `.env`. Leave `APP_BIND_ADDRESS=127.0.0.1` and `SESSION_COOKIE_SECURE=false` for local HTTP testing. Do not commit `.env`.
+
+Start the app and database, then create the initial administrator:
+
+```sh
+docker compose up --build -d
+docker compose exec app python seed_admin.py
+```
+
+Open [http://localhost:8000](http://localhost:8000). Check startup output with `docker compose logs -f app`. PostgreSQL data is kept in the `postgres_data` named volume when containers are stopped or recreated; `docker compose down` does not remove it.
+
+For the eventual Windows Server 2016 host, run the Linux containers in an Ubuntu VM (for example, under Hyper-V), not directly as Windows containers. Install Docker Engine and the Compose plugin in the VM, copy the application and `.env` there, and run the same Compose project. Configure HTTPS with your organization's internal certificate/reverse proxy, set `SESSION_COOKIE_SECURE=true`, and restrict the VM/network firewall to the intended internal clients. Do not expose port 8000 over the LAN as plain HTTP. Set `APP_BIND_ADDRESS` to the VM's private address only if the proxy must connect over the VM network; otherwise keep it bound to loopback and run the proxy in the VM.
+
+Treat the Mac setup as test data, not a backup. To retain data when moving to the VM, migrate PostgreSQL using `pg_dump` and restore it on the VM; create fresh secrets there rather than reusing the Mac `.env`. The app currently uses process-local background threads and temporary files, so keep it to one app instance.
+
+## Deploy to Azure App Service (Linux container)
+
+The Azure deployment provisions a Linux App Service, an Azure Container Registry, and a private Azure Database for PostgreSQL Flexible Server. The database is reachable only through the app's VNet integration. App Service pulls the image from ACR using its managed identity; the registry does not need an admin password. The deployment uses one App Service instance because background ingestion currently uses process-local threads and temporary files.
+
+Requirements: an Azure subscription with permission to create resource groups and role assignments, Azure CLI, and Python 3. From the repository root, sign in and deploy:
+
+```sh
+az login
+bash scripts/deploy-azure.sh <resource-group> <azure-region>
+```
+
+For example, use a unique resource-group name and a supported region such as `germanywestcentral`. The script provisions the resources, builds the Docker image in Azure, pushes it to ACR, and restarts the app. It generates the PostgreSQL administrator password and session secret locally and passes them as secure deployment parameters; neither value is printed. Review Azure pricing before deploying: the App Service plan, registry, and PostgreSQL server are billable resources.
+
+Create the initial application administrator by running `seed_admin.py` from a host that can reach the private PostgreSQL server over the VNet. The app container does not include an SSH server, so App Service's SSH console is not enabled by this deployment. Retrieve the app's `DATABASE_URL` through an authorized Azure configuration workflow, provide it to the VNet-connected host as an environment variable, and run:
+
+```sh
+export DATABASE_URL='postgresql://...'
+python seed_admin.py
+```
+
+The script prompts for the administrator username and password. Do not commit the connection string or enable public database access to seed the user.
+
+Subsequent code deployments can be made from the repository root with:
+
+```sh
+az acr build --registry <registry-name> --image label-verifier:latest .
+az webapp restart --resource-group <resource-group> --name <app-service-name>
+```
+
+The app's upload limit is 250 MiB. App Service and any upstream proxy must permit requests of that size. The database and app are deployed in the selected region; check regional availability and cost for the PostgreSQL Burstable B1ms SKU before running the provisioning script.
 
 Database timestamps are stored in UTC. Use the `TZ` control in the application footer to choose the display time zone; that preference is saved in the current browser.
 
