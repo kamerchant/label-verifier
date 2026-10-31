@@ -356,6 +356,21 @@ def ingestion_watchdog_loop():
         except Exception:
             logger.exception("Ingestion watchdog pass failed")
 
+def resolve_scan_source(cur, requested: str, username: str, job_card_id: str, target: str) -> str:
+    """PHONE only when the user really has a live, paired phone scanner session for this job."""
+    if (requested or "").strip().lower() != "phone":
+        return "DESKTOP"
+    cur.execute(
+        """
+        SELECT 1 FROM phone_scanner_sessions
+        WHERE LOWER(username) = LOWER(%s) AND job_card_id = %s AND scan_target = %s
+          AND revoked_at IS NULL AND expires_at > NOW() AND connected_at IS NOT NULL
+        LIMIT 1
+        """,
+        (username, job_card_id, target),
+    )
+    return "PHONE" if cur.fetchone() else "DESKTOP"
+
 def validate_password_strength(password: str):
     if len(password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters long.")
@@ -1701,6 +1716,8 @@ def get_master_jobs_report(
                 )
             elif sort_by == "created_at":
                 order_clause = f"j.created_at {direction}, j.run_id DESC"
+            elif sort_by == "last_activity":
+                order_clause = f"last_activity {direction}, j.run_id DESC"
             elif sort_by == "status":
                 order_clause = f"{urgency_order} {direction}, j.created_at DESC"
             elif sort_by in {"consumed", "conflict_count", "packing_qc_count"}:
@@ -1721,7 +1738,16 @@ def get_master_jobs_report(
                         WHERE p.run_id = j.run_id AND p.qc_stage = 'PACKING') as packing_qc_count,
                        j.ingestion_progress,
                        j.conflict_count,
-                       COALESCE(j.conflict_resolution, 'NONE') as conflict_resolution
+                       COALESCE(j.conflict_resolution, 'NONE') as conflict_resolution,
+                       GREATEST(
+                           j.created_at,
+                           COALESCE((SELECT s.scanned_at FROM scan_logs s
+                                     WHERE s.job_card_id = j.job_card_id
+                                     ORDER BY s.id DESC LIMIT 1), j.created_at),
+                           COALESCE((SELECT l.timestamp FROM job_lifecycle_logs l
+                                     WHERE l.job_card_id = j.job_card_id
+                                     ORDER BY l.id DESC LIMIT 1), j.created_at)
+                       ) AS last_activity
                 FROM job_cards j
                 {where_clause}
                 ORDER BY {order_clause}
@@ -1743,7 +1769,8 @@ def get_master_jobs_report(
                 "packing_qc_count": r[10] or 0,
                 "ingestion_progress": r[11] or "",
                 "conflict_count": r[12] or 0,
-                "conflict_resolution": r[13] or "NONE"
+                "conflict_resolution": r[13] or "NONE",
+                "last_activity": r[14].strftime("%Y-%m-%d %H:%M") if r[14] else ""
             } for r in rows]
             return {
                 "jobs": jobs,
@@ -2643,6 +2670,7 @@ def purge_job(
 def packing_qc_verify(
     job_card_id: str = Form(...),
     code: str = Form(...),
+    source: str = Form(""),
     user: dict = Depends(require_password_change_complete)
 ):
     jc_id = job_card_id.strip()
@@ -2717,11 +2745,13 @@ def packing_qc_verify(
                         "message": "Code was already validated during Packing QC for this job."
                     })
 
+                scan_source = resolve_scan_source(cur, source, user["username"], jc_id, "packing-qc")
                 cur.execute("""
-                    INSERT INTO packing_qc_logs (run_id, job_card_id, code_scanned, tested_by, qc_stage)
-                    VALUES (%s, %s, %s, %s, 'PACKING')
-                """, (run_id, jc_id, scanned_code, user["username"]))
-                log_system_event(cur, "FINAL_QC", jc_id, "FINAL_QC_PACK", user["username"], f"Packing QC tested code: {scanned_code}")
+                    INSERT INTO packing_qc_logs (run_id, job_card_id, code_scanned, tested_by, qc_stage, scan_source)
+                    VALUES (%s, %s, %s, %s, 'PACKING', %s)
+                """, (run_id, jc_id, scanned_code, user["username"], scan_source))
+                via = " via phone" if scan_source == "PHONE" else ""
+                log_system_event(cur, "FINAL_QC", jc_id, "FINAL_QC_PACK", user["username"], f"Packing QC tested code{via}: {scanned_code}")
                 conn.commit()
                 message = "Code passed Packing QC and was recorded."
             else:
@@ -2751,6 +2781,7 @@ def complete_packing_qc(user: dict = Depends(require_password_change_complete)):
 def verify_code(
     job_card_id: str = Form(...), 
     code: str = Form(...),
+    source: str = Form(""),
     user: dict = Depends(require_password_change_complete)
 ):
     job_card_id = job_card_id.strip()
@@ -2780,12 +2811,15 @@ def verify_code(
                     "message": f"Job Card '{job_card_id}' is {jc_status}. Scanning is disabled for non-active jobs."
                 })
 
+            scan_source = resolve_scan_source(cur, source, operator, job_card_id, "verification")
+
             def log_scan(res, msg):
                 cur.execute(
-                    "INSERT INTO scan_logs (run_id, job_card_id, code_scanned, result, scanned_by) VALUES (%s, %s, %s, %s, %s)",
-                    (active_run_id, job_card_id, scanned, res, operator)
+                    "INSERT INTO scan_logs (run_id, job_card_id, code_scanned, result, scanned_by, scan_source) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (active_run_id, job_card_id, scanned, res, operator, scan_source)
                 )
-                log_system_event(cur, "SCAN_VERIFICATION", job_card_id, f"SCAN_{res}", operator, f"Scanned code: {scanned} [{res}]")
+                via = " via phone" if scan_source == "PHONE" else ""
+                log_system_event(cur, "SCAN_VERIFICATION", job_card_id, f"SCAN_{res}", operator, f"Scanned code{via}: {scanned} [{res}]")
                 conn.commit()
 
             # Select code along with its immutable, explicit file row_num
@@ -2928,14 +2962,14 @@ def get_recent_scans(
                 if before_id:
                     cur.execute("""
                         WITH recent AS (
-                            SELECT s.id, s.code_scanned, s.result, s.scanned_by, s.scanned_at
+                            SELECT s.id, s.code_scanned, s.result, s.scanned_by, s.scanned_at, s.scan_source
                             FROM scan_logs s
                             WHERE s.job_card_id = %s AND s.id < %s
                             ORDER BY s.id DESC
                             LIMIT %s
                         )
                         SELECT r.id, r.code_scanned, r.result, r.scanned_by, r.scanned_at,
-                               c.row_num
+                               c.row_num, r.scan_source
                         FROM recent r
                         LEFT JOIN codes c ON c.run_id = %s AND c.code_value = r.code_scanned
                         ORDER BY r.id DESC;
@@ -2943,14 +2977,14 @@ def get_recent_scans(
                 else:
                     cur.execute("""
                         WITH recent AS (
-                            SELECT s.id, s.code_scanned, s.result, s.scanned_by, s.scanned_at
+                            SELECT s.id, s.code_scanned, s.result, s.scanned_by, s.scanned_at, s.scan_source
                             FROM scan_logs s
                             WHERE s.job_card_id = %s
                             ORDER BY s.id DESC
                             LIMIT %s
                         )
                         SELECT r.id, r.code_scanned, r.result, r.scanned_by, r.scanned_at,
-                               c.row_num
+                               c.row_num, r.scan_source
                         FROM recent r
                         LEFT JOIN codes c ON c.run_id = %s AND c.code_value = r.code_scanned
                         ORDER BY r.id DESC;
@@ -2959,7 +2993,7 @@ def get_recent_scans(
                 if before_id:
                     cur.execute("""
                         SELECT s.id, s.code_scanned, s.result, s.scanned_by, s.scanned_at,
-                               NULL AS row_num
+                               NULL AS row_num, s.scan_source
                         FROM scan_logs s
                         WHERE s.job_card_id = %s AND s.id < %s
                         ORDER BY s.id DESC 
@@ -2968,7 +3002,7 @@ def get_recent_scans(
                 else:
                     cur.execute("""
                         SELECT s.id, s.code_scanned, s.result, s.scanned_by, s.scanned_at,
-                               NULL AS row_num
+                               NULL AS row_num, s.scan_source
                         FROM scan_logs s
                         WHERE s.job_card_id = %s 
                         ORDER BY s.id DESC 
@@ -2982,7 +3016,8 @@ def get_recent_scans(
                 "result": r[2],
                 "user": r[3],
                 "time": r[4].strftime("%Y-%m-%d %H:%M:%S") if r[4] else "",
-                "row_num": r[5] if r[5] is not None else "-"
+                "row_num": r[5] if r[5] is not None else "-",
+                "source": r[6]
             } for r in rows]
 
             return {
@@ -3080,14 +3115,14 @@ def get_report_scans(
 
             cur.execute(f"""
                 WITH recent AS (
-                    SELECT s.id, s.code_scanned, s.result, s.scanned_by, s.scanned_at
+                    SELECT s.id, s.code_scanned, s.result, s.scanned_by, s.scanned_at, s.scan_source
                     FROM scan_logs s
                     WHERE s.job_card_id = %s {before_clause}
                     ORDER BY s.id DESC
                     LIMIT %s
                 )
                 SELECT r.id, r.code_scanned, r.result, r.scanned_by, r.scanned_at,
-                       c.row_num
+                       c.row_num, r.scan_source
                 FROM recent r
                 LEFT JOIN codes c ON c.run_id = %s AND c.code_value = r.code_scanned
                 ORDER BY r.id DESC
@@ -3101,7 +3136,8 @@ def get_report_scans(
                 "result": r[2],
                 "user": r[3],
                 "time": r[4].strftime("%Y-%m-%d %H:%M:%S") if r[4] else "",
-                "row_num": r[5] if r[5] is not None else "-"
+                "row_num": r[5] if r[5] is not None else "-",
+                "source": r[6]
             } for r in rows]
 
             return {
@@ -3174,7 +3210,7 @@ def export_report_csv(job_card_id: str, user: dict = Depends(require_password_ch
 
             if run_id:
                 cur.execute("""
-                    SELECT s.code_scanned, c.row_num, s.result, s.scanned_by, s.scanned_at 
+                    SELECT s.code_scanned, c.row_num, s.result, s.scanned_by, s.scanned_at, s.scan_source
                     FROM scan_logs s
                     LEFT JOIN codes c ON c.run_id = %s AND c.code_value = s.code_scanned
                     WHERE s.job_card_id = %s 
@@ -3182,7 +3218,7 @@ def export_report_csv(job_card_id: str, user: dict = Depends(require_password_ch
                 """, (run_id, job_card_id))
             else:
                 cur.execute("""
-                    SELECT s.code_scanned, NULL AS row_num, s.result, s.scanned_by, s.scanned_at 
+                    SELECT s.code_scanned, NULL AS row_num, s.result, s.scanned_by, s.scanned_at, s.scan_source
                     FROM scan_logs s
                     WHERE s.job_card_id = %s 
                     ORDER BY s.scanned_at ASC
@@ -3227,10 +3263,10 @@ def export_report_csv(job_card_id: str, user: dict = Depends(require_password_ch
             
             write_csv_row([])
             write_csv_row(["--- SCAN LOGS ---"])
-            write_csv_row(["Job Card ID", "Scanned Code", "Row #", "Result", "Tested By", "Timestamp"])
+            write_csv_row(["Job Card ID", "Scanned Code", "Row #", "Result", "Tested By", "Scan Source", "Timestamp"])
             for r in rows:
                 row_val = r[1] if r[1] is not None else "-"
-                write_csv_row([job_card_id, r[0], row_val, r[2], r[3], r[4].strftime("%Y-%m-%d %H:%M:%S") if r[4] else ""])
+                write_csv_row([job_card_id, r[0], row_val, r[2], r[3], "Phone" if r[5] == "PHONE" else "Desktop", r[4].strftime("%Y-%m-%d %H:%M:%S") if r[4] else ""])
 
             output.seek(0)
             return StreamingResponse(

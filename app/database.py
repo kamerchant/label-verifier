@@ -181,6 +181,10 @@ def init_db():
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
+            cur.execute("ALTER TABLE scan_logs ADD COLUMN IF NOT EXISTS scan_source TEXT NOT NULL DEFAULT 'DESKTOP';")
+            cur.execute("ALTER TABLE packing_qc_logs ADD COLUMN IF NOT EXISTS scan_source TEXT NOT NULL DEFAULT 'DESKTOP';")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_lifecycle_jc_id ON job_lifecycle_logs (job_card_id, id DESC);")
+
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS phone_scanner_sessions (
                     session_id TEXT PRIMARY KEY,

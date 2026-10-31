@@ -1451,6 +1451,9 @@
                                 <th class="px-4 py-3 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('created_at')">
                                     Created Date <span id="sort-indicator-created_at" class="text-[10px] text-slate-400"></span>
                                 </th>
+                                <th class="px-4 py-3 cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('last_activity')" title="Latest scan, status change or creation">
+                                    Last Activity <span id="sort-indicator-last_activity" class="text-[10px] text-slate-400"></span>
+                                </th>
                                 <th class="px-4 py-3 text-center cursor-pointer select-none hover:text-indigo-400" onclick="sortMasterJobs('status')">
                                     Status <span id="sort-indicator-status" class="text-[10px] text-slate-400"></span>
                                 </th>
@@ -2341,6 +2344,7 @@
         }
 
         // Interactive sorting state
+        let nextScanViaPhone = false;
         let currentSortCol = 'default';
         let currentSortAsc = true;
 
@@ -3275,7 +3279,8 @@
                         result: l.result,
                         time: l.time,
                         user: l.user,
-                        row_num: l.row_num
+                        row_num: l.row_num,
+                        source: l.source
                     }));
                     hasMoreScans = data.has_more ?? (allScans.length === 50);
                     renderStreamTable();
@@ -3310,7 +3315,8 @@
                         result: l.result,
                         time: l.time,
                         user: l.user,
-                        row_num: l.row_num
+                        row_num: l.row_num,
+                        source: l.source
                     }));
                     
                     // Deduplicate against any scans already present
@@ -3508,9 +3514,11 @@
                         phoneScannerTarget === 'packing-qc' ? 'packing-qc-code' : 'barcode-input'
                     );
                     input.value = scan.code;
+                    nextScanViaPhone = true;
                     const verified = phoneScannerTarget === 'packing-qc'
                         ? await handlePackingQCVerify({ preventDefault() {} })
                         : await handleScan({ preventDefault() {} });
+                    nextScanViaPhone = false;
                     if (!verified) break;
                     phoneScannerCursor = scan.id;
                 }
@@ -3587,6 +3595,9 @@
                 const body = new FormData();
                 body.append("job_card_id", activeJobId);
                 body.append("code", code);
+                const viaPhone = nextScanViaPhone;
+                nextScanViaPhone = false;
+                if (viaPhone) body.append("source", "phone");
 
                 const res = await fetch('/api/verify', { method: 'POST', body });
                 if (!res.ok) throw new Error("Verification request failed.");
@@ -3599,7 +3610,8 @@
                     result: data.result,
                     time: new Date().toISOString(),
                     user: currentUser ? currentUser.username : 'Operator',
-                    row_num: data.row_num ?? '-'
+                    row_num: data.row_num ?? '-',
+                    source: viaPhone ? 'PHONE' : 'DESKTOP'
                 });
                 // Cap memory buffer to 500 items during long shifts if older pages were loaded
                 if (allScans.length > 500) allScans.pop();
@@ -4283,7 +4295,7 @@
                                             </span>
                                         </td>
                                         <td class="px-3 py-2.5 text-slate-400 text-xs font-mono text-center" style="text-align: center !important;">${escapeHtml(formatStoredTimestamp(s.time))}</td>
-                                        <td class="px-3 py-2.5 text-xs text-center font-semibold text-slate-300" style="text-align: center !important;">${escapeHtml(s.user)}</td>
+                                        <td class="px-3 py-2.5 text-xs text-center font-semibold text-slate-300" style="text-align: center !important;">${escapeHtml(s.user)}${s.source === 'PHONE' ? ' <span title="Scanned with phone" aria-label="Scanned with phone">📱</span>' : ''}</td>
                                     </tr>
                     `;
                 }).join('');
@@ -4314,6 +4326,7 @@
                                         <span class="scan-result-icon" aria-hidden="true">${presentation.icon}</span>
                                         <span>${escapeHtml(presentation.shortLabel)}</span>
                                     </span>
+                                    ${s.source === 'PHONE' ? '<span title="Scanned with phone" aria-label="Scanned with phone">📱</span>' : ''}
                                     <span class="text-[10px] text-slate-400 font-medium">${timeOnly}</span>
                                 </div>
                             </div>
@@ -4624,6 +4637,8 @@
             const body = new FormData();
             body.append("job_card_id", jcId);
             body.append("code", code);
+            if (nextScanViaPhone) body.append("source", "phone");
+            nextScanViaPhone = false;
 
             try {
                 const res = await fetch('/api/packing-qc/verify', { method: 'POST', body });
@@ -5261,7 +5276,7 @@
         }
 
         function updateSortIndicators() {
-            const cols = ['job_card_id', 'description', 'created_at', 'status', 'consumed', 'conflict_count', 'packing_qc_count'];
+            const cols = ['job_card_id', 'description', 'created_at', 'last_activity', 'status', 'consumed', 'conflict_count', 'packing_qc_count'];
             cols.forEach(c => {
                 const el = document.getElementById(`sort-indicator-${c}`);
                 if (!el) return;
@@ -6797,7 +6812,7 @@
             if (nextButton) nextButton.disabled = masterJobsPage >= pageCount;
 
             if (filtered.length === 0) {
-                if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400 italic text-xs">No job cards found.</td></tr>`;
+                if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-400 italic text-xs">No job cards found.</td></tr>`;
                 if (mobileContainer) mobileContainer.innerHTML = `<div class="p-6 text-center text-slate-400 italic text-xs">No job cards found.</div>`;
                 return;
             }
@@ -6886,7 +6901,7 @@
                             </div>
 
                             <div class="flex items-center justify-between pt-1 text-[10px] text-slate-500 border-t border-white/[0.04]">
-                                <span>${j.created_at ? escapeHtml(formatStoredTimestamp(j.created_at).split(',')[0]) : '-'}</span>
+                                <span>${j.created_at ? escapeHtml(formatStoredTimestamp(j.created_at).split(',')[0]) : '-'}${j.last_activity ? ` &middot; active ${escapeHtml(formatStoredTimestamp(j.last_activity).split(',')[0])}` : ''}</span>
                                 <div class="flex items-center gap-1">
                                     ${conflictHtml}
                                     ${finalQcHtml}
@@ -7041,6 +7056,10 @@
                         <!-- Column 2: Created Date alone -->
                         <td class="px-4 py-2.5 whitespace-nowrap">
                             <span class="text-xs text-slate-400 font-mono">${escapeHtml(formatStoredTimestamp(j.created_at) || '-')}</span>
+                        </td>
+
+                        <td class="px-4 py-2.5 whitespace-nowrap">
+                            <span class="text-xs text-slate-400 font-mono">${escapeHtml(formatStoredTimestamp(j.last_activity) || '-')}</span>
                         </td>
 
                         <!-- Column 3: Status -->
