@@ -1014,11 +1014,12 @@
                                 <th class="px-3 py-2.5 text-center" style="text-align: center !important;">Evaluation</th>
                                 <th class="px-3 py-2.5 text-center" style="text-align: center !important;">Recorded At</th>
                                 <th class="px-3 py-2.5 text-center" style="text-align: center !important;">Inspector</th>
+                                <th class="w-8 px-1 py-2.5" aria-label="Scan source"></th>
                             </tr>
                         </thead>
                         <tbody id="recent-scans-rows" class="divide-y divide-white/[0.04] table-text-theme text-xs sm:text-sm">
                             <tr>
-                                <td colspan="5" class="px-2 py-4 text-center text-slate-400 italic">No Job Card selected</td>
+                                <td colspan="6" class="px-2 py-4 text-center text-slate-400 italic">No Job Card selected</td>
                             </tr>
                         </tbody>
                     </table>
@@ -4272,7 +4273,7 @@
             const mobileContainer = document.getElementById('recent-scans-mobile');
 
             if (!activeJobId) {
-                if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="px-2 py-4 text-center text-slate-400 italic text-[11px]">No Job Card selected</td></tr>`;
+                if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="px-2 py-4 text-center text-slate-400 italic text-[11px]">No Job Card selected</td></tr>`;
                 if (mobileContainer) mobileContainer.innerHTML = `<div class="p-3 text-center text-slate-400 italic text-[11px]">No Job Card selected</div>`;
                 return;
             }
@@ -4280,7 +4281,7 @@
             const visibleScans = allScans;
 
             if (visibleScans.length === 0) {
-                if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="px-2 py-4 text-center text-slate-400 italic text-[11px]">No scan events recorded yet</td></tr>`;
+                if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="px-2 py-4 text-center text-slate-400 italic text-[11px]">No scan events recorded yet</td></tr>`;
                 if (mobileContainer) mobileContainer.innerHTML = `<div class="p-4 text-center text-slate-400 italic text-[11px]">No scan events recorded yet</div>`;
                 return;
             }
@@ -4301,7 +4302,8 @@
                                             </span>
                                         </td>
                                         <td class="px-3 py-2.5 text-slate-400 text-xs font-mono text-center" style="text-align: center !important;">${escapeHtml(formatStoredTimestamp(s.time))}</td>
-                                        <td class="px-3 py-2.5 text-xs text-center font-semibold text-slate-300" style="text-align: center !important;">${escapeHtml(s.user)}${scanSourceIcon(s.source)}</td>
+                                        <td class="px-3 py-2.5 text-xs text-center font-semibold text-slate-300" style="text-align: center !important;">${escapeHtml(s.user)}</td>
+                                        <td class="w-8 px-1 py-2.5 text-center text-sm leading-none" style="text-align: center !important;">${scanSourceIcon(s.source)}</td>
                                     </tr>
                     `;
                 }).join('');
