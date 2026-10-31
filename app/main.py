@@ -356,10 +356,12 @@ def ingestion_watchdog_loop():
         except Exception:
             logger.exception("Ingestion watchdog pass failed")
 
-def resolve_scan_source(cur, requested: str, username: str, job_card_id: str, target: str) -> str:
-    """PHONE only when the user really has a live, paired phone scanner session for this job."""
+MOBILE_UA_PATTERN = re.compile(r"Mobi|Android|iPhone|iPad|iPod", re.IGNORECASE)
+
+def resolve_scan_source(cur, requested: str, username: str, job_card_id: str, target: str, user_agent: str = "") -> str:
+    """PHONE only with a live paired phone scanner session; MOBILE_APP when the main app runs in a mobile browser."""
     if (requested or "").strip().lower() != "phone":
-        return "DESKTOP"
+        return "MOBILE_APP" if MOBILE_UA_PATTERN.search(user_agent or "") else "DESKTOP"
     cur.execute(
         """
         SELECT 1 FROM phone_scanner_sessions
@@ -369,7 +371,9 @@ def resolve_scan_source(cur, requested: str, username: str, job_card_id: str, ta
         """,
         (username, job_card_id, target),
     )
-    return "PHONE" if cur.fetchone() else "DESKTOP"
+    if cur.fetchone():
+        return "PHONE"
+    return "MOBILE_APP" if MOBILE_UA_PATTERN.search(user_agent or "") else "DESKTOP"
 
 def validate_password_strength(password: str):
     if len(password) < 8:
@@ -2671,6 +2675,7 @@ def packing_qc_verify(
     job_card_id: str = Form(...),
     code: str = Form(...),
     source: str = Form(""),
+    request: Request = None,
     user: dict = Depends(require_password_change_complete)
 ):
     jc_id = job_card_id.strip()
@@ -2745,7 +2750,7 @@ def packing_qc_verify(
                         "message": "Code was already validated during Packing QC for this job."
                     })
 
-                scan_source = resolve_scan_source(cur, source, user["username"], jc_id, "packing-qc")
+                scan_source = resolve_scan_source(cur, source, user["username"], jc_id, "packing-qc", request.headers.get("user-agent", ""))
                 cur.execute("""
                     INSERT INTO packing_qc_logs (run_id, job_card_id, code_scanned, tested_by, qc_stage, scan_source)
                     VALUES (%s, %s, %s, %s, 'PACKING', %s)
@@ -2782,6 +2787,7 @@ def verify_code(
     job_card_id: str = Form(...), 
     code: str = Form(...),
     source: str = Form(""),
+    request: Request = None,
     user: dict = Depends(require_password_change_complete)
 ):
     job_card_id = job_card_id.strip()
@@ -2811,7 +2817,7 @@ def verify_code(
                     "message": f"Job Card '{job_card_id}' is {jc_status}. Scanning is disabled for non-active jobs."
                 })
 
-            scan_source = resolve_scan_source(cur, source, operator, job_card_id, "verification")
+            scan_source = resolve_scan_source(cur, source, operator, job_card_id, "verification", request.headers.get("user-agent", ""))
 
             def log_scan(res, msg):
                 cur.execute(
@@ -3266,7 +3272,7 @@ def export_report_csv(job_card_id: str, user: dict = Depends(require_password_ch
             write_csv_row(["Job Card ID", "Scanned Code", "Row #", "Result", "Tested By", "Scan Source", "Timestamp"])
             for r in rows:
                 row_val = r[1] if r[1] is not None else "-"
-                write_csv_row([job_card_id, r[0], row_val, r[2], r[3], "Phone" if r[5] == "PHONE" else "Desktop", r[4].strftime("%Y-%m-%d %H:%M:%S") if r[4] else ""])
+                write_csv_row([job_card_id, r[0], row_val, r[2], r[3], {"PHONE": "Phone scanner", "MOBILE_APP": "Mobile app"}.get(r[5], "Desktop"), r[4].strftime("%Y-%m-%d %H:%M:%S") if r[4] else ""])
 
             output.seek(0)
             return StreamingResponse(

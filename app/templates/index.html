@@ -2345,6 +2345,12 @@
 
         // Interactive sorting state
         let nextScanViaPhone = false;
+        function scanSourceIcon(source) {
+            if (source === 'PHONE') return ' <span title="Scanned with paired phone scanner" aria-label="Scanned with paired phone scanner">📲</span>';
+            if (source === 'MOBILE_APP') return ' <span title="Scanned in the mobile version of the app" aria-label="Scanned in the mobile version of the app">📱</span>';
+            if (source === 'DESKTOP') return ' <span title="Scanned on desktop" aria-label="Scanned on desktop">🖥️</span>';
+            return '';
+        }
         let currentSortCol = 'default';
         let currentSortAsc = true;
 
@@ -3611,7 +3617,7 @@
                     time: new Date().toISOString(),
                     user: currentUser ? currentUser.username : 'Operator',
                     row_num: data.row_num ?? '-',
-                    source: viaPhone ? 'PHONE' : 'DESKTOP'
+                    source: viaPhone ? 'PHONE' : (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'MOBILE_APP' : 'DESKTOP')
                 });
                 // Cap memory buffer to 500 items during long shifts if older pages were loaded
                 if (allScans.length > 500) allScans.pop();
@@ -4295,7 +4301,7 @@
                                             </span>
                                         </td>
                                         <td class="px-3 py-2.5 text-slate-400 text-xs font-mono text-center" style="text-align: center !important;">${escapeHtml(formatStoredTimestamp(s.time))}</td>
-                                        <td class="px-3 py-2.5 text-xs text-center font-semibold text-slate-300" style="text-align: center !important;">${escapeHtml(s.user)}${s.source === 'PHONE' ? ' <span title="Scanned with phone" aria-label="Scanned with phone">📱</span>' : ''}</td>
+                                        <td class="px-3 py-2.5 text-xs text-center font-semibold text-slate-300" style="text-align: center !important;">${escapeHtml(s.user)}${scanSourceIcon(s.source)}</td>
                                     </tr>
                     `;
                 }).join('');
@@ -4326,7 +4332,7 @@
                                         <span class="scan-result-icon" aria-hidden="true">${presentation.icon}</span>
                                         <span>${escapeHtml(presentation.shortLabel)}</span>
                                     </span>
-                                    ${s.source === 'PHONE' ? '<span title="Scanned with phone" aria-label="Scanned with phone">📱</span>' : ''}
+                                    ${scanSourceIcon(s.source)}
                                     <span class="text-[10px] text-slate-400 font-medium">${timeOnly}</span>
                                 </div>
                             </div>
